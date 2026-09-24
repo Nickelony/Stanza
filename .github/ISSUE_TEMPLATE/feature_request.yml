@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a rule, an option or a change to a package.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: product
+    attributes:
+      label: Which product is this about?
+      description: The package the suggestion is for, or the documentation.
+      options:
+        - Nickelony.Stanza.Analyzers
+        - Nickelony.Stanza.Markup (stanza-markup)
+        - Nickelony.Stanza.Format (stanza-format)
+        - Documentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is awkward today, and with which layout.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like instead
+      description: The layout or behavior you want, with a before/after example if you can.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: >-
+        Another rule, an existing option, or a formatter setting that already covers this -
+        if one does, say so.
+    validations:
+      required: false

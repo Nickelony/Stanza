@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+		<MSTestParallelizeScope>MethodLevel</MSTestParallelizeScope>
+
+		<!-- The settings stop a test that never ends, which the cooperative token of a harness run cannot. -->
+		<RunSettingsFilePath>$(MSBuildProjectDirectory)/../test.runsettings</RunSettingsFilePath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="MSTest" />
+	</ItemGroup>
+
+	<!-- The engine alone, so a unit of it is tested without a tool or an analyzer in the way. -->
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Nickelony.Stanza.Markup.Core\Nickelony.Stanza.Markup.Core.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Include="..\Shared\MarkupFormatFixtures.cs" Link="MarkupFormatFixtures.cs" />
+		<Compile Include="..\Shared\RowNames.cs" Link="RowNames.cs" />
+	</ItemGroup>
+</Project>

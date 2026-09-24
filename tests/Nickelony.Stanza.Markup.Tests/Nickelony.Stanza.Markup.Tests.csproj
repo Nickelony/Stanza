@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+		<MSTestParallelizeScope>MethodLevel</MSTestParallelizeScope>
+		<!-- The settings stop a test that never ends, which the cooperative token of a harness run cannot. -->
+		<RunSettingsFilePath>$(MSBuildProjectDirectory)/../test.runsettings</RunSettingsFilePath>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+		<PackageReference Include="MSTest" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\Nickelony.Stanza.Markup\Nickelony.Stanza.Markup.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Include="..\Shared\RepositoryPaths.cs" Link="RepositoryPaths.cs" />
+		<Compile Include="..\Shared\ChildProcess.cs" Link="ChildProcess.cs" />
+		<Compile Include="..\Shared\DotnetHost.cs" Link="DotnetHost.cs" />
+		<Compile Include="..\Shared\DeniedDirectory.cs" Link="DeniedDirectory.cs" />
+		<Compile Include="..\Shared\DetachedProcess.cs" Link="DetachedProcess.cs" />
+		<Compile Include="..\Shared\ExpectedSkip.cs" Link="ExpectedSkip.cs" />
+		<Compile Include="..\Shared\GeneratedDocBody.cs" Link="GeneratedDocBody.cs" />
+		<Compile Include="..\Shared\MarkupFormatFixtures.cs" Link="MarkupFormatFixtures.cs" />
+		<Compile Include="..\Shared\RowNames.cs" Link="RowNames.cs" />
+		<Compile Include="..\Shared\TempDirectory.cs" Link="TempDirectory.cs" />
+	</ItemGroup>
+
+	<!-- The alias keeps the engine types linked into the analyzer apart from the same types in Markup.Core. -->
+	<ItemGroup>
+		<ProjectReference Update="$(StanzaAnalyzerProject)" ReferenceOutputAssembly="true" Aliases="stanza" />
+	</ItemGroup>
+</Project>

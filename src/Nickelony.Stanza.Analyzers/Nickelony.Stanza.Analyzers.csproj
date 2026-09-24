@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<StanzaRunAnalyzers>false</StanzaRunAnalyzers>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+	</ItemGroup>
+
+	<!-- The analyzer compiles the markup engine into itself, all but `Formatting/`, which only the tools run; a new engine file or directory joins unless it is excluded here. -->
+	<ItemGroup>
+		<Compile
+			Include="..\Nickelony.Stanza.Markup.Core\**\*.cs"
+			Exclude="..\Nickelony.Stanza.Markup.Core\bin\**;..\Nickelony.Stanza.Markup.Core\obj\**;..\Nickelony.Stanza.Markup.Core\Formatting\**"
+			LinkBase="MarkupEngine"
+		/>
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Nickelony.Stanza.Analyzers.CodeFixes" />
+		<InternalsVisibleTo Include="Nickelony.Stanza.Analyzers.Tests" />
+		<InternalsVisibleTo Include="Nickelony.Stanza.Markup.Tests" />
+	</ItemGroup>
+</Project>

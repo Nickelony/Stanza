@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+
+		<!-- The shipping projects run the .NET analyzers over these sources, so the self-check leaves them out. -->
+		<EnableNETAnalyzers>false</EnableNETAnalyzers>
+		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+		<!-- RS1038 keeps Workspaces out of an analyzer assembly, but this one compiles the fixes in beside the analyzers. -->
+		<NoWarn>$(NoWarn);RS1038</NoWarn>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Includes nested analyzer sources and excludes `bin` and `obj` to avoid compiling generated `AssemblyInfo.cs` twice. -->
+		<Compile
+			Include="..\..\src\Nickelony.Stanza.Analyzers\**\*.cs"
+			Exclude="..\..\src\Nickelony.Stanza.Analyzers\bin\**;..\..\src\Nickelony.Stanza.Analyzers\obj\**"
+			LinkBase="SelfAnalyzed"
+		/>
+
+		<!-- The fix providers see the analyzer's internals from their own assembly; the self-check compiles both as one. -->
+		<Compile
+			Include="..\..\src\Nickelony.Stanza.Analyzers.CodeFixes\**\*.cs"
+			Exclude="..\..\src\Nickelony.Stanza.Analyzers.CodeFixes\bin\**;..\..\src\Nickelony.Stanza.Analyzers.CodeFixes\obj\**"
+			LinkBase="SelfAnalyzedCodeFixes"
+		/>
+
+		<!-- The analyzer compiles the markup engine into itself, all but the formatter only the tools run, so the self-check does too. -->
+		<Compile
+			Include="..\..\src\Nickelony.Stanza.Markup.Core\**\*.cs"
+			Exclude="..\..\src\Nickelony.Stanza.Markup.Core\bin\**;..\..\src\Nickelony.Stanza.Markup.Core\obj\**;..\..\src\Nickelony.Stanza.Markup.Core\Formatting\**"
+			LinkBase="MarkupEngine"
+		/>
+
+		<AdditionalFiles Include="..\..\src\Nickelony.Stanza.Analyzers\AnalyzerReleases.Shipped.md" Link="AnalyzerReleases.Shipped.md" />
+		<AdditionalFiles Include="..\..\src\Nickelony.Stanza.Analyzers\AnalyzerReleases.Unshipped.md" Link="AnalyzerReleases.Unshipped.md" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Microsoft.CodeAnalysis.Analyzers takes its version from Directory.Packages.props, which the shipping analyzers project uses too, so both run the same rules. -->
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all" />
+		<PackageReference Include="System.Composition" PrivateAssets="all" />
+	</ItemGroup>
+</Project>

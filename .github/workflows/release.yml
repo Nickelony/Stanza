@@ -1,0 +1,298 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+permissions:
+  contents: read
+
+# Serialize runs of the same tag, and never cancel an in-flight publish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      notes: ${{ steps.changelog.outputs.notes }}
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Fetch the full history of every branch, so the checkout holds origin/main for the ancestry check.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Derive the version from the tag
+        id: version
+        shell: pwsh
+        run: |
+          $version = ./.github/scripts/Get-ReleaseVersion.ps1 -Tag $env:GITHUB_REF_NAME
+
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: The tagged commit is on main
+        shell: pwsh
+        run: |
+          git rev-parse --verify --quiet refs/remotes/origin/main | Out-Null
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "The checkout holds no origin/main, so the tag cannot be checked against it."
+          }
+
+          git merge-base --is-ancestor $env:GITHUB_SHA refs/remotes/origin/main
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "$env:GITHUB_SHA is not an ancestor of origin/main, so this tag does not belong to the released branch."
+          }
+
+      - name: The analyzer release tracking file knows this version
+        # A prerelease keeps its rules unshipped, because the release tracking analyzer refuses a suffix in a release heading.
+        if: ${{ !contains(steps.version.outputs.version, '-') }}
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $path = 'src/Nickelony.Stanza.Analyzers/AnalyzerReleases.Shipped.md'
+          $section = "^## Release $([regex]::Escape($env:VERSION))\s*$"
+
+          if (-not (Select-String -LiteralPath $path -Pattern $section -Quiet)) {
+            throw "AnalyzerReleases.Shipped.md carries no '## Release $env:VERSION' section, so the rules of this version were never moved out of AnalyzerReleases.Unshipped.md."
+          }
+
+      - name: The changelog carries this version
+        id: changelog
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Extracts the changelog notes that become the GitHub release body.
+          $heading = "## [$env:VERSION]"
+          $lines = @(Get-Content -LiteralPath CHANGELOG.md)
+          $start = -1
+
+          for ($index = 0; $index -lt $lines.Count; $index++) {
+            if ($lines[$index].StartsWith($heading)) {
+              $start = $index
+              break
+            }
+          }
+
+          if ($start -lt 0) {
+            throw "CHANGELOG.md carries no '$heading' section, so the release would be published with no notes."
+          }
+
+          $end = $lines.Count
+
+          for ($index = $start + 1; $index -lt $lines.Count; $index++) {
+            if ($lines[$index].StartsWith('## ')) {
+              $end = $index
+              break
+            }
+          }
+
+          # Avoid a descending index range when the section has no body.
+          $body = if ($end -gt $start + 1) { @($lines[($start + 1)..($end - 1)]) } else { @() }
+
+          # Drop the reference definitions only; the blank lines stay, so a paragraph after a list keeps its break.
+          $notes = (@($body | Where-Object { $_ -notmatch '^\[[^\]]+\]:' }) -join "`n").Trim()
+
+          if ($notes.Length -eq 0) {
+            throw "CHANGELOG.md's '$heading' section is empty, so the release would be published with no notes."
+          }
+
+          $delimiter = [guid]::NewGuid().ToString('N')
+
+          "notes<<$delimiter" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $notes | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          $delimiter | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: The changelog links this version
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # A version links a compare range, or the release tag for the first release.
+          $version = [regex]::Escape($env:VERSION)
+          $lines = @(Get-Content -LiteralPath CHANGELOG.md)
+          $links = @{
+            "[$env:VERSION]" = "^\[$version\]: https://github\.com/[^/]+/[^/]+/(compare/v\S+\.\.\.v$version|releases/tag/v$version)\s*$"
+            '[Unreleased]'   = "^\[Unreleased\]: https://github\.com/[^/]+/[^/]+/compare/v$version\.\.\.HEAD\s*$"
+          }
+
+          foreach ($label in $links.Keys) {
+            if (-not ($lines | Where-Object { $_ -match $links[$label] })) {
+              throw "CHANGELOG.md carries no '$label' link as a compare range or the first release tag, so the release notes would point at the wrong range."
+            }
+          }
+
+  verify:
+    needs: prepare
+
+    permissions:
+      contents: read
+
+    uses: ./.github/workflows/verify.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      # The published packages build from a fresh restore, so no cache stands between the registry and what ships.
+      cache: false
+
+  publish:
+    needs: [prepare, verify]
+
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    # The environment holds the nuget.org user name and waits for a reviewer, and the trusted publishing policy names it.
+    environment: release
+
+    permissions:
+      contents: read
+      attestations: write
+      id-token: write
+
+    steps:
+      # Only the scripts are needed, and the checkout comes first so it cannot clean the downloaded packages away.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      # Downloads the packages that verification checked, so publishing sends those exact files.
+      - name: Download the packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: packages
+          path: artifacts
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+
+      # PackageLayoutTests packs the IDs of the same file, so the push below sends the packages the tests checked.
+      - name: The artifacts hold exactly the packages that ship
+        shell: pwsh
+        run: ./.github/scripts/Assert-PackageSet.ps1
+
+      - name: Check the packed version against the tag
+        shell: pwsh
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+          $packages = @(Get-ChildItem -Path artifacts -Filter *.nupkg -File)
+
+          if ($packages.Count -eq 0) {
+            throw 'The artifacts directory holds no .nupkg file.'
+          }
+
+          foreach ($package in $packages) {
+            $entry = $null
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
+
+            try {
+              $entry = $zip.Entries | Where-Object { $_.FullName.EndsWith('.nuspec') } | Select-Object -First 1
+
+              if ($null -eq $entry) {
+                throw "$($package.Name) carries no nuspec."
+              }
+
+              $reader = New-Object System.IO.StreamReader($entry.Open())
+
+              try {
+                $nuspec = $reader.ReadToEnd()
+              }
+              finally {
+                $reader.Dispose()
+              }
+            }
+            finally {
+              $zip.Dispose()
+            }
+
+            if ($nuspec -notmatch "<version>$([regex]::Escape($env:VERSION))</version>") {
+              throw "$($package.Name) does not carry version $env:VERSION, so the tag and the package disagree."
+            }
+          }
+
+      - name: Attest the build provenance of the packages
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: artifacts/*
+
+      # Trusted publishing: nuget.org checks the OIDC token of this run against the policy of each package ID
+      # and returns an API key that lasts an hour, so the login comes right before the push and no long-lived key exists.
+      - name: Log in to nuget.org
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      # Pushes each package and stops at the first failed push.
+      # A file already on nuget.org is skipped, so rerunning the failed job finishes a partial publish.
+      - name: Publish to nuget.org
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          foreach ($package in Get-ChildItem -Path artifacts -Filter *.nupkg -File) {
+            Write-Host "==> $($package.Name)" -ForegroundColor Cyan
+
+            dotnet nuget push $package.FullName --source https://api.nuget.org/v3/index.json --api-key $env:NUGET_API_KEY --skip-duplicate
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Publishing $($package.Name) failed with exit code $LASTEXITCODE."
+            }
+          }
+
+  notes:
+    needs: [prepare, publish]
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create the GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          NOTES: ${{ needs.prepare.outputs.notes }}
+        run: |
+          $path = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+
+          Set-Content -LiteralPath $path -Value ($env:NOTES.Trim() + "`n")
+
+          $arguments = @(
+            'release', 'create', "v$env:VERSION",
+            '--repo', $env:GITHUB_REPOSITORY,
+            '--title', $env:VERSION,
+            '--notes-file', $path,
+            '--verify-tag'
+          )
+
+          if ($env:VERSION.Contains('-')) {
+            $arguments += '--prerelease'
+          }
+
+          # Pass `--repo` because this job has no checkout or remote configuration.
+          gh @arguments

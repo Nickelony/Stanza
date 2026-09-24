@@ -1,0 +1,33 @@
+<Project>
+	<PropertyGroup>
+		<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+		<!-- Holds a listed package to its version where a project gets it only through another, such as Microsoft.CodeAnalysis.CSharp under Workspaces. -->
+		<CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+	</PropertyGroup>
+
+	<!--
+		StanzaRoslynVersion is the oldest Roslyn host the analyzers load in,
+		which the installation section of src/Nickelony.Stanza.Analyzers/README.md states as the floor.
+		With StanzaNewestRoslyn set to true, the analyzer tests run them on the newest Roslyn instead, as a current host does.
+		CI passes the newest versions on nuget.org, because no update moves StanzaNewestRoslynVersion or StanzaNewestCompositionVersion.
+	-->
+	<PropertyGroup>
+		<StanzaRoslynVersion>4.11.0</StanzaRoslynVersion>
+		<StanzaCompositionVersion>8.0.0</StanzaCompositionVersion>
+		<StanzaNewestRoslynVersion Condition="'$(StanzaNewestRoslynVersion)' == ''">5.9.0</StanzaNewestRoslynVersion>
+		<StanzaNewestCompositionVersion Condition="'$(StanzaNewestCompositionVersion)' == ''">10.0.1</StanzaNewestCompositionVersion>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(StanzaNewestRoslyn)' == 'true' and '$(MSBuildProjectName)' == 'Nickelony.Stanza.Analyzers.Tests'">
+		<StanzaRoslynVersion>$(StanzaNewestRoslynVersion)</StanzaRoslynVersion>
+		<StanzaCompositionVersion>$(StanzaNewestCompositionVersion)</StanzaCompositionVersion>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
+		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="$(StanzaRoslynVersion)" />
+		<PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="$(StanzaRoslynVersion)" />
+		<PackageVersion Include="MSTest" Version="4.4.1" />
+		<PackageVersion Include="System.Composition" Version="$(StanzaCompositionVersion)" />
+	</ItemGroup>
+</Project>

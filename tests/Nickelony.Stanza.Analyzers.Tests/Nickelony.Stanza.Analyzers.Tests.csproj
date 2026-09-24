@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+		<MSTestParallelizeScope>MethodLevel</MSTestParallelizeScope>
+
+		<!-- The settings stop a test that never ends, which the cooperative token of a harness run cannot. -->
+		<RunSettingsFilePath>$(MSBuildProjectDirectory)/../test.runsettings</RunSettingsFilePath>
+
+		<DefineConstants Condition="'$(StanzaNewestRoslyn)' == 'true'">$(DefineConstants);STANZA_NEWEST_ROSLYN</DefineConstants>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" PrivateAssets="all" />
+		<PackageReference Include="MSTest" />
+	</ItemGroup>
+
+	<!-- The tests call into both assemblies, so the references the shared props attach carry them too. -->
+	<ItemGroup>
+		<ProjectReference Update="$(StanzaAnalyzerProject)" ReferenceOutputAssembly="true" />
+		<ProjectReference Update="$(StanzaFixProject)" ReferenceOutputAssembly="true" />
+	</ItemGroup>
+
+	<!--
+		PackageLayoutTests packs the solution without building it, so a targeted run of this project builds what the pack reads.
+		The newest-Roslyn leg builds this project alone and that test is inconclusive there, so it takes no references.
+	-->
+	<ItemGroup Condition="'$(StanzaNewestRoslyn)' != 'true'">
+		<ProjectReference
+			Include="..\..\src\Nickelony.Stanza.Analyzers.Package\Nickelony.Stanza.Analyzers.Package.csproj"
+			ReferenceOutputAssembly="false"
+		/>
+
+		<ProjectReference Include="..\..\src\Nickelony.Stanza.Markup\Nickelony.Stanza.Markup.csproj" ReferenceOutputAssembly="false" />
+		<ProjectReference Include="..\..\src\Nickelony.Stanza.Format\Nickelony.Stanza.Format.csproj" ReferenceOutputAssembly="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Compile Include="..\Shared\RepositoryPaths.cs" Link="RepositoryPaths.cs" />
+		<Compile Include="..\Shared\ChildProcess.cs" Link="ChildProcess.cs" />
+		<Compile Include="..\Shared\DotnetHost.cs" Link="DotnetHost.cs" />
+		<Compile Include="..\Shared\ExpectedSkip.cs" Link="ExpectedSkip.cs" />
+		<Compile Include="..\Shared\GeneratedDocBody.cs" Link="GeneratedDocBody.cs" />
+		<Compile Include="..\Shared\RowNames.cs" Link="RowNames.cs" />
+	</ItemGroup>
+</Project>

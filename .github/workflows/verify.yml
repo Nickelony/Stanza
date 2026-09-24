@@ -1,0 +1,537 @@
+name: Verify
+
+# The wiki is checked by hand with ./wiki.ps1 -Check, not by these jobs.
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: >-
+          The version the packages are built and packed with.
+        required: false
+        type: string
+        default: ''
+      cache:
+        description: >-
+          Whether the jobs cache the NuGet packages between runs.
+        required: false
+        type: boolean
+        default: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # Linux distinguishes letter case in paths, so it exercises what Windows hides.
+  # Packing and the checks on the packages run once, on Windows.
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    # The version argument of the build and the pack, empty when the caller names no version.
+    env:
+      VERSION_PROPERTY: ${{ inputs.version != '' && format('-p:Version={0}', inputs.version) || '' }}
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-dotnet
+        with:
+          cache: ${{ inputs.cache }}
+
+      # Keeps the tested and packaged assemblies in the same configuration.
+      - name: Build
+        shell: pwsh
+        run: |
+          $version = @($env:VERSION_PROPERTY) -ne ''
+          dotnet build Nickelony.Stanza.slnx -c Release --no-incremental @version
+
+      # The solution names each test project, so a new one runs here without a step of its own.
+      - name: Test the solution
+        shell: pwsh
+        run: dotnet test Nickelony.Stanza.slnx -c Release --no-build --logger trx --results-directory "$env:RUNNER_TEMP/test-results"
+
+      # A runner that cannot make a link or deny a directory skips those tests silently, so only a skip a test states by design passes.
+      - name: Check the skipped tests
+        shell: pwsh
+        run: ./.github/scripts/Assert-ExpectedSkips.ps1 -Results (Join-Path $env:RUNNER_TEMP 'test-results')
+
+      - name: Check formatting and analyzer rules
+        shell: pwsh
+        run: ./format.ps1 -Check
+
+      # The solution packs each packable project; PackageLayoutTests holds what each package carries.
+      - name: Pack
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = @($env:VERSION_PROPERTY) -ne ''
+
+          # A leftover package would be uploaded beside the fresh ones, so the directory starts empty.
+          if (Test-Path artifacts) {
+            Remove-Item artifacts -Recurse -Force
+          }
+
+          dotnet pack Nickelony.Stanza.slnx -c Release --no-build -o artifacts @version
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Packing the solution failed (exit code $LASTEXITCODE)."
+          }
+
+          # The release publishes this directory, so it holds the packages of package-ids.txt and nothing else.
+          ./.github/scripts/Assert-PackageSet.ps1
+
+      - name: Upload the packages
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: packages
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      # The packed tool goes to a directory of its own, so the repository's tool manifest stays as committed.
+      - name: Check the repository's own markup from the package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'markup-tool'
+          ./.github/scripts/Install-Package.ps1 -Id Nickelony.Stanza.Markup -ToolPath $tools
+
+          & (Join-Path $tools 'stanza-markup.exe') check . --strict
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "The packed stanza-markup found a problem in the repository's markup (exit code $LASTEXITCODE)."
+          }
+
+      # Each leg checks, because a build, a test or a formatter can write a file on one platform alone.
+      - name: The gate leaves no change behind
+        shell: pwsh
+        run: |
+          $dirty = @(git status --porcelain)
+
+          if ($dirty.Count -gt 0) {
+            throw "The gate left the checkout dirty: $($dirty -join '; ')"
+          }
+
+  # The pages and the comments follow STYLEGUIDE.md, which the Vale style in .vale/styles/Stanza checks.
+  prose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    env:
+      VALE_VERSION: 3.25.1
+      VALE_SHA256: 4bf5c5176b682b1da0830f471584d3494f1c2e27ee3029e1ad6f6661d4962182
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # A pinned release whose checksum matches, so a changed download cannot run.
+      - name: Install Vale
+        run: |
+          archive="vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
+          curl --fail --silent --show-error --location --output "$RUNNER_TEMP/$archive" "https://github.com/vale-cli/vale/releases/download/v${VALE_VERSION}/$archive"
+          echo "$VALE_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          mkdir -p "$RUNNER_TEMP/vale"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/vale" vale
+          echo "$RUNNER_TEMP/vale" >> "$GITHUB_PATH"
+
+      - name: Check the prose
+        run: vale --glob='!**/{bin,obj,artifacts}/**' .
+
+  # The analyzers build against the oldest Roslyn they load in, and a current host runs them on a newer Roslyn that parses C# 14.
+  newest-roslyn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-dotnet
+        with:
+          cache: ${{ inputs.cache }}
+
+      # The newest listed stable versions on nuget.org, so the leg moves with Roslyn while the pins in Directory.Packages.props stay.
+      # The registration index carries the listing, which the flat container leaves out.
+      - name: Find the newest Roslyn
+        id: newest
+        shell: pwsh
+        run: |
+          foreach ($package in @('Microsoft.CodeAnalysis.CSharp', 'System.Composition')) {
+            $index = Invoke-RestMethod -Uri "https://api.nuget.org/v3/registration5-gz-semver2/$($package.ToLowerInvariant())/index.json"
+
+            # A long list of versions is paged, and a page links its entries instead of holding them.
+            $entries = foreach ($page in $index.items) {
+              if ($page.items) { $page.items } else { (Invoke-RestMethod -Uri $page.'@id').items }
+            }
+
+            $version = @(
+              $entries |
+                Where-Object { $_.catalogEntry.listed -ne $false -and $_.catalogEntry.version -notmatch '-' } |
+                ForEach-Object { $_.catalogEntry.version } |
+                Sort-Object { [version] $_ }
+            )[-1]
+
+            if (-not $version) {
+              throw "nuget.org lists no stable version of $package."
+            }
+
+            "$($package.Replace('.', ''))=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            Write-Host "$package $version"
+          }
+
+      - name: Test the analyzers on the newest Roslyn
+        env:
+          ROSLYN: ${{ steps.newest.outputs.MicrosoftCodeAnalysisCSharp }}
+          COMPOSITION: ${{ steps.newest.outputs.SystemComposition }}
+        run: dotnet test tests/Nickelony.Stanza.Analyzers.Tests/Nickelony.Stanza.Analyzers.Tests.csproj -c Release -p:StanzaNewestRoslyn=true "-p:StanzaNewestRoslynVersion=$ROSLYN" "-p:StanzaNewestCompositionVersion=$COMPOSITION" --logger trx --results-directory "$RUNNER_TEMP/test-results"
+
+      # The C# 14 tests fail on this leg instead of skipping, so a skip here needs a design a test states.
+      - name: Check the skipped tests
+        shell: pwsh
+        run: ./.github/scripts/Assert-ExpectedSkips.ps1 -Results (Join-Path $env:RUNNER_TEMP 'test-results')
+
+  # The runner ships a .NET 8 runtime, which each tool would pick,
+  # so the smoke steps set DOTNET_ROLL_FORWARD around the tool's own calls to run it on the newest runtime installed;
+  # the floor job runs the tools on .NET 8.
+  package:
+    needs: build
+
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # No step of this job runs the tests, so it skips the .NET 8 SDK they run on.
+      - uses: ./.github/actions/setup-dotnet
+        with:
+          test-runtime: 'false'
+          cache: ${{ inputs.cache }}
+
+      # Reuses the packages the build job produced and checked.
+      - name: Download the packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: packages
+          path: artifacts
+
+      - name: The tool package formats a file
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'stanza-tools'
+          $tool = Join-Path $tools 'stanza-markup.exe'
+
+          ./.github/scripts/Install-Package.ps1 -Id Nickelony.Stanza.Markup -ToolPath $tools
+
+          $smoke = Join-Path $env:RUNNER_TEMP 'stanza-tool-smoke'
+          New-Item -ItemType Directory -Force $smoke | Out-Null
+          ./.github/scripts/Write-MarkupSample.ps1 -Path (Join-Path $smoke 'sample.xml')
+
+          # The installs above ran on the SDK's runtime, so the variable is set only now.
+          $env:DOTNET_ROLL_FORWARD = 'LatestMajor'
+
+          & $tool check $smoke --strict
+
+          if ($LASTEXITCODE -ne 1) {
+            throw "The tool did not report a file that needs a blank line (exit code $LASTEXITCODE)."
+          }
+
+          & $tool format $smoke
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "The tool failed to format a file it had just reported (exit code $LASTEXITCODE)."
+          }
+
+          & $tool check $smoke --strict
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "The tool still reports the file it just formatted (exit code $LASTEXITCODE)."
+          }
+
+      # The solution is made outside the checkout, so the repository's build props and tool manifest stay out of it,
+      # and the build reports `warning ZA`, which the repository's props would turn into an error.
+      - name: The analyzer and format packages fix a consumer solution
+        shell: pwsh
+        run: |
+          $install = Join-Path $env:GITHUB_WORKSPACE '.github/scripts/Install-Package.ps1'
+          $artifacts = Join-Path $env:GITHUB_WORKSPACE 'artifacts'
+          $tools = Join-Path $env:RUNNER_TEMP 'stanza-format-tools'
+          $tool = Join-Path $tools 'stanza-format.exe'
+
+          & $install -Id Nickelony.Stanza.Format -ToolPath $tools -Directory $artifacts
+
+          $smoke = Join-Path $env:RUNNER_TEMP 'stanza-format-smoke'
+          New-Item -ItemType Directory -Force $smoke | Out-Null
+          Push-Location $smoke
+
+          try {
+            # The ignore file keeps the build output out of the files a default run reads.
+            $setup = [ordered]@{
+              'git init' = { git init --quiet }
+              'dotnet new gitignore' = { dotnet new gitignore }
+              'dotnet new classlib' = { dotnet new classlib -o Consumer }
+              'dotnet new sln' = { dotnet new sln -n Smoke }
+              'dotnet sln add' = { dotnet sln add Consumer }
+            }
+
+            foreach ($name in $setup.Keys) {
+              & $setup[$name] | Out-Null
+
+              if ($LASTEXITCODE -ne 0) {
+                throw "$name failed (exit code $LASTEXITCODE)."
+              }
+            }
+
+            Push-Location Consumer
+            & $install -Id Nickelony.Stanza.Analyzers -Directory $artifacts
+            Remove-Item Class1.cs -Force
+            Pop-Location
+
+            # ZA0002 reports the missing blank line before the property,
+            # and the namespace and the static methods keep CA1050 and CA1822 quiet, so the Stanza fix is the one change a run makes.
+            $broken = @(
+              'namespace Consumer;'
+              ''
+              'public sealed class Smoke'
+              '{'
+              '    public static int M() => 1;'
+              '    public static int N() => 2;'
+              '    public int Value { get; set; }'
+              '}'
+            )
+
+            $fixed = @(
+              'namespace Consumer;'
+              ''
+              'public sealed class Smoke'
+              '{'
+              '    public static int M() => 1;'
+              '    public static int N() => 2;'
+              ''
+              '    public int Value { get; set; }'
+              '}'
+            )
+
+            Set-Content -Path Consumer/Smoke.cs -Value $broken
+            $build = dotnet build | Out-String
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "The consumer build failed (exit code $LASTEXITCODE).`n$build"
+            }
+
+            if ($build -notmatch 'warning ZA0002') {
+              throw "The analyzer package reported nothing in a consumer build, so the package carries no analyzer."
+            }
+
+            # Nothing is committed, so the default run formats each file, as a run before the first commit does.
+            $runs = [ordered]@{
+              '--all' = @('--all')
+              'The default run' = @()
+            }
+
+            # The SDK calls above ran on the SDK's runtime, so the variable is set only for the tool.
+            $env:DOTNET_ROLL_FORWARD = 'LatestMajor'
+
+            foreach ($name in $runs.Keys) {
+              Set-Content -Path Consumer/Smoke.cs -Value $broken
+              $arguments = $runs[$name]
+
+              & $tool @arguments
+
+              if ($LASTEXITCODE -ne 0) {
+                throw "$name failed on a consumer solution (exit code $LASTEXITCODE)."
+              }
+
+              $written = @(Get-Content Consumer/Smoke.cs)
+
+              if (($written -join "`n") -ne ($fixed -join "`n")) {
+                throw "$name did not write the ZA0002 fix, so the analyzer package's fixes did not load:`n$($written -join "`n")"
+              }
+
+              & $tool --check
+
+              if ($LASTEXITCODE -ne 0) {
+                throw "The check after $name still finds work (exit code $LASTEXITCODE)."
+              }
+            }
+          }
+          finally {
+            Pop-Location
+          }
+
+      # The SDK compiler is a newer Roslyn than the floor the analyzers build against, so the build above never loads them on it.
+      # This build takes the compiler of the floor named in Directory.Packages.props from its toolset package;
+      # `RoslynCompilerType=Custom` stops the SDK from putting its own compiler back in place of it.
+      - name: The analyzer package reports in a consumer build on the Roslyn floor
+        shell: pwsh
+        run: |
+          $install = Join-Path $env:GITHUB_WORKSPACE '.github/scripts/Install-Package.ps1'
+          $artifacts = Join-Path $env:GITHUB_WORKSPACE 'artifacts'
+          $props = [xml](Get-Content -LiteralPath (Join-Path $env:GITHUB_WORKSPACE 'Directory.Packages.props') -Raw)
+
+          # A test leg may raise the version, so only the property without a condition names the floor.
+          $floor = @(
+            $props.Project.PropertyGroup |
+              Where-Object { -not $_.HasAttribute('Condition') -and $_.StanzaRoslynVersion } |
+              ForEach-Object { $_.StanzaRoslynVersion.Trim() }
+          )[0]
+
+          if (-not $floor) {
+            throw 'Directory.Packages.props names no Roslyn floor.'
+          }
+
+          $smoke = Join-Path $env:RUNNER_TEMP 'stanza-roslyn-floor-smoke'
+          New-Item -ItemType Directory -Force $smoke | Out-Null
+          Push-Location $smoke
+
+          try {
+            dotnet new classlib -o Consumer | Out-Null
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "dotnet new classlib failed (exit code $LASTEXITCODE)."
+            }
+
+            Push-Location Consumer
+            & $install -Id Nickelony.Stanza.Analyzers -Directory $artifacts
+            Remove-Item Class1.cs -Force
+
+            dotnet add package Microsoft.Net.Compilers.Toolset --version $floor | Out-Host
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Adding Microsoft.Net.Compilers.Toolset $floor failed (exit code $LASTEXITCODE)."
+            }
+
+            Pop-Location
+
+            Set-Content -Path Consumer/Smoke.cs -Value @(
+              'namespace Consumer;'
+              ''
+              'public sealed class Smoke'
+              '{'
+              '    public static int M() => 1;'
+              '    public static int N() => 2;'
+              '    public int Value { get; set; }'
+              '}'
+            )
+
+            # The build below compiles with the toolset only when the tasks assembly comes from its package.
+            $tasks = dotnet msbuild Consumer -getProperty:RoslynTasksAssembly -p:RoslynCompilerType=Custom
+
+            if ($tasks -notmatch "microsoft\.net\.compilers\.toolset[\\/]$([regex]::Escape($floor))[\\/]") {
+              throw "The build would not compile with the Roslyn $floor toolset. Its tasks assembly is $tasks."
+            }
+
+            $build = dotnet build Consumer -p:RoslynCompilerType=Custom | Out-String
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "The consumer build on Roslyn $floor failed (exit code $LASTEXITCODE).`n$build"
+            }
+
+            if ($build -notmatch 'warning ZA0002') {
+              throw "The analyzer package reported nothing on Roslyn $floor, so its analyzers did not load there."
+            }
+          }
+          finally {
+            Pop-Location
+          }
+
+  # Proves each tool runs on the .NET 8 runtime, its floor, even where a newer runtime is installed.
+  floor:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+
+    needs: build
+
+    steps:
+      # Only the scripts are needed, and a sparse checkout keeps the SDK pin of global.json out of this job.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Download the packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: packages
+          path: artifacts
+
+      # Installs the target runtime of the tools and puts its muxer first on PATH.
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Run the tool on the .NET 8 runtime
+        shell: pwsh
+        run: |
+          $runtimes = @(dotnet --list-runtimes)
+
+          if (-not ($runtimes | Where-Object { $_ -like 'Microsoft.NETCore.App 8.0.*' })) {
+            throw "No .NET 8 runtime is installed, so the net8.0 floor cannot be tested. Runtimes found: $($runtimes -join '; ')"
+          }
+
+          $work = Join-Path $env:RUNNER_TEMP 'stanza-floor'
+          $tools = Join-Path $work 'tools'
+
+          New-Item -ItemType Directory -Force $tools | Out-Null
+
+          ./.github/scripts/Install-Package.ps1 -Id Nickelony.Stanza.Markup -ToolPath $tools
+          ./.github/scripts/Install-Package.ps1 -Id Nickelony.Stanza.Format -ToolPath $tools
+
+          Push-Location $work
+
+          try {
+            # Restrict roll-forward to the target runtime's latest patch, so each tool fails to start without .NET 8.
+            $env:DOTNET_ROLL_FORWARD = 'LatestPatch'
+
+            & (Join-Path $env:GITHUB_WORKSPACE '.github/scripts/Write-MarkupSample.ps1') -Path sample.xml
+
+            & (Join-Path $tools 'stanza-markup.exe') format sample.xml
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "The tool failed on the .NET 8 runtime (exit code $LASTEXITCODE)."
+            }
+
+            & (Join-Path $tools 'stanza-markup.exe') check sample.xml --strict
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "The tool still reports the file it just formatted on the .NET 8 runtime (exit code $LASTEXITCODE)."
+            }
+
+            & (Join-Path $tools 'stanza-format.exe') --version
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "The format tool did not start on the .NET 8 runtime (exit code $LASTEXITCODE)."
+            }
+          }
+          finally {
+            Pop-Location
+          }

@@ -1,0 +1,8 @@
+# An initialism keeps its capitals, so prose writes "ID" and "IDs".
+# A file name or an identifier such as package-ids.txt is left alone, and so is a PowerShell parameter a help block names.
+extends: existence
+message: "Write 'ID' or 'IDs' for '%s'."
+level: error
+nonword: true
+tokens:
+  - '(?<![-\w.])(?<!PARAMETER )[Ii]ds?(?![-\w.])'

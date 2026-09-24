@@ -1,0 +1,7 @@
+contact_links:
+  - name: Security policy
+    url: https://github.com/Nickelony/Stanza/blob/main/SECURITY.md
+    about: How to report a vulnerability privately, instead of in a public issue.
+  - name: Contributing guide
+    url: https://github.com/Nickelony/Stanza/blob/main/CONTRIBUTING.md
+    about: How to build the repository, run the gates and open a pull request.

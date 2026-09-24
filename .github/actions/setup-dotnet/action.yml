@@ -1,0 +1,32 @@
+name: Set up .NET
+description: Installs the .NET SDKs the repository builds with, caches the NuGet packages and restores the pinned tools.
+
+inputs:
+  test-runtime:
+    description: Whether to install the .NET 8 SDK, whose runtime the tests run on, beside the SDK that global.json names.
+    default: 'true'
+  cache:
+    description: Whether to cache the NuGet packages between runs; a release restores them fresh.
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    # global.json names the SDK with `latestPatch`, so CI builds with the band a contributor builds with.
+    - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+      with:
+        global-json-file: global.json
+        dotnet-version: ${{ inputs.test-runtime == 'true' && '8.0.x' || '' }}
+        cache: ${{ inputs.cache }}
+        cache-dependency-path: |
+          Directory.Packages.props
+          Directory.Build.*
+          NuGet.Config
+          **/*.csproj
+          global.json
+          .config/dotnet-tools.json
+
+    # Each job that sets up .NET restores the tools, so a test or a script that runs one finds it on a fresh runner.
+    - name: Restore the pinned tools
+      shell: pwsh
+      run: dotnet tool restore

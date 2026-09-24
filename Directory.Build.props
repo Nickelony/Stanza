@@ -1,0 +1,92 @@
+<Project>
+	<PropertyGroup>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+	</PropertyGroup>
+
+	<!--
+		Version is the default for every build without a release tag;
+		the release workflow overrides it with the tag.
+		AssemblyVersion moves only on a compatibility break.
+		FileVersion is the version without its suffix, so a prerelease carries the file version of its release.
+	-->
+	<PropertyGroup>
+		<Version>1.0.0</Version>
+		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<FileVersion>$([System.Text.RegularExpressions.Regex]::Match('$(Version)', '^\d+\.\d+\.\d+').Value).0</FileVersion>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<StanzaRepositoryUrl>https://github.com/Nickelony/Stanza</StanzaRepositoryUrl>
+		<Authors>Nickelony</Authors>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<Copyright>Copyright (c) 2026 Kewin Kupilas</Copyright>
+		<PackageProjectUrl>$(StanzaRepositoryUrl)</PackageProjectUrl>
+		<PackageReleaseNotes>$(StanzaRepositoryUrl)/blob/main/CHANGELOG.md</PackageReleaseNotes>
+		<RepositoryUrl>$(StanzaRepositoryUrl)</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<LangVersion>14.0</LangVersion>
+		<AnalysisLevel>10.0</AnalysisLevel>
+		<Nullable>enable</Nullable>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+	</PropertyGroup>
+
+	<!--
+		Every project generates XML docs so malformed documentation fails any build;
+		CS1591 stays suppressed because public members need docs only when they state a fact their signatures do not.
+	-->
+	<PropertyGroup>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<PublishDocumentationFiles>false</PublishDocumentationFiles>
+		<NoWarn>$(NoWarn);CS1591</NoWarn>
+	</PropertyGroup>
+
+	<!--
+		The tools and the tests target net8.0 on purpose, and the floor job of verify.yml proves the tools run there,
+		so the SDK's end-of-support warning (NETSDK1138) would only fail the build under TreatWarningsAsErrors.
+	-->
+	<PropertyGroup>
+		<CheckEolTargetFramework>false</CheckEolTargetFramework>
+	</PropertyGroup>
+
+	<!-- CI only: the deterministic source paths it writes would keep a local debugger from finding the source files. -->
+	<PropertyGroup Condition="'$(CI)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<StanzaPackageTags>stanza;formatting;blank-line;spacing;code-style;editorconfig</StanzaPackageTags>
+	</PropertyGroup>
+
+	<!--
+		Each project runs the Stanza analyzers over its own sources, and neither assembly ships with it.
+		`dotnet format` finds a fix only in an analyzer reference, so the fix assembly is attached beside the analyzer.
+		The analyzer, fix and package projects set StanzaRunAnalyzers to false,
+		and a test project that calls into an assembly updates the reference by its path property.
+	-->
+	<PropertyGroup>
+		<StanzaAnalyzerProject>$(MSBuildThisFileDirectory)src\Nickelony.Stanza.Analyzers\Nickelony.Stanza.Analyzers.csproj</StanzaAnalyzerProject>
+		<StanzaFixProject>$(MSBuildThisFileDirectory)src\Nickelony.Stanza.Analyzers.CodeFixes\Nickelony.Stanza.Analyzers.CodeFixes.csproj</StanzaFixProject>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(StanzaRunAnalyzers)' != 'false'">
+		<ProjectReference Include="$(StanzaAnalyzerProject)" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+		<ProjectReference Include="$(StanzaFixProject)" OutputItemType="Analyzer" ReferenceOutputAssembly="false" PrivateAssets="all" />
+	</ItemGroup>
+
+	<!--
+		A vulnerability advisory published after a commit is no defect of that commit, so the audit codes stay warnings
+		and no build, a release in flight included, fails on one.
+		The scheduled audit of ci.yml sets StanzaAuditStrict to turn them into errors.
+	-->
+	<PropertyGroup>
+		<NuGetAudit>true</NuGetAudit>
+		<NuGetAuditMode>all</NuGetAuditMode>
+		<WarningsNotAsErrors Condition="'$(StanzaAuditStrict)' != 'true'"
+			>$(WarningsNotAsErrors);NU1900;NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+	</PropertyGroup>
+</Project>

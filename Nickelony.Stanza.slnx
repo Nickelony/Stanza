@@ -1,0 +1,18 @@
+<Solution>
+	<Folder Name="/src/">
+		<Project Path="src/Nickelony.Stanza.Analyzers/Nickelony.Stanza.Analyzers.csproj" />
+		<Project Path="src/Nickelony.Stanza.Analyzers.CodeFixes/Nickelony.Stanza.Analyzers.CodeFixes.csproj" />
+		<Project Path="src/Nickelony.Stanza.Analyzers.Package/Nickelony.Stanza.Analyzers.Package.csproj" />
+		<Project Path="src/Nickelony.Stanza.Format/Nickelony.Stanza.Format.csproj" />
+		<Project Path="src/Nickelony.Stanza.Markup.Core/Nickelony.Stanza.Markup.Core.csproj" />
+		<Project Path="src/Nickelony.Stanza.Markup/Nickelony.Stanza.Markup.csproj" />
+	</Folder>
+
+	<Folder Name="/tests/">
+		<Project Path="tests/Nickelony.Stanza.Analyzers.SelfCheck/Nickelony.Stanza.Analyzers.SelfCheck.csproj" />
+		<Project Path="tests/Nickelony.Stanza.Analyzers.Tests/Nickelony.Stanza.Analyzers.Tests.csproj" />
+		<Project Path="tests/Nickelony.Stanza.Format.Tests/Nickelony.Stanza.Format.Tests.csproj" />
+		<Project Path="tests/Nickelony.Stanza.Markup.Core.Tests/Nickelony.Stanza.Markup.Core.Tests.csproj" />
+		<Project Path="tests/Nickelony.Stanza.Markup.Tests/Nickelony.Stanza.Markup.Tests.csproj" />
+	</Folder>
+</Solution>

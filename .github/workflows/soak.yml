@@ -1,0 +1,55 @@
+name: Soak
+
+# A pull request runs a few seeded files; this run feeds the same tests far more, so a layout the few never reach still surfaces.
+on:
+  schedule:
+    - cron: '43 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      seeds:
+        description: >-
+          The number of seeds each convergence test runs; the truncation test cuts every fixture at every offset whatever it is.
+        required: false
+        type: string
+        default: '200'
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    permissions:
+      contents: read
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      # A scheduled run has no input, so the default of the input is repeated here.
+      STANZA_SOAK_SEEDS: ${{ inputs.seeds || '200' }}
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-dotnet
+
+      - name: Build
+        run: dotnet build Nickelony.Stanza.slnx -c Release
+
+      # Each test project that holds a Soak test reads STANZA_SOAK_SEEDS; the others match nothing.
+      - name: Run the soak tests
+        shell: pwsh
+        run: dotnet test Nickelony.Stanza.slnx -c Release --no-build --filter TestCategory=Soak --logger trx --results-directory "$env:RUNNER_TEMP/test-results"
+
+      # A seed count the tests cannot read would skip them and pass, so the run fails unless each Soak test ran.
+      - name: Check that the soak tests ran
+        shell: pwsh
+        run: ./.github/scripts/Assert-ExpectedSkips.ps1 -Results (Join-Path $env:RUNNER_TEMP 'test-results') -Soak

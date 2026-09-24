@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<PackAsTool>true</PackAsTool>
+		<ToolCommandName>stanza-format</ToolCommandName>
+		<PackageId>Nickelony.Stanza.Format</PackageId>
+		<PackageTags>$(StanzaPackageTags);dotnet-tool;dotnet-format;csharpier</PackageTags>
+		<Description>Command line tool that runs dotnet format, CSharpier and stanza-markup in the order the Stanza rules need, over the files git reports as changed or the whole solution, and verifies the result without writing.</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="" />
+	</ItemGroup>
+
+	<!-- The tools compile in the console host, the argument reader and the path helpers of src/Shared, kept out of Markup.Core because the analyzer compiles it. -->
+	<ItemGroup>
+		<Compile Include="..\Shared\*.cs" LinkBase="Shared" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Nickelony.Stanza.Format.Tests" />
+	</ItemGroup>
+</Project>

@@ -1,0 +1,8 @@
+{
+	"recommendations": [
+		"ms-dotnettools.csdevkit",
+		"editorconfig.editorconfig",
+		"ms-vscode.powershell",
+		"csharpier.csharpier-vscode"
+	]
+}

@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # A weekly run audits the dependencies, so an advisory published after the last commit still surfaces.
+  schedule:
+    - cron: '17 4 * * 1'
+
+# A new push to a pull request supersedes its running verification.
+# Each push to main gets a group of its own, so no commit of main goes unverified.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The token is read-only by default; a job that needs more declares its own permissions.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.event_name != 'schedule'
+    uses: ./.github/workflows/verify.yml
+    permissions:
+      contents: read
+
+  # Directory.Build.props keeps the audit codes warnings, so no build fails on an advisory;
+  # this job turns them into errors, so a new advisory fails a scheduled or a manual run instead.
+  audit:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # No step of this job runs the tests, so it skips the .NET 8 SDK they run on.
+      - uses: ./.github/actions/setup-dotnet
+        with:
+          test-runtime: 'false'
+
+      # Restore audits the direct and the transitive packages of every project the solution names.
+      - name: Audit the packages
+        run: dotnet restore Nickelony.Stanza.slnx --force -p:StanzaAuditStrict=true

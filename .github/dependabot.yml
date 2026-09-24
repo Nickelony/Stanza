@@ -1,0 +1,56 @@
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      roslyn:
+        patterns:
+          - Microsoft.CodeAnalysis*
+    ignore:
+      # The Roslyn packages take patch updates only:
+      # the version the analyzers build against is the oldest Roslyn a host must run to load them,
+      # so a minor or major bump raises that floor.
+      - dependency-name: Microsoft.CodeAnalysis.CSharp
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
+      - dependency-name: Microsoft.CodeAnalysis.CSharp.Workspaces
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
+      # Analyzer upgrades can introduce new diagnostics.
+      - dependency-name: Microsoft.CodeAnalysis.Analyzers
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
+      # MSTest ships analyzers, so a minor or major bump can add diagnostics that fail the build.
+      - dependency-name: MSTest
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
+      # Microsoft.CodeAnalysis.CSharp.Workspaces depends on System.Composition,
+      # so the System.Composition minor and major bumps are ignored, as for the Roslyn packages above.
+      - dependency-name: System.Composition
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
+
+  - package-ecosystem: dotnet-sdk
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/setup-dotnet
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - "*"

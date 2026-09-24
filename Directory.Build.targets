@@ -1,0 +1,23 @@
+<Project>
+	<!-- Reads IsPackable after the project body so only packable projects receive package metadata. -->
+	<PropertyGroup Condition="'$(IsPackable)' != 'false'">
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageIcon>Stanza.png</PackageIcon>
+	</PropertyGroup>
+
+	<!--
+		Both tools run as console apps that roll forward to the runtime a machine has; a project marks itself with PackAsTool in its body.
+		No app host: `dotnet tool install` writes the command shim itself and the package carries none, which PackageLayoutTests pins.
+		The SDK infers UseAppHost before this file sets OutputType, so a build would make none even without the line; the line keeps that from being an accident.
+	-->
+	<PropertyGroup Condition="'$(PackAsTool)' == 'true'">
+		<OutputType>Exe</OutputType>
+		<UseAppHost>false</UseAppHost>
+		<RollForward>Major</RollForward>
+		<MinClientVersion>4.1.0</MinClientVersion>
+	</PropertyGroup>
+
+	<ItemGroup Condition="'$(IsPackable)' != 'false'">
+		<None Include="$(MSBuildThisFileDirectory)icon/Stanza.png" Pack="true" PackagePath="" />
+	</ItemGroup>
+</Project>

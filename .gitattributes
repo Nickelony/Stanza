@@ -1,0 +1,36 @@
+# The index stores LF; the patterns below enforce platform-stable checkout endings.
+* text=auto
+
+*.cs text eol=crlf
+*.csproj text eol=crlf
+*.props text eol=crlf
+*.targets text eol=crlf
+*.proj text eol=crlf
+*.slnx text eol=crlf
+*.sln text eol=crlf
+*.editorconfig text eol=crlf
+*.ps1 text eol=crlf
+
+# Extensionless files and the git dotfiles use the project-file line endings.
+LICENSE text eol=crlf
+CODEOWNERS text eol=crlf
+*.gitattributes text eol=crlf
+*.gitignore text eol=crlf
+
+# XML-based formats use CRLF in the checkout, like the project formats above.
+*.xml text eol=crlf
+*.config text eol=crlf
+# A case-sensitive checkout matches `*.config` by letter case, so the capitalized name is pinned too.
+*.Config text eol=crlf
+*.xaml text eol=crlf
+*.axaml text eol=crlf
+
+*.json text eol=lf
+*.ini text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+
+# The icon files are binary, so git neither converts their endings nor diffs them as text.
+*.png binary
+icon/*.af binary

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<PackAsTool>true</PackAsTool>
+		<ToolCommandName>stanza-markup</ToolCommandName>
+		<PackageId>Nickelony.Stanza.Markup</PackageId>
+		<PackageTags>$(StanzaPackageTags);dotnet-tool;markup;xml;msbuild;csproj;slnx;xaml;axaml;avalonia</PackageTags>
+		<Description>Command line tool that adds the missing blank line between multi-line sibling elements of a markup document, as the Stanza analyzers do for C#. It also cuts extra blank lines back to a cap and, where a file opts in, removes blank lines between elements that belong together.</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Nickelony.Stanza.Markup.Core\Nickelony.Stanza.Markup.Core.csproj" />
+	</ItemGroup>
+
+	<!-- The tools compile in the console host, the argument reader and the path helpers of src/Shared, kept out of Markup.Core because the analyzer compiles it. -->
+	<ItemGroup>
+		<Compile Include="..\Shared\*.cs" LinkBase="Shared" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Nickelony.Stanza.Markup.Tests" />
+	</ItemGroup>
+</Project>

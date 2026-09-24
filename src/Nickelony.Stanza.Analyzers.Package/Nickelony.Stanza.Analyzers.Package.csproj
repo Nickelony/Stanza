@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.Build.NoTargets">
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<StanzaRunAnalyzers>false</StanzaRunAnalyzers>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<DevelopmentDependency>true</DevelopmentDependency>
+		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+		<PackageId>Nickelony.Stanza.Analyzers</PackageId>
+		<PackageTags>$(StanzaPackageTags);roslyn-analyzer;analyzers;csharp;xml-documentation</PackageTags>
+		<Description>Roslyn analyzers and code fixes that enforce a consistent C# layout and documentation-comment style.</Description>
+	</PropertyGroup>
+
+	<!-- The NoTargets SDK builds no assembly here; the project packs the two assemblies the compiler and `dotnet format` load. -->
+	<ItemGroup>
+		<ProjectReference Include="..\Nickelony.Stanza.Analyzers\Nickelony.Stanza.Analyzers.csproj" ReferenceOutputAssembly="false" />
+		<ProjectReference
+			Include="..\Nickelony.Stanza.Analyzers.CodeFixes\Nickelony.Stanza.Analyzers.CodeFixes.csproj"
+			ReferenceOutputAssembly="false"
+		/>
+	</ItemGroup>
+
+	<!-- A host older than the Roslyn the analyzers build against skips the directory, so its name follows that version. -->
+	<PropertyGroup>
+		<TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);PackAssemblies</TargetsForTfmSpecificContentInPackage>
+		<StanzaRoslynDirectory>roslyn$([System.Text.RegularExpressions.Regex]::Match('$(StanzaRoslynVersion)', '^\d+\.\d+').Value)</StanzaRoslynDirectory>
+	</PropertyGroup>
+
+	<Target Name="PackAssemblies">
+		<MSBuild Projects="@(ProjectReference)" Targets="GetTargetPath">
+			<Output TaskParameter="TargetOutputs" ItemName="_StanzaAssembly" />
+		</MSBuild>
+
+		<!-- The PDBs ship in the package, so the stack trace of a crashing analyzer names lines. -->
+		<ItemGroup>
+			<_StanzaSymbols Include="@(_StanzaAssembly->'%(RootDir)%(Directory)%(Filename).pdb')" />
+			<TfmSpecificPackageFile Include="@(_StanzaAssembly)" PackagePath="analyzers/dotnet/$(StanzaRoslynDirectory)/cs" />
+
+			<!-- A PDB is included only where one exists; PackageLayoutTests pins each one, so a build that writes none fails it. -->
+			<TfmSpecificPackageFile
+				Include="@(_StanzaSymbols)"
+				PackagePath="analyzers/dotnet/$(StanzaRoslynDirectory)/cs"
+				Condition="Exists('%(FullPath)')"
+			/>
+		</ItemGroup>
+	</Target>
+
+	<ItemGroup>
+		<None Include="..\Nickelony.Stanza.Analyzers\README.md" Pack="true" PackagePath="" Link="README.md" />
+	</ItemGroup>
+</Project>

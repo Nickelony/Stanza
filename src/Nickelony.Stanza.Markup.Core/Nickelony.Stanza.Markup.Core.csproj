@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="Nickelony.Stanza.Markup" />
+		<InternalsVisibleTo Include="Nickelony.Stanza.Markup.Core.Tests" />
+		<InternalsVisibleTo Include="Nickelony.Stanza.Markup.Tests" />
+	</ItemGroup>
+</Project>
