@@ -1,4 +1,6 @@
-# Stanza
+# <img width="32" height="32" alt="Stanza" src="https://github.com/user-attachments/assets/f7516968-7215-490b-b715-528c46e00a82" /> Stanza
+
+*Where code becomes poetry.*
 
 Roslyn analyzers and code fixes for the line layout of C# source,
 plus command line tools for the markup files analyzers cannot see and for the order the formatters run in.
