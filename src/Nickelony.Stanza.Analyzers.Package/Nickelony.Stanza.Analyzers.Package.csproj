@@ -6,8 +6,8 @@
 		<DevelopmentDependency>true</DevelopmentDependency>
 		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 		<PackageId>Nickelony.Stanza.Analyzers</PackageId>
-		<PackageTags>$(StanzaPackageTags);roslyn-analyzer;analyzers;csharp;xml-documentation</PackageTags>
-		<Description>Roslyn analyzers and code fixes that enforce a consistent C# layout and documentation-comment style.</Description>
+		<PackageTags>$(StanzaPackageTags);roslyn;roslyn-analyzer;analyzers;code-fixes;csharp;xml-documentation</PackageTags>
+		<Description>Roslyn analyzers and code fixes that lay out blank lines, braces, member bodies and comments in C#.</Description>
 	</PropertyGroup>
 
 	<!-- The NoTargets SDK builds no assembly here; the project packs the two assemblies the compiler and `dotnet format` load. -->

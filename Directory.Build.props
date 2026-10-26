@@ -59,7 +59,7 @@
 	</PropertyGroup>
 
 	<PropertyGroup>
-		<StanzaPackageTags>stanza;formatting;blank-line;spacing;code-style;editorconfig</StanzaPackageTags>
+		<StanzaPackageTags>stanza;formatting;blank-lines;whitespace;code-style;editorconfig</StanzaPackageTags>
 	</PropertyGroup>
 
 	<!--

@@ -4,8 +4,8 @@
 		<PackAsTool>true</PackAsTool>
 		<ToolCommandName>stanza-format</ToolCommandName>
 		<PackageId>Nickelony.Stanza.Format</PackageId>
-		<PackageTags>$(StanzaPackageTags);dotnet-tool;dotnet-format;csharpier</PackageTags>
-		<Description>Command line tool that runs dotnet format, CSharpier and stanza-markup in the order the Stanza rules need, over the files git reports as changed or the whole solution, and verifies the result without writing.</Description>
+		<PackageTags>$(StanzaPackageTags);dotnet-tool;dotnet-format;csharpier;csharp</PackageTags>
+		<Description>Command line tool that runs dotnet format, CSharpier and stanza-markup in the order the Stanza rules need, over the files git reports as changed or the whole solution, with a check mode that writes nothing.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
