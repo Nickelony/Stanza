@@ -2,7 +2,7 @@
 
 Controls the width the rules measure a line against.
 Default: `100`.
-Read by the body-shape rules that measure a width, such as [`ZA0043`](https://github.com/Nickelony/Stanza/wiki/ZA0043-Break-the-expression-off-the-signature-line).
+Read by the body-shape rules that measure a width, such as [`ZA0044`](https://github.com/Nickelony/Stanza/wiki/ZA0044-Break-the-expression-off-the-signature-line).
 The documentation layout rules and stanza-markup also read it when [`stanza_doc_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_max_line_length) is absent or invalid.
 
 | Value                                           | Effect                                                                                        |
@@ -11,7 +11,7 @@ The documentation layout rules and stanza-markup also read it when [`stanza_doc_
 | a number from 1 to 1000                         | at most that many columns                                                                     |
 | below zero, above 1000, absent, or not a number | the default; the tool also reports a warning for a value it cannot read                       |
 
-With [`ZA0040`](https://github.com/Nickelony/Stanza/wiki/ZA0040-Use-an-expression-body-for-a-single-line-member) [enabled](https://github.com/Nickelony/Stanza/wiki/Terms),
+With [`ZA0041`](https://github.com/Nickelony/Stanza/wiki/ZA0041-Use-an-expression-body-for-a-single-line-member) [enabled](https://github.com/Nickelony/Stanza/wiki/Terms),
 the same member collapses at the default width and breaks at a narrower one:
 
 ```csharp

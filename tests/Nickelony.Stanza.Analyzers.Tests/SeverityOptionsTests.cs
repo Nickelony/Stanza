@@ -277,7 +277,7 @@ public sealed class SeverityOptionsTests
 	}
 
 	// <NoWarn> disables a rule for the compilation, and Roslyn lets that beat a severity line in .editorconfig,
-	// so the gap ZA0001 defers to ZA0004 goes back to ZA0001.
+	// so the gap ZA0001 defers to ZA0005 goes back to ZA0001.
 	[TestMethod]
 	[CrossCutting]
 	public async Task ARuleThatNoWarnDisablesIsNoOwnerToDeferTo()
@@ -318,7 +318,7 @@ public sealed class SeverityOptionsTests
 	}
 
 	// Roslyn lets a rule's own key block a bulk key, and `default` keeps the state the rule ships with,
-	// so ZA0004 still owns the gap that ZA0001 defers to it.
+	// so ZA0005 still owns the gap that ZA0001 defers to it.
 	[TestMethod]
 	[CrossCutting]
 	public async Task ARuleSetToDefaultKeepsItsShippedStateUnderABulkKey()

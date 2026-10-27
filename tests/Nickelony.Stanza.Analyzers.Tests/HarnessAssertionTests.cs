@@ -111,7 +111,7 @@ public sealed class HarnessAssertionTests
 			RoslynTestHarness.AssertEachGapIsClaimedOnce(result)
 		);
 
-		Assert.Contains("Two reports claim the same gap: ZA0002,ZA0004", failure.Message);
+		Assert.Contains("Two reports claim the same gap: ZA0002,ZA0005", failure.Message);
 	}
 
 	[TestMethod]

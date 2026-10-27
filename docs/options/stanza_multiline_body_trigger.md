@@ -3,7 +3,7 @@
 Controls which parts of a member make it multi-line for the body-shape rules,
 and whether the arrow counts toward width.
 Default: `either`.
-Read by the body-shape rules, such as [`ZA0039`](https://github.com/Nickelony/Stanza/wiki/ZA0039-Use-a-block-body-for-a-multi-line-member).
+Read by the body-shape rules, such as [`ZA0040`](https://github.com/Nickelony/Stanza/wiki/ZA0040-Use-a-block-body-for-a-multi-line-member).
 
 | Value         | Effect                                                                                                | Counts the arrow |
 | ------------- | ----------------------------------------------------------------------------------------------------- | ---------------- |
@@ -14,12 +14,12 @@ Read by the body-shape rules, such as [`ZA0039`](https://github.com/Nickelony/St
 | anything else | as `either`                                                                                           | yes              |
 
 Where the arrow counts, its space and `=>` must fit on the line the arrow lands on,
-for the body-shape rules that measure a width, such as [`ZA0040`](https://github.com/Nickelony/Stanza/wiki/ZA0040-Use-an-expression-body-for-a-single-line-member) and [`ZA0043`](https://github.com/Nickelony/Stanza/wiki/ZA0043-Break-the-expression-off-the-signature-line).
+for the body-shape rules that measure a width, such as [`ZA0041`](https://github.com/Nickelony/Stanza/wiki/ZA0041-Use-an-expression-body-for-a-single-line-member) and [`ZA0044`](https://github.com/Nickelony/Stanza/wiki/ZA0044-Break-the-expression-off-the-signature-line).
 
 The body-shape rules that give a member a block body ask for one of each member this key marks as multi-line.
 
 The code below holds three expression-bodied methods that wrap in different places.
-Under `either`, ZA0039 asks for a block body on every one of them.
+Under `either`, ZA0040 asks for a block body on every one of them.
 `body` leaves `WrappedSignature` as an expression body, `signature` leaves `WrappedBody`,
 and `both` leaves `WrappedSignature` and `WrappedBody` as expression bodies and asks for a block body only on `Both`.
 

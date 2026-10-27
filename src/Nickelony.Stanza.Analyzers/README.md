@@ -67,79 +67,79 @@ The **Ships as** column gives the tier, and [Severity and enablement](#severity-
 | ---- | --- | -------- |
 | `ZA0001` | [Adds a blank line between a run of declarations or invocations and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-declaration-and-invocation-runs) | Warning |
 | `ZA0002` | [Adds a blank line between a run of members of one kind and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0002-Separate-member-groups) | Warning |
-| `ZA0003` | [Adds a blank line between a run of declarations of the exact same type and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0003-Separate-same-type-declaration-groups) | Warning |
-| `ZA0004` | [Adds a blank line beside a multi-line construct](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-multi-line-constructs) | Warning |
-| `ZA0005` | [Removes the blank line between the only two single-line units of a container](https://github.com/Nickelony/Stanza/wiki/ZA0005-Keep-the-two-units-of-a-container-together) | Suggestion, off by default |
-| `ZA0006` | [Adds a blank line between the import section and the first member](https://github.com/Nickelony/Stanza/wiki/ZA0006-Separate-the-import-section) | Warning |
-| `ZA0007` | [Adds a blank line between import directives of different kinds](https://github.com/Nickelony/Stanza/wiki/ZA0007-Separate-the-import-directive-groups) | Suggestion, off by default |
-| `ZA0008` | [Adds a blank line between a file-scoped namespace declaration and its first member](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-a-file-scoped-namespace-declaration-from-its-first-member) | Warning |
+| `ZA0004` | [Adds a blank line between a run of declarations of the exact same type and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-same-type-declaration-groups) | Warning |
+| `ZA0005` | [Adds a blank line beside a multi-line construct](https://github.com/Nickelony/Stanza/wiki/ZA0005-Separate-multi-line-constructs) | Warning |
+| `ZA0006` | [Removes the blank line between the only two single-line units of a container](https://github.com/Nickelony/Stanza/wiki/ZA0006-Keep-the-two-units-of-a-container-together) | Suggestion, off by default |
+| `ZA0007` | [Adds a blank line between the import section and the first member](https://github.com/Nickelony/Stanza/wiki/ZA0007-Separate-the-import-section) | Warning |
+| `ZA0008` | [Adds a blank line between import directives of different kinds](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-the-import-directive-groups) | Suggestion, off by default |
+| `ZA0009` | [Adds a blank line between a file-scoped namespace declaration and its first member](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-a-file-scoped-namespace-declaration-from-its-first-member) | Warning |
 
 ### Blank lines inside delimited lists
 
 | Rule | Gap | Ships as |
 | ---- | --- | -------- |
-| `ZA0009` | [Adds a blank line between multi-line accessors (`get`, `set`, `init`, `add`, `remove`)](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-multi-line-accessors) | Suggestion, off by default |
-| `ZA0010` | [Removes the blank line between multi-line accessors](https://github.com/Nickelony/Stanza/wiki/ZA0010-Keep-multi-line-accessors-together) | Suggestion, off by default |
-| `ZA0011` | [Removes the blank line between single-line accessors](https://github.com/Nickelony/Stanza/wiki/ZA0011-Keep-single-line-accessors-together) | Suggestion, off by default |
-| `ZA0012` | [Adds a blank line between multi-line `switch` sections](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-multi-line-switch-sections) | Warning |
-| `ZA0013` | [Removes the blank line between multi-line `switch` sections](https://github.com/Nickelony/Stanza/wiki/ZA0013-Keep-multi-line-switch-sections-together) | Suggestion, off by default |
-| `ZA0014` | [Removes the blank line between single-line `switch` sections](https://github.com/Nickelony/Stanza/wiki/ZA0014-Keep-single-line-switch-sections-together) | Suggestion, off by default |
-| `ZA0015` | [Adds a blank line between multi-line `switch` expression arms](https://github.com/Nickelony/Stanza/wiki/ZA0015-Separate-multi-line-switch-expression-arms) | Warning |
-| `ZA0016` | [Removes the blank line between multi-line `switch` expression arms](https://github.com/Nickelony/Stanza/wiki/ZA0016-Keep-multi-line-switch-expression-arms-together) | Suggestion, off by default |
-| `ZA0017` | [Removes the blank line between single-line `switch` expression arms](https://github.com/Nickelony/Stanza/wiki/ZA0017-Keep-single-line-switch-expression-arms-together) | Suggestion, off by default |
-| `ZA0018` | [Adds a blank line between multi-line initializer members (object, `with`, anonymous object)](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-multi-line-initializer-members) | Suggestion, off by default |
-| `ZA0019` | [Removes the blank line between multi-line initializer members](https://github.com/Nickelony/Stanza/wiki/ZA0019-Keep-multi-line-initializer-members-together) | Suggestion, off by default |
-| `ZA0020` | [Removes the blank line between single-line initializer members](https://github.com/Nickelony/Stanza/wiki/ZA0020-Keep-single-line-initializer-members-together) | Suggestion, off by default |
-| `ZA0021` | [Adds a blank line between multi-line collection elements (arrays, collections, C# 12)](https://github.com/Nickelony/Stanza/wiki/ZA0021-Separate-multi-line-collection-elements) | Suggestion, off by default |
-| `ZA0022` | [Removes the blank line between multi-line collection elements](https://github.com/Nickelony/Stanza/wiki/ZA0022-Keep-multi-line-collection-elements-together) | Suggestion, off by default |
-| `ZA0023` | [Removes the blank line between single-line collection elements](https://github.com/Nickelony/Stanza/wiki/ZA0023-Keep-single-line-collection-elements-together) | Suggestion, off by default |
-| `ZA0024` | [Adds a blank line between multi-line arguments (calls, `new`, constructor initializers, attributes, indexers)](https://github.com/Nickelony/Stanza/wiki/ZA0024-Separate-multi-line-arguments) | Suggestion, off by default |
-| `ZA0025` | [Removes the blank line between multi-line arguments](https://github.com/Nickelony/Stanza/wiki/ZA0025-Keep-multi-line-arguments-together) | Suggestion, off by default |
-| `ZA0026` | [Removes the blank line between single-line arguments](https://github.com/Nickelony/Stanza/wiki/ZA0026-Keep-single-line-arguments-together) | Suggestion, off by default |
-| `ZA0027` | [Adds a blank line between multi-line parameters (methods, ctors, delegates, records, indexers, lambdas)](https://github.com/Nickelony/Stanza/wiki/ZA0027-Separate-multi-line-parameters) | Suggestion, off by default |
-| `ZA0028` | [Removes the blank line between multi-line parameters](https://github.com/Nickelony/Stanza/wiki/ZA0028-Keep-multi-line-parameters-together) | Suggestion, off by default |
-| `ZA0029` | [Removes the blank line between single-line parameters](https://github.com/Nickelony/Stanza/wiki/ZA0029-Keep-single-line-parameters-together) | Suggestion, off by default |
-| `ZA0030` | [Adds a blank line between multi-line declarators (`int a = 1, b = 2;`, fields, `for`, `using`)](https://github.com/Nickelony/Stanza/wiki/ZA0030-Separate-multi-line-declarators) | Suggestion, off by default |
-| `ZA0031` | [Removes the blank line between multi-line declarators](https://github.com/Nickelony/Stanza/wiki/ZA0031-Keep-multi-line-declarators-together) | Suggestion, off by default |
-| `ZA0032` | [Removes the blank line between single-line declarators](https://github.com/Nickelony/Stanza/wiki/ZA0032-Keep-single-line-declarators-together) | Suggestion, off by default |
+| `ZA0010` | [Adds a blank line between multi-line accessors (`get`, `set`, `init`, `add`, `remove`)](https://github.com/Nickelony/Stanza/wiki/ZA0010-Separate-multi-line-accessors) | Suggestion, off by default |
+| `ZA0011` | [Removes the blank line between multi-line accessors](https://github.com/Nickelony/Stanza/wiki/ZA0011-Keep-multi-line-accessors-together) | Suggestion, off by default |
+| `ZA0012` | [Removes the blank line between single-line accessors](https://github.com/Nickelony/Stanza/wiki/ZA0012-Keep-single-line-accessors-together) | Suggestion, off by default |
+| `ZA0013` | [Adds a blank line between multi-line `switch` sections](https://github.com/Nickelony/Stanza/wiki/ZA0013-Separate-multi-line-switch-sections) | Warning |
+| `ZA0014` | [Removes the blank line between multi-line `switch` sections](https://github.com/Nickelony/Stanza/wiki/ZA0014-Keep-multi-line-switch-sections-together) | Suggestion, off by default |
+| `ZA0015` | [Removes the blank line between single-line `switch` sections](https://github.com/Nickelony/Stanza/wiki/ZA0015-Keep-single-line-switch-sections-together) | Suggestion, off by default |
+| `ZA0016` | [Adds a blank line between multi-line `switch` expression arms](https://github.com/Nickelony/Stanza/wiki/ZA0016-Separate-multi-line-switch-expression-arms) | Warning |
+| `ZA0017` | [Removes the blank line between multi-line `switch` expression arms](https://github.com/Nickelony/Stanza/wiki/ZA0017-Keep-multi-line-switch-expression-arms-together) | Suggestion, off by default |
+| `ZA0018` | [Removes the blank line between single-line `switch` expression arms](https://github.com/Nickelony/Stanza/wiki/ZA0018-Keep-single-line-switch-expression-arms-together) | Suggestion, off by default |
+| `ZA0019` | [Adds a blank line between multi-line initializer members (object, `with`, anonymous object)](https://github.com/Nickelony/Stanza/wiki/ZA0019-Separate-multi-line-initializer-members) | Suggestion, off by default |
+| `ZA0020` | [Removes the blank line between multi-line initializer members](https://github.com/Nickelony/Stanza/wiki/ZA0020-Keep-multi-line-initializer-members-together) | Suggestion, off by default |
+| `ZA0021` | [Removes the blank line between single-line initializer members](https://github.com/Nickelony/Stanza/wiki/ZA0021-Keep-single-line-initializer-members-together) | Suggestion, off by default |
+| `ZA0022` | [Adds a blank line between multi-line collection elements (arrays, collections, C# 12)](https://github.com/Nickelony/Stanza/wiki/ZA0022-Separate-multi-line-collection-elements) | Suggestion, off by default |
+| `ZA0023` | [Removes the blank line between multi-line collection elements](https://github.com/Nickelony/Stanza/wiki/ZA0023-Keep-multi-line-collection-elements-together) | Suggestion, off by default |
+| `ZA0024` | [Removes the blank line between single-line collection elements](https://github.com/Nickelony/Stanza/wiki/ZA0024-Keep-single-line-collection-elements-together) | Suggestion, off by default |
+| `ZA0025` | [Adds a blank line between multi-line arguments (calls, `new`, constructor initializers, attributes, indexers)](https://github.com/Nickelony/Stanza/wiki/ZA0025-Separate-multi-line-arguments) | Suggestion, off by default |
+| `ZA0026` | [Removes the blank line between multi-line arguments](https://github.com/Nickelony/Stanza/wiki/ZA0026-Keep-multi-line-arguments-together) | Suggestion, off by default |
+| `ZA0027` | [Removes the blank line between single-line arguments](https://github.com/Nickelony/Stanza/wiki/ZA0027-Keep-single-line-arguments-together) | Suggestion, off by default |
+| `ZA0028` | [Adds a blank line between multi-line parameters (methods, ctors, delegates, records, indexers, lambdas)](https://github.com/Nickelony/Stanza/wiki/ZA0028-Separate-multi-line-parameters) | Suggestion, off by default |
+| `ZA0029` | [Removes the blank line between multi-line parameters](https://github.com/Nickelony/Stanza/wiki/ZA0029-Keep-multi-line-parameters-together) | Suggestion, off by default |
+| `ZA0030` | [Removes the blank line between single-line parameters](https://github.com/Nickelony/Stanza/wiki/ZA0030-Keep-single-line-parameters-together) | Suggestion, off by default |
+| `ZA0031` | [Adds a blank line between multi-line declarators (`int a = 1, b = 2;`, fields, `for`, `using`)](https://github.com/Nickelony/Stanza/wiki/ZA0031-Separate-multi-line-declarators) | Suggestion, off by default |
+| `ZA0032` | [Removes the blank line between multi-line declarators](https://github.com/Nickelony/Stanza/wiki/ZA0032-Keep-multi-line-declarators-together) | Suggestion, off by default |
+| `ZA0033` | [Removes the blank line between single-line declarators](https://github.com/Nickelony/Stanza/wiki/ZA0033-Keep-single-line-declarators-together) | Suggestion, off by default |
 
 ### Clauses and braces
 
 | Rule | Gap | Ships as |
 | ---- | --- | -------- |
-| `ZA0033` | [Adds a blank line between a closing brace and the clause keyword after it](https://github.com/Nickelony/Stanza/wiki/ZA0033-Separate-a-clause-keyword-from-the-brace-before-it) | Suggestion, off by default |
-| `ZA0034` | [Removes the blank line between a closing brace and the clause keyword after it](https://github.com/Nickelony/Stanza/wiki/ZA0034-Keep-clause-keywords-adjacent) | Suggestion |
-| `ZA0035` | [Removes the blank padding beside a brace](https://github.com/Nickelony/Stanza/wiki/ZA0035-Remove-brace-padding) | Suggestion |
-| `ZA0036` | [Joins an empty pair of braces that sit on separate lines](https://github.com/Nickelony/Stanza/wiki/ZA0036-Collapse-empty-blocks) | Suggestion |
-| `ZA0037` | [Braces of a chain or a body](https://github.com/Nickelony/Stanza/wiki/ZA0037-Use-braces-consistently) | Suggestion |
-| `ZA0038` | [Redundant braces](https://github.com/Nickelony/Stanza/wiki/ZA0038-Remove-redundant-braces) | Suggestion, off by default |
+| `ZA0034` | [Adds a blank line between a closing brace and the clause keyword after it](https://github.com/Nickelony/Stanza/wiki/ZA0034-Separate-a-clause-keyword-from-the-brace-before-it) | Suggestion, off by default |
+| `ZA0035` | [Removes the blank line between a closing brace and the clause keyword after it](https://github.com/Nickelony/Stanza/wiki/ZA0035-Keep-clause-keywords-adjacent) | Suggestion |
+| `ZA0036` | [Removes the blank padding beside a brace](https://github.com/Nickelony/Stanza/wiki/ZA0036-Remove-brace-padding) | Suggestion |
+| `ZA0037` | [Joins an empty pair of braces that sit on separate lines](https://github.com/Nickelony/Stanza/wiki/ZA0037-Collapse-empty-blocks) | Suggestion |
+| `ZA0038` | [Braces of a chain or a body](https://github.com/Nickelony/Stanza/wiki/ZA0038-Use-braces-consistently) | Suggestion |
+| `ZA0039` | [Redundant braces](https://github.com/Nickelony/Stanza/wiki/ZA0039-Remove-redundant-braces) | Suggestion, off by default |
 
 ### Member bodies
 
 | Rule | Gap | Ships as |
 | ---- | --- | -------- |
-| `ZA0039` | [A multi-line member from its arrow body](https://github.com/Nickelony/Stanza/wiki/ZA0039-Use-a-block-body-for-a-multi-line-member) | Suggestion, off by default |
-| `ZA0040` | [A single-line member from its block body](https://github.com/Nickelony/Stanza/wiki/ZA0040-Use-an-expression-body-for-a-single-line-member) | Suggestion, off by default |
-| `ZA0041` | [A multi-line value member from its arrow body](https://github.com/Nickelony/Stanza/wiki/ZA0041-Use-a-block-body-for-a-multi-line-value-member) | Suggestion, off by default |
-| `ZA0042` | [A single-line value member from its block body](https://github.com/Nickelony/Stanza/wiki/ZA0042-Use-an-expression-body-for-a-single-line-value-member) | Suggestion, off by default |
-| `ZA0043` | [The expression of an expression body from the arrow line](https://github.com/Nickelony/Stanza/wiki/ZA0043-Break-the-expression-off-the-signature-line) | Suggestion |
-| `ZA0044` | [The arrow of an expression body from the line it opens](https://github.com/Nickelony/Stanza/wiki/ZA0044-Keep-the-arrow-on-the-signature-line) | Suggestion, off by default |
-| `ZA0045` | [The arrow of an expression body from the signature line](https://github.com/Nickelony/Stanza/wiki/ZA0045-Put-the-arrow-on-the-line-after-the-signature) | Suggestion, off by default |
+| `ZA0040` | [A multi-line member from its arrow body](https://github.com/Nickelony/Stanza/wiki/ZA0040-Use-a-block-body-for-a-multi-line-member) | Suggestion, off by default |
+| `ZA0041` | [A single-line member from its block body](https://github.com/Nickelony/Stanza/wiki/ZA0041-Use-an-expression-body-for-a-single-line-member) | Suggestion, off by default |
+| `ZA0042` | [A multi-line value member from its arrow body](https://github.com/Nickelony/Stanza/wiki/ZA0042-Use-a-block-body-for-a-multi-line-value-member) | Suggestion, off by default |
+| `ZA0043` | [A single-line value member from its block body](https://github.com/Nickelony/Stanza/wiki/ZA0043-Use-an-expression-body-for-a-single-line-value-member) | Suggestion, off by default |
+| `ZA0044` | [The expression of an expression body from the arrow line](https://github.com/Nickelony/Stanza/wiki/ZA0044-Break-the-expression-off-the-signature-line) | Suggestion |
+| `ZA0045` | [The arrow of an expression body from the line it opens](https://github.com/Nickelony/Stanza/wiki/ZA0045-Keep-the-arrow-on-the-signature-line) | Suggestion, off by default |
+| `ZA0046` | [The arrow of an expression body from the signature line](https://github.com/Nickelony/Stanza/wiki/ZA0046-Put-the-arrow-on-the-line-after-the-signature) | Suggestion, off by default |
 
 ### Regions
 
 | Rule | Gap | Ships as |
 | ---- | --- | -------- |
-| `ZA0046` | [Adds a blank line on each side of a region marker](https://github.com/Nickelony/Stanza/wiki/ZA0046-Separate-the-region-marker-from-its-neighbors) | Suggestion |
-| `ZA0047` | [The closing region marker from the name of its region](https://github.com/Nickelony/Stanza/wiki/ZA0047-Name-the-closing-region-directive) | Suggestion, off by default |
-| `ZA0048` | [An empty region from the two markers that bound it](https://github.com/Nickelony/Stanza/wiki/ZA0048-Remove-empty-regions) | Suggestion, off by default |
+| `ZA0047` | [Adds a blank line on each side of a region marker](https://github.com/Nickelony/Stanza/wiki/ZA0047-Separate-the-region-marker-from-its-neighbors) | Suggestion |
+| `ZA0048` | [The closing region marker from the name of its region](https://github.com/Nickelony/Stanza/wiki/ZA0048-Name-the-closing-region-directive) | Suggestion, off by default |
+| `ZA0049` | [An empty region from the two markers that bound it](https://github.com/Nickelony/Stanza/wiki/ZA0049-Remove-empty-regions) | Suggestion, off by default |
 
 ### Argument names
 
 | Rule | Gap | Ships as |
 | ---- | --- | -------- |
-| `ZA0049` | [The unnamed arguments of a call that reaches the count threshold](https://github.com/Nickelony/Stanza/wiki/ZA0049-Name-the-arguments-of-a-call) | Suggestion, off by default |
-| `ZA0050` | [The name of an argument that already carries its parameter's name](https://github.com/Nickelony/Stanza/wiki/ZA0050-Remove-a-redundant-argument-name) | Suggestion, off by default |
+| `ZA0050` | [The unnamed arguments of a call that reaches the count threshold](https://github.com/Nickelony/Stanza/wiki/ZA0050-Name-the-arguments-of-a-call) | Suggestion, off by default |
+| `ZA0051` | [The name of an argument that already carries its parameter's name](https://github.com/Nickelony/Stanza/wiki/ZA0051-Remove-a-redundant-argument-name) | Suggestion, off by default |
 
 ### Markup in raw strings
 
@@ -221,13 +221,13 @@ The sample sets one rule per tier, and disables one:
 dotnet_diagnostic.ZA0001.severity = warning
 
 # Suggestion tier, raised so a build reports it.
-dotnet_diagnostic.ZA0035.severity = warning
+dotnet_diagnostic.ZA0036.severity = warning
 
 # Disabled: the rule reports nothing, and a bulk key never reaches it.
-dotnet_diagnostic.ZA0036.severity = none
+dotnet_diagnostic.ZA0037.severity = none
 
 # Off by default until a line like this enables it.
-# dotnet_diagnostic.ZA0005.severity = warning
+# dotnet_diagnostic.ZA0006.severity = warning
 
 stanza_max_line_length = 100
 ```

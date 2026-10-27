@@ -20,14 +20,14 @@ Adopting the analyzers in a codebase that already has code takes a few steps, an
    which runs them in turn.
    Run them again, because a fix can leave work for a second pass ([details](https://github.com/Nickelony/Stanza/wiki/Working-with-formatters#fixes-that-open-work)).
 6. **Gate the result in CI.** [`stanza-format --check`](https://github.com/Nickelony/Stanza/wiki/Format-command-reference#check) fails a run when a step would change a file.
-   With a rule enabled that CSharpier undoes, such as [`ZA0024`](https://github.com/Nickelony/Stanza/wiki/ZA0024-Separate-multi-line-arguments),
+   With a rule enabled that CSharpier undoes, such as [`ZA0025`](https://github.com/Nickelony/Stanza/wiki/ZA0025-Separate-multi-line-arguments),
    a plain `csharpier check` fails on every run, because each tool rewrites the blank lines the other writes.
 7. **Run the markup tool.** Install it as the [markup readme](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Markup/README.md#installation) shows,
    run `stanza-markup format .` once, and gate with `stanza-markup check . --strict`.
    The [command reference](https://github.com/Nickelony/Stanza/wiki/Markup-command-reference) lists the options.
 
 `dotnet format analyzers --severity info` applies the fixes of every analyzer in the project.
-To apply only Stanza's, name its rules, as in `dotnet format analyzers --diagnostics ZA0002 ZA0004 --severity info`.
+To apply only Stanza's, name its rules, as in `dotnet format analyzers --diagnostics ZA0002 ZA0005 --severity info`.
 
 Commit the formatter's changes before the rules' changes, so each diff stays readable.
 

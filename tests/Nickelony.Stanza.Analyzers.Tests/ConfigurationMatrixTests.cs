@@ -189,7 +189,7 @@ public sealed class ConfigurationMatrixTests
 	public async Task TheCorpusSettlesWhenAGlobalConfigEnablesEveryRule() =>
 		_ = await SettleAsync(new Configuration(GlobalOptions: AllEnabled()));
 
-	// Each other rule sets its own key, so the bulk key reaches ZA0004 alone, and both Roslyn and the deferring rules read it off.
+	// Each other rule sets its own key, so the bulk key reaches ZA0005 alone, and both Roslyn and the deferring rules read it off.
 	[TestMethod]
 	public async Task ABulkSeverityKeyTurnsARuleOffAsItsOwnKeyDoes()
 	{
@@ -243,13 +243,13 @@ public sealed class ConfigurationMatrixTests
 		AssertSameText(noWarn, noWarnAndSeverity, nameof(ANoWarnEntryBeatsAnEditorConfigSeverity));
 	}
 
-	// The rules that defer to ZA0004 cannot see the attribute, so the gaps they defer go unreported, but the corpus settles.
+	// The rules that defer to ZA0005 cannot see the attribute, so the gaps they defer go unreported, but the corpus settles.
 	[TestMethod]
 	public async Task TheCorpusSettlesWhenAnAttributeSuppressesARuleOthersDeferTo()
 	{
 		string source = s_corpus.Replace(
 			"internal sealed class Sample",
-			"[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage(\"Formatting\", \"ZA0004\")]\n\ninternal sealed class Sample",
+			"[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage(\"Formatting\", \"ZA0005\")]\n\ninternal sealed class Sample",
 			StringComparison.Ordinal
 		);
 

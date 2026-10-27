@@ -373,8 +373,8 @@ public sealed class RuleTestCoverageTests
 		RecordedRun[] runs =
 		[
 			Run(className: "SeparateMemberGroupsTests", method: "Reports", rule: "ZA0002"),
-			Run(className: "SeparateMultiLineConstructsTests", method: "Reports", rule: "ZA0004"),
-			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0004"),
+			Run(className: "SeparateMultiLineConstructsTests", method: "Reports", rule: "ZA0005"),
+			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0005"),
 		];
 
 		List<string> problems = FindProblems(
@@ -382,7 +382,7 @@ public sealed class RuleTestCoverageTests
 
 			Homes(
 				("ZA0002", "SeparateMemberGroupsTests"),
-				("ZA0004", "SeparateMultiLineConstructsTests")
+				("ZA0005", "SeparateMultiLineConstructsTests")
 			)
 		);
 
@@ -407,17 +407,17 @@ public sealed class RuleTestCoverageTests
 				className: "SeparateMemberGroupsTests",
 				method: "Mixed",
 				rule: "ZA0002",
-				reported: ["ZA0002", "ZA0004"]
+				reported: ["ZA0002", "ZA0005"]
 			),
 
 			Run(
 				className: "SeparateMultiLineConstructsTests",
 				method: "Reproduces",
-				rule: "ZA0004"
+				rule: "ZA0005"
 			),
 
 			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0002"),
-			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0004"),
+			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0005"),
 		];
 
 		List<string> problems = FindProblems(
@@ -425,7 +425,7 @@ public sealed class RuleTestCoverageTests
 
 			Homes(
 				("ZA0002", "SeparateMemberGroupsTests"),
-				("ZA0004", "SeparateMultiLineConstructsTests")
+				("ZA0005", "SeparateMultiLineConstructsTests")
 			)
 		);
 
@@ -438,23 +438,23 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0010"),
-			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0013"),
-			Run(className: "KeepMultiLineAccessorsTogetherTests", method: "Joins", rule: "ZA0010"),
+			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0011"),
+			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0014"),
+			Run(className: "KeepMultiLineAccessorsTogetherTests", method: "Joins", rule: "ZA0011"),
 
 			Run(
 				className: "KeepMultiLineSwitchSectionsTogetherTests",
 				method: "Joins",
-				rule: "ZA0013"
+				rule: "ZA0014"
 			),
 
-			Quiet(className: "KeepMultiLineAccessorsTogetherTests", rule: "ZA0010"),
-			Quiet(className: "KeepMultiLineSwitchSectionsTogetherTests", rule: "ZA0013"),
+			Quiet(className: "KeepMultiLineAccessorsTogetherTests", rule: "ZA0011"),
+			Quiet(className: "KeepMultiLineSwitchSectionsTogetherTests", rule: "ZA0014"),
 		];
 
 		ImmutableDictionary<string, string> homes = Homes(
-			("ZA0010", "KeepMultiLineAccessorsTogetherTests"),
-			("ZA0013", "KeepMultiLineSwitchSectionsTogetherTests")
+			("ZA0011", "KeepMultiLineAccessorsTogetherTests"),
+			("ZA0014", "KeepMultiLineSwitchSectionsTogetherTests")
 		);
 
 		Assert.IsEmpty(FindProblems(runs, homes));
@@ -467,10 +467,10 @@ public sealed class RuleTestCoverageTests
 		[
 			Run(className: nameof(RuleSpanTests), method: "Reports", rule: "ZA0002"),
 			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0002"),
-			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0004"),
-			Run(className: "SeparateMultiLineConstructsTests", method: "Separates", rule: "ZA0004"),
+			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0005"),
+			Run(className: "SeparateMultiLineConstructsTests", method: "Separates", rule: "ZA0005"),
 			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0002"),
-			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0004"),
+			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0005"),
 		];
 
 		List<string> problems = FindProblems(
@@ -478,7 +478,7 @@ public sealed class RuleTestCoverageTests
 
 			Homes(
 				("ZA0002", "SeparateMemberGroupsTests"),
-				("ZA0004", "SeparateMultiLineConstructsTests")
+				("ZA0005", "SeparateMultiLineConstructsTests")
 			),
 
 			crossCutting: ImmutableHashSet.Create(

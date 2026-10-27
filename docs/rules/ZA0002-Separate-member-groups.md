@@ -52,4 +52,4 @@ public int Second => _count;
 - A field that stands alone gets no blank line above it when a blank line already stands between it and the run.
 - `ZA0001` owns the [gaps](https://github.com/Nickelony/Stanza/wiki/Terms) around a run of declarations, such as fields and event fields;
   this rule skips those unless `ZA0001` is [off](https://github.com/Nickelony/Stanza/wiki/Terms) there.
-- [`ZA0003`](https://github.com/Nickelony/Stanza/wiki/ZA0003-Separate-same-type-declaration-groups) leaves a gap alone when `ZA0001` or this rule owns it.
+- [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-same-type-declaration-groups) leaves a gap alone when `ZA0001` or this rule owns it.
