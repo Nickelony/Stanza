@@ -68,6 +68,21 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.SeparateModifierGroups.Id,
+
+			"""
+				class C
+				{
+					static int First() => 1;
+					static int Second() => 2;
+					int Third() => 3;
+				}
+				""",
+
+			"int@5:2+static int Second() => 2;@4:2",
+		],
+
+		[
 			DiagnosticDescriptors.SeparateSameTypeDeclarationGroups.Id,
 
 			"""

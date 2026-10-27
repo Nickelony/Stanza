@@ -17,11 +17,11 @@ This page lists the syntax the packages do not inspect and the cases they leave 
   `generated_code = true` in the section that matches a file marks any other file as generated.
 - **A gap lies only between two neighbors.** The first unit of a container gets no preceding blank line.
 - **A `[SuppressMessage]` attribute is invisible to the rules that defer a gap.**
-  A grouping rule that defers a gap to `ZA0004` still defers it when an attribute suppresses `ZA0004`,
-  so that gap goes unreported. Disable `ZA0004` in `.editorconfig`, or silence it with a pragma, instead.
+  A grouping rule that defers a gap to `ZA0005` still defers it when an attribute suppresses `ZA0005`,
+  so that gap goes unreported. Disable `ZA0005` in `.editorconfig`, or silence it with a pragma, instead.
 - **Preprocessor directives.** A gap touched by a directive is left unchanged,
   except around a region marker,
-  which [ZA0046](https://github.com/Nickelony/Stanza/wiki/ZA0046-Separate-the-region-marker-from-its-neighbors) separates.
+  which [ZA0047](https://github.com/Nickelony/Stanza/wiki/ZA0047-Separate-the-region-marker-from-its-neighbors) separates.
 - **Tuple expressions are not inspected.** `(a, b)` holds deconstruction targets or return values,
   not the arguments and elements the delimited list rules claim.
 - **The markup rules need a non-interpolated raw string literal that parses as one document**,

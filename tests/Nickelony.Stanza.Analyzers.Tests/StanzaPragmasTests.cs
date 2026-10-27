@@ -14,7 +14,7 @@ public sealed class StanzaPragmasTests
 	public void ACodeWrittenAsANumberNamesItselfAndLeavesTheRuleBesideItSilenced()
 	{
 		const string source = """
-			#pragma warning disable 1591, ZA0004
+			#pragma warning disable 1591, ZA0005
 			class C
 			{
 			}
@@ -24,7 +24,7 @@ public sealed class StanzaPragmasTests
 		int position = source.IndexOf("class", StringComparison.Ordinal);
 
 		Assert.IsTrue(IsSilenced(tree, "1591", position));
-		Assert.IsTrue(IsSilenced(tree, "ZA0004", position));
+		Assert.IsTrue(IsSilenced(tree, "ZA0005", position));
 		Assert.IsFalse(IsSilenced(tree, "ZA0002", position));
 	}
 
@@ -34,7 +34,7 @@ public sealed class StanzaPragmasTests
 	{
 		const string source = """
 			#if NEVER
-			#pragma warning disable ZA0004
+			#pragma warning disable ZA0005
 			#endif
 			class C
 			{
@@ -44,7 +44,7 @@ public sealed class StanzaPragmasTests
 		SyntaxTree tree = CSharpSyntaxTree.ParseText(source);
 		int position = source.IndexOf("class", StringComparison.Ordinal);
 
-		Assert.IsFalse(IsSilenced(tree, "ZA0004", position));
+		Assert.IsFalse(IsSilenced(tree, "ZA0005", position));
 		Assert.IsFalse(StanzaPragmas.HasPragmaWarningDirectives(tree, CancellationToken.None));
 	}
 

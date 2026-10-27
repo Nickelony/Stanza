@@ -1118,7 +1118,7 @@ public sealed partial class SanityTests
 		}
 	}
 
-	// Writes the marker and removes the blank line between the members, which ZA0004 wants back.
+	// Writes the marker and removes the blank line between the members, which ZA0005 wants back.
 	private sealed partial class GapClosingFixProvider : CodeFixProvider
 	{
 		public override ImmutableArray<string> FixableDiagnosticIds { get; } =

@@ -12,7 +12,7 @@ internal static class FormatPlanner
 {
 	/// <summary>These rules judge a member's line count, so they run after the layout step.</summary>
 	/// <seealso href="https://github.com/Nickelony/Stanza/wiki/Working-with-formatters#run-order"/>
-	public static readonly ImmutableArray<string> BodyRules = ["ZA0039", "ZA0040", "ZA0041", "ZA0042", "ZA0043", "ZA0044", "ZA0045"];
+	public static readonly ImmutableArray<string> BodyRules = ["ZA0040", "ZA0041", "ZA0042", "ZA0043", "ZA0044", "ZA0045", "ZA0046"];
 
 	/// <summary>
 	/// The code <c>dotnet format --verify-no-changes</c> exits with when it would change a file; 1 means it failed.

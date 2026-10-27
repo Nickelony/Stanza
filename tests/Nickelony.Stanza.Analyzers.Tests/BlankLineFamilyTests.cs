@@ -260,7 +260,7 @@ public sealed class BlankLineFamilyTests
 			}
 			""";
 
-		// ZA0004 keeps the gaps around the multi-line call, so the calls make no run, and only the declarations end one.
+		// ZA0005 keeps the gaps around the multi-line call, so the calls make no run, and only the declarations end one.
 		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(source);
 
 		Assert.HasCount(3, result.Diagnostics);
@@ -337,8 +337,8 @@ public sealed class BlankLineFamilyTests
 	}
 
 	[TestMethod]
-	[DataRow("ZA0006", 0, 1)]
-	[DataRow("za0006", 1, 0)]
+	[DataRow("ZA0007", 0, 1)]
+	[DataRow("za0007", 1, 0)]
 	public async Task OnlyAPragmaThatSpellsTheIdExactlyHandsTheImportBoundaryToTheNeighbor(
 		string id,
 		int ownerReports,

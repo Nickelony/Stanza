@@ -8,6 +8,82 @@ namespace Nickelony.Stanza.Analyzers.Tests;
 public sealed class SeparateSameTypeDeclarationGroupsTests
 {
 	[TestMethod]
+	public async Task AModifierBoundaryIsLeftToTheModifierRuleWhileItIsOn()
+	{
+		const string source = """
+			class C
+			{
+				private static int s_count;
+				private static int s_limit;
+				private string _first;
+				private string _second;
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				private static int s_count;
+				private static int s_limit;
+
+				private string _first;
+				private string _second;
+			}
+			""";
+
+		AnalyzerRunResult modifierRuleOff =
+			await RoslynTestHarness.RunAsync<SeparateSameTypeDeclarationGroupsAnalyzer>(source);
+
+		AnalyzerRunResult modifierRuleOn =
+			await RoslynTestHarness.RunAsync<SeparateSameTypeDeclarationGroupsAnalyzer>(
+				source,
+				TestRuleSets.Only(DiagnosticDescriptors.SeparateModifierGroups)
+			);
+
+		Assert.HasCount(1, modifierRuleOff.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, modifierRuleOff);
+		Assert.IsEmpty(modifierRuleOn.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task APragmaOverTheModifierRuleHandsItsBoundaryBack()
+	{
+		string source = $$"""
+			class C
+			{
+			#pragma warning disable {{DiagnosticDescriptors.SeparateModifierGroups.Id}}
+				private static int s_count;
+				private static int s_limit;
+				private string _first;
+				private string _second;
+			#pragma warning restore {{DiagnosticDescriptors.SeparateModifierGroups.Id}}
+			}
+			""";
+
+		string fixedSource = $$"""
+			class C
+			{
+			#pragma warning disable {{DiagnosticDescriptors.SeparateModifierGroups.Id}}
+				private static int s_count;
+				private static int s_limit;
+
+				private string _first;
+				private string _second;
+			#pragma warning restore {{DiagnosticDescriptors.SeparateModifierGroups.Id}}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateSameTypeDeclarationGroupsAnalyzer>(
+				source,
+				TestRuleSets.Only(DiagnosticDescriptors.SeparateModifierGroups)
+			);
+
+		Assert.HasCount(1, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
 	public async Task SameTypeDeclarationRunsGetSeparated()
 	{
 		const string source = """

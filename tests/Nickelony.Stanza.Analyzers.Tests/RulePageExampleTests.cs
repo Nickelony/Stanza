@@ -37,9 +37,9 @@ public sealed class RulePageExampleTests
 	// The members a call rule binds against, keyed by rule id.
 	private static readonly Dictionary<string, string> s_context = new(StringComparer.Ordinal)
 	{
-		["ZA0049"] = "\tstatic void Draw(int width, int height, bool smooth, string path) { }\n\n",
+		["ZA0050"] = "\tstatic void Draw(int width, int height, bool smooth, string path) { }\n\n",
 
-		["ZA0050"] =
+		["ZA0051"] =
 			"\tstatic void Draw(int width, int height, bool smooth, string path) { }\n\n"
 			+ "\tint width;\n\tint height;\n\tstring path;\n\n",
 	};
@@ -48,8 +48,8 @@ public sealed class RulePageExampleTests
 	private static readonly Dictionary<string, string> s_optionPages = new(StringComparer.Ordinal)
 	{
 		["stanza_markup_max_blank_lines"] = "ZA0104",
-		["stanza_max_line_length"] = "ZA0040",
-		["stanza_named_argument_count"] = "ZA0049",
+		["stanza_max_line_length"] = "ZA0041",
+		["stanza_named_argument_count"] = "ZA0050",
 	};
 
 	// An option an example needs beyond the defaults, keyed by its page and a part of its marker.
@@ -61,7 +61,7 @@ public sealed class RulePageExampleTests
 	[
 		// The page sets the width to 60, because its member fits at the default.
 		(
-			"ZA0043",
+			"ZA0044",
 			string.Empty,
 			new Dictionary<string, string> { ["stanza_max_line_length"] = "60" }
 		),
@@ -78,7 +78,7 @@ public sealed class RulePageExampleTests
 	[
 		// ZA0001 writes the gap above the first property, and ZA0002 the one above the method.
 		("ZA0002", string.Empty, ["ZA0001"]),
-		("ZA0043", "with ZA0045 enabled", ["ZA0045"]),
+		("ZA0044", "with ZA0046 enabled", ["ZA0046"]),
 	];
 
 	public static IEnumerable<object[]> AfterExamples { get; } =

@@ -490,7 +490,7 @@ public sealed class SeparateMultiLineConstructsTests
 	public async Task ASuppressMessageAttributeLeavesTheBoundaryTheGroupingRulesDeferUnreported()
 	{
 		const string attribute =
-			"[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage(\"Formatting\", \"ZA0004\")]\n\n";
+			"[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage(\"Formatting\", \"ZA0005\")]\n\n";
 
 		const string source = """
 			class C

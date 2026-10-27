@@ -42,6 +42,18 @@ internal static class BlankLineGrouping
 		return ReadRunBoundaries(siblings, getKey: GetMemberGroupKey, includesLoneVariableBoundary: true, gapOwners, cancellationToken);
 	}
 
+	public static ImmutableArray<int> ReadModifierGroupBoundaries(
+		ImmutableArray<SyntaxNode> siblings,
+		GapOwners gapOwners,
+		CancellationToken cancellationToken
+	)
+	{
+		if (siblings.Length < 2)
+			return [];
+
+		return ReadRunBoundaries(siblings, getKey: GetModifierGroupKey, includesLoneVariableBoundary: false, gapOwners, cancellationToken);
+	}
+
 	private static ImmutableArray<int> ReadRunBoundaries(
 		ImmutableArray<SyntaxNode> siblings,
 		Func<SyntaxNode, (RunKind Kind, string? Name)> getKey,
@@ -104,9 +116,9 @@ internal static class BlankLineGrouping
 		last = boundary;
 	}
 
-	/// <summary>Whether ZA0004 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <summary>Whether ZA0005 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
 	/// <remarks>
-	/// A pragma that silences ZA0004 over the gap leaves it inside the run, as <c>none</c> does.
+	/// A pragma that silences ZA0005 over the gap leaves it inside the run, as <c>none</c> does.
 	/// </remarks>
 	private static bool IsMultiLineGap(
 		ImmutableArray<SyntaxNode> siblings,
@@ -131,9 +143,9 @@ internal static class BlankLineGrouping
 		);
 	}
 
-	/// <summary>Whether ZA0046 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <summary>Whether ZA0047 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
 	/// <remarks>
-	/// ZA0046 separates a marker only from a unit beside it, so the first and the last directive of the gap decide.
+	/// ZA0047 separates a marker only from a unit beside it, so the first and the last directive of the gap decide.
 	/// </remarks>
 	private static bool IsRegionMarkerGap(SyntaxNode next, string? ownerId, CancellationToken cancellationToken)
 	{
@@ -156,7 +168,7 @@ internal static class BlankLineGrouping
 		return IsKeptMarker(first, ownerId, cancellationToken) || IsKeptMarker(last, ownerId, cancellationToken);
 	}
 
-	/// <summary>Whether the directive is a region marker that ZA0046 is not silenced at by a pragma.</summary>
+	/// <summary>Whether the directive is a region marker that ZA0047 is not silenced at by a pragma.</summary>
 	private static bool IsKeptMarker(SyntaxNode? directive, string ruleId, CancellationToken cancellationToken)
 	{
 		if (directive is not (RegionDirectiveTriviaSyntax or EndRegionDirectiveTriviaSyntax))
@@ -248,6 +260,32 @@ internal static class BlankLineGrouping
 
 		RunKind memberKind = GetMemberKind(node);
 		return memberKind == RunKind.None ? default : (memberKind, null);
+	}
+
+	/// <summary>Splits a member group by its static and readonly modifiers.</summary>
+	private static (RunKind Kind, string? Name) GetModifierGroupKey(SyntaxNode node)
+	{
+		// A top-level statement shares a member's container but is no member, so it joins no run.
+		if (node is not MemberDeclarationSyntax member)
+			return default;
+
+		(RunKind Kind, string? Name) memberKey = GetMemberGroupKey(node);
+
+		if (memberKey.Kind == RunKind.None)
+			return memberKey;
+
+		bool isStatic = StanzaSyntax.HasModifier(member.Modifiers, SyntaxKind.StaticKeyword);
+		bool isReadOnly = StanzaSyntax.HasModifier(member.Modifiers, SyntaxKind.ReadOnlyKeyword);
+
+		string? modifiers = (isStatic, isReadOnly) switch
+		{
+			(true, true) => "static readonly",
+			(true, false) => "static",
+			(false, true) => "readonly",
+			_ => null,
+		};
+
+		return (memberKey.Kind, modifiers);
 	}
 
 	private static RunKind GetMemberKind(SyntaxNode node)

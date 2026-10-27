@@ -72,7 +72,7 @@ internal static class BlankLineOwnership
 		GapOwners gapOwners
 	) => [.. CollectOwnedDeclarationRunBoundaries(context, options, siblings, rule, gapOwners)];
 
-	/// <summary>The boundaries the declaration-run and member-group rules own in the container.</summary>
+	/// <summary>The boundaries the grouping rules ahead of the asking rule own in the container.</summary>
 	public static ImmutableHashSet<int> ReadOwnedGroupingBoundaries(
 		SyntaxNodeAnalysisContext context,
 		StanzaOptions options,
@@ -83,22 +83,55 @@ internal static class BlankLineOwnership
 	{
 		HashSet<int> owned = CollectOwnedDeclarationRunBoundaries(context, options, siblings, rule, gapOwners);
 
+		if (!s_memberContainerKinds.Contains(context.Node.Kind()))
+			return [.. owned];
+
 		StanzaRule memberGroups = rule.GetDeferral(DiagnosticDescriptors.SeparateMemberGroups);
 
-		if (s_memberContainerKinds.Contains(context.Node.Kind()) && !StanzaRuleState.IsRuleOff(context, options, memberGroups))
+		// Each rule's boundaries are filtered on their own before they join the shared set:
+		// the pragma of a later rule must not take away a boundary an earlier one owns.
+		if (!StanzaRuleState.IsRuleOff(context, options, memberGroups))
 		{
-			// Each rule's boundaries are filtered on their own before they join the shared set:
-			// the pragma of a later rule must not take away a boundary an earlier one owns.
-			HashSet<int> memberGroupBoundaries =
-			[
-				.. BlankLineGrouping.ReadMemberGroupBoundaries(siblings, gapOwners, cancellationToken: context.CancellationToken),
-			];
+			AddOwnedBoundaries(
+				scope: context,
+				siblings,
+				owned,
+				ownerRuleId: memberGroups.Descriptor.Id,
+				boundaries: BlankLineGrouping.ReadMemberGroupBoundaries(siblings, gapOwners, cancellationToken: context.CancellationToken)
+			);
+		}
 
-			RemovePragmaSilencedBoundaries(scope: context, siblings, boundaries: memberGroupBoundaries, ownerRuleId: memberGroups.Descriptor.Id);
-			owned.UnionWith(memberGroupBoundaries);
+		if (!rule.Defers(DiagnosticDescriptors.SeparateModifierGroups))
+			return [.. owned];
+
+		StanzaRule modifierGroups = rule.GetDeferral(DiagnosticDescriptors.SeparateModifierGroups);
+
+		if (!StanzaRuleState.IsRuleOff(context, options, modifierGroups))
+		{
+			AddOwnedBoundaries(
+				scope: context,
+				siblings,
+				owned,
+				ownerRuleId: modifierGroups.Descriptor.Id,
+				boundaries: BlankLineGrouping.ReadModifierGroupBoundaries(siblings, gapOwners, cancellationToken: context.CancellationToken)
+			);
 		}
 
 		return [.. owned];
+	}
+
+	private static void AddOwnedBoundaries(
+		RuleScope scope,
+		ImmutableArray<SyntaxNode> siblings,
+		HashSet<int> owned,
+		string ownerRuleId,
+		ImmutableArray<int> boundaries
+	)
+	{
+		HashSet<int> ownerBoundaries = [.. boundaries];
+
+		RemovePragmaSilencedBoundaries(scope, siblings, boundaries: ownerBoundaries, ownerRuleId);
+		owned.UnionWith(ownerBoundaries);
 	}
 
 	private static HashSet<int> CollectOwnedDeclarationRunBoundaries(

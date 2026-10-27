@@ -12,7 +12,7 @@ namespace Nickelony.Stanza.Format.Tests;
 [TestClass]
 public sealed class FormatPlannerTests
 {
-	private const string Bodies = "ZA0039 ZA0040 ZA0041 ZA0042 ZA0043 ZA0044 ZA0045";
+	private const string Bodies = "ZA0040 ZA0041 ZA0042 ZA0043 ZA0044 ZA0045 ZA0046";
 
 	private static readonly FormatOptions s_changed = new(
 		All: false,

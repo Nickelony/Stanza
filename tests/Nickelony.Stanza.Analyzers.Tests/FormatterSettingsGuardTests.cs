@@ -39,17 +39,17 @@ public sealed partial class FormatterSettingsGuardTests
 	// The pair test below pins what the registry can: the repository runs exactly one half of each pair.
 	private static readonly string[] s_disabled =
 	[
-		"ZA0009",
-		"ZA0013",
-		"ZA0016",
-		"ZA0019",
-		"ZA0022",
-		"ZA0025",
-		"ZA0028",
-		"ZA0031",
-		"ZA0033",
-		"ZA0041",
-		"ZA0045",
+		"ZA0010",
+		"ZA0014",
+		"ZA0017",
+		"ZA0020",
+		"ZA0023",
+		"ZA0026",
+		"ZA0029",
+		"ZA0032",
+		"ZA0034",
+		"ZA0042",
+		"ZA0046",
 		"ZA0102",
 		"ZA0207",
 	];

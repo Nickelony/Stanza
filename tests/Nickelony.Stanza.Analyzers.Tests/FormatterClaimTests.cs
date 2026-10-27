@@ -44,17 +44,17 @@ public sealed class FormatterClaimTests
 
 	public static IEnumerable<object[]> RuleExamples { get; } =
 	[
-		["the blank line between block accessors", "ZA0009", Members, Erases],
-		["the blank line between collection elements", "ZA0021", Statements, Erases],
-		["the blank line between arguments", "ZA0024", Statements, Erases],
-		["the blank line between parameters", "ZA0027", Members, Erases],
-		["the blank line between declarators", "ZA0030", Statements, Erases],
-		["the blank line before a clause keyword", "ZA0033", Statements, Erases],
-		["the brace padding", "ZA0035", Members, Erases],
-		["the empty block", "ZA0036", Members, Erases],
-		["the blank line between switch sections", "ZA0012", Statements, Keeps],
-		["the blank line between switch expression arms", "ZA0015", Statements, Keeps],
-		["the blank line around a region marker", "ZA0046", Members, Keeps],
+		["the blank line between block accessors", "ZA0010", Members, Erases],
+		["the blank line between collection elements", "ZA0022", Statements, Erases],
+		["the blank line between arguments", "ZA0025", Statements, Erases],
+		["the blank line between parameters", "ZA0028", Members, Erases],
+		["the blank line between declarators", "ZA0031", Statements, Erases],
+		["the blank line before a clause keyword", "ZA0034", Statements, Erases],
+		["the brace padding", "ZA0036", Members, Erases],
+		["the empty block", "ZA0037", Members, Erases],
+		["the blank line between switch sections", "ZA0013", Statements, Keeps],
+		["the blank line between switch expression arms", "ZA0016", Statements, Keeps],
+		["the blank line around a region marker", "ZA0047", Members, Keeps],
 	];
 
 	[TestMethod]
@@ -145,7 +145,7 @@ public sealed class FormatterClaimTests
 		);
 	}
 
-	// ZA0040 and ZA0042 keep the block of such a body, which they would otherwise break after its arrow.
+	// ZA0041 and ZA0043 keep the block of such a body, which they would otherwise break after its arrow.
 	[TestMethod]
 	public void CSharpierSpreadsAWithOrQueryBodyOverLinesOnlyAfterABrokenArrow()
 	{

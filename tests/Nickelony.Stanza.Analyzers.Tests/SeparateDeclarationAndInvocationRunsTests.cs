@@ -1008,7 +1008,7 @@ public sealed class SeparateDeclarationAndInvocationRunsTests
 		);
 	}
 
-	// A pragma over ZA0004 leaves the gaps a multi-line unit borders as `none` does, so ZA0001 asks for none of them.
+	// A pragma over ZA0005 leaves the gaps a multi-line unit borders as `none` does, so ZA0001 asks for none of them.
 	[TestMethod]
 	public async Task APragmaOverTheMultiLineRuleHandsItsGapsToNoOtherRule()
 	{
@@ -1019,14 +1019,14 @@ public sealed class SeparateDeclarationAndInvocationRunsTests
 				{
 					int x = 0;
 
-			#pragma warning disable ZA0004
+			#pragma warning disable ZA0005
 					var a = 1;
 					var a2 = 1;
 					var b = Build(
 						1);
 					var c = 2;
 					var c2 = 2;
-			#pragma warning restore ZA0004
+			#pragma warning restore ZA0005
 
 					return x + a + a2 + b + c + c2;
 				}
@@ -1051,16 +1051,16 @@ public sealed class SeparateDeclarationAndInvocationRunsTests
 			);
 
 		Assert.IsEmpty(disabled.Diagnostics);
-		Assert.IsEmpty(silenced.Diagnostics, "The pragma hands the gaps ZA0004 keeps to ZA0001.");
+		Assert.IsEmpty(silenced.Diagnostics, "The pragma hands the gaps ZA0005 keeps to ZA0001.");
 	}
 
-	// The compiler ignores a pragma in a branch the build leaves out, so ZA0001 still leaves ZA0004 its gaps.
+	// The compiler ignores a pragma in a branch the build leaves out, so ZA0001 still leaves ZA0005 its gaps.
 	[TestMethod]
 	public async Task APragmaInABranchTheBuildLeavesOutSilencesNoRule()
 	{
 		const string source = """
 			#if NEVER
-			#pragma warning disable ZA0004
+			#pragma warning disable ZA0005
 			#endif
 			class C
 			{
@@ -1078,10 +1078,10 @@ public sealed class SeparateDeclarationAndInvocationRunsTests
 			}
 			""";
 
-		// In force, the pragma hands the gaps ZA0004 keeps to this rule, which then writes them.
+		// In force, the pragma hands the gaps ZA0005 keeps to this rule, which then writes them.
 		const string fixedSource = """
 			#if !NEVER
-			#pragma warning disable ZA0004
+			#pragma warning disable ZA0005
 			#endif
 			class C
 			{
@@ -1113,7 +1113,7 @@ public sealed class SeparateDeclarationAndInvocationRunsTests
 		Assert.IsEmpty(inactive.Diagnostics, "A pragma left out changes nothing.");
 	}
 
-	// ZA0046 writes a blank line beside the marker, so the fields make no run in either fix order.
+	// ZA0047 writes a blank line beside the marker, so the fields make no run in either fix order.
 	[TestMethod]
 	public async Task ARegionMarkerSplitsAFieldRunSoTheMemberAboveStaysTight()
 	{
@@ -1316,8 +1316,8 @@ public sealed class SeparateDeclarationAndInvocationRunsTests
 		Assert.HasCount(1, silenced.Diagnostics, "The pragma leaves the marker inside the run.");
 	}
 
-	// ZA0046 reports above the marker and not below it, where the pragma is the next directive,
-	// so the pragma after the marker leaves the gap above it to ZA0046 and the run ends there.
+	// ZA0047 reports above the marker and not below it, where the pragma is the next directive,
+	// so the pragma after the marker leaves the gap above it to ZA0047 and the run ends there.
 	[TestMethod]
 	public async Task APragmaAfterTheRegionMarkerLeavesTheMarkerEndingTheRun()
 	{
@@ -1327,7 +1327,7 @@ public sealed class SeparateDeclarationAndInvocationRunsTests
 				public int Count { get; set; }
 				private int _first;
 				#region Fields
-			#pragma warning disable ZA0046
+			#pragma warning disable ZA0047
 				private int _second;
 				#endregion Fields
 			}
@@ -1345,6 +1345,6 @@ public sealed class SeparateDeclarationAndInvocationRunsTests
 			);
 
 		Assert.IsEmpty(runs.Diagnostics, "The marker still ends the run.");
-		Assert.IsNotEmpty(markers.Diagnostics, "ZA0046 reports above the marker.");
+		Assert.IsNotEmpty(markers.Diagnostics, "ZA0047 reports above the marker.");
 	}
 }
