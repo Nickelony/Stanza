@@ -223,7 +223,8 @@ $work = Join-Path ([System.IO.Path]::GetTempPath()) "stanza-wiki-$([guid]::NewGu
 try {
 	Write-Host '==> Cloning the wiki'
 
-	git clone --quiet $wikiRemote $work
+	# The pages are written with LF, so a CRLF checkout would show every page as changed.
+	git clone --quiet --config core.autocrlf=false $wikiRemote $work
 
 	if ($LASTEXITCODE -ne 0) {
 		Write-Host ''
