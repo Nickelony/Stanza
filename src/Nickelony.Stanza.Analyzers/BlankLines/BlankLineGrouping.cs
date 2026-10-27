@@ -265,9 +265,13 @@ internal static class BlankLineGrouping
 	/// <summary>Splits a member group by its static and readonly modifiers.</summary>
 	private static (RunKind Kind, string? Name) GetModifierGroupKey(SyntaxNode node)
 	{
+		// A top-level statement shares a member's container but is no member, so it joins no run.
+		if (node is not MemberDeclarationSyntax member)
+			return default;
+
 		(RunKind Kind, string? Name) memberKey = GetMemberGroupKey(node);
 
-		if (memberKey.Kind == RunKind.None || node is not MemberDeclarationSyntax member)
+		if (memberKey.Kind == RunKind.None)
 			return memberKey;
 
 		bool isStatic = StanzaSyntax.HasModifier(member.Modifiers, SyntaxKind.StaticKeyword);

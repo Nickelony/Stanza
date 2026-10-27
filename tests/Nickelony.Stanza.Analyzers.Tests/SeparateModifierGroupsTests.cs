@@ -105,6 +105,29 @@ public sealed class SeparateModifierGroupsTests
 	}
 
 	[TestMethod]
+	public async Task TopLevelStatementsAreNotMembers()
+	{
+		const string source = """
+			var first = 1;
+			var second = 2;
+			return;
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<SeparateModifierGroupsAnalyzer>(
+			source,
+
+			new Dictionary<string, ReportDiagnostic>
+			{
+				[DiagnosticDescriptors.SeparateModifierGroups.Id] = ReportDiagnostic.Warn,
+				[DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns.Id] = ReportDiagnostic.Suppress,
+				[DiagnosticDescriptors.SeparateMemberGroups.Id] = ReportDiagnostic.Suppress,
+			}
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
 	public async Task AGapTheMemberGroupRuleOwnsIsLeftToIt()
 	{
 		const string source = """
