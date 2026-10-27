@@ -2,8 +2,8 @@
 
 Controls the columns between the tab stops of width measurements, so a tab reaches the next multiple of that many columns.
 Default: the file's `tab_width`, then its `indent_size`, then `4`.
-Read by the rules that measure a line's width, such as [`ZA0043`](https://github.com/Nickelony/Stanza/wiki/ZA0043-Break-the-expression-off-the-signature-line) and [`ZA0201`](https://github.com/Nickelony/Stanza/wiki/ZA0201-Lay-out-a-documentation-comment),
-by the rules that compare indentation, [`ZA0038`](https://github.com/Nickelony/Stanza/wiki/ZA0038-Remove-redundant-braces) and [`ZA0045`](https://github.com/Nickelony/Stanza/wiki/ZA0045-Put-the-arrow-on-the-line-after-the-signature),
+Read by the rules that measure a line's width, such as [`ZA0044`](https://github.com/Nickelony/Stanza/wiki/ZA0044-Break-the-expression-off-the-signature-line) and [`ZA0201`](https://github.com/Nickelony/Stanza/wiki/ZA0201-Lay-out-a-documentation-comment),
+by the rules that compare indentation, [`ZA0039`](https://github.com/Nickelony/Stanza/wiki/ZA0039-Remove-redundant-braces) and [`ZA0046`](https://github.com/Nickelony/Stanza/wiki/ZA0046-Put-the-arrow-on-the-line-after-the-signature),
 and by stanza-markup when it rewrites `<member>` bodies.
 
 | Value                                                     | Effect                                                                  |

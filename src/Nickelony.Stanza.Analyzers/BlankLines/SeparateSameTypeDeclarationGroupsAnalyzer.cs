@@ -22,7 +22,7 @@ internal sealed class SeparateSameTypeDeclarationGroupsAnalyzer() : StanzaRuleAn
 		if (boundaries.IsEmpty)
 			return;
 
-		// Declaration and invocation runs and member groups own their boundaries;
+		// Declaration and invocation runs, member groups and modifier groups own their boundaries;
 		// an owner that is off at a boundary, by its severity or a pragma, hands it over.
 		ImmutableHashSet<int> ownedBoundaries = BlankLineOwnership.ReadOwnedGroupingBoundaries(context, options, siblings, rule: Rule, gapOwners);
 

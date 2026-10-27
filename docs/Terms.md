@@ -8,8 +8,8 @@ This page defines the words the rule, option and guide pages use, such as a gap 
 - **tight rule**: a rule that removes that blank line.
 - **single-line tight rule**: a tight rule in no pair that judges a gap only when neither unit spans more than one line.
 - **pair**: two rules that judge one gap in opposite ways, such as a separating rule and its tight rule.
-- **grouping rules**: [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-declaration-and-invocation-runs) to `ZA0003`, which separate a run from its neighbors
-  and leave a gap beside a multi-line unit to [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-multi-line-constructs).
+- **grouping rules**: [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-declaration-and-invocation-runs) to `ZA0004`, which separate a run from its neighbors
+  and leave a gap beside a multi-line unit to [`ZA0005`](https://github.com/Nickelony/Stanza/wiki/ZA0005-Separate-multi-line-constructs).
 - **rule family**: the rules one directory of the analyzer holds, such as the blank-line rules or the documentation rules.
 - **run** of units: two or more neighboring lines or units of one kind, such as declarations, `//` comment lines or blank lines;
   the grouping rules treat a run of declarations or invocations as one block.

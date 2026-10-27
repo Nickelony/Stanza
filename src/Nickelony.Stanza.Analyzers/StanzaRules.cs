@@ -119,6 +119,21 @@ internal static class StanzaRules
 		]
 	);
 
+	public static readonly StanzaRule SeparateModifierGroups = new(
+		Descriptor: DiagnosticDescriptors.SeparateModifierGroups,
+		Fix: GapFix.SiblingInsertion,
+		Kinds: StanzaKinds.MemberContainerKinds,
+
+		DefersTo:
+		[
+			DiagnosticDescriptors.SeparateMultiLineConstructs,
+			DiagnosticDescriptors.SeparateImportSection,
+			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
+			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+			DiagnosticDescriptors.SeparateMemberGroups,
+		]
+	);
+
 	public static readonly StanzaRule SeparateSameTypeDeclarationGroups = new(
 		Descriptor: DiagnosticDescriptors.SeparateSameTypeDeclarationGroups,
 		Fix: GapFix.SiblingInsertion,
@@ -131,6 +146,7 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
 			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
 			DiagnosticDescriptors.SeparateMemberGroups,
+			DiagnosticDescriptors.SeparateModifierGroups,
 		]
 	);
 
@@ -385,10 +401,12 @@ internal static class StanzaRules
 		Fix: GapFix.DeclarationGapRemoval
 	);
 
+	/// <summary>Leaves the expression on its own line wherever the expression line break rule is on.</summary>
 	public static readonly StanzaRule KeepArrowOnSignatureLine = new(
 		Descriptor: DiagnosticDescriptors.KeepArrowOnSignatureLine,
 		Kinds: [SyntaxKind.ArrowExpressionClause],
-		Pair: s_arrows
+		Pair: s_arrows,
+		DefersTo: [DiagnosticDescriptors.BreakExpressionOffSignatureLine]
 	);
 
 	public static readonly StanzaRule PutArrowOnLineAfterSignature = new(
@@ -462,6 +480,7 @@ internal static class StanzaRules
 	[
 		SeparateDeclarationAndInvocationRuns,
 		SeparateMemberGroups,
+		SeparateModifierGroups,
 		SeparateSameTypeDeclarationGroups,
 		SeparateMultiLineConstructs,
 		KeepTwoUnitsOfContainerTogether,

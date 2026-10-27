@@ -16,58 +16,59 @@ dotnet_diagnostic.ZA0005.severity = warning
 dotnet_diagnostic.ZA0006.severity = warning
 dotnet_diagnostic.ZA0007.severity = warning
 dotnet_diagnostic.ZA0008.severity = warning
+dotnet_diagnostic.ZA0009.severity = warning
 
 # Blank lines inside delimited lists.
-dotnet_diagnostic.ZA0009.severity = none
-dotnet_diagnostic.ZA0010.severity = warning
+dotnet_diagnostic.ZA0010.severity = none
 dotnet_diagnostic.ZA0011.severity = warning
 dotnet_diagnostic.ZA0012.severity = warning
-dotnet_diagnostic.ZA0013.severity = none
-dotnet_diagnostic.ZA0014.severity = warning
+dotnet_diagnostic.ZA0013.severity = warning
+dotnet_diagnostic.ZA0014.severity = none
 dotnet_diagnostic.ZA0015.severity = warning
-dotnet_diagnostic.ZA0016.severity = none
-dotnet_diagnostic.ZA0017.severity = warning
+dotnet_diagnostic.ZA0016.severity = warning
+dotnet_diagnostic.ZA0017.severity = none
 dotnet_diagnostic.ZA0018.severity = warning
-dotnet_diagnostic.ZA0019.severity = none
-dotnet_diagnostic.ZA0020.severity = warning
+dotnet_diagnostic.ZA0019.severity = warning
+dotnet_diagnostic.ZA0020.severity = none
 dotnet_diagnostic.ZA0021.severity = warning
-dotnet_diagnostic.ZA0022.severity = none
-dotnet_diagnostic.ZA0023.severity = warning
+dotnet_diagnostic.ZA0022.severity = warning
+dotnet_diagnostic.ZA0023.severity = none
 dotnet_diagnostic.ZA0024.severity = warning
-dotnet_diagnostic.ZA0025.severity = none
-dotnet_diagnostic.ZA0026.severity = warning
+dotnet_diagnostic.ZA0025.severity = warning
+dotnet_diagnostic.ZA0026.severity = none
 dotnet_diagnostic.ZA0027.severity = warning
-dotnet_diagnostic.ZA0028.severity = none
-dotnet_diagnostic.ZA0029.severity = warning
+dotnet_diagnostic.ZA0028.severity = warning
+dotnet_diagnostic.ZA0029.severity = none
 dotnet_diagnostic.ZA0030.severity = warning
-dotnet_diagnostic.ZA0031.severity = none
-dotnet_diagnostic.ZA0032.severity = warning
+dotnet_diagnostic.ZA0031.severity = warning
+dotnet_diagnostic.ZA0032.severity = none
+dotnet_diagnostic.ZA0033.severity = warning
 
 # Clauses and braces.
-dotnet_diagnostic.ZA0033.severity = none
-dotnet_diagnostic.ZA0034.severity = warning
+dotnet_diagnostic.ZA0034.severity = none
 dotnet_diagnostic.ZA0035.severity = warning
 dotnet_diagnostic.ZA0036.severity = warning
 dotnet_diagnostic.ZA0037.severity = warning
 dotnet_diagnostic.ZA0038.severity = warning
+dotnet_diagnostic.ZA0039.severity = warning
 
 # Member bodies.
-dotnet_diagnostic.ZA0039.severity = warning
 dotnet_diagnostic.ZA0040.severity = warning
-dotnet_diagnostic.ZA0041.severity = none
-dotnet_diagnostic.ZA0042.severity = warning
+dotnet_diagnostic.ZA0041.severity = warning
+dotnet_diagnostic.ZA0042.severity = none
 dotnet_diagnostic.ZA0043.severity = warning
 dotnet_diagnostic.ZA0044.severity = warning
-dotnet_diagnostic.ZA0045.severity = none
+dotnet_diagnostic.ZA0045.severity = warning
+dotnet_diagnostic.ZA0046.severity = none
 
 # Regions.
-dotnet_diagnostic.ZA0046.severity = warning
 dotnet_diagnostic.ZA0047.severity = warning
 dotnet_diagnostic.ZA0048.severity = warning
+dotnet_diagnostic.ZA0049.severity = warning
 
 # Argument names.
-dotnet_diagnostic.ZA0049.severity = warning
 dotnet_diagnostic.ZA0050.severity = warning
+dotnet_diagnostic.ZA0051.severity = warning
 
 # Markup in raw strings.
 dotnet_diagnostic.ZA0101.severity = warning

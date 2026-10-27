@@ -13,6 +13,6 @@ internal sealed class KeepArrowOnSignatureLineAnalyzer() : StanzaRuleAnalyzer(St
 		if (!StanzaRuleState.OwnsTheSharedGap(scope: context, options, rule: Rule, position: context.Node.SpanStart))
 			return;
 
-		BodyArrows.ReportArrowPlacement(context, options, descriptor: Descriptor, placement: ArrowPlacement.Trailing);
+		BodyArrows.ReportArrowPlacement(context, options, rule: Rule, placement: ArrowPlacement.Trailing);
 	}
 }

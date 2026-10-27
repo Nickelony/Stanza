@@ -131,4 +131,4 @@ The `Repository` guards in `tests/` own the exact contracts;
 
 - Keep a change focused: one rule, one fix or one documentation change per pull request.
 - A review judges the change against [CONVENTIONS.md](CONVENTIONS.md).
-- The [pull request template](.github/PULL_REQUEST_TEMPLATE.md) asks for the exact commands run and their results.
+- The [pull request template](.github/PULL_REQUEST_TEMPLATE.md) asks the author to confirm that the [verification](#verification) gates pass.

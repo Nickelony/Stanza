@@ -505,7 +505,7 @@ public sealed class BreakExpressionOffSignatureLineTests
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
-	// A pragma over ZA0044 hands its gap to ZA0045 only while the file enables ZA0045, which ships off.
+	// A pragma over ZA0045 hands its gap to ZA0046 only while the file enables ZA0046, which ships off.
 	[TestMethod]
 	public async Task APragmaOverTheTrailingArrowRuleHandsNothingToARuleThatShipsOff()
 	{
