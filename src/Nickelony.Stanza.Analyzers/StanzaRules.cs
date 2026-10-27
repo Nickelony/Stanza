@@ -119,6 +119,21 @@ internal static class StanzaRules
 		]
 	);
 
+	public static readonly StanzaRule SeparateModifierGroups = new(
+		Descriptor: DiagnosticDescriptors.SeparateModifierGroups,
+		Fix: GapFix.SiblingInsertion,
+		Kinds: StanzaKinds.MemberContainerKinds,
+
+		DefersTo:
+		[
+			DiagnosticDescriptors.SeparateMultiLineConstructs,
+			DiagnosticDescriptors.SeparateImportSection,
+			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
+			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+			DiagnosticDescriptors.SeparateMemberGroups,
+		]
+	);
+
 	public static readonly StanzaRule SeparateSameTypeDeclarationGroups = new(
 		Descriptor: DiagnosticDescriptors.SeparateSameTypeDeclarationGroups,
 		Fix: GapFix.SiblingInsertion,
@@ -131,6 +146,7 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
 			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
 			DiagnosticDescriptors.SeparateMemberGroups,
+			DiagnosticDescriptors.SeparateModifierGroups,
 		]
 	);
 
@@ -464,6 +480,7 @@ internal static class StanzaRules
 	[
 		SeparateDeclarationAndInvocationRuns,
 		SeparateMemberGroups,
+		SeparateModifierGroups,
 		SeparateSameTypeDeclarationGroups,
 		SeparateMultiLineConstructs,
 		KeepTwoUnitsOfContainerTogether,

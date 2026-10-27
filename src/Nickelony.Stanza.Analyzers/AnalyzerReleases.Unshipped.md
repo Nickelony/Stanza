@@ -7,6 +7,7 @@ Rule ID | Category | Severity | Notes
 --------|----------|----------|----------------------------------------------------------
 ZA0001  | Formatting | Warning  | Separate declaration and invocation runs.
 ZA0002  | Formatting | Warning  | Separate member groups.
+ZA0003  | Formatting | Disabled | Separate modifier groups.
 ZA0004  | Formatting | Warning  | Separate same-type declaration groups.
 ZA0005  | Formatting | Warning  | Separate multi-line constructs.
 ZA0006  | Formatting | Disabled | Keep the two units of a container together.

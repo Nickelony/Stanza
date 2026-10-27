@@ -30,6 +30,17 @@ internal static class DiagnosticDescriptors
 		helpLinkUri: $"{HelpRoot}/ZA0002-Separate-member-groups"
 	);
 
+	public static readonly DiagnosticDescriptor SeparateModifierGroups = new(
+		id: "ZA0003",
+		title: "Separate modifier groups",
+		messageFormat: "Add a blank line between modifier groups",
+		category: "Formatting",
+		defaultSeverity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false,
+		description: "Requires blank lines around runs of two or more neighboring members of one kind that share their static and readonly modifiers.",
+		helpLinkUri: $"{HelpRoot}/ZA0003-Separate-modifier-groups"
+	);
+
 	public static readonly DiagnosticDescriptor SeparateSameTypeDeclarationGroups = new(
 		id: "ZA0004",
 		title: "Separate same-type declaration groups",

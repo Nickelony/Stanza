@@ -67,6 +67,7 @@ The **Ships as** column gives the tier, and [Severity and enablement](#severity-
 | ---- | --- | -------- |
 | `ZA0001` | [Adds a blank line between a run of declarations or invocations and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-declaration-and-invocation-runs) | Warning |
 | `ZA0002` | [Adds a blank line between a run of members of one kind and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0002-Separate-member-groups) | Warning |
+| `ZA0003` | [Adds a blank line between a run of members that share their `static` and `readonly` modifiers and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0003-Separate-modifier-groups) | Suggestion, off by default |
 | `ZA0004` | [Adds a blank line between a run of declarations of the exact same type and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-same-type-declaration-groups) | Warning |
 | `ZA0005` | [Adds a blank line beside a multi-line construct](https://github.com/Nickelony/Stanza/wiki/ZA0005-Separate-multi-line-constructs) | Warning |
 | `ZA0006` | [Removes the blank line between the only two single-line units of a container](https://github.com/Nickelony/Stanza/wiki/ZA0006-Keep-the-two-units-of-a-container-together) | Suggestion, off by default |

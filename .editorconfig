@@ -10,6 +10,7 @@ root = true
 # Blank lines between units.
 dotnet_diagnostic.ZA0001.severity = warning
 dotnet_diagnostic.ZA0002.severity = warning
+dotnet_diagnostic.ZA0003.severity = warning
 dotnet_diagnostic.ZA0004.severity = warning
 dotnet_diagnostic.ZA0005.severity = warning
 dotnet_diagnostic.ZA0006.severity = warning

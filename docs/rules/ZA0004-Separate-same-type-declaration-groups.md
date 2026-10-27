@@ -30,5 +30,5 @@ string leadingTrivia = string.Empty;
 - A `const` declaration runs only with other `const` declarations of its type, never with a non-`const` one.
 - A declaration with no neighbor of its type forms no run of its own,
   so it gets a blank line only where a neighboring run begins or ends.
-- A [gap](https://github.com/Nickelony/Stanza/wiki/Terms) that [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-declaration-and-invocation-runs) or [`ZA0002`](https://github.com/Nickelony/Stanza/wiki/ZA0002-Separate-member-groups) owns is left to that rule
+- A [gap](https://github.com/Nickelony/Stanza/wiki/Terms) that [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-declaration-and-invocation-runs), [`ZA0002`](https://github.com/Nickelony/Stanza/wiki/ZA0002-Separate-member-groups) or [`ZA0003`](https://github.com/Nickelony/Stanza/wiki/ZA0003-Separate-modifier-groups) owns is left to that rule
   unless that rule is [off](https://github.com/Nickelony/Stanza/wiki/Terms) there.

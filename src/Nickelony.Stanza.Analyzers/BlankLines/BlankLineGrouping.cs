@@ -42,6 +42,18 @@ internal static class BlankLineGrouping
 		return ReadRunBoundaries(siblings, getKey: GetMemberGroupKey, includesLoneVariableBoundary: true, gapOwners, cancellationToken);
 	}
 
+	public static ImmutableArray<int> ReadModifierGroupBoundaries(
+		ImmutableArray<SyntaxNode> siblings,
+		GapOwners gapOwners,
+		CancellationToken cancellationToken
+	)
+	{
+		if (siblings.Length < 2)
+			return [];
+
+		return ReadRunBoundaries(siblings, getKey: GetModifierGroupKey, includesLoneVariableBoundary: false, gapOwners, cancellationToken);
+	}
+
 	private static ImmutableArray<int> ReadRunBoundaries(
 		ImmutableArray<SyntaxNode> siblings,
 		Func<SyntaxNode, (RunKind Kind, string? Name)> getKey,
@@ -248,6 +260,28 @@ internal static class BlankLineGrouping
 
 		RunKind memberKind = GetMemberKind(node);
 		return memberKind == RunKind.None ? default : (memberKind, null);
+	}
+
+	/// <summary>Splits a member group by its static and readonly modifiers.</summary>
+	private static (RunKind Kind, string? Name) GetModifierGroupKey(SyntaxNode node)
+	{
+		(RunKind Kind, string? Name) memberKey = GetMemberGroupKey(node);
+
+		if (memberKey.Kind == RunKind.None || node is not MemberDeclarationSyntax member)
+			return memberKey;
+
+		bool isStatic = StanzaSyntax.HasModifier(member.Modifiers, SyntaxKind.StaticKeyword);
+		bool isReadOnly = StanzaSyntax.HasModifier(member.Modifiers, SyntaxKind.ReadOnlyKeyword);
+
+		string? modifiers = (isStatic, isReadOnly) switch
+		{
+			(true, true) => "static readonly",
+			(true, false) => "static",
+			(false, true) => "readonly",
+			_ => null,
+		};
+
+		return (memberKey.Kind, modifiers);
 	}
 
 	private static RunKind GetMemberKind(SyntaxNode node)
