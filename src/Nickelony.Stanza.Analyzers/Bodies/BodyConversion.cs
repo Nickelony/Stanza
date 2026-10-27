@@ -32,7 +32,7 @@ internal static class BodyConversion
 		return !target.Expression.ContainsDirectives
 			&& target.Expression.GetLastToken().GetNextToken().IsKind(SyntaxKind.SemicolonToken)
 			&& StartsItsLine(sourceText, target)
-			&& BodyArrows.CanMoveArrow(sourceText, target, ArrowPlacement.Leading);
+			&& BodyArrows.CanMoveArrow(sourceText, target);
 	}
 
 	/// <summary>

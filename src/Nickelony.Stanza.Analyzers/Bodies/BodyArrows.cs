@@ -15,22 +15,19 @@ internal static class BodyArrows
 	public const string ArrowMark = "=>";
 	public const string ArrowGap = " ";
 
-	private static TextSpan? FindArrowGap(SourceText sourceText, ExpressionBodyTarget target, ArrowPlacement placement)
+	/// <summary>The span from the signature to the expression, which either placement rewrites whole.</summary>
+	private static TextSpan? FindArrowGap(SourceText sourceText, ExpressionBodyTarget target)
 	{
 		SyntaxToken previous = target.Arrow.GetPreviousToken();
 
 		int start = previous.Span.End;
 		int expressionStart = target.Expression.SpanStart;
 
-		bool trailing = placement == ArrowPlacement.Trailing;
-
 		bool clean =
 			StanzaText.IsWhitespaceOnly(sourceText, TextSpan.FromBounds(start, target.Arrow.SpanStart))
-			&& (trailing || StanzaText.IsWhitespaceOnly(sourceText, TextSpan.FromBounds(target.Arrow.Span.End, expressionStart)));
+			&& StanzaText.IsWhitespaceOnly(sourceText, TextSpan.FromBounds(target.Arrow.Span.End, expressionStart));
 
-		int spanEnd = trailing ? target.Arrow.SpanStart : expressionStart;
-
-		return clean ? TextSpan.FromBounds(start, spanEnd) : null;
+		return clean ? TextSpan.FromBounds(start, expressionStart) : null;
 	}
 
 	private static bool IsArrowOnOwnLine(SourceText sourceText, ExpressionBodyTarget target)
@@ -54,33 +51,33 @@ internal static class BodyArrows
 			);
 	}
 
-	public static bool CanMoveArrow(SourceText sourceText, ExpressionBodyTarget target, ArrowPlacement placement) =>
-		FindArrowGap(sourceText, target, placement) is not null;
+	public static bool CanMoveArrow(SourceText sourceText, ExpressionBodyTarget target) => FindArrowGap(sourceText, target) is not null;
 
+	/// <summary>A trailing arrow keeps the expression beside it unless the expression opens its own line.</summary>
 	public static ImmutableArray<TextChange> CreateArrowPlacement(
 		SourceText sourceText,
 		ExpressionBodyTarget target,
 		ArrowPlacement placement,
+		bool openOwnLine,
 		int indentStepColumns
 	)
 	{
-		if (FindArrowGap(sourceText, target, placement) is not { } gap)
+		if (FindArrowGap(sourceText, target) is not { } gap)
 			return [];
 
-		string replacement =
-			placement == ArrowPlacement.Leading
-				? GetArrowGapText(sourceText, signatureStart: target.SignatureSpan.Start, indentStepColumns) + Arrow
-				: ArrowGap;
+		string lineBreak = GetArrowGapText(sourceText, signatureStart: target.SignatureSpan.Start, indentStepColumns);
+
+		string replacement = placement switch
+		{
+			ArrowPlacement.Leading => lineBreak + Arrow,
+			_ when openOwnLine => ArrowGap + ArrowMark + lineBreak,
+			_ => ArrowGap + Arrow,
+		};
 
 		return [new TextChange(gap, replacement)];
 	}
 
-	public static void ReportArrowPlacement(
-		SyntaxNodeAnalysisContext context,
-		StanzaOptions options,
-		DiagnosticDescriptor descriptor,
-		ArrowPlacement placement
-	)
+	public static void ReportArrowPlacement(SyntaxNodeAnalysisContext context, StanzaOptions options, StanzaRule rule, ArrowPlacement placement)
 	{
 		if (context.Node is not ArrowExpressionClauseSyntax clause || BodyTargets.FindExpressionTarget(clause) is not { } target)
 			return;
@@ -97,15 +94,25 @@ internal static class BodyArrows
 			MatchesPlacement(sourceText, target, placement, tabColumns: options.TabColumns)
 			&& !(placement == ArrowPlacement.Leading && !IsExpressionOnArrowLine(target));
 
-		if (IsOneLineBody(sourceText, target) || settled || !CanMoveArrow(sourceText, target, placement))
+		if (IsOneLineBody(sourceText, target) || settled || !CanMoveArrow(sourceText, target))
 			return;
+
+		// A trailing arrow leaves the expression on its own line wherever the expression line break rule is on.
+		bool openOwnLine =
+			placement == ArrowPlacement.Trailing
+			&& !StanzaRuleState.IsOffAt(
+				scope: context,
+				options,
+				rule: rule.GetDeferral(DiagnosticDescriptors.BreakExpressionOffSignatureLine),
+				position: clause.SpanStart
+			);
 
 		context.ReportDiagnostic(
 			Diagnostic.Create(
-				descriptor,
+				descriptor: rule.Descriptor,
 				location: target.Arrow.GetLocation(),
 				additionalLocations: [target.Arrow.GetPreviousToken().GetLocation()],
-				properties: new FixOptions(IndentStepColumns: options.IndentStepColumns).ToProperties()
+				properties: new FixOptions(IndentStepColumns: options.IndentStepColumns, OpensOwnLine: openOwnLine).ToProperties()
 			)
 		);
 	}
@@ -191,7 +198,7 @@ internal static class BodyArrows
 	)
 	{
 		if (placement == ArrowPlacement.Leading)
-			return CreateArrowPlacement(sourceText, target, placement: ArrowPlacement.Leading, indentStepColumns);
+			return CreateArrowPlacement(sourceText, target, placement: ArrowPlacement.Leading, openOwnLine: true, indentStepColumns);
 
 		if (!CanBreakExpression(sourceText, target))
 			return [];
