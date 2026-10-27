@@ -385,10 +385,12 @@ internal static class StanzaRules
 		Fix: GapFix.DeclarationGapRemoval
 	);
 
+	/// <summary>Leaves the expression on its own line wherever the expression line break rule is on.</summary>
 	public static readonly StanzaRule KeepArrowOnSignatureLine = new(
 		Descriptor: DiagnosticDescriptors.KeepArrowOnSignatureLine,
 		Kinds: [SyntaxKind.ArrowExpressionClause],
-		Pair: s_arrows
+		Pair: s_arrows,
+		DefersTo: [DiagnosticDescriptors.BreakExpressionOffSignatureLine]
 	);
 
 	public static readonly StanzaRule PutArrowOnLineAfterSignature = new(

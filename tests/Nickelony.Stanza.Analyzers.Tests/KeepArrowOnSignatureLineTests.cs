@@ -32,13 +32,43 @@ public sealed class KeepArrowOnSignatureLineTests
 	}
 
 	[TestMethod]
-	public async Task AnArrowOnItsOwnLineIsJoinedToTheSignature()
+	public async Task AnArrowOnItsOwnLineLeavesTheExpressionOnItsLineWhileTheBreakRuleIsOn()
 	{
 		const string source = """
 			class C
 			{
 				int Build(int value)
 					=> value + 1;
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				int Build(int value) =>
+					value + 1;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<KeepArrowOnSignatureLineAnalyzer>(
+				source,
+				TestRuleSets.Only(DiagnosticDescriptors.KeepArrowOnSignatureLine)
+			);
+
+		Assert.HasCount(1, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task AnArrowOnItsOwnLineIsJoinedToTheSignatureWhileTheBreakRuleIsOff()
+	{
+		const string source = """
+			class C
+			{
+				int Build(int value)
+					=>
+					value + 1;
 			}
 			""";
 
@@ -52,7 +82,14 @@ public sealed class KeepArrowOnSignatureLineTests
 		AnalyzerRunResult result =
 			await RoslynTestHarness.RunAsync<KeepArrowOnSignatureLineAnalyzer>(
 				source,
-				TestRuleSets.Only(DiagnosticDescriptors.KeepArrowOnSignatureLine)
+
+				new Dictionary<string, ReportDiagnostic>
+				{
+					[DiagnosticDescriptors.KeepArrowOnSignatureLine.Id] = ReportDiagnostic.Warn,
+
+					[DiagnosticDescriptors.BreakExpressionOffSignatureLine.Id] =
+						ReportDiagnostic.Suppress,
+				}
 			);
 
 		Assert.HasCount(1, result.Diagnostics);
@@ -90,13 +127,15 @@ public sealed class KeepArrowOnSignatureLineTests
 	}
 
 	[TestMethod]
-	public async Task ACommentBeforeTheArrowKeepsIt()
+	[DataRow("/* keeps the arrow */ => value + 1;", DisplayName = "before the arrow")]
+	[DataRow("=> // keeps the arrow\n\t\tvalue + 1;", DisplayName = "after the arrow")]
+	public async Task ACommentBesideTheArrowKeepsIt(string body)
 	{
-		const string source = """
+		string source = $$"""
 			class C
 			{
 				int Build(int value)
-					/* keeps the arrow */ => value + 1;
+					{{body}}
 			}
 			""";
 

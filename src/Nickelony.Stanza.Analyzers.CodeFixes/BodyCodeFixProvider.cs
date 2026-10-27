@@ -99,8 +99,16 @@ internal sealed class BodyCodeFixProvider : StanzaCodeFixProvider
 		ArrowPlacement placement
 	)
 	{
+		var options = FixOptions.Parse(diagnostic);
+
 		return BodyTargets.FindExpressionTarget(root, diagnostic) is { } target
-			? BodyArrows.CreateArrowPlacement(sourceText, target, placement, indentStepColumns: FixOptions.Parse(diagnostic).IndentStepColumns)
+			? BodyArrows.CreateArrowPlacement(
+				sourceText,
+				target,
+				placement,
+				openOwnLine: options.OpensOwnLine,
+				indentStepColumns: options.IndentStepColumns
+			)
 			: [];
 	}
 
