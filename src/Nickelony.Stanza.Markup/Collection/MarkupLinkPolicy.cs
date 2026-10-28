@@ -30,6 +30,7 @@ internal static class MarkupLinkPolicy
 		try
 		{
 			error = null;
+
 			// A reparse point is not always a link: a cloud placeholder carries the attribute and has no target.
 			return readTarget(entry) is not null;
 		}

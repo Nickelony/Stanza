@@ -31,6 +31,9 @@ CODEOWNERS text eol=crlf
 *.yaml text eol=lf
 *.md text eol=lf
 
+# The site's sources are built by Node on every platform, so they keep one ending.
+site/** text eol=lf
+
 # The icon files are binary, so git neither converts their endings nor diffs them as text.
 *.png binary
 icon/*.af binary

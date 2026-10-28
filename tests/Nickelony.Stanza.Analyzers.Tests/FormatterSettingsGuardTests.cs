@@ -72,8 +72,9 @@ public sealed partial class FormatterSettingsGuardTests
 	[TestMethod]
 	public void TheEditorConfigPinsExactlyTheRulesTheRepositoryRuns()
 	{
-		// A raw string in a test is the input the test reads, so the markup-literal rules stay off there.
-		string[] offInTests = ["ZA0101", "ZA0103", "ZA0104", "ZA0105"];
+		// A raw string in a test is the input the test reads, so the markup-literal rules stay off there,
+		// and a test sets its arrange, act and assert steps apart, which the loose-run rule would gather.
+		string[] offInTests = ["ZA0052", "ZA0101", "ZA0103", "ZA0104", "ZA0105"];
 
 		Dictionary<string, string> expected = new(StringComparer.Ordinal);
 

@@ -46,6 +46,44 @@ internal static class BlankLineGaps
 	private static bool IsInInactiveBlock(SyntaxTree syntaxTree, int position) =>
 		syntaxTree.GetRoot().FindTrivia(position).IsKind(SyntaxKind.DisabledTextTrivia);
 
+	/// <summary>Whether a comment ends on the line directly above the unit, with no blank line between them.</summary>
+	/// <remarks>
+	/// The commented sibling rule and the tight rules that defer to it read this test, so they never disagree.
+	/// </remarks>
+	public static bool HasCommentDirectlyAbove(SyntaxNode unit)
+	{
+		SyntaxTriviaList leadingTrivia = unit.GetLeadingTrivia();
+
+		for (int index = leadingTrivia.Count - 1; index >= 0; index--)
+		{
+			SyntaxTrivia trivia = leadingTrivia[index];
+
+			if (!StanzaTrivia.IsComment(trivia))
+				continue;
+
+			// A line comment keeps its break outside its span, and a documentation comment takes it in, so its span ends at column 0.
+			LinePosition end = StanzaSyntax.GetLineSpan(unit, trivia.Span).EndLinePosition;
+			int endLineIndex = end.Character == 0 ? end.Line - 1 : end.Line;
+
+			return endLineIndex == StanzaSyntax.GetLineSpan(unit).StartLinePosition.Line - 1;
+		}
+
+		return false;
+	}
+
+	/// <summary>Whether the gap above a single-line unit lacks the blank line its comment asks for.</summary>
+	/// <remarks>
+	/// The commented sibling rule reports this gap, and the rules that write the same blank line defer to it.
+	/// </remarks>
+	public static bool IsMissingBlankLineAboveComment(SyntaxNode previous, SyntaxNode next)
+	{
+		return HasCommentDirectlyAbove(next)
+			&& !HasDirectiveBefore(next)
+			&& !StanzaSyntax.IsMultiLine(previous)
+			&& !StanzaSyntax.IsMultiLine(next)
+			&& StanzaSyntax.GetLeadingUnit(next).StartLineIndex - GetGapStartLineIndex(previous, next) == 1;
+	}
+
 	public static bool HasDirectiveBefore(SyntaxNodeOrToken next)
 	{
 		// Roslyn attaches a directive to the leading trivia of the token after it, so only the next unit can hold one.

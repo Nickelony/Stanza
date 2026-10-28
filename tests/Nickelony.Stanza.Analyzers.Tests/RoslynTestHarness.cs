@@ -708,6 +708,7 @@ internal static partial class RoslynTestHarness
 			.ConfigureAwait(false);
 
 		Document fixedDocument = document;
+		HashSet<(string Id, int? Start, int? End)> fixedRuns = [];
 
 		foreach (
 			Diagnostic diagnostic in diagnostics
@@ -715,6 +716,17 @@ internal static partial class RoslynTestHarness
 				.OrderByDescending(diagnostic => diagnostic.Location.SourceSpan.Start)
 		)
 		{
+			// Every gap of a run carries the fix of the whole run, so the first fix applied leaves nothing for the rest.
+			var fixOptions = FixOptions.Parse(diagnostic);
+
+			if (
+				fixOptions.RunStart is not null
+				&& !fixedRuns.Add((diagnostic.Id, fixOptions.RunStart, fixOptions.RunEnd))
+			)
+			{
+				continue;
+			}
+
 			fixedDocument = await ApplyFirstFixAsync(
 					document: fixedDocument,
 					diagnostic,

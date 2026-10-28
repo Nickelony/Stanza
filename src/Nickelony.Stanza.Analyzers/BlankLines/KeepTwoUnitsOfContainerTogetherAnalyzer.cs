@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Nickelony.Stanza.Analyzers.BlankLines;
@@ -12,12 +11,7 @@ internal sealed class KeepTwoUnitsOfContainerTogetherAnalyzer() : StanzaRuleAnal
 	{
 		ImmutableArray<SyntaxNode> siblings = StanzaSyntax.ReadSiblings(context.Node);
 
-		if (siblings.Length != 2 || !IsEligible(siblings[0]) || !IsEligible(siblings[1]))
-			return;
-
-		BlankLineRemoval.ReportWholeGapBoundaries(context, siblings, Rule);
+		if (BlankLineOwnership.HoldsTwoKeptUnits(siblings))
+			BlankLineRemoval.ReportWholeGapBoundaries(context, siblings, Rule);
 	}
-
-	private static bool IsEligible(SyntaxNode unit) =>
-		unit is not (ExternAliasDirectiveSyntax or UsingDirectiveSyntax or LocalFunctionStatementSyntax);
 }

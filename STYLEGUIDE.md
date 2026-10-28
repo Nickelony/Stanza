@@ -99,6 +99,7 @@ Pick the form by how the facts relate:
   and either every bullet opens with a bold lead-in or none does.
 - A list nests one level at most and never holds a single item.
 - Instructions use the imperative. Behavior uses the present tense and the active voice.
+- A heading or a title uses sentence case, such as `Adding or changing a rule`: only its first word and its names take a capital.
 
 The wiki copies `docs/` flat and verbatim, and a package readme is shown outside the repository,
 so both link absolutely:

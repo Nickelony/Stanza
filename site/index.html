@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="color-scheme" content="light dark" />
+		<link rel="icon" type="image/png" href="../icon/Stanza.png" />
+		<meta
+			name="description"
+			content="Pick a severity for each Stanza analyzer rule and a value for each option, see the code before and after, and copy the matching .editorconfig."
+		/>
+		<title>Stanza rule configurator</title>
+		<script>
+			// Sets the theme before the first paint, so a dark visitor sees no light flash.
+			try {
+				var saved = window.localStorage.getItem('stanza-theme');
+				var dark = saved === 'light' || saved === 'dark' ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+				document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+			} catch (error) {
+				document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+			}
+		</script>
+	</head>
+	<body>
+		<div id="app"></div>
+		<noscript
+			><p class="no-script">
+				The configurator needs JavaScript. The rule pages are on the <a href="https://github.com/Nickelony/Stanza/wiki">wiki</a>.
+			</p></noscript
+		>
+		<script type="module" src="/src/main.ts"></script>
+	</body>
+</html>

@@ -39,6 +39,15 @@ updates:
           - version-update:semver-minor
           - version-update:semver-major
 
+  - package-ecosystem: npm
+    directory: /site
+    schedule:
+      interval: weekly
+    groups:
+      site:
+        patterns:
+          - "*"
+
   - package-ecosystem: dotnet-sdk
     directory: /
     schedule:

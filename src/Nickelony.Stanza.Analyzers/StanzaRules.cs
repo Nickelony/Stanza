@@ -102,6 +102,7 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
+			DiagnosticDescriptors.SeparateCommentedSibling,
 		]
 	);
 
@@ -116,6 +117,7 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
 			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+			DiagnosticDescriptors.SeparateCommentedSibling,
 		]
 	);
 
@@ -131,6 +133,7 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
 			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
 			DiagnosticDescriptors.SeparateMemberGroups,
+			DiagnosticDescriptors.SeparateCommentedSibling,
 		]
 	);
 
@@ -147,6 +150,7 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
 			DiagnosticDescriptors.SeparateMemberGroups,
 			DiagnosticDescriptors.SeparateModifierGroups,
+			DiagnosticDescriptors.SeparateCommentedSibling,
 		]
 	);
 
@@ -163,16 +167,40 @@ internal static class StanzaRules
 		Kinds: StanzaKinds.ContainerKinds
 	);
 
+	public static readonly StanzaRule GatherRunOfLooseStatements = new(
+		Descriptor: DiagnosticDescriptors.GatherRunOfLooseStatements,
+		Fix: GapFix.RunRemoval,
+		Kinds: [SyntaxKind.Block, SyntaxKind.SwitchSection],
+
+		DefersTo:
+		[
+			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+			DiagnosticDescriptors.SeparateSameTypeDeclarationGroups,
+			DiagnosticDescriptors.SeparateMultiLineConstructs,
+			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
+			DiagnosticDescriptors.SeparateCommentedSibling,
+			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
+		]
+	);
+
+	public static readonly StanzaRule SeparateCommentedSibling = new(
+		Descriptor: DiagnosticDescriptors.SeparateCommentedSibling,
+		Fix: GapFix.SiblingInsertion,
+		Kinds: StanzaKinds.SiblingContainerKinds
+	);
+
 	public static readonly StanzaRule SeparateImportSection = new(
 		Descriptor: DiagnosticDescriptors.SeparateImportSection,
 		Fix: GapFix.SiblingInsertion,
-		Kinds: StanzaKinds.ImportContainerKinds
+		Kinds: StanzaKinds.ImportContainerKinds,
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateImportDirectiveGroups = new(
 		Descriptor: DiagnosticDescriptors.SeparateImportDirectiveGroups,
 		Fix: GapFix.SiblingInsertion,
-		Kinds: StanzaKinds.ImportContainerKinds
+		Kinds: StanzaKinds.ImportContainerKinds,
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateFileScopedNamespaceDeclarationFromFirstMember = new(
@@ -200,7 +228,8 @@ internal static class StanzaRules
 	public static readonly StanzaRule KeepSingleLineAccessorsTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepSingleLineAccessorsTogether,
 		Fix: GapFix.AdjacentRemoval,
-		Kinds: [SyntaxKind.AccessorList]
+		Kinds: [SyntaxKind.AccessorList],
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateMultiLineSwitchSections = new(
@@ -220,7 +249,8 @@ internal static class StanzaRules
 	public static readonly StanzaRule KeepSingleLineSwitchSectionsTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepSingleLineSwitchSectionsTogether,
 		Fix: GapFix.AdjacentRemoval,
-		Kinds: [SyntaxKind.SwitchStatement]
+		Kinds: [SyntaxKind.SwitchStatement],
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateMultiLineSwitchExpressionArms = new(
@@ -240,7 +270,8 @@ internal static class StanzaRules
 	public static readonly StanzaRule KeepSingleLineSwitchExpressionArmsTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepSingleLineSwitchExpressionArmsTogether,
 		Fix: GapFix.AdjacentRemoval,
-		Kinds: [SyntaxKind.SwitchExpression]
+		Kinds: [SyntaxKind.SwitchExpression],
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateMultiLineInitializerMembers = new(
@@ -260,7 +291,8 @@ internal static class StanzaRules
 	public static readonly StanzaRule KeepSingleLineInitializerMembersTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepSingleLineInitializerMembersTogether,
 		Fix: GapFix.AdjacentRemoval,
-		Kinds: StanzaKinds.InitializerMemberKinds
+		Kinds: StanzaKinds.InitializerMemberKinds,
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateMultiLineCollectionElements = new(
@@ -280,7 +312,8 @@ internal static class StanzaRules
 	public static readonly StanzaRule KeepSingleLineCollectionElementsTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepSingleLineCollectionElementsTogether,
 		Fix: GapFix.AdjacentRemoval,
-		Kinds: StanzaKinds.CollectionElementKinds
+		Kinds: StanzaKinds.CollectionElementKinds,
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateMultiLineArguments = new(
@@ -300,7 +333,8 @@ internal static class StanzaRules
 	public static readonly StanzaRule KeepSingleLineArgumentsTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepSingleLineArgumentsTogether,
 		Fix: GapFix.AdjacentRemoval,
-		Kinds: StanzaKinds.ArgumentListKinds
+		Kinds: StanzaKinds.ArgumentListKinds,
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateMultiLineParameters = new(
@@ -320,7 +354,8 @@ internal static class StanzaRules
 	public static readonly StanzaRule KeepSingleLineParametersTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepSingleLineParametersTogether,
 		Fix: GapFix.AdjacentRemoval,
-		Kinds: StanzaKinds.ParameterListKinds
+		Kinds: StanzaKinds.ParameterListKinds,
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateMultiLineDeclarators = new(
@@ -340,7 +375,8 @@ internal static class StanzaRules
 	public static readonly StanzaRule KeepSingleLineDeclaratorsTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepSingleLineDeclaratorsTogether,
 		Fix: GapFix.AdjacentRemoval,
-		Kinds: [SyntaxKind.VariableDeclaration]
+		Kinds: [SyntaxKind.VariableDeclaration],
+		DefersTo: [DiagnosticDescriptors.SeparateCommentedSibling]
 	);
 
 	public static readonly StanzaRule SeparateClauseKeywordFromBraceBeforeIt = new(
@@ -484,6 +520,8 @@ internal static class StanzaRules
 		SeparateSameTypeDeclarationGroups,
 		SeparateMultiLineConstructs,
 		KeepTwoUnitsOfContainerTogether,
+		GatherRunOfLooseStatements,
+		SeparateCommentedSibling,
 		SeparateImportSection,
 		SeparateImportDirectiveGroups,
 		SeparateFileScopedNamespaceDeclarationFromFirstMember,

@@ -78,6 +78,7 @@ internal static class MarkupReprint
 			return null;
 
 		DocLayoutOptions layout = reprintLayout.NarrowBy(reprintLayout.GetColumns(baseIndent));
+
 		// The body begins on the line its start tag closes on, which a tag broken across lines leaves apart from the one it opens on.
 		string lineEnding = sourceText.GetLineEnding(sourceText.GetLineFromOffset(start).LineIndex);
 		MemberBodyShape shape = new(BaseIndent: baseIndent, LineEnding: lineEnding, MemberIndent: memberIndent);

@@ -71,6 +71,7 @@ internal static class MarkupParser
 		return new XmlReaderSettings
 		{
 			ConformanceLevel = ConformanceLevel.Document,
+
 			// The DOCTYPE is parsed, but no external resource is resolved:
 			// an entity the document declares itself is expanded, and an external one cannot be reached.
 			DtdProcessing = DtdProcessing.Parse,

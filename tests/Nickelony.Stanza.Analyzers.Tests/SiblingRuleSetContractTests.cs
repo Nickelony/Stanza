@@ -207,6 +207,63 @@ public sealed class SiblingRuleSetContractTests
 		);
 	}
 
+	[TestMethod]
+	[DynamicData(
+		nameof(Sets),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task TheTightRuleLeavesTheBlankLineAboveACommentWhereTheCommentedSiblingRuleIsOn(
+		SiblingRuleSet siblings
+	)
+	{
+		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
+			siblings.Build((siblings.SingleLine, SiblingRuleSet.CommentTravels)),
+
+			TestRuleSets.Only(
+				siblings.KeepSingleLine,
+				DiagnosticDescriptors.SeparateCommentedSibling
+			)
+		);
+
+		Assert.IsEmpty(
+			OfRules(result, siblings.KeepSingleLine, DiagnosticDescriptors.SeparateCommentedSibling)
+		);
+
+		RoslynTestHarness.AssertFixedText(
+			siblings.Build((siblings.SingleLine, SiblingRuleSet.CommentTravels)),
+			result
+		);
+	}
+
+	[TestMethod]
+	[DynamicData(
+		nameof(Sets),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task TheCommentedSiblingRuleWritesTheBlankLineTheTightRuleLeaves(
+		SiblingRuleSet siblings
+	)
+	{
+		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
+			siblings.Build((siblings.SingleLine, SiblingRuleSet.CommentTravelsFixed)),
+
+			TestRuleSets.Only(
+				siblings.KeepSingleLine,
+				DiagnosticDescriptors.SeparateCommentedSibling
+			)
+		);
+
+		Assert.HasCount(1, OfRules(result, DiagnosticDescriptors.SeparateCommentedSibling));
+		Assert.IsEmpty(OfRules(result, siblings.KeepSingleLine));
+
+		RoslynTestHarness.AssertFixedText(
+			siblings.Build((siblings.SingleLine, SiblingRuleSet.CommentTravels)),
+			result
+		);
+	}
+
 	// Each build above checks its own source, so a set that wrote a carriage return would fail every row that uses it.
 	[TestMethod]
 	public void ASourceBuiltWithACarriageReturnFailsTheBuild()
@@ -215,6 +272,16 @@ public sealed class SiblingRuleSetContractTests
 
 		_ = Assert.ThrowsExactly<AssertFailedException>(() =>
 			mixed.Build((mixed.MultiLine, SiblingRuleSet.Blank))
+		);
+	}
+
+	private static IEnumerable<Diagnostic> OfRules(
+		AnalyzerRunResult result,
+		params DiagnosticDescriptor[] rules
+	)
+	{
+		return result.Diagnostics.Where(diagnostic =>
+			rules.Any(rule => rule.Id == diagnostic.Id)
 		);
 	}
 

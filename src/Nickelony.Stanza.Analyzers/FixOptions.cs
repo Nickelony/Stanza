@@ -23,7 +23,9 @@ internal sealed record FixOptions(
 	DocLayoutOptions? DocLayout = null,
 	bool SpacedSlash = false,
 	int? KeptBlankLines = null,
-	TextChange? Change = null
+	TextChange? Change = null,
+	int? RunStart = null,
+	int? RunEnd = null
 )
 {
 	private const string TabColumnsKey = "tabColumns";
@@ -37,6 +39,8 @@ internal sealed record FixOptions(
 	private const string ChangeStartKey = "changeStart";
 	private const string ChangeLengthKey = "changeLength";
 	private const string ChangeTextKey = "changeText";
+	private const string RunStartKey = "runStart";
+	private const string RunEndKey = "runEnd";
 
 	private const string LeadingPlacement = "leading";
 	private const string OwnLine = "own";
@@ -86,6 +90,12 @@ internal sealed record FixOptions(
 			properties[ChangeTextKey] = change.NewText;
 		}
 
+		if (RunStart is { } runStart)
+			properties[RunStartKey] = runStart.ToString(CultureInfo.InvariantCulture);
+
+		if (RunEnd is { } runEnd)
+			properties[RunEndKey] = runEnd.ToString(CultureInfo.InvariantCulture);
+
 		return properties.ToImmutable();
 	}
 
@@ -109,7 +119,9 @@ internal sealed record FixOptions(
 			DocLayout: properties.TryGetValue(DocLayoutKey, out string? layout) ? ReadLayout(layout) : null,
 			SpacedSlash: spacedSlash,
 			KeptBlankLines: ReadCount(properties, KeptBlankLinesKey),
-			Change: ReadChange(properties)
+			Change: ReadChange(properties),
+			RunStart: ReadCount(properties, RunStartKey),
+			RunEnd: ReadCount(properties, RunEndKey)
 		);
 	}
 

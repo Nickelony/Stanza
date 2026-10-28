@@ -74,6 +74,8 @@ The **Ships as** column gives the tier, and [Severity and enablement](#severity-
 | `ZA0007` | [Adds a blank line between the import section and the first member](https://github.com/Nickelony/Stanza/wiki/ZA0007-Separate-the-import-section) | Warning |
 | `ZA0008` | [Adds a blank line between import directives of different kinds](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-the-import-directive-groups) | Suggestion, off by default |
 | `ZA0009` | [Adds a blank line between a file-scoped namespace declaration and its first member](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-a-file-scoped-namespace-declaration-from-its-first-member) | Warning |
+| `ZA0052` | [Removes the blank lines between the statements of a loose run that holds more than `stanza_max_loose_statements` statements](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) | Suggestion, off by default |
+| `ZA0053` | [Adds a blank line above the comment that leads a single-line unit](https://github.com/Nickelony/Stanza/wiki/ZA0053-Separate-a-commented-sibling) | Suggestion, off by default |
 
 ### Blank lines inside delimited lists
 
@@ -204,7 +206,7 @@ When a file enables one half of a pair, that half owns the gap.
 
 ## Configuration
 
-Everything is configured in `.editorconfig`.
+Everything is configured in `.editorconfig`, and the [rule configurator](https://nickelony.github.io/Stanza/) writes the lines for the severities and values you pick.
 A rule's `dotnet_diagnostic.<id>.severity` line sets both whether the rule is enabled and how loudly it reports.
 It takes `error`, `warning`, `suggestion`, `silent`, `none` or `default`,
 and [Terms](https://github.com/Nickelony/Stanza/wiki/Terms) says which of them enable or disable a rule.
@@ -243,6 +245,7 @@ Each key links to its own page, which says what the key controls and lists the v
 | [`stanza_named_argument_count`](https://github.com/Nickelony/Stanza/wiki/stanza_named_argument_count) | `4` |
 | [`stanza_named_argument_match`](https://github.com/Nickelony/Stanza/wiki/stanza_named_argument_match) | `allow` |
 | [`stanza_named_argument_case`](https://github.com/Nickelony/Stanza/wiki/stanza_named_argument_case) | `sensitive` |
+| [`stanza_max_loose_statements`](https://github.com/Nickelony/Stanza/wiki/stanza_max_loose_statements) | `3` |
 | [`stanza_multiline_body_trigger`](https://github.com/Nickelony/Stanza/wiki/stanza_multiline_body_trigger) | `either` |
 | [`stanza_tab_width`](https://github.com/Nickelony/Stanza/wiki/stanza_tab_width) | the file's `tab_width`, then its `indent_size`, then `4` |
 | [`stanza_markup_scope`](https://github.com/Nickelony/Stanza/wiki/stanza_markup_scope) | `all` |

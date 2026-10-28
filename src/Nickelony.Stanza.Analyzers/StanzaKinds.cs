@@ -64,6 +64,20 @@ internal static class StanzaKinds
 		.. s_extensionBlockKinds,
 	];
 
+	/// <summary>Lists every container whose units <see cref="StanzaSyntax.ReadSiblings"/> reads.</summary>
+	public static readonly ImmutableArray<SyntaxKind> SiblingContainerKinds =
+	[
+		.. ContainerKinds,
+		.. ArgumentListKinds,
+		.. CollectionElementKinds,
+		.. InitializerMemberKinds,
+		.. ParameterListKinds,
+		SyntaxKind.AccessorList,
+		SyntaxKind.SwitchExpression,
+		SyntaxKind.SwitchStatement,
+		SyntaxKind.VariableDeclaration,
+	];
+
 	public static readonly ImmutableArray<SyntaxKind> MemberContainerKinds =
 	[
 		SyntaxKind.ClassDeclaration,

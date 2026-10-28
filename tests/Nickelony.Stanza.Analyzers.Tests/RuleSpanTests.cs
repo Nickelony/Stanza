@@ -137,6 +137,40 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.GatherRunOfLooseStatements.Id,
+
+			"""
+				void M()
+				{
+					a = 1;
+
+					b = 2;
+
+					c = 3;
+
+					d = 4;
+				}
+				""",
+
+			"b@5:2+a = 1;@3:2|c@7:2+b = 2;@5:2|d@9:2+c = 3;@7:2",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateCommentedSibling.Id,
+
+			"""
+				var item = new Item
+				{
+					Name = "a",
+					// Count = 2,
+					Count = 3,
+				};
+				""",
+
+			"Count@5:2+Name = \"a\"@3:2",
+		],
+
+		[
 			DiagnosticDescriptors.SeparateImportSection.Id,
 
 			"""

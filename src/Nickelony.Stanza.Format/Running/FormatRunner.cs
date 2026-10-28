@@ -106,6 +106,7 @@ internal sealed class FormatRunner(string root, TextWriter output, TextWriter er
 		ProcessResult check = RunStepCommand(step, step.Commands[0], echo: null);
 
 		CSharpierReport report = FormatChecks.ReadCSharpierReport(check.Output + "\n" + check.Error);
+
 		// CSharpier exits with the change code for a failure too, so a failure line ends the run.
 		ImmutableArray<string> failures = report.Failures;
 

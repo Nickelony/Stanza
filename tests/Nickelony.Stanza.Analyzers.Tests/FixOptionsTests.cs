@@ -35,7 +35,9 @@ public sealed class FixOptionsTests
 			DocLayout: s_layout,
 			SpacedSlash: true,
 			KeptBlankLines: 0,
-			Change: new TextChange(new TextSpan(3, 2), "text")
+			Change: new TextChange(new TextSpan(3, 2), "text"),
+			RunStart: 2,
+			RunEnd: 7
 		);
 
 		FixOptions read = Parse(written.ToProperties());

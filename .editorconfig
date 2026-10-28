@@ -17,6 +17,8 @@ dotnet_diagnostic.ZA0006.severity = warning
 dotnet_diagnostic.ZA0007.severity = warning
 dotnet_diagnostic.ZA0008.severity = warning
 dotnet_diagnostic.ZA0009.severity = warning
+dotnet_diagnostic.ZA0052.severity = warning
+dotnet_diagnostic.ZA0053.severity = warning
 
 # Blank lines inside delimited lists.
 dotnet_diagnostic.ZA0010.severity = none
@@ -546,6 +548,9 @@ dotnet_diagnostic.ZA0101.severity = none
 dotnet_diagnostic.ZA0103.severity = none
 dotnet_diagnostic.ZA0104.severity = none
 dotnet_diagnostic.ZA0105.severity = none
+
+# A test sets its arrange, act and assert steps apart with blank lines, which ZA0052 would gather.
+dotnet_diagnostic.ZA0052.severity = none
 
 # MSTest finds a test class only when it is public.
 dotnet_diagnostic.CA1515.severity = none

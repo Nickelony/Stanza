@@ -572,6 +572,28 @@ internal static class DiagnosticDescriptors
 		helpLinkUri: $"{HelpRoot}/ZA0051-Remove-a-redundant-argument-name"
 	);
 
+	public static readonly DiagnosticDescriptor GatherRunOfLooseStatements = new(
+		id: "ZA0052",
+		title: "Gather a run of loose statements",
+		messageFormat: "Remove the blank line before this statement of a loose run",
+		category: "Formatting",
+		defaultSeverity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false,
+		description: "Requires the single-line statements of a block or switch section to stand together when more than `stanza_max_loose_statements` of them are each set apart by a blank line that no other rule asks for.",
+		helpLinkUri: $"{HelpRoot}/ZA0052-Gather-a-run-of-loose-statements"
+	);
+
+	public static readonly DiagnosticDescriptor SeparateCommentedSibling = new(
+		id: "ZA0053",
+		title: "Separate a commented sibling",
+		messageFormat: "Add a blank line above the comment of this sibling",
+		category: "Formatting",
+		defaultSeverity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false,
+		description: "Requires a blank line above the comment that stands directly above a single-line sibling, so the comment travels with the sibling it describes.",
+		helpLinkUri: $"{HelpRoot}/ZA0053-Separate-a-commented-sibling"
+	);
+
 	// A rule the stanza-markup tool also runs takes its ID from MarkupDiagnostics, so both read one severity line.
 	// The tool reports a markup gap under that ID and applies a documentation rule as a clean-up of a reprinted body.
 

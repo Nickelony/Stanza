@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nickelony.Stanza.Analyzers.BlankLines;
 using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
@@ -22,6 +23,68 @@ public sealed partial class ConvergenceTests
 	private const string SoakVariable = "STANZA_SOAK_SEEDS";
 
 	private static readonly string[] s_importLines = ["using System.Linq;", "using System.Text;"];
+
+	// Each template is one statement, written without its indent.
+	// They mix the kinds the grouping rules read, with comments, directives and multi-line statements among them.
+	private static readonly Func<int, string[]>[] s_statements =
+	[
+		index => [$"var variable{index} = {index};"],
+		index => [$"int number{index} = {index};"],
+		index => [$"int count{index} = {index};"],
+		index => [$"string text{index} = \"{index}\";"],
+		index => [$"const int constant{index} = {index};"],
+		index => [$"loose = {index};"],
+		index => ["DoThing();"],
+		index => [$"Build({index});"],
+		index => ["Assert.That(1);"],
+		index => [$"// Note {index}.", $"loose = {index};"],
+		index => [$"DoThing(); // Trailing {index}."],
+		index => ["Call(", "\t1,", "\t2);"],
+		index => [$"#region Group{index}", "DoThing();", "#endregion"],
+		index => ["if (loose > 0) DoThing();"],
+		index => [$"void Local{index}() {{ }}"],
+	];
+
+	// A run is judged against the limit, so the limits take the rule through its quiet and its busy ends.
+	private static readonly int[] s_looseLimits = [3, 2, 1, 4];
+
+	// The rules that share a gap with the loose run rule, alone and all together.
+	private static readonly DiagnosticDescriptor[][] s_looseRuleSets =
+	[
+		[
+			DiagnosticDescriptors.GatherRunOfLooseStatements,
+			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+			DiagnosticDescriptors.SeparateSameTypeDeclarationGroups,
+			DiagnosticDescriptors.SeparateMultiLineConstructs,
+			DiagnosticDescriptors.SeparateCommentedSibling,
+			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
+		],
+
+		[
+			DiagnosticDescriptors.GatherRunOfLooseStatements,
+			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+		],
+
+		[
+			DiagnosticDescriptors.GatherRunOfLooseStatements,
+			DiagnosticDescriptors.SeparateSameTypeDeclarationGroups,
+		],
+
+		[
+			DiagnosticDescriptors.GatherRunOfLooseStatements,
+			DiagnosticDescriptors.SeparateMultiLineConstructs,
+		],
+
+		[
+			DiagnosticDescriptors.GatherRunOfLooseStatements,
+			DiagnosticDescriptors.SeparateCommentedSibling,
+		],
+
+		[
+			DiagnosticDescriptors.GatherRunOfLooseStatements,
+			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
+		],
+	];
 
 	// Each template is one member, written without its indent. None of them needs more than the shared support code.
 	private static readonly Func<int, string[]>[] s_members =
@@ -44,6 +107,32 @@ public sealed partial class ConvergenceTests
 				"\tName = \"a\",",
 				"\tCount = 1,",
 				"};",
+			],
+
+		index =>
+			[
+				$"public Item Commented{index}() => new Item",
+				"{",
+				"\tName = \"a\",",
+				"\t// The tags stay empty.",
+				"\tTags = [],",
+				"",
+				"\t// The count is one.",
+				"\tCount = 1,",
+				"};",
+			],
+
+		index =>
+			[
+				$"public void Commented{index}()",
+				"{",
+				"\tDoThing();",
+				"\t// The next step.",
+				"\tDoThing();",
+				"",
+				"\t// The last step.",
+				"\treturn;",
+				"}",
 			],
 
 		index => [$"public List<int> Elements{index}() => [", "\t1,", "\t2,", "];"],
@@ -225,6 +314,229 @@ public sealed partial class ConvergenceTests
 		);
 	}
 
+	// A grouping rule reads a run across a gap that the commented sibling rule separates, unless the gap ends the run.
+	// The blank line the rule writes would then depend on which fix came first.
+	public static IEnumerable<object[]> CommentedSiblingRows { get; } =
+	[
+		[
+			"a trailing comment ends the call run above the commented sibling",
+			CommentedSiblingRuleSet(),
+
+			"""
+			class C
+			{
+				void M()
+				{
+					DoThing(); // Trailing.
+					// Note.
+					DoThing();
+					Build(1);
+				}
+
+				void DoThing() { }
+
+				int Build(int value) => value;
+			}
+			""",
+
+			"""
+			class C
+			{
+				void M()
+				{
+					DoThing(); // Trailing.
+
+					// Note.
+					DoThing();
+					Build(1);
+				}
+
+				void DoThing() { }
+
+				int Build(int value) => value;
+			}
+			""",
+		],
+
+		[
+			"a commented sibling ends the call run that stands above the boundary",
+			CommentedSiblingRuleSet(),
+
+			"""
+			class C
+			{
+				void M()
+				{
+					Build(0);
+					DoThing();
+					// Note.
+					DoThing();
+				}
+
+				void DoThing() { }
+
+				int Build(int value) => value;
+			}
+			""",
+
+			"""
+			class C
+			{
+				void M()
+				{
+					Build(0);
+					DoThing();
+
+					// Note.
+					DoThing();
+				}
+
+				void DoThing() { }
+
+				int Build(int value) => value;
+			}
+			""",
+		],
+
+		[
+			"a commented sibling leaves a lone declaration with its neighbors",
+			CommentedSiblingRuleSet(),
+
+			"""
+			class C
+			{
+				void M()
+				{
+					var a = 1;
+					// Note.
+					var b = 2;
+					DoThing();
+				}
+
+				void DoThing() { }
+			}
+			""",
+
+			"""
+			class C
+			{
+				void M()
+				{
+					var a = 1;
+
+					// Note.
+					var b = 2;
+					DoThing();
+				}
+
+				void DoThing() { }
+			}
+			""",
+		],
+
+		[
+			"a commented sibling ends the run of the same-type rule",
+			CommentedSiblingRuleSet(DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns),
+
+			"""
+			class C
+			{
+				void M()
+				{
+					int a = 1;
+					// Note.
+					int b = 2;
+					string c = "x";
+				}
+			}
+			""",
+
+			"""
+			class C
+			{
+				void M()
+				{
+					int a = 1;
+
+					// Note.
+					int b = 2;
+					string c = "x";
+				}
+			}
+			""",
+		],
+
+		[
+			"a commented sibling ends the run of the member rule",
+			CommentedSiblingRuleSet(DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns),
+
+			"""
+			class C
+			{
+				private int _a;
+				// Note.
+				private int _b;
+				public void M() { }
+			}
+			""",
+
+			"""
+			class C
+			{
+				private int _a;
+
+				// Note.
+				private int _b;
+				public void M() { }
+			}
+			""",
+		],
+	];
+
+	[TestMethod]
+	[DynamicData(
+		nameof(CommentedSiblingRows),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task ACommentedSiblingSettlesTheSameWayInEitherFixOrder(
+		string name,
+		IReadOnlyDictionary<string, ReportDiagnostic> rules,
+		string source,
+		string fixedSource
+	)
+	{
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+			diagnosticOptions: rules
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result, name);
+
+		await RoslynTestHarness.AssertFixAllPerIdSettlesAsync(
+			expected: fixedSource,
+			source,
+			options: new RunOptions(RoslynTestHarness.AllAnalyzers) { DiagnosticOptions = rules },
+			message: $"{name}:"
+		);
+	}
+
+	// The commented sibling rule on beside the rules that ship on, less the ones named.
+	private static Dictionary<string, ReportDiagnostic> CommentedSiblingRuleSet(
+		params DiagnosticDescriptor[] disabled
+	)
+	{
+		Dictionary<string, ReportDiagnostic> rules = new(
+			TestRuleSets.Only(DiagnosticDescriptors.SeparateCommentedSibling),
+			StringComparer.Ordinal
+		);
+
+		foreach (DiagnosticDescriptor descriptor in disabled)
+			rules[descriptor.Id] = ReportDiagnostic.Suppress;
+
+		return rules;
+	}
+
 	// Written by hand as the rules lay it out, so the fixes are checked against a text of their own.
 	private const string FormattedFile = """
 		using System.Linq;
@@ -300,6 +612,25 @@ public sealed partial class ConvergenceTests
 		);
 	}
 
+	// The loose run rule and the rules that ask for blank lines write opposite fixes into the same gaps.
+	// Each set of them has to claim a gap once and settle, whether one fix at a time or one Fix All per rule.
+	[TestMethod]
+	[DynamicData(
+		nameof(Seeds),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task StatementsSetApartByBlankLinesSettleWithTheRulesThatShareTheirGaps(int seed)
+	{
+		int findings = await AssertLooseRunsSettleAsync(seed);
+
+		Assert.IsGreaterThan(
+			0,
+			findings,
+			"The generated statements needed no fix, so they prove nothing."
+		);
+	}
+
 	[TestMethod]
 	[TestCategory("Soak")]
 	public async Task ALargeSeededSetSettlesTheSameWay()
@@ -330,6 +661,7 @@ public sealed partial class ConvergenceTests
 				{
 					AssertLayoutSettlesAsync,
 					AssertDocumentationSettlesAsync,
+					AssertLooseRunsSettleAsync,
 				}
 			)
 			{
@@ -380,6 +712,161 @@ public sealed partial class ConvergenceTests
 		);
 
 		return result.Diagnostics.Length;
+	}
+
+	private static async Task<int> AssertLooseRunsSettleAsync(int seed)
+	{
+		string source = CreateStatementSource(new Random(seed));
+
+		Dictionary<string, string> options = new()
+		{
+			["stanza_max_loose_statements"] = $"{s_looseLimits[seed % s_looseLimits.Length]}",
+		};
+
+		int findings = 0;
+
+		foreach (DiagnosticDescriptor[] rules in s_looseRuleSets)
+		{
+			Dictionary<string, ReportDiagnostic> enabled = EnableOnly(rules);
+
+			AnalyzerRunResult reported = await RoslynTestHarness.ReportAllAsync(
+				source,
+				enabled,
+				options
+			);
+
+			if (reported.Diagnostics.Length > 0)
+				RoslynTestHarness.AssertEachGapIsClaimedOnce(reported);
+
+			AnalyzerRunResult result = await RunAsync(source, rules: enabled, options, seed);
+
+			Assert.AreSequenceEqual(
+				ReadTokens(source),
+				ReadTokens(result.FixedText),
+				$"seed {seed}: a fix changed a token."
+			);
+
+			Assert.AreSequenceEqual(
+				ReadComments(source),
+				ReadComments(result.FixedText),
+				$"seed {seed}: a fix changed a comment."
+			);
+
+			findings += result.Diagnostics.Length;
+		}
+
+		await AssertGatheringLeavesNoWorkAsync(source, options);
+
+		return findings;
+	}
+
+	// The loose run rule alone must never remove a blank line that a rule it defers to would write back.
+	private static async Task AssertGatheringLeavesNoWorkAsync(
+		string source,
+		Dictionary<string, string> options
+	)
+	{
+		DiagnosticDescriptor[] asking =
+		[
+			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+			DiagnosticDescriptors.SeparateSameTypeDeclarationGroups,
+			DiagnosticDescriptors.SeparateMultiLineConstructs,
+			DiagnosticDescriptors.SeparateCommentedSibling,
+		];
+
+		// Only the loose run rule's fixes run, while the rules it defers to stay enabled, so it sees their gaps.
+		AnalyzerRunResult gathered = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			new RunOptions([new GatherRunOfLooseStatementsAnalyzer()])
+			{
+				DiagnosticOptions = TestRuleSets.Only([
+					DiagnosticDescriptors.GatherRunOfLooseStatements,
+					.. asking,
+				]),
+
+				AnalyzerConfigOptions = options,
+			}
+		);
+
+		AnalyzerRunResult before = await RoslynTestHarness.ReportAllAsync(
+			source,
+			TestRuleSets.Only(asking),
+			options
+		);
+
+		AnalyzerRunResult after = await RoslynTestHarness.ReportAllAsync(
+			gathered.FixedText,
+			TestRuleSets.Only(asking),
+			options
+		);
+
+		foreach (DiagnosticDescriptor rule in asking)
+		{
+			Assert.IsLessThanOrEqualTo(
+				before.Diagnostics.Count(diagnostic => diagnostic.Id == rule.Id),
+				after.Diagnostics.Count(diagnostic => diagnostic.Id == rule.Id),
+				$"Gathering the loose runs made {rule.Id} report a gap it did not report before."
+			);
+		}
+	}
+
+	// The rules that ship on and share a gap with the loose run rule are off unless a set names them.
+	private static Dictionary<string, ReportDiagnostic> EnableOnly(DiagnosticDescriptor[] rules)
+	{
+		Dictionary<string, ReportDiagnostic> enabled = new(
+			TestRuleSets.Only(rules),
+			StringComparer.Ordinal
+		);
+
+		foreach (
+			DiagnosticDescriptor shipped in new[]
+			{
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationGroups,
+				DiagnosticDescriptors.SeparateMultiLineConstructs,
+			}
+		)
+		{
+			if (!rules.Contains(shipped))
+				enabled[shipped.Id] = ReportDiagnostic.Suppress;
+		}
+
+		return enabled;
+	}
+
+	internal static string CreateStatementSource(Random random)
+	{
+		List<string> lines = [];
+		int count = random.Next(6, 13);
+
+		for (int index = 0; index < count; index++)
+		{
+			if (index > 0)
+				lines.AddRange(StatementGap(random));
+
+			foreach (string line in s_statements[random.Next(s_statements.Length)](index))
+				lines.Add(line.Length == 0 || line[0] == '#' ? line : "\t\t" + line);
+		}
+
+		return "internal sealed class Sample\n{\n\tpublic void Run()\n\t{\n\t\tint loose = 0;\n\n"
+			+ string.Join("\n", lines)
+			+ "\n\t}\n}\n";
+	}
+
+	// Most gaps hold one blank line, so runs of loose statements come up often.
+	private static IEnumerable<string> StatementGap(Random random)
+	{
+		return Enumerable.Repeat(
+			string.Empty,
+
+			random.Next(20) switch
+			{
+				< 5 => 0,
+				< 17 => 1,
+				_ => 2,
+			}
+		);
 	}
 
 	private static async Task<int> AssertDocumentationSettlesAsync(int seed)
