@@ -23,7 +23,7 @@ function ruleLines<S>(catalog: Catalog<S>, config: Config, context: Context): st
 		const setting = settingOf(config, rule);
 		let line: string | null = null;
 
-		if (isRuleChanged(rule, setting) && setting !== 'default') {
+		if (isRuleChanged(setting)) {
 			line = ruleLine(rule.id, setting);
 		} else if (config.everySetting) {
 			// A rule that is off by default stays a comment, because a line with a severity would enable it.

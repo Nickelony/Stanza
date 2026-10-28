@@ -112,7 +112,7 @@ export function createRuleList(catalog: SiteCatalog, store: Store): RuleList {
 
 		for (const row of rows) {
 			const setting = settingOf(state.config, row.rule);
-			const changed = isRuleChanged(row.rule, setting);
+			const changed = isRuleChanged(setting);
 			const visible = tokens.every((token) => row.haystack.includes(token)) && (!state.changedOnly || changed);
 			const selected = state.selection?.kind === 'rule' && state.selection.id === row.id;
 			const effective = effectiveState(row.rule, setting);

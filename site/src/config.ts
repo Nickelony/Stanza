@@ -24,10 +24,10 @@ export function settingOf(config: Config, rule: { id: string }): RuleSetting {
 
 /**
  * Whether a setting changes what the analyzer does.
- * A rule that is on by default reports at its tier, so its own tier as a setting changes nothing.
+ * Any line counts, even a rule's own tier, because a line enables the rule and decides which half of a pair owns their shared gap.
  */
-export function isRuleChanged<S>(rule: Rule<S>, setting: RuleSetting): boolean {
-	return setting !== 'default' && !(rule.onByDefault && setting === rule.tier);
+export function isRuleChanged(setting: RuleSetting): boolean {
+	return setting !== 'default';
 }
 
 export type EffectiveState = Severity | 'off';
@@ -115,7 +115,7 @@ export function isOptionChanged<S>(option: Option<S>, value: string | undefined)
 }
 
 export function changedCount<S>(catalog: Catalog<S>, config: Config): number {
-	const rules = catalog.rules.filter((rule) => isRuleChanged(rule, settingOf(config, rule))).length;
+	const rules = catalog.rules.filter((rule) => isRuleChanged(settingOf(config, rule))).length;
 	const options = catalog.options.filter((option) => isOptionChanged(option, config.options[option.key])).length;
 
 	return rules + options;

@@ -1372,6 +1372,35 @@ public sealed class GatherRunOfLooseStatementsTests
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
+	[TestMethod]
+	public async Task ALoneDeclarationKeepsItsBlankLineWhereGatheringWouldSetItApart()
+	{
+		// Gathering the blank line below `a` joins it to the declarations under it, and ZA0001 would then ask for a blank line above it.
+		string source = Method(
+			"""
+			first = 0;
+			int a = 1;
+
+			int b = 1;
+			int c = 2;
+			"""
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
+			source,
+
+			TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns
+			),
+
+			new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(source, result);
+	}
+
 	// Wraps statements in a method of a class that declares the fields they assign.
 	private static string Method(string body)
 	{

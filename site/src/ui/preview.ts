@@ -114,7 +114,13 @@ function chips(label: string, ids: string[], store: Store, kind: 'rule' | 'optio
 		'p',
 		{ class: 'related' },
 		h('span', { class: 'related-label' }, `${label} `),
-		...ids.map((id) => h('button', { type: 'button', class: 'chip mono', onclick: () => store.set({ selection: { kind, id }, variant: 0 }) }, id)),
+		...ids.map((id) =>
+			h(
+				'button',
+				{ type: 'button', class: 'chip mono', onclick: () => store.set({ selection: { kind, id }, variant: 0, query: '', changedOnly: false }) },
+				id,
+			),
+		),
 	);
 }
 
@@ -134,9 +140,9 @@ const statusText: Record<EffectiveState, string> = {
 function ruleStatus<S>(rule: Rule<S>, state: AppState): { text: string; line: string | null; off: boolean } {
 	const setting = settingOf(state.config, rule);
 	const effective = effectiveState(rule, setting);
-	const changed = isRuleChanged(rule, setting);
+	const changed = isRuleChanged(setting);
 	const markupNote = rule.markupOnByDefault && setting === 'default' ? ' stanza-markup applies it unless a file disables it.' : '';
-	const line = changed && setting !== 'default' ? `dotnet_diagnostic.${rule.id}.severity = ${setting}` : null;
+	const line = changed ? `dotnet_diagnostic.${rule.id}.severity = ${setting}` : null;
 
 	const lead = effective === 'off' || effective === 'none' ? '' : `${stateLabels[effective]}. `;
 
@@ -207,7 +213,12 @@ export function createPreview(catalog: SiteCatalog, store: Store): Preview {
 									{
 										type: 'button',
 										class: 'variant',
-										onclick: () => store.set({ variant: index }),
+										onclick: () => {
+											store.set({ variant: index });
+
+											// The preview is rebuilt for the new variant, so the pressed button is replaced; focus follows to its twin.
+											bottom.querySelectorAll('.example')[number]?.querySelectorAll<HTMLButtonElement>('.variant')[index]?.focus();
+										},
 										title: candidate.label,
 										aria: { pressed: String(index === Math.min(variant, example.afters.length - 1)) },
 									},

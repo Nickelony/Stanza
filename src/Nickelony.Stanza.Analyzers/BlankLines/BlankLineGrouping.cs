@@ -99,14 +99,15 @@ internal static class BlankLineGrouping
 				continue;
 
 			// A declaration on its own is set apart only while it stands directly above the run.
-			// A caller that reads the gathered gaps keeps that boundary once a blank line stands below the declaration too,
+			// A caller that gathers some gaps keeps that boundary once a blank line stands below the declaration too,
 			// since the rule writes that blank line and a fix order that wrote it first would otherwise judge the gap alone.
+			// With no gap gathered the text is read as it stands, so a blank line below the declaration keeps the boundary from being asked.
 			if (
 				includesLoneVariableBoundary
 				&& run.Start >= 2
 				&& IsVariableLikeDeclaration(siblings[run.Start - 1])
 				&& !runs[index - 1].IsRepeated
-				&& (gathered is not null || !HasBlankLineBefore(siblings, run.Start, gathered: null))
+				&& (gathered is { IsEmpty: false } || !HasBlankLineBefore(siblings, run.Start, gathered: null))
 				&& !IsCommentedSiblingGap(
 					siblings,
 					boundaryIndex: run.Start,

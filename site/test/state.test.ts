@@ -15,19 +15,18 @@ const sample = catalog(
 );
 
 describe('a rule setting', () => {
-	it('changes nothing when a rule that is on by default is set to its own severity', () => {
-		const zero = sample.rules[0]!;
-
-		expect(isRuleChanged(zero, 'default')).toBe(false);
-		expect(isRuleChanged(zero, 'warning')).toBe(false);
-		expect(isRuleChanged(zero, 'error')).toBe(true);
-		expect(isRuleChanged(zero, 'none')).toBe(true);
+	it('counts any line as a change, a rule that is on by default set to its own severity included', () => {
+		// The line enables the rule, which decides the owner of a gap that a pair shares.
+		expect(isRuleChanged('default')).toBe(false);
+		expect(isRuleChanged('warning')).toBe(true);
+		expect(isRuleChanged('error')).toBe(true);
+		expect(isRuleChanged('none')).toBe(true);
 	});
 
 	it('changes the rule that is off by default whatever severity enables it', () => {
 		const three = sample.rules[1]!;
 
-		expect(isRuleChanged(three, 'suggestion')).toBe(true);
+		expect(isRuleChanged('suggestion')).toBe(true);
 		expect(effectiveState(three, 'default')).toBe('off');
 		expect(effectiveState(three, 'silent')).toBe('silent');
 		expect(effectiveState(sample.rules[0]!, 'default')).toBe('warning');
@@ -40,7 +39,7 @@ describe('a rule setting', () => {
 			options: { stanza_max_line_length: '100', stanza_doc_indent_size: '2' },
 		};
 
-		expect(changedCount(sample, config)).toBe(2);
+		expect(changedCount(sample, config)).toBe(3);
 	});
 });
 

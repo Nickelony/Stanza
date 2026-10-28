@@ -38,9 +38,9 @@ describe('the generated .editorconfig', () => {
 		expect(generateEditorConfig(small, emptyConfig())).toBe('# Every rule and option is at its default, so nothing is written.\n');
 	});
 
-	it('omits a rule set to the severity it already ships at', () => {
-		expect(generateEditorConfig(small, config({ rules: { ZA0001: 'warning', ZA0035: 'suggestion' } }))).toBe(
-			'# Every rule and option is at its default, so nothing is written.\n',
+	it('writes a rule set to the severity it already ships at, because the line decides who owns a pair gap', () => {
+		expect(generateEditorConfig(small, config({ rules: { ZA0001: 'warning' }, markupSection: false }))).toBe(
+			'[*.cs]\ndotnet_diagnostic.ZA0001.severity = warning\n',
 		);
 	});
 
