@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Config, changedCount, emptyConfig } from '../src/config.ts';
-import { generateEditorConfig } from '../src/editorconfig.ts';
+import { generateEditorConfig, writtenOptionLine, writtenRuleLine } from '../src/editorconfig.ts';
 import type { SiteCatalog } from '../src/model.ts';
 import { optionDefaultLabel } from '../src/ui/labels.ts';
 import { catalog, option, realCatalog, rule } from './fixtures.ts';
@@ -32,6 +32,39 @@ const small = catalog(
 );
 
 const config = (changes: Partial<Config>): Config => ({ ...emptyConfig(), ...changes });
+
+describe('the line a preview shows', () => {
+	const [zero, three] = small.rules;
+	const [lineLength, , , tabWidth] = small.options;
+
+	it('is none while every setting is at its default', () => {
+		expect(writtenRuleLine(zero!, emptyConfig())).toBeNull();
+		expect(writtenOptionLine(lineLength!, emptyConfig())).toBeNull();
+	});
+
+	it('is the line the generator writes for a chosen rule or option', () => {
+		const chosen = config({ rules: { ZA0003: 'warning' }, options: { stanza_max_line_length: '120' } });
+
+		expect(writtenRuleLine(three!, chosen)).toBe('dotnet_diagnostic.ZA0003.severity = warning');
+		expect(writtenOptionLine(lineLength!, chosen)).toBe('stanza_max_line_length = 120');
+	});
+
+	it('is the line that Every setting adds, a comment for a rule that is off by default', () => {
+		const every = config({ everySetting: true });
+
+		expect(writtenRuleLine(zero!, every)).toBe('dotnet_diagnostic.ZA0001.severity = warning');
+		expect(writtenRuleLine(three!, every)).toBe('# dotnet_diagnostic.ZA0003.severity = suggestion');
+		expect(writtenOptionLine(lineLength!, every)).toBe('stanza_max_line_length = 100');
+		expect(writtenOptionLine(tabWidth!, every)).toBeNull();
+	});
+
+	it('leaves out an option only the markup section writes while that section is off', () => {
+		const markupOnly = small.options[2]!;
+
+		expect(writtenOptionLine(markupOnly, config({ everySetting: true }))).toBe('stanza_markup_enabled = true');
+		expect(writtenOptionLine(markupOnly, config({ everySetting: true, markupSection: false }))).toBeNull();
+	});
+});
 
 describe('the generated .editorconfig', () => {
 	it('writes nothing but a note while every setting is at its default', () => {

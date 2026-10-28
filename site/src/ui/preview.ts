@@ -1,4 +1,5 @@
-import { type EffectiveState, effectiveState, isOptionChanged, isRuleChanged, settingOf } from '../config.ts';
+import { type EffectiveState, effectiveState, isOptionChanged, settingOf } from '../config.ts';
+import { writtenOptionLine, writtenRuleLine } from '../editorconfig.ts';
 import { diffLines } from '../diff.ts';
 import type { Block, ExampleRef, Option, Rule, SiteCatalog, Snippet } from '../model.ts';
 import type { AppState, Store } from '../store.ts';
@@ -105,6 +106,12 @@ function flow<P extends Block | ExampleRef | { kind: 'values' }>(
 	return nodes;
 }
 
+/** Selects a rule or an option from a link in the preview, which rebuilds the preview, and moves the focus to the new heading. */
+export function followLink(store: Store, selection: { kind: 'rule' | 'option'; id: string }): void {
+	store.set({ selection, variant: 0, query: '', changedOnly: false });
+	document.querySelector<HTMLElement>('#preview .pv-head h2')?.focus();
+}
+
 function chips(label: string, ids: string[], store: Store, kind: 'rule' | 'option'): HTMLElement | null {
 	if (ids.length === 0) {
 		return null;
@@ -114,13 +121,7 @@ function chips(label: string, ids: string[], store: Store, kind: 'rule' | 'optio
 		'p',
 		{ class: 'related' },
 		h('span', { class: 'related-label' }, `${label} `),
-		...ids.map((id) =>
-			h(
-				'button',
-				{ type: 'button', class: 'chip mono', onclick: () => store.set({ selection: { kind, id }, variant: 0, query: '', changedOnly: false }) },
-				id,
-			),
-		),
+		...ids.map((id) => h('button', { type: 'button', class: 'chip mono', onclick: () => followLink(store, { kind, id }) }, id)),
 	);
 }
 
@@ -140,9 +141,8 @@ const statusText: Record<EffectiveState, string> = {
 function ruleStatus<S>(rule: Rule<S>, state: AppState): { text: string; line: string | null; off: boolean } {
 	const setting = settingOf(state.config, rule);
 	const effective = effectiveState(rule, setting);
-	const changed = isRuleChanged(setting);
 	const markupNote = rule.markupOnByDefault && setting === 'default' ? ' stanza-markup applies it unless a file disables it.' : '';
-	const line = changed ? `dotnet_diagnostic.${rule.id}.severity = ${setting}` : null;
+	const line = writtenRuleLine(rule, state.config);
 
 	const lead = effective === 'off' || effective === 'none' ? '' : `${stateLabels[effective]}. `;
 
@@ -235,7 +235,7 @@ export function createPreview(catalog: SiteCatalog, store: Store): Preview {
 			h(
 				'header',
 				{ class: 'pv-head' },
-				h('h2', {}, h('span', { class: 'mono pv-id' }, rule.id), ' ', rule.title),
+				h('h2', { tabIndex: -1 }, h('span', { class: 'mono pv-id' }, rule.id), ' ', rule.title),
 				h('p', { class: 'tier' }, rule.tierText),
 			),
 			html('p', rule.descriptionHtml, 'desc'),
@@ -302,7 +302,7 @@ export function createPreview(catalog: SiteCatalog, store: Store): Preview {
 			h(
 				'header',
 				{ class: 'pv-head' },
-				h('h2', {}, h('span', { class: 'mono pv-id' }, option.key)),
+				h('h2', { tabIndex: -1 }, h('span', { class: 'mono pv-id' }, option.key)),
 				h('p', { class: 'tier' }, `Default: ${option.defaultText}`),
 			),
 			html('p', option.descriptionHtml, 'desc'),
@@ -321,14 +321,17 @@ export function createPreview(catalog: SiteCatalog, store: Store): Preview {
 			const value = state.config.options[option.key];
 			const effective = value ?? option.defaultValue;
 
+			const line = writtenOptionLine(option, state.config);
+			const stands = line === null ? 'no line is written' : 'Every setting writes it';
+
 			status.textContent =
 				value === undefined
-					? 'Left at its default; no line is written.'
+					? `Left at its default; ${stands}.`
 					: isOptionChanged(option, value)
 						? 'Set to a value other than the default.'
-						: 'Set to the default value.';
+						: `Set to the default value; ${stands}.`;
 
-			statusLine.textContent = isOptionChanged(option, value) ? `${option.key} = ${value}` : 'No line is written for this key.';
+			statusLine.textContent = line ?? 'No line is written for this key.';
 
 			option.values.forEach((entry, index) => {
 				valueRows[index]!.classList.toggle('active', effective !== null && entry.literals.includes(effective));

@@ -1401,6 +1401,47 @@ public sealed class GatherRunOfLooseStatementsTests
 		RoslynTestHarness.AssertFixedText(source, result);
 	}
 
+	[TestMethod]
+	public async Task ARunThatNoGatheredGapTouchesKeepsTheBlankLinesBesideIt()
+	{
+		// The blank line above the run of calls stays, so gathering the one below it would leave ZA0001 asking for it back.
+		string source = """
+			class C
+			{
+				int first;
+
+				void A() { }
+
+				void B() { }
+
+				void M()
+				{
+					first = 0;
+					int a = 1;
+
+					A();
+					A();
+
+					B();
+				}
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
+			source,
+
+			TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns
+			),
+
+			new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(source, result);
+	}
+
 	// Wraps statements in a method of a class that declares the fields they assign.
 	private static string Method(string body)
 	{

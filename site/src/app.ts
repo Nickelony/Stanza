@@ -6,7 +6,7 @@ import { h } from './ui/dom.ts';
 import { createMarksToggle } from './ui/marks.ts';
 import { createOptionList } from './ui/optionlist.ts';
 import { createOutput } from './ui/output.ts';
-import { createPreview } from './ui/preview.ts';
+import { createPreview, followLink } from './ui/preview.ts';
 import { createRuleList, revealRule } from './ui/rulelist.ts';
 import { createThemeToggle } from './ui/theme.ts';
 
@@ -226,7 +226,7 @@ export function mountApp(root: HTMLElement, catalog: SiteCatalog): void {
 		}
 
 		event.preventDefault();
-		store.set({ selection: { kind, id }, variant: 0, query: '', changedOnly: false });
+		followLink(store, { kind, id });
 
 		if (kind === 'rule') {
 			revealRule(ruleList, id);

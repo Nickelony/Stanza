@@ -1,5 +1,5 @@
 import { type Config, type Context, defaultIn, isOptionChanged, isOptionChangedIn, isRuleChanged, readsOption, settingOf } from './config.ts';
-import type { Catalog, Rule } from './model.ts';
+import type { Catalog, Option, Rule } from './model.ts';
 
 const ruleLine = (id: string, severity: string): string => `dotnet_diagnostic.${id}.severity = ${severity}`;
 
@@ -11,24 +11,32 @@ function onByDefault<S>(rule: Rule<S>, context: Context): boolean {
 	return rule.onByDefault || (context === 'markup' && rule.markupOnByDefault);
 }
 
+/** The line the configuration writes for a rule in the section of a tool, or `null` when it writes none. */
+export function ruleLineIn<S>(rule: Rule<S>, config: Config, context: Context): string | null {
+	if (context === 'markup' && !rule.readByMarkup) {
+		return null;
+	}
+
+	const setting = settingOf(config, rule);
+
+	if (isRuleChanged(setting)) {
+		return ruleLine(rule.id, setting);
+	}
+
+	if (!config.everySetting) {
+		return null;
+	}
+
+	// A rule that is off by default stays a comment, because a line with a severity would enable it.
+	return onByDefault(rule, context) ? ruleLine(rule.id, rule.tier) : `# ${ruleLine(rule.id, rule.tier)}`;
+}
+
 function ruleLines<S>(catalog: Catalog<S>, config: Config, context: Context): string[] {
 	const lines: string[] = [];
 	let group = '';
 
 	for (const rule of catalog.rules) {
-		if (context === 'markup' && !rule.readByMarkup) {
-			continue;
-		}
-
-		const setting = settingOf(config, rule);
-		let line: string | null = null;
-
-		if (isRuleChanged(setting)) {
-			line = ruleLine(rule.id, setting);
-		} else if (config.everySetting) {
-			// A rule that is off by default stays a comment, because a line with a severity would enable it.
-			line = onByDefault(rule, context) ? ruleLine(rule.id, rule.tier) : `# ${ruleLine(rule.id, rule.tier)}`;
-		}
+		const line = ruleLineIn(rule, config, context);
 
 		if (line === null) {
 			continue;
@@ -50,27 +58,60 @@ function ruleLines<S>(catalog: Catalog<S>, config: Config, context: Context): st
 	return lines;
 }
 
+/** The line the configuration writes for an option in the section of a tool, or `null` when it writes none. */
+export function optionLineIn<S>(option: Option<S>, config: Config, context: Context): string | null {
+	if (!readsOption(option, context)) {
+		return null;
+	}
+
+	const value = config.options[option.key];
+	const fallback = defaultIn(option, context);
+
+	if (isOptionChangedIn(option, value, context)) {
+		return `${option.key} = ${value}`;
+	}
+
+	return config.everySetting && fallback !== null ? `${option.key} = ${fallback}` : null;
+}
+
+/** The first line the configuration writes for a rule, in the sections it writes. */
+export function writtenRuleLine<S>(rule: Rule<S>, config: Config): string | null {
+	return (
+		writtenContexts(config)
+			.map((context) => ruleLineIn(rule, config, context))
+			.find((line) => line !== null) ?? null
+	);
+}
+
+/** The first line the configuration writes for an option, in the sections it writes. */
+export function writtenOptionLine<S>(option: Option<S>, config: Config): string | null {
+	return (
+		writtenContexts(config)
+			.map((context) => optionLineIn(option, config, context))
+			.find((line) => line !== null) ?? null
+	);
+}
+
+function writtenContexts(config: Config): Context[] {
+	return config.markupSection ? ['analyzer', 'markup'] : ['analyzer'];
+}
+
 function optionLines<S>(catalog: Catalog<S>, config: Config, context: Context): string[] {
 	const lines: string[] = [];
 
 	for (const option of catalog.options) {
-		if (!readsOption(option, context)) {
+		const line = optionLineIn(option, config, context);
+
+		if (line === null) {
 			continue;
 		}
 
-		const value = config.options[option.key];
-		const fallback = defaultIn(option, context);
-
-		if (isOptionChangedIn(option, value, context)) {
-			// A section matches many files, and a key that picks something per file would give every one of them the same pick.
-			if (option.perFile) {
-				lines.push(`# ${option.key} applies to every file this section matches, so narrow the glob to the files that need it.`);
-			}
-
-			lines.push(`${option.key} = ${value}`);
-		} else if (config.everySetting && fallback !== null) {
-			lines.push(`${option.key} = ${fallback}`);
+		// A section matches many files, and a key that picks something per file would give every one of them the same pick.
+		if (option.perFile && isOptionChangedIn(option, config.options[option.key], context)) {
+			lines.push(`# ${option.key} applies to every file this section matches, so narrow the glob to the files that need it.`);
 		}
+
+		lines.push(line);
 	}
 
 	return lines;

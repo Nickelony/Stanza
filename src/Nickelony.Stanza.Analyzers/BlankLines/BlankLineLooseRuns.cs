@@ -179,10 +179,12 @@ internal static class BlankLineLooseRuns
 		{
 			int boundary = border.Boundary;
 
+			// A run with no gathered gap at its start or inside it stands as the text has it, so a border it lacks is not a loss.
 			if (
 				!removable.Contains(boundary)
 				&& !asked.Contains(boundary)
 				&& !BlankLineGaps.HasBlankLineBetween(siblings[boundary - 1], siblings[boundary])
+				&& HasGatheredGap(removable, border.RunStart, border.RunEnd)
 			)
 			{
 				dissolved.Add((border.RunStart, border.RunEnd));
@@ -214,6 +216,18 @@ internal static class BlankLineLooseRuns
 		}
 
 		return staying.ToImmutable();
+	}
+
+	/// <summary>Whether the gap above a run, or one inside it, is gathered.</summary>
+	private static bool HasGatheredGap(ImmutableHashSet<int> removable, int runStart, int runEnd)
+	{
+		for (int gap = runStart; gap < runEnd; gap++)
+		{
+			if (removable.Contains(gap))
+				return true;
+		}
+
+		return false;
 	}
 
 	/// <summary>The boundaries between single-line siblings whose gap holds a blank line and nothing else.</summary>
