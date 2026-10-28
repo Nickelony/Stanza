@@ -9,7 +9,7 @@ this page maps a gap to the rule that owns it.
 | Gap | Owner |
 | --- | --- |
 | A blank line beside a brace, including the one between a clause header and its `{`, but not the one above a block that follows a sibling | [ZA0036](https://github.com/Nickelony/Stanza/wiki/ZA0036-Remove-brace-padding) |
-| The blank line above a comment that leads a single-line unit | [ZA0053](https://github.com/Nickelony/Stanza/wiki/ZA0053-Separate-a-commented-sibling), where it is on; the grouping, import and single-line tight rules defer to it there |
+| The blank line above a comment that leads the second of two single-line units | [ZA0053](https://github.com/Nickelony/Stanza/wiki/ZA0053-Separate-a-commented-sibling), where it is on; the grouping, import and single-line tight rules defer to it there |
 | A gap with a multi-line neighbor, such as the unit before a multi-line construct or the unit after its `}` | [ZA0005](https://github.com/Nickelony/Stanza/wiki/ZA0005-Separate-multi-line-constructs) |
 | Runs of statements, members of one kind, members that share their `static` and `readonly` modifiers, and declarations of one type | [ZA0001](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-declaration-and-invocation-runs), [ZA0002](https://github.com/Nickelony/Stanza/wiki/ZA0002-Separate-member-groups), [ZA0003](https://github.com/Nickelony/Stanza/wiki/ZA0003-Separate-modifier-groups) and [ZA0004](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-same-type-declaration-groups) |
 | The import section, its directive groups, and the header of a file-scoped namespace | [ZA0007](https://github.com/Nickelony/Stanza/wiki/ZA0007-Separate-the-import-section), [ZA0008](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-the-import-directive-groups) and [ZA0009](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-a-file-scoped-namespace-declaration-from-its-first-member) |
@@ -93,7 +93,9 @@ The table holds for the analyzer. In [`stanza-markup`](https://github.com/Nickel
   Where ZA0047 is off, the run reaches across the marker.
 - A commented sibling in the gap ends a run for the grouping rules,
   because [ZA0053](https://github.com/Nickelony/Stanza/wiki/ZA0053-Separate-a-commented-sibling) writes a blank line above the comment.
+  A documentation comment ends it whatever blank lines stand between the comment and its unit.
   Where ZA0053 is off, the run reaches across the comment.
+- A declaration that a commented sibling splits off from its run is a run of its own, so no grouping rule sets it apart from the unit after it.
 - A blank line inside an inactive `#if` block separates nothing, so a run reaches across the block.
 
 ## A blank line a fix leaves behind

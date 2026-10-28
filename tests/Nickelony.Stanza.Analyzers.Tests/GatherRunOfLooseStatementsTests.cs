@@ -60,170 +60,170 @@ public sealed class GatherRunOfLooseStatementsTests
 			"three loose statements",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2;
+				second = 2;
 
-			third = 3;
-			""",
+				third = 3;
+				""",
 		],
 
 		[
 			"a multi-line statement in the middle",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2;
+				second = 2;
 
-			Call(
-				1,
-				2);
+				Call(
+					1,
+					2);
 
-			third = 3;
+				third = 3;
 
-			fourth = 4;
-			""",
+				fourth = 4;
+				""",
 		],
 
 		[
 			"a comment above a statement",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2;
+				second = 2;
 
-			// The third step.
-			third = 3;
+				// The third step.
+				third = 3;
 
-			fourth = 4;
-			""",
+				fourth = 4;
+				""",
 		],
 
 		[
 			"a comment that trails a statement",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2; // The second step.
+				second = 2; // The second step.
 
-			third = 3;
+				third = 3;
 
-			fourth = 4;
-			""",
+				fourth = 4;
+				""",
 		],
 
 		[
 			"a block comment in the gap",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2;
-			/* The rest. */
+				second = 2;
+				/* The rest. */
 
-			third = 3;
+				third = 3;
 
-			fourth = 4;
-			""",
+				fourth = 4;
+				""",
 		],
 
 		[
 			"a region directive in the gap, which ends a run as any directive does",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2;
-			#region Rest
+				second = 2;
+				#region Rest
 
-			third = 3;
+				third = 3;
 
-			fourth = 4;
-			#endregion
-			""",
+				fourth = 4;
+				#endregion
+				""",
 		],
 
 		[
 			"a conditional directive in the gap",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2;
+				second = 2;
 
-			#if DEBUG
-			third = 3;
-			#endif
+				#if DEBUG
+				third = 3;
+				#endif
 
-			fourth = 4;
-			""",
+				fourth = 4;
+				""",
 		],
 
 		[
 			"a gap with no blank line",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2;
-			third = 3;
+				second = 2;
+				third = 3;
 
-			fourth = 4;
-			""",
+				fourth = 4;
+				""",
 		],
 
 		[
 			"a gap the declaration run rule asks for once the run is gathered",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2;
+				second = 2;
 
-			DoThing();
+				DoThing();
 
-			DoThing();
+				DoThing();
 
-			third = 3;
-			""",
+				third = 3;
+				""",
 		],
 
 		[
 			"a gap the same-type rule asks for once the run is gathered",
 
 			"""
-			int first = 1;
+				int first = 1;
 
-			string second = "a";
+				string second = "a";
 
-			string third = "b";
+				string third = "b";
 
-			int fourth = 4;
+				int fourth = 4;
 
-			int fifth = 5;
-			""",
+				int fifth = 5;
+				""",
 		],
 
 		[
 			"a gap the multi-line rule asks for beside a multi-line statement",
 
 			"""
-			first = 1;
+				first = 1;
 
-			second = 2;
+				second = 2;
 
-			if (first > 0)
-			{
-				DoThing();
-			}
+				if (first > 0)
+				{
+					DoThing();
+				}
 
-			third = 3;
+				third = 3;
 
-			fourth = 4;
-			""",
+				fourth = 4;
+				""",
 		],
 	];
 
@@ -234,98 +234,98 @@ public sealed class GatherRunOfLooseStatementsTests
 			"members",
 
 			"""
-			class C
-			{
-				int first;
+				class C
+				{
+					int first;
 
-				int second;
+					int second;
 
-				int third;
+					int third;
 
-				int fourth;
-			}
-			""",
+					int fourth;
+				}
+				""",
 		],
 
 		[
 			"collection elements",
 
 			"""
-			class C
-			{
-				int[] numbers = new[]
+				class C
 				{
-					1,
-
-					2,
-
-					3,
-
-					4,
-				};
-			}
-			""",
-		],
-
-		[
-			"arguments",
-
-			"""
-			class C
-			{
-				void M()
-				{
-					Combine(
+					int[] numbers = new[]
+					{
 						1,
 
 						2,
 
 						3,
 
-						4
-					);
+						4,
+					};
 				}
+				""",
+		],
 
-				static void Combine(int first, int second, int third, int fourth) { }
-			}
-			""",
+		[
+			"arguments",
+
+			"""
+				class C
+				{
+					void M()
+					{
+						Combine(
+							1,
+
+							2,
+
+							3,
+
+							4
+						);
+					}
+
+					static void Combine(int first, int second, int third, int fourth) { }
+				}
+				""",
 		],
 
 		[
 			"switch sections",
 
 			"""
-			class C
-			{
-				void M(int value)
+				class C
 				{
-					switch (value)
+					void M(int value)
 					{
-						case 1: return;
+						switch (value)
+						{
+							case 1: return;
 
-						case 2: return;
+							case 2: return;
 
-						case 3: return;
+							case 3: return;
 
-						case 4: return;
+							case 4: return;
+						}
 					}
 				}
-			}
-			""",
+				""",
 		],
 
 		[
 			"top-level statements",
 
 			"""
-			DoThing();
+				DoThing();
 
-			DoThing();
+				DoThing();
 
-			DoThing();
+				DoThing();
 
-			DoThing();
-			""",
+				DoThing();
+				""",
 		],
 	];
 
@@ -374,6 +374,70 @@ public sealed class GatherRunOfLooseStatementsTests
 		AnalyzerRunResult result = await RunAsync(source);
 
 		Assert.HasCount(3, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	// Both runs hold the same statement indexes, so only the block tells the fixes of the two apart.
+	[TestMethod]
+	public async Task TwoBlocksThatHoldRunsOfTheSameBoundsAreBothGathered()
+	{
+		const string source = """
+			class C
+			{
+				int first;
+				int second;
+
+				void One()
+				{
+					first = 1;
+
+					second = 2;
+
+					first = 3;
+
+					second = 4;
+				}
+
+				void Two()
+				{
+					first = 5;
+
+					second = 6;
+
+					first = 7;
+
+					second = 8;
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				int first;
+				int second;
+
+				void One()
+				{
+					first = 1;
+					second = 2;
+					first = 3;
+					second = 4;
+				}
+
+				void Two()
+				{
+					first = 5;
+					second = 6;
+					first = 7;
+					second = 8;
+				}
+			}
+			""";
+
+		AnalyzerRunResult result = await RunAsync(source);
+
+		Assert.HasCount(6, result.Diagnostics);
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
@@ -591,7 +655,7 @@ public sealed class GatherRunOfLooseStatementsTests
 			TestRuleSets.Only(DiagnosticDescriptors.GatherRunOfLooseStatements)
 		);
 
-		Assert.AreSequenceEqual(new[] { fixedSource, fixedSource, fixedSource }, alone);
+		Assert.AreSequenceEqual([fixedSource, fixedSource, fixedSource], alone);
 	}
 
 	[TestMethod]
@@ -716,8 +780,8 @@ public sealed class GatherRunOfLooseStatementsTests
 			),
 		];
 
-		Assert.AreSequenceEqual(new[] { "second", "third ", "fourth" }, reported);
-		Assert.AreSequenceEqual(new[] { "first", "secon", "third" }, neighbors);
+		Assert.AreSequenceEqual(["second", "third ", "fourth"], reported);
+		Assert.AreSequenceEqual(["first", "secon", "third"], neighbors);
 	}
 
 	[TestMethod]
@@ -1013,9 +1077,9 @@ public sealed class GatherRunOfLooseStatementsTests
 	}
 
 	// The region marker rule writes a blank line beside its marker, which ends the run the statements would form.
-	// So the run stays as written until that blank line stands, and then it is gathered.
+	// So the run is gathered up to the marker whether or not that blank line stands yet.
 	[TestMethod]
-	public async Task ARegionMarkerRuleThatIsOnLeavesTheRunBesideItsMarkerForLater()
+	public async Task ARegionMarkerRuleThatIsOnEndsTheRunBesideItsMarkerBeforeItsBlankLineStands()
 	{
 		const string fixedSource = """
 			class C
@@ -1044,19 +1108,17 @@ public sealed class GatherRunOfLooseStatementsTests
 
 		AnalyzerRunResult reported = await RoslynTestHarness.ReportAllAsync(RegionSource, rules);
 
-		Assert.IsNotEmpty(reported.Diagnostics);
+		Assert.HasCount(
+			3,
 
-		Assert.IsEmpty(
-			reported.Diagnostics.Where(diagnostic =>
-				diagnostic.Id == DiagnosticDescriptors.GatherRunOfLooseStatements.Id
-			)
+			[
+				.. reported.Diagnostics.Where(diagnostic =>
+					diagnostic.Id == DiagnosticDescriptors.GatherRunOfLooseStatements.Id
+				),
+			]
 		);
 
-		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
-			RegionSource,
-			rules
-		);
-
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(RegionSource, rules);
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 

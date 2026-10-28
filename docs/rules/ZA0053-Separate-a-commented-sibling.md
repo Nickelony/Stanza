@@ -37,6 +37,23 @@ var options = new Options
 };
 ```
 
+The comment starts a new group, so the grouping rules end the run of declarations there, as [the gap rules](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#a-comment-or-a-directive-in-a-gap) say, and `int b` stays with `Build(1)`:
+
+```csharp
+// Before
+int a = 1;
+// Build once.
+int b = 2;
+Build(1);
+
+// After
+int a = 1;
+
+// Build once.
+int b = 2;
+Build(1);
+```
+
 - The rule judges the statements of a block or switch section, the members of a type, enum, namespace or file, and the import directives.
 - It also judges the elements of a delimited list:
   arguments, parameters, collection elements, initializer members, switch sections and arms, accessors and declarators.
@@ -51,6 +68,4 @@ var options = new Options
 - The grouping, import and single-line tight rules leave a gap that this rule reports to it, so the blank line is reported once;
   [the gap rules](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#gaps-and-owners) list them.
   Where the rule is off, they judge the gap as before.
-- A commented sibling in the gap ends a run for the grouping rules, because this rule writes a blank line above the comment.
-  Where this rule is off, the run reaches across the comment.
 - A comment or directive in the gap follows [the gap rules](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#a-comment-or-a-directive-in-a-gap).

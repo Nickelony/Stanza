@@ -158,9 +158,13 @@ describe('the generated .editorconfig', () => {
 			expect(text).not.toContain('stanza_tab_width');
 		});
 
-		it('names the group of each run of rules', () => {
-			expect(lines).toContain('# Group A.');
-			expect(lines).toContain('# Group B.');
+		it('names the group of each run of rules in the [*.cs] section only', () => {
+			const cs = text.slice(0, text.indexOf('[*.{'));
+			const markup = text.slice(text.indexOf('[*.{'));
+
+			expect(cs).toContain('# Group A.');
+			expect(cs).toContain('# Group B.');
+			expect(markup).not.toContain('# Group');
 		});
 
 		it('writes a rule stanza-markup applies by default as an active line in its own section only', () => {

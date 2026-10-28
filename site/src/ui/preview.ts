@@ -14,10 +14,10 @@ const isBlank = (text: string): boolean => text.trim() === '';
 
 const present = (node: HTMLElement | null): HTMLElement[] => (node ? [node] : []);
 
-type Mark = 'add' | 'del' | null;
+type Mark = 'add' | 'del';
 
 /** Draws a snippet with a gutter, and marks the lines the other side does not have. */
-function codeBlock(snippet: Snippet, marked: ReadonlySet<number>, mark: Exclude<Mark, null>, label: string): HTMLElement {
+function codeBlock(snippet: Snippet, marked: ReadonlySet<number>, mark: Mark, label: string): HTMLElement {
 	const gutter = mark === 'add' ? '+' : '−';
 	const word = mark === 'add' ? 'added' : 'removed';
 

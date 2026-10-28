@@ -24,7 +24,8 @@ How to build, test and format the repository, and what a rule, an option or a pu
 - `docs/` holds the documentation the wiki mirrors.
   [Architecture](https://github.com/Nickelony/Stanza/wiki/Architecture) maps the code to each part.
 - `site/` holds the rule configurator, a static page that the [Pages workflow](.github/workflows/pages.yml) publishes.
-  Its build reads the rule pages, the option pages and the analyzer readme, so it keeps no list of rules; [its readme](site/README.md) says how.
+  Its build reads the rule pages, the option pages and a few other files, so it keeps no list of rules;
+  [its readme](site/README.md) lists every file it reads.
 - `.github/` holds the CI, release and Pages workflows, the setup action and the scripts they share,
   and the issue and pull request templates; `icon/` holds the package icon.
 - A rule's page is `docs/rules/<id>-<title>.md`, whichever family it is in;
@@ -76,7 +77,7 @@ vale --glob='!**/{bin,obj,artifacts}/**' .
   which the pack step, the publish job and the `Repository` guards read, and give each issue form's product dropdown an option for it.
 - The `StanzaNewestRoslyn` line runs the analyzer tests on a newer Roslyn than the
   [floor](src/Nickelony.Stanza.Analyzers/README.md#installation) they build against.
-- A change to a rule page, an option page, the analyzer readme or `site/` also runs the site gates, in `site/`:
+- A change to `site/` or to a file the build reads, which [its readme](site/README.md) lists, also runs the site gates, in `site/`:
   `npm ci`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test` and `npm run build`.
 - `npm run format` applies Prettier, which formats the site as `./format.ps1` formats the C# code,
   and oxlint requires braces around the body of every `if` and loop.

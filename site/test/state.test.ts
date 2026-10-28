@@ -172,10 +172,19 @@ describe('the Markdown the pages use', () => {
 		expect(renderInline('**a** and *b* and 2 * 3')).toBe('<strong>a</strong> and <em>b</em> and 2 * 3');
 	});
 
-	it('links only to an https address or a relative path', () => {
-		expect(renderInline('[a](Terms.md) and [b](https://example.test/)')).toContain('<a href="Terms.md"');
-		expect(() => renderInline('[a](javascript:run)')).toThrowError(MarkdownError);
-		expect(() => renderInline('[a](HTTP://example.test/)')).toThrowError(/neither an https/);
+	it('links only to an https address', () => {
+		expect(renderInline('[b](https://example.test/)')).toContain('<a href="https://example.test/"');
+
+		for (const target of ['javascript:run', 'HTTP://example.test/', '\\\\evil.example/x', '//evil.example/x', 'Terms.md', '#notes']) {
+			expect(() => renderInline(`[a](${target})`), target).toThrowError(/not an https/);
+		}
+	});
+
+	it('refuses an image and bold with underscores, which would print as literal text', () => {
+		expect(() => renderInline('see ![logo](https://example.test/a.png)')).toThrowError(/image/);
+		expect(() => renderInline('a __bold__ word')).toThrowError(/underscores/);
+		expect(renderInline('a snake_case_name and __init')).toBe('a snake_case_name and __init');
+		expect(renderInline('an exclamation! [a](https://example.test/)')).toContain('<a href');
 	});
 
 	it('refuses Markdown the renderer would print as plain text', () => {

@@ -1,6 +1,6 @@
 name: Pages
 
-# The configurator is built from the rule pages, the option pages and the analyzer readme,
+# The configurator is built from the files that site/README.md lists, which the paths below name,
 # so a change to one of them rebuilds it, and a page the site cannot parse fails the pull request.
 on:
   push:

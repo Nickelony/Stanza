@@ -2,7 +2,7 @@
 
 Controls how many statements a [loose run](https://github.com/Nickelony/Stanza/wiki/Terms) may hold before [`ZA0052`](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) gathers it.
 Default: `3`.
-Read by [`ZA0052`](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements), whose page shows a run at the default limit and above it.
+Read by [`ZA0052`](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements), whose page shows a run above the default limit.
 
 | Value                                           | Effect                                                    |
 | ----------------------------------------------- | --------------------------------------------------------- |
@@ -33,3 +33,4 @@ size = 2;
 
 - The count covers the statements of one run, not of the whole block, so a comment or a multi-line statement starts the count again.
 - With a limit of `1`, a block of two statements belongs to [`ZA0006`](https://github.com/Nickelony/Stanza/wiki/ZA0006-Keep-the-two-units-of-a-container-together) where it judges the container.
+  `ZA0052` judges the pair where `ZA0006` is off or skips the container, as it skips one that holds a local function.

@@ -323,39 +323,39 @@ public sealed partial class ConvergenceTests
 			CommentedSiblingRuleSet(),
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					DoThing(); // Trailing.
-					// Note.
-					DoThing();
-					Build(1);
+					void M()
+					{
+						DoThing(); // Trailing.
+						// Note.
+						DoThing();
+						Build(1);
+					}
+
+					void DoThing() { }
+
+					int Build(int value) => value;
 				}
-
-				void DoThing() { }
-
-				int Build(int value) => value;
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					DoThing(); // Trailing.
+					void M()
+					{
+						DoThing(); // Trailing.
 
-					// Note.
-					DoThing();
-					Build(1);
+						// Note.
+						DoThing();
+						Build(1);
+					}
+
+					void DoThing() { }
+
+					int Build(int value) => value;
 				}
-
-				void DoThing() { }
-
-				int Build(int value) => value;
-			}
-			""",
+				""",
 		],
 
 		[
@@ -363,39 +363,39 @@ public sealed partial class ConvergenceTests
 			CommentedSiblingRuleSet(),
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Build(0);
-					DoThing();
-					// Note.
-					DoThing();
+					void M()
+					{
+						Build(0);
+						DoThing();
+						// Note.
+						DoThing();
+					}
+
+					void DoThing() { }
+
+					int Build(int value) => value;
 				}
-
-				void DoThing() { }
-
-				int Build(int value) => value;
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Build(0);
-					DoThing();
+					void M()
+					{
+						Build(0);
+						DoThing();
 
-					// Note.
-					DoThing();
+						// Note.
+						DoThing();
+					}
+
+					void DoThing() { }
+
+					int Build(int value) => value;
 				}
-
-				void DoThing() { }
-
-				int Build(int value) => value;
-			}
-			""",
+				""",
 		],
 
 		[
@@ -403,35 +403,35 @@ public sealed partial class ConvergenceTests
 			CommentedSiblingRuleSet(),
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					var a = 1;
-					// Note.
-					var b = 2;
-					DoThing();
-				}
+					void M()
+					{
+						var a = 1;
+						// Note.
+						var b = 2;
+						DoThing();
+					}
 
-				void DoThing() { }
-			}
-			""",
+					void DoThing() { }
+				}
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					var a = 1;
+					void M()
+					{
+						var a = 1;
 
-					// Note.
-					var b = 2;
-					DoThing();
+						// Note.
+						var b = 2;
+						DoThing();
+					}
+
+					void DoThing() { }
 				}
-
-				void DoThing() { }
-			}
-			""",
+				""",
 		],
 
 		[
@@ -439,31 +439,31 @@ public sealed partial class ConvergenceTests
 			CommentedSiblingRuleSet(DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns),
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					int a = 1;
-					// Note.
-					int b = 2;
-					string c = "x";
+					void M()
+					{
+						int a = 1;
+						// Note.
+						int b = 2;
+						string c = "x";
+					}
 				}
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					int a = 1;
+					void M()
+					{
+						int a = 1;
 
-					// Note.
-					int b = 2;
-					string c = "x";
+						// Note.
+						int b = 2;
+						string c = "x";
+					}
 				}
-			}
-			""",
+				""",
 		],
 
 		[
@@ -471,25 +471,25 @@ public sealed partial class ConvergenceTests
 			CommentedSiblingRuleSet(DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns),
 
 			"""
-			class C
-			{
-				private int _a;
-				// Note.
-				private int _b;
-				public void M() { }
-			}
-			""",
+				class C
+				{
+					private int _a;
+					// Note.
+					private int _b;
+					public void M() { }
+				}
+				""",
 
 			"""
-			class C
-			{
-				private int _a;
+				class C
+				{
+					private int _a;
 
-				// Note.
-				private int _b;
-				public void M() { }
-			}
-			""",
+					// Note.
+					private int _b;
+					public void M() { }
+				}
+				""",
 		],
 	];
 
@@ -521,6 +521,324 @@ public sealed partial class ConvergenceTests
 		);
 	}
 
+	// A blank line that another rule has yet to write, or a documentation comment a blank line sets apart from its unit,
+	// must not change what a rule decides, so each row settles on one text in every fix order.
+	public static IEnumerable<object[]> FixOrderRows { get; } =
+	[
+		[
+			"a declaration run above a multi-line statement keeps its blank line before ZA0005 writes the one below it",
+			TestRuleSets.Only(DiagnosticDescriptors.GatherRunOfLooseStatements),
+
+			"""
+				class C
+				{
+					void M()
+					{
+						loose = 1;
+
+						loose = 2;
+
+						loose = 3;
+
+						string text = "";
+
+						int number = 3;
+						Call(
+							1,
+							2);
+					}
+
+					int loose;
+
+					void Call(int first, int second) { }
+				}
+				""",
+
+			"""
+				class C
+				{
+					void M()
+					{
+						loose = 1;
+
+						loose = 2;
+
+						loose = 3;
+
+						string text = "";
+
+						int number = 3;
+
+						Call(
+							1,
+							2);
+					}
+
+					int loose;
+
+					void Call(int first, int second) { }
+				}
+				""",
+		],
+
+		[
+			"a gathered run beside the declaration run above a multi-line statement is gathered whichever rule fixes first",
+			TestRuleSets.Only(DiagnosticDescriptors.GatherRunOfLooseStatements),
+
+			"""
+				class C
+				{
+					void M()
+					{
+						loose = 1;
+
+						loose = 2;
+
+						loose = 3;
+
+						loose = 4;
+
+						int count = 2;
+
+						int number = 3;
+						Call(
+							1,
+							2);
+					}
+
+					int loose;
+
+					void Call(int first, int second) { }
+				}
+				""",
+
+			"""
+				class C
+				{
+					void M()
+					{
+						loose = 1;
+						loose = 2;
+						loose = 3;
+						loose = 4;
+
+						int count = 2;
+
+						int number = 3;
+
+						Call(
+							1,
+							2);
+					}
+
+					int loose;
+
+					void Call(int first, int second) { }
+				}
+				""",
+		],
+
+		[
+			"a run of calls beside a region marker keeps its blank lines before ZA0047 writes the ones around the marker",
+
+			TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors
+			),
+
+			"""
+				class C
+				{
+					void M()
+					{
+				#region Marked
+						loose = 4;
+				#endregion
+						DoThing();
+
+						DoThing();
+
+						Build(7);
+
+						loose = 1;
+
+						loose = 2;
+					}
+
+					int loose;
+
+					void DoThing() { }
+
+					int Build(int value) => value;
+				}
+				""",
+
+			"""
+				class C
+				{
+					void M()
+					{
+				#region Marked
+
+						loose = 4;
+
+				#endregion
+
+						DoThing();
+
+						DoThing();
+
+						Build(7);
+
+						loose = 1;
+
+						loose = 2;
+					}
+
+					int loose;
+
+					void DoThing() { }
+
+					int Build(int value) => value;
+				}
+				""",
+		],
+
+		[
+			"a documentation comment set apart from its field by a blank line still ends the declaration run",
+			DocumentedCommentedSiblingRuleSet(),
+
+			"""
+				class C
+				{
+					int first;
+					/// <summary>The second field.</summary>
+
+					int second;
+					void Run() { }
+				}
+				""",
+
+			"""
+				class C
+				{
+					int first;
+
+					/// <summary>The second field.</summary>
+					int second;
+					void Run() { }
+				}
+				""",
+		],
+
+		[
+			"a documentation comment set apart from its field by a blank line still ends the modifier run",
+
+			DocumentedCommentedSiblingRuleSet(
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+				DiagnosticDescriptors.SeparateMemberGroups
+			),
+
+			"""
+				class C
+				{
+					static int first;
+					/// <summary>The second field.</summary>
+
+					static int second;
+					void Run() { }
+				}
+				""",
+
+			"""
+				class C
+				{
+					static int first;
+
+					/// <summary>The second field.</summary>
+					static int second;
+					void Run() { }
+				}
+				""",
+		],
+
+		[
+			"a commented sibling starts a new group, so the declaration it splits off stays with the call below it",
+			TestRuleSets.Only(DiagnosticDescriptors.SeparateCommentedSibling),
+
+			"""
+				class C
+				{
+					void M()
+					{
+						int a = 1;
+						// c
+						int b = 2;
+						Build(1);
+					}
+
+					int Build(int value) => value;
+				}
+				""",
+
+			"""
+				class C
+				{
+					void M()
+					{
+						int a = 1;
+
+						// c
+						int b = 2;
+						Build(1);
+					}
+
+					int Build(int value) => value;
+				}
+				""",
+		],
+	];
+
+	[TestMethod]
+	[DynamicData(
+		nameof(FixOrderRows),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task AGapSettlesTheSameWayWhicheverFixComesFirst(
+		string name,
+		IReadOnlyDictionary<string, ReportDiagnostic> rules,
+		string source,
+		string fixedSource
+	)
+	{
+		foreach (bool bottomFirst in new[] { false, true })
+		{
+			AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+				source,
+
+				new RunOptions(RoslynTestHarness.AllAnalyzers)
+				{
+					DiagnosticOptions = rules,
+					FixesBottomFirst = bottomFirst,
+				}
+			);
+
+			RoslynTestHarness.AssertFixedText(
+				fixedSource,
+				result,
+				$"{name}, bottom first {bottomFirst}:"
+			);
+		}
+
+		await RoslynTestHarness.AssertFixAllPerIdSettlesAsync(
+			expected: fixedSource,
+			source,
+			options: new RunOptions(RoslynTestHarness.AllAnalyzers) { DiagnosticOptions = rules },
+			message: $"{name}:"
+		);
+	}
+
 	// The commented sibling rule on beside the rules that ship on, less the ones named.
 	private static Dictionary<string, ReportDiagnostic> CommentedSiblingRuleSet(
 		params DiagnosticDescriptor[] disabled
@@ -533,6 +851,19 @@ public sealed partial class ConvergenceTests
 
 		foreach (DiagnosticDescriptor descriptor in disabled)
 			rules[descriptor.Id] = ReportDiagnostic.Suppress;
+
+		return rules;
+	}
+
+	// The commented sibling rule and the documentation comment rule on beside the rules that ship on, less the ones named.
+	private static Dictionary<string, ReportDiagnostic> DocumentedCommentedSiblingRuleSet(
+		params DiagnosticDescriptor[] disabled
+	)
+	{
+		Dictionary<string, ReportDiagnostic> rules = CommentedSiblingRuleSet(disabled);
+
+		rules[DiagnosticDescriptors.KeepDocumentationCommentWithDeclaration.Id] =
+			ReportDiagnostic.Warn;
 
 		return rules;
 	}

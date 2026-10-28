@@ -34,7 +34,8 @@ function ruleLines<S>(catalog: Catalog<S>, config: Config, context: Context): st
 			continue;
 		}
 
-		if (config.everySetting && rule.group !== group) {
+		// The group names are the analyzer's, so the markup section, which lists the few rules the tool reads, goes without them.
+		if (config.everySetting && context === 'analyzer' && rule.group !== group) {
 			if (lines.length > 0) {
 				lines.push('');
 			}

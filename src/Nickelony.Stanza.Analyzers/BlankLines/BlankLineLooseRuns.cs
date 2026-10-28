@@ -73,8 +73,12 @@ internal static class BlankLineLooseRuns
 		{
 			SyntaxToken previousToken = siblings[index - 1].GetLastToken();
 
-			if (BlankLineGaps.CreateAdjacentRemoval(sourceText, previous: previousToken, next: siblings[index].GetFirstToken(), ruleId) is { } removal)
+			if (
+				BlankLineGaps.CreateAdjacentRemoval(sourceText, previous: previousToken, next: siblings[index].GetFirstToken(), ruleId) is { } removal
+			)
+			{
 				changes.Add(removal);
+			}
 		}
 
 		return changes.ToImmutable();
@@ -122,7 +126,7 @@ internal static class BlankLineLooseRuns
 
 	/// <summary>The boundaries where a rule asks for a blank line whatever is gathered.</summary>
 	/// <remarks>
-	/// These are the runs that stand as the text has them and the gaps above a commented sibling.
+	/// These are the runs that stand as the text has them and the gaps ZA0005, ZA0047 or ZA0053 keeps, written or not.
 	/// </remarks>
 	private static ImmutableHashSet<int> ReadAskedBoundaries(
 		SyntaxNodeAnalysisContext context,
@@ -150,18 +154,8 @@ internal static class BlankLineLooseRuns
 		{
 			context.CancellationToken.ThrowIfCancellationRequested();
 
-			if (
-				BlankLineOwnership.IsGapAboveOwnedByCommentedSibling(
-					context,
-					options,
-					previous: siblings[index - 1],
-					next: siblings[index],
-					rule
-				)
-			)
-			{
+			if (BlankLineGrouping.IsGapKeptBlank(siblings, boundaryIndex: index, gapOwners, cancellationToken: context.CancellationToken))
 				asked.Add(index);
-			}
 		}
 
 		return asked.ToImmutable();

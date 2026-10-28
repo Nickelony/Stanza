@@ -92,7 +92,11 @@ export function createOptionList(catalog: SiteCatalog, store: Store): OptionList
 
 				input.setAttribute('aria-invalid', checked.ok ? 'false' : 'true');
 				error.textContent = checked.ok ? '' : checked.reason;
-				write(checked.ok ? checked.value : null);
+
+				// A typo leaves the last valid value in the configuration, and the blur below puts it back in the box.
+				if (checked.ok) {
+					write(checked.value);
+				}
 			});
 
 			input.addEventListener('blur', () => {

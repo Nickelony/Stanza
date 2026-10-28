@@ -83,6 +83,14 @@ export function splitFences(file: string, text: string): Chunk[] {
 		const open = /^```(\S*)\s*$/.exec(lines[index]!);
 
 		if (!open) {
+			// A fence the splitter does not recognize would leave its example in the prose, where it vanishes without a word.
+			if (/^\s*(?:~~~|```)/.test(lines[index]!)) {
+				throw new ExtractionError(
+					file,
+					`line ${index + 1} opens a code fence this build does not read; use a bare "\`\`\`" in the first column, with at most a language after it`,
+				);
+			}
+
 			prose.push(lines[index]!);
 			continue;
 		}
@@ -740,15 +748,19 @@ function parseMarkupProfiles(file: string, text: string): { names: string[]; ext
 		}
 
 		if (!/^[-\s|:]+$/.test(line)) {
-			const name = /^`([a-z0-9]+)`$/.exec(cells[nameColumn] ?? '')?.[1];
+			const name = /^`([A-Za-z0-9-]+)`$/.exec(cells[nameColumn] ?? '')?.[1];
+			const claimed = [...(cells[extensionColumn] ?? '').matchAll(/`\.([A-Za-z0-9]+)`/g)].map((match) => match[1]!);
+
+			// A row with extensions and no readable name would add its extensions to the markup section and leave its profile out of the dropdown.
+			if (!name && claimed.length > 0) {
+				throw new ExtractionError(file, `the profile row "${line.trim()}" claims extensions but its "Profile" cell is not a name in backticks`);
+			}
 
 			if (name) {
 				names.push(name);
 			}
 
-			for (const match of (cells[extensionColumn] ?? '').matchAll(/`\.([A-Za-z0-9]+)`/g)) {
-				extensions.push(match[1]!);
-			}
+			extensions.push(...claimed);
 		}
 	}
 
@@ -871,7 +883,8 @@ export function extractFromSources(sources: ExtractionSources): SourceCatalog {
 				rules: related,
 			};
 		})
-		.sort((a, b) => a.key.localeCompare(b.key));
+		// A plain comparison orders by code unit, so the output does not depend on the ICU data of the Node that builds it.
+		.sort((a, b) => (a.key < b.key ? -1 : Number(a.key > b.key)));
 
 	return {
 		rules,

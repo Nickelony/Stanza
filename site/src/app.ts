@@ -1,13 +1,13 @@
+import logoUrl from '../../icon/Stanza.png';
 import { changedCount, decodeHash, emptyConfig, encodeHash, type Selection } from './config.ts';
 import type { SiteCatalog } from './model.ts';
 import { type AppState, createStore } from './store.ts';
 import { h } from './ui/dom.ts';
+import { createMarksToggle } from './ui/marks.ts';
 import { createOptionList } from './ui/optionlist.ts';
 import { createOutput } from './ui/output.ts';
 import { createPreview } from './ui/preview.ts';
 import { createRuleList, revealRule } from './ui/rulelist.ts';
-import logoUrl from '../../icon/Stanza.png';
-import { createMarksToggle } from './ui/marks.ts';
 import { createThemeToggle } from './ui/theme.ts';
 
 const tabs = ['rules', 'options'] as const;

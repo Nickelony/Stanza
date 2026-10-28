@@ -424,7 +424,7 @@ internal static partial class RoslynTestHarness
 
 			fixedDocument = await ApplyFirstFixAsync(
 					document: fixedDocument,
-					diagnostic: located[0],
+					diagnostic: options.FixesBottomFirst ? located[^1] : located[0],
 					cancellationToken: HarnessBudget.Token,
 					providers: options.Providers
 				)
@@ -708,7 +708,11 @@ internal static partial class RoslynTestHarness
 			.ConfigureAwait(false);
 
 		Document fixedDocument = document;
-		HashSet<(string Id, int? Start, int? End)> fixedRuns = [];
+		HashSet<(string Id, int? Start, int? End, int Container)> fixedRuns = [];
+
+		SyntaxNode? root = await document
+			.GetSyntaxRootAsync(HarnessBudget.Token)
+			.ConfigureAwait(false);
 
 		foreach (
 			Diagnostic diagnostic in diagnostics
@@ -717,11 +721,22 @@ internal static partial class RoslynTestHarness
 		)
 		{
 			// Every gap of a run carries the fix of the whole run, so the first fix applied leaves nothing for the rest.
+			// The bounds are indexes into a container, so the container, found from the previous sibling, joins the key.
 			var fixOptions = FixOptions.Parse(diagnostic);
 
 			if (
 				fixOptions.RunStart is not null
-				&& !fixedRuns.Add((diagnostic.Id, fixOptions.RunStart, fixOptions.RunEnd))
+				&& !fixedRuns.Add(
+					(
+						diagnostic.Id,
+						fixOptions.RunStart,
+						fixOptions.RunEnd,
+						root!
+							.FindNode(diagnostic.AdditionalLocations[0].SourceSpan)
+							.Parent?.SpanStart
+							?? -1
+					)
+				)
 			)
 			{
 				continue;

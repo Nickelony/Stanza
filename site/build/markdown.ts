@@ -19,10 +19,13 @@ const externalLink: LinkAttributes = () => ' target="_blank" rel="noopener"';
 
 const linkPattern = /^\[((?:[^[\]`]|`[^`]*`)*)\]\(([^)\s]+)\)/;
 
-/** A link goes to an https address or to a path beside the page, so a `javascript:` or `data:` target never reaches the site. */
-const allowedTarget = (url: string): boolean => url.startsWith('https://') || !/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(url);
+/** A link goes to an https address, so a `javascript:` or `data:` target, a protocol relative one and a path that would not resolve on the site never reach it. */
+const allowedTarget = (url: string): boolean => url.startsWith('https://');
 
-/** Renders the inline Markdown the pages use: code, links, bold and italic. Everything else is text. */
+const imagePattern = /^!\[[^\]]*\]\([^)\s]*\)/;
+const underscoreBoldPattern = /^__[^_\s](?:[^_]*[^_\s])?__/;
+
+/** Renders the inline Markdown the pages use: code, links, bold and italic. An image and underscore bold fail, and everything else is text. */
 export function renderInline(markdown: string, linkAttributes: LinkAttributes = externalLink): string {
 	let html = '';
 	let index = 0;
@@ -46,13 +49,17 @@ export function renderInline(markdown: string, linkAttributes: LinkAttributes = 
 				const url = match[2]!;
 
 				if (!allowedTarget(url)) {
-					throw new MarkdownError(`the link target "${url}" is neither an https:// address nor a relative path`);
+					throw new MarkdownError(`the link target "${url}" is not an https:// address`);
 				}
 
 				html += `<a href="${escapeHtml(url)}"${linkAttributes(url)}>${renderInline(match[1]!, linkAttributes)}</a>`;
 				index += match[0].length;
 				continue;
 			}
+		} else if (char === '!' && imagePattern.test(rest)) {
+			throw new MarkdownError(`the image "${imagePattern.exec(rest)![0]}" is Markdown the page renderer does not support`);
+		} else if (char === '_' && underscoreBoldPattern.test(rest)) {
+			throw new MarkdownError(`"${underscoreBoldPattern.exec(rest)![0]}" is bold with underscores, which the page renderer does not support; use **`);
 		} else if (rest.startsWith('**')) {
 			const end = markdown.indexOf('**', index + 2);
 

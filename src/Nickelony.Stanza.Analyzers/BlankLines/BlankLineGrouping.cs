@@ -53,14 +53,7 @@ internal static class BlankLineGrouping
 			return [];
 
 		return ReadBoundaries(
-			ReadRunBorders(
-				siblings,
-				getKey: GetMemberGroupKey,
-				includesLoneVariableBoundary: true,
-				gapOwners,
-				gathered: null,
-				cancellationToken
-			)
+			ReadRunBorders(siblings, getKey: GetMemberGroupKey, includesLoneVariableBoundary: true, gapOwners, gathered: null, cancellationToken)
 		);
 	}
 
@@ -74,14 +67,7 @@ internal static class BlankLineGrouping
 			return [];
 
 		return ReadBoundaries(
-			ReadRunBorders(
-				siblings,
-				getKey: GetModifierGroupKey,
-				includesLoneVariableBoundary: false,
-				gapOwners,
-				gathered: null,
-				cancellationToken
-			)
+			ReadRunBorders(siblings, getKey: GetModifierGroupKey, includesLoneVariableBoundary: false, gapOwners, gathered: null, cancellationToken)
 		);
 	}
 
@@ -113,12 +99,14 @@ internal static class BlankLineGrouping
 				continue;
 
 			// A declaration on its own is set apart only while it stands directly above the run.
+			// A caller that reads the gathered gaps keeps that boundary once a blank line stands below the declaration too,
+			// since the rule writes that blank line and a fix order that wrote it first would otherwise judge the gap alone.
 			if (
 				includesLoneVariableBoundary
 				&& run.Start >= 2
 				&& IsVariableLikeDeclaration(siblings[run.Start - 1])
 				&& !runs[index - 1].IsRepeated
-				&& !HasBlankLineBefore(siblings, run.Start, gathered)
+				&& (gathered is not null || !HasBlankLineBefore(siblings, run.Start, gathered: null))
 				&& !IsCommentedSiblingGap(
 					siblings,
 					boundaryIndex: run.Start,
@@ -223,13 +211,8 @@ internal static class BlankLineGrouping
 		CancellationToken cancellationToken
 	)
 	{
-		if (
-			commentedSiblingOwnerId is null
-			|| !BlankLineGaps.IsMissingBlankLineAboveComment(siblings[boundaryIndex - 1], siblings[boundaryIndex])
-		)
-		{
+		if (commentedSiblingOwnerId is null || !BlankLineGaps.IsKeptBlankAboveComment(siblings[boundaryIndex - 1], siblings[boundaryIndex]))
 			return false;
-		}
 
 		return !StanzaPragmas.IsSilencedByPragma(
 			syntaxTree: siblings[boundaryIndex].SyntaxTree,
@@ -247,6 +230,19 @@ internal static class BlankLineGrouping
 
 		int position = directive.SpanStart;
 		return !StanzaPragmas.IsSilencedByPragma(syntaxTree: directive.SyntaxTree, ruleId, position, cancellationToken);
+	}
+
+	/// <summary>Whether ZA0005, ZA0047 or ZA0053 keeps the gap, so a run ends there before it is written.</summary>
+	public static bool IsGapKeptBlank(
+		ImmutableArray<SyntaxNode> siblings,
+		int boundaryIndex,
+		GapOwners gapOwners,
+		CancellationToken cancellationToken
+	)
+	{
+		return IsMultiLineGap(siblings, boundaryIndex, multiLineGapOwnerId: gapOwners.MultiLineId, cancellationToken)
+			|| IsRegionMarkerGap(siblings[boundaryIndex], gapOwners.RegionMarkerId, cancellationToken)
+			|| IsCommentedSiblingGap(siblings, boundaryIndex, commentedSiblingOwnerId: gapOwners.CommentedSiblingId, cancellationToken);
 	}
 
 	private static ImmutableArray<Run> WalkRuns(
@@ -272,9 +268,7 @@ internal static class BlankLineGrouping
 				&& end < siblings.Length
 				&& keys[end] == runKey
 				&& !HasBlankLineBefore(siblings, end, gathered)
-				&& !IsMultiLineGap(siblings, boundaryIndex: end, multiLineGapOwnerId: gapOwners.MultiLineId, cancellationToken)
-				&& !IsRegionMarkerGap(siblings[end], gapOwners.RegionMarkerId, cancellationToken)
-				&& !IsCommentedSiblingGap(siblings, boundaryIndex: end, commentedSiblingOwnerId: gapOwners.CommentedSiblingId, cancellationToken)
+				&& !IsGapKeptBlank(siblings, boundaryIndex: end, gapOwners, cancellationToken)
 			)
 			{
 				end++;

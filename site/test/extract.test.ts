@@ -61,7 +61,6 @@ describe('the real pages', () => {
 
 		for (const group of realCatalog.groups) {
 			const ids = realCatalog.rules.filter((rule) => rule.group === group).map((rule) => rule.id);
-
 			expect(ids, group).toEqual([...ids].sort());
 		}
 	});
@@ -107,10 +106,17 @@ describe('the real pages', () => {
 	});
 
 	it('read an Unchanged example as code the rule leaves as written, with no After', () => {
-		const unchanged = ruleOf('ZA0052').examples.find((example) => example.unchanged);
+		// No rule page holds one today, so the test adds one to a real page.
+		const sources = withText(realSources(), 'docs/rules/ZA0052-Gather-a-run-of-loose-statements.md', (text) =>
+			text.replace(/\n- /, '\n```csharp\n// Unchanged\ntotal = 0;\n\ncount = 1;\n```\n\n- '),
+		);
+
+		const unchanged = extractFromSources(sources)
+			.rules.find((rule) => rule.id === 'ZA0052')!
+			.examples.find((example) => example.unchanged);
 
 		expect(unchanged?.afters).toEqual([]);
-		expect(unchanged?.before.code).toBe('total = 0;\n\ncount = 1;\n\nsize = 2;');
+		expect(unchanged?.before.code).toBe('total = 0;\n\ncount = 1;');
 	});
 
 	it('take the groups from the readme headings', () => {
@@ -427,8 +433,35 @@ describe('a page that does not parse', () => {
 		['a data address', '[x](data:text/html,abc)'],
 		['a plain http address', '[x](http://example.test/)'],
 		['a protocol relative address', '[x](//example.test/)'],
+		['a backslash address, which a browser reads as protocol relative', '[x](\\\\evil.example/x)'],
+		['a relative path', '[x](Terms.md)'],
+		['an anchor in the page', '[x](#notes)'],
 	])('fails the build on a link to %s', (_what, markdown) => {
-		failsOn(rulePath, (text) => `${text.trimEnd()}\n\n${markdown}\n`, /neither an https/);
+		failsOn(rulePath, (text) => `${text.trimEnd()}\n\n${markdown}\n`, /not an https/);
+	});
+
+	it.each([
+		['an image', '![logo](https://example.test/logo.png)'],
+		['bold with underscores', 'A __bold__ word.'],
+	])('fails the build on %s, which the renderer would print as literal text', (_what, markdown) => {
+		failsOn(rulePath, (text) => `${text.trimEnd()}\n\n${markdown}\n`, /does not support/);
+	});
+
+	it.each([
+		['a tilde fence', '~~~csharp\n// Before\na();\n~~~'],
+		['an indented fence', '  ```csharp\n  // Before\n  a();\n  ```'],
+		['a fence with more than a language after the backticks', '```csharp title="x"\na();\n```'],
+	])('fails the build on %s, which the splitter would not read as a code fence', (_what, markdown) => {
+		failsOn(rulePath, (text) => `${text.trimEnd()}\n\n${markdown}\n`, /opens a code fence this build does not read/);
+	});
+
+	it('reads a profile name with a hyphen', () => {
+		const sources = withText(realSources(), 'docs/Markup-behavior.md', (text) => text.replace('| `xml` |', '| `xml-doc` |'));
+		expect(extractFromSources(sources).markupProfiles).toContain('xml-doc');
+	});
+
+	it('fails the build when a profile row claims extensions without a readable name', () => {
+		failsOn('docs/Markup-behavior.md', (text) => text.replace('| `xml` |', '| xml |'), /claims extensions/);
 	});
 
 	it('fails the build when a table row has another number of cells than its header', () => {
@@ -443,5 +476,11 @@ describe('a page that does not parse', () => {
 	it('splits fences without losing the text between them', () => {
 		const chunks = splitFences('x.md', 'a\n```csharp\ncode\n```\nb');
 		expect(chunks.map((chunk) => chunk.kind)).toEqual(['text', 'code', 'text']);
+	});
+
+	it('names the file and the line of a fence it does not read', () => {
+		expect(() => splitFences('docs/x.md', 'a\n~~~\ncode\n~~~')).toThrowError(/docs\/x\.md: line 2/);
+		expect(() => splitFences('docs/x.md', 'a\n ```\ncode')).toThrowError(ExtractionError);
+		expect(() => splitFences('docs/x.md', '```csharp title="x"\ncode\n```')).toThrowError(/line 1/);
 	});
 });

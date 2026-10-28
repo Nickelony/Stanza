@@ -405,8 +405,11 @@ button:focus-visible,
 }
 
 /* The placeholder names the default as the dropdowns do, so it takes their font; a typed value keeps the code font. */
+/* The muted color reads in both themes, where the browser's own placeholder gray all but vanishes in the dark one. */
 .row-input::placeholder {
+	color: var(--muted);
 	font-family: var(--font);
+	opacity: 1;
 }
 
 .row.changed .row-select,

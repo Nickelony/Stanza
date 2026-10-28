@@ -27,6 +27,8 @@ The build keeps no list of rules or options. It reads these files and fails with
 | [`MarkupDiagnostics.cs`](../src/Nickelony.Stanza.Markup.Core/MarkupDiagnostics.cs) | The rules `stanza-markup` reads. |
 | [`icon/Stanza.png`](../icon/Stanza.png) | The logo in the header and the tab, and the image of a link preview. |
 
+A link in these files must be an `https://` address, and the build fails on any other target, on an image, and on bold written with underscores.
+
 The first column of an option's value table decides its input:
 literal values make a dropdown, `a number from 1 to 64` makes a bounded number, a comma separated list makes text,
 and `a profile name` makes a dropdown of the profiles.

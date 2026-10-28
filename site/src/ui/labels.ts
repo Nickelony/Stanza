@@ -27,7 +27,7 @@ export function defaultLabel<S>(rule: Rule<S>): string {
 	}
 
 	// A rule's label names its state as the severities are named, while an option's dropdown shows the literal it writes.
-	return rule.markupOnByDefault ? `Default (Off; on in stanza-markup)` : `Default (Off)`;
+	return rule.markupOnByDefault ? 'Default (Off; on in stanza-markup)' : 'Default (Off)';
 }
 
 /**

@@ -18,581 +18,581 @@ public sealed class SeparateCommentedSiblingTests
 			"statements",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
-					// Run the step.
-					Run();
+					void M()
+					{
+						Prepare();
+						// Run the step.
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
+					void M()
+					{
+						Prepare();
 
-					// Run the step.
-					Run();
+						// Run the step.
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"members",
 
 			"""
-			class C
-			{
-				int first;
-				// The second field.
-				int second;
-			}
-			""",
+				class C
+				{
+					int first;
+					// The second field.
+					int second;
+				}
+				""",
 
 			"""
-			class C
-			{
-				int first;
+				class C
+				{
+					int first;
 
-				// The second field.
-				int second;
-			}
-			""",
+					// The second field.
+					int second;
+				}
+				""",
 		],
 
 		[
 			"namespace members",
 
 			"""
-			namespace N
-			{
-				class First { }
-				// The second type.
-				class Second { }
-			}
-			""",
+				namespace N
+				{
+					class First { }
+					// The second type.
+					class Second { }
+				}
+				""",
 
 			"""
-			namespace N
-			{
-				class First { }
+				namespace N
+				{
+					class First { }
 
-				// The second type.
-				class Second { }
-			}
-			""",
+					// The second type.
+					class Second { }
+				}
+				""",
 		],
 
 		[
 			"enum members",
 
 			"""
-			enum Mode
-			{
-				Off,
-				// Not used yet.
-				On,
-			}
-			""",
+				enum Mode
+				{
+					Off,
+					// Not used yet.
+					On,
+				}
+				""",
 
 			"""
-			enum Mode
-			{
-				Off,
+				enum Mode
+				{
+					Off,
 
-				// Not used yet.
-				On,
-			}
-			""",
+					// Not used yet.
+					On,
+				}
+				""",
 		],
 
 		[
 			"initializer members with commented-out code",
 
 			"""
-			using System.Collections.Generic;
+				using System.Collections.Generic;
 
-			class C
-			{
-				Dictionary<string, int> map = new Dictionary<string, int>
+				class C
 				{
-					["a"] = 1,
-					// ["b"] = 2,
-					["c"] = 3,
-				};
-			}
-			""",
+					Dictionary<string, int> map = new Dictionary<string, int>
+					{
+						["a"] = 1,
+						// ["b"] = 2,
+						["c"] = 3,
+					};
+				}
+				""",
 
 			"""
-			using System.Collections.Generic;
+				using System.Collections.Generic;
 
-			class C
-			{
-				Dictionary<string, int> map = new Dictionary<string, int>
+				class C
 				{
-					["a"] = 1,
+					Dictionary<string, int> map = new Dictionary<string, int>
+					{
+						["a"] = 1,
 
-					// ["b"] = 2,
-					["c"] = 3,
-				};
-			}
-			""",
+						// ["b"] = 2,
+						["c"] = 3,
+					};
+				}
+				""",
 		],
 
 		[
 			"collection elements",
 
 			"""
-			class C
-			{
-				int[] numbers = new[]
+				class C
 				{
-					1,
-					// Skip two.
-					3,
-				};
-			}
-			""",
+					int[] numbers = new[]
+					{
+						1,
+						// Skip two.
+						3,
+					};
+				}
+				""",
 
 			"""
-			class C
-			{
-				int[] numbers = new[]
+				class C
 				{
-					1,
+					int[] numbers = new[]
+					{
+						1,
 
-					// Skip two.
-					3,
-				};
-			}
-			""",
+						// Skip two.
+						3,
+					};
+				}
+				""",
 		],
 
 		[
 			"arguments",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Call(
-						1,
-						// The second argument.
-						2
-					);
-				}
+					void M()
+					{
+						Call(
+							1,
+							// The second argument.
+							2
+						);
+					}
 
-				void Call(int first, int second) { }
-			}
-			""",
+					void Call(int first, int second) { }
+				}
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Call(
-						1,
+					void M()
+					{
+						Call(
+							1,
 
-						// The second argument.
-						2
-					);
+							// The second argument.
+							2
+						);
+					}
+
+					void Call(int first, int second) { }
 				}
-
-				void Call(int first, int second) { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"parameters",
 
 			"""
-			class C
-			{
-				void M(
-					int first,
-					// The second parameter.
-					int second
-				) { }
-			}
-			""",
+				class C
+				{
+					void M(
+						int first,
+						// The second parameter.
+						int second
+					) { }
+				}
+				""",
 
 			"""
-			class C
-			{
-				void M(
-					int first,
+				class C
+				{
+					void M(
+						int first,
 
-					// The second parameter.
-					int second
-				) { }
-			}
-			""",
+						// The second parameter.
+						int second
+					) { }
+				}
+				""",
 		],
 
 		[
 			"switch sections",
 
 			"""
-			class C
-			{
-				void M(int value)
+				class C
 				{
-					switch (value)
+					void M(int value)
 					{
-						case 1: return;
-						// The other value.
-						case 2: return;
+						switch (value)
+						{
+							case 1: return;
+							// The other value.
+							case 2: return;
+						}
 					}
 				}
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M(int value)
+				class C
 				{
-					switch (value)
+					void M(int value)
 					{
-						case 1: return;
+						switch (value)
+						{
+							case 1: return;
 
-						// The other value.
-						case 2: return;
+							// The other value.
+							case 2: return;
+						}
 					}
 				}
-			}
-			""",
+				""",
 		],
 
 		[
 			"switch expression arms",
 
 			"""
-			class C
-			{
-				string M(int value)
+				class C
 				{
-					return value switch
+					string M(int value)
 					{
-						1 => "one",
-						// The other value.
-						_ => "other",
-					};
+						return value switch
+						{
+							1 => "one",
+							// The other value.
+							_ => "other",
+						};
+					}
 				}
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				string M(int value)
+				class C
 				{
-					return value switch
+					string M(int value)
 					{
-						1 => "one",
+						return value switch
+						{
+							1 => "one",
 
-						// The other value.
-						_ => "other",
-					};
+							// The other value.
+							_ => "other",
+						};
+					}
 				}
-			}
-			""",
+				""",
 		],
 
 		[
 			"accessors",
 
 			"""
-			class C
-			{
-				int _value;
-
-				int Value
+				class C
 				{
-					get { return _value; }
-					// The setter.
-					set { _value = value; }
+					int _value;
+
+					int Value
+					{
+						get { return _value; }
+						// The setter.
+						set { _value = value; }
+					}
 				}
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				int _value;
-
-				int Value
+				class C
 				{
-					get { return _value; }
+					int _value;
 
-					// The setter.
-					set { _value = value; }
+					int Value
+					{
+						get { return _value; }
+
+						// The setter.
+						set { _value = value; }
+					}
 				}
-			}
-			""",
+				""",
 		],
 
 		[
 			"declarators",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					int first = 1,
-						// The second one.
-						second = 2;
+					void M()
+					{
+						int first = 1,
+							// The second one.
+							second = 2;
+					}
 				}
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					int first = 1,
+					void M()
+					{
+						int first = 1,
 
-						// The second one.
-						second = 2;
+							// The second one.
+							second = 2;
+					}
 				}
-			}
-			""",
+				""",
 		],
 
 		[
 			"import directives",
 
 			"""
-			using System;
-			// The text helpers.
-			using System.Text;
+				using System;
+				// The text helpers.
+				using System.Text;
 
-			class C { }
-			""",
+				class C { }
+				""",
 
 			"""
-			using System;
+				using System;
 
-			// The text helpers.
-			using System.Text;
+				// The text helpers.
+				using System.Text;
 
-			class C { }
-			""",
+				class C { }
+				""",
 		],
 
 		[
 			"a delimited comment",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
-					/* Run the step. */
-					Run();
+					void M()
+					{
+						Prepare();
+						/* Run the step. */
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
+					void M()
+					{
+						Prepare();
 
-					/* Run the step. */
-					Run();
+						/* Run the step. */
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a documentation comment",
 
 			"""
-			class C
-			{
-				int first;
-				/// <summary>The second field.</summary>
-				int second;
-			}
-			""",
+				class C
+				{
+					int first;
+					/// <summary>The second field.</summary>
+					int second;
+				}
+				""",
 
 			"""
-			class C
-			{
-				int first;
+				class C
+				{
+					int first;
 
-				/// <summary>The second field.</summary>
-				int second;
-			}
-			""",
+					/// <summary>The second field.</summary>
+					int second;
+				}
+				""",
 		],
 
 		[
 			"a delimited documentation comment",
 
 			"""
-			class C
-			{
-				int first;
-				/** <summary>The second field.</summary> */
-				int second;
-			}
-			""",
+				class C
+				{
+					int first;
+					/** <summary>The second field.</summary> */
+					int second;
+				}
+				""",
 
 			"""
-			class C
-			{
-				int first;
+				class C
+				{
+					int first;
 
-				/** <summary>The second field.</summary> */
-				int second;
-			}
-			""",
+					/** <summary>The second field.</summary> */
+					int second;
+				}
+				""",
 		],
 
 		[
 			"a run of comments",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
-					// Run the step,
-					// which takes a while.
-					Run();
+					void M()
+					{
+						Prepare();
+						// Run the step,
+						// which takes a while.
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
+					void M()
+					{
+						Prepare();
 
-					// Run the step,
-					// which takes a while.
-					Run();
+						// Run the step,
+						// which takes a while.
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a comment after a trailing comment",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare(); // Prepared.
-					// Run the step.
-					Run();
+					void M()
+					{
+						Prepare(); // Prepared.
+						// Run the step.
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare(); // Prepared.
+					void M()
+					{
+						Prepare(); // Prepared.
 
-					// Run the step.
-					Run();
+						// Run the step.
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a comment after the separator comment of a list",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Call(
-						1, // The first argument.
-						// The second argument.
-						2
-					);
-				}
+					void M()
+					{
+						Call(
+							1, // The first argument.
+							// The second argument.
+							2
+						);
+					}
 
-				void Call(int first, int second) { }
-			}
-			""",
+					void Call(int first, int second) { }
+				}
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Call(
-						1, // The first argument.
+					void M()
+					{
+						Call(
+							1, // The first argument.
 
-						// The second argument.
-						2
-					);
+							// The second argument.
+							2
+						);
+					}
+
+					void Call(int first, int second) { }
 				}
-
-				void Call(int first, int second) { }
-			}
-			""",
+				""",
 		],
 	];
 
@@ -603,289 +603,289 @@ public sealed class SeparateCommentedSiblingTests
 			"the first statement of a block",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					// Prepare first.
-					Prepare();
-				}
+					void M()
+					{
+						// Prepare first.
+						Prepare();
+					}
 
-				void Prepare() { }
-			}
-			""",
+					void Prepare() { }
+				}
+				""",
 		],
 
 		[
 			"the first statement after a case label",
 
 			"""
-			class C
-			{
-				void M(int value)
+				class C
 				{
-					switch (value)
+					void M(int value)
 					{
-						case 1:
-							// Prepare first.
-							Prepare();
-							break;
+						switch (value)
+						{
+							case 1:
+								// Prepare first.
+								Prepare();
+								break;
+						}
 					}
-				}
 
-				void Prepare() { }
-			}
-			""",
+					void Prepare() { }
+				}
+				""",
 		],
 
 		[
 			"the first member of a type",
 
 			"""
-			class C
-			{
-				// The first field.
-				int first;
-			}
-			""",
+				class C
+				{
+					// The first field.
+					int first;
+				}
+				""",
 		],
 
 		[
 			"the first initializer member",
 
 			"""
-			class C
-			{
-				object item = new
+				class C
 				{
-					// The first member.
-					First = 1,
-					Second = 2,
-				};
-			}
-			""",
+					object item = new
+					{
+						// The first member.
+						First = 1,
+						Second = 2,
+					};
+				}
+				""",
 		],
 
 		[
 			"a file header above the first import directive",
 
 			"""
-			// The header of this file.
-			using System;
+				// The header of this file.
+				using System;
 
-			class C { }
-			""",
+				class C { }
+				""",
 		],
 
 		[
 			"a gap that already has a blank line above the comment",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
+					void M()
+					{
+						Prepare();
 
-					// Run the step.
-					Run();
+						// Run the step.
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a directive in the gap",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
-			#if DEBUG
-					// Run the step.
-					Run();
-			#endif
+					void M()
+					{
+						Prepare();
+				#if DEBUG
+						// Run the step.
+						Run();
+				#endif
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a region marker in the gap",
 
 			"""
-			class C
-			{
-				int first;
-			#region Second
-				// The second field.
-				int second;
-			#endregion
-			}
-			""",
+				class C
+				{
+					int first;
+				#region Second
+					// The second field.
+					int second;
+				#endregion
+				}
+				""",
 		],
 
 		[
 			"a multi-line unit before the comment",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Call(
-						1);
-					// Run the step.
-					Run();
+					void M()
+					{
+						Call(
+							1);
+						// Run the step.
+						Run();
+					}
+
+					void Call(int value) { }
+
+					void Run() { }
 				}
-
-				void Call(int value) { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a multi-line unit after the comment",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Run();
-					// Call the step.
-					Call(
-						1);
+					void M()
+					{
+						Run();
+						// Call the step.
+						Call(
+							1);
+					}
+
+					void Call(int value) { }
+
+					void Run() { }
 				}
-
-				void Call(int value) { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a comment that trails the previous unit",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare(); // Prepared.
-					Run();
+					void M()
+					{
+						Prepare(); // Prepared.
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a comment that trails the separator of the previous unit",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Call(
-						1, // The first argument.
-						2
-					);
-				}
+					void M()
+					{
+						Call(
+							1, // The first argument.
+							2
+						);
+					}
 
-				void Call(int first, int second) { }
-			}
-			""",
+					void Call(int first, int second) { }
+				}
+				""",
 		],
 
 		[
 			"a comment with a blank line between it and the unit",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
-					// Not about the step below.
+					void M()
+					{
+						Prepare();
+						// Not about the step below.
 
-					Run();
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a comment on the line of the unit",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
-					/* Run the step. */ Run();
+					void M()
+					{
+						Prepare();
+						/* Run the step. */ Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 
 		[
 			"a documentation comment with a blank line between it and the unit",
 
 			"""
-			class C
-			{
-				int first;
-				/// <summary>The second field.</summary>
+				class C
+				{
+					int first;
+					/// <summary>The second field.</summary>
 
-				int second;
-			}
-			""",
+					int second;
+				}
+				""",
 		],
 
 		[
 			"siblings with no comment",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					Prepare();
-					Run();
+					void M()
+					{
+						Prepare();
+						Run();
+					}
+
+					void Prepare() { }
+
+					void Run() { }
 				}
-
-				void Prepare() { }
-
-				void Run() { }
-			}
-			""",
+				""",
 		],
 	];
 
@@ -1154,25 +1154,25 @@ public sealed class SeparateCommentedSiblingTests
 			null,
 
 			"""
-			class C
-			{
-				public void First() { }
-				public void Second() { }
-				// The property.
-				public int Third { get; set; }
-			}
-			""",
+				class C
+				{
+					public void First() { }
+					public void Second() { }
+					// The property.
+					public int Third { get; set; }
+				}
+				""",
 
 			"""
-			class C
-			{
-				public void First() { }
-				public void Second() { }
+				class C
+				{
+					public void First() { }
+					public void Second() { }
 
-				// The property.
-				public int Third { get; set; }
-			}
-			""",
+					// The property.
+					public int Third { get; set; }
+				}
+				""",
 		],
 
 		[
@@ -1180,25 +1180,25 @@ public sealed class SeparateCommentedSiblingTests
 			null,
 
 			"""
-			class C
-			{
-				public static void First() { }
-				public static void Second() { }
-				// The instance method.
-				public void Third() { }
-			}
-			""",
+				class C
+				{
+					public static void First() { }
+					public static void Second() { }
+					// The instance method.
+					public void Third() { }
+				}
+				""",
 
 			"""
-			class C
-			{
-				public static void First() { }
-				public static void Second() { }
+				class C
+				{
+					public static void First() { }
+					public static void Second() { }
 
-				// The instance method.
-				public void Third() { }
-			}
-			""",
+					// The instance method.
+					public void Third() { }
+				}
+				""",
 		],
 
 		[
@@ -1206,31 +1206,31 @@ public sealed class SeparateCommentedSiblingTests
 			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					int first = 1;
-					int second = 2;
-					// The text.
-					string third = "x";
+					void M()
+					{
+						int first = 1;
+						int second = 2;
+						// The text.
+						string third = "x";
+					}
 				}
-			}
-			""",
+				""",
 
 			"""
-			class C
-			{
-				void M()
+				class C
 				{
-					int first = 1;
-					int second = 2;
+					void M()
+					{
+						int first = 1;
+						int second = 2;
 
-					// The text.
-					string third = "x";
+						// The text.
+						string third = "x";
+					}
 				}
-			}
-			""",
+				""",
 		],
 
 		[
@@ -1238,21 +1238,21 @@ public sealed class SeparateCommentedSiblingTests
 			null,
 
 			"""
-			using System;
-			// The static imports.
-			using static System.Math;
+				using System;
+				// The static imports.
+				using static System.Math;
 
-			class C { }
-			""",
+				class C { }
+				""",
 
 			"""
-			using System;
+				using System;
 
-			// The static imports.
-			using static System.Math;
+				// The static imports.
+				using static System.Math;
 
-			class C { }
-			""",
+				class C { }
+				""",
 		],
 	];
 
@@ -1339,6 +1339,194 @@ public sealed class SeparateCommentedSiblingTests
 		);
 
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task APragmaOverThisRuleHandsTheReportBackToAGroupingRule()
+	{
+		string source = $$"""
+			class C
+			{
+				void M()
+				{
+			#pragma warning disable {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+					int first = 1;
+					int second = 2;
+					// Run the step.
+					Run();
+			#pragma warning restore {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				}
+
+				void Run() { }
+			}
+			""";
+
+		string fixedSource = $$"""
+			class C
+			{
+				void M()
+				{
+			#pragma warning disable {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+					int first = 1;
+					int second = 2;
+
+					// Run the step.
+					Run();
+			#pragma warning restore {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				}
+
+				void Run() { }
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
+			source,
+
+			TestRuleSets.Only(
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+				DiagnosticDescriptors.SeparateCommentedSibling
+			)
+		);
+
+		Assert.HasCount(1, result.Diagnostics);
+
+		Assert.AreEqual(
+			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns.Id,
+			result.Diagnostics[0].Id
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	// Where the pragma silences this rule, the comment ends no run, so the declarations on both sides of it form one.
+	[TestMethod]
+	public async Task APragmaOverThisRuleLeavesTheRunOfAGroupingRuleAcrossTheComment()
+	{
+		string source = $$"""
+			class C
+			{
+				void M()
+				{
+			#pragma warning disable {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+					int first = 1;
+					// Note.
+					int second = 2;
+					Build(1);
+			#pragma warning restore {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				}
+
+				int Build(int value) => value;
+			}
+			""";
+
+		string fixedSource = $$"""
+			class C
+			{
+				void M()
+				{
+			#pragma warning disable {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+					int first = 1;
+					// Note.
+					int second = 2;
+
+					Build(1);
+			#pragma warning restore {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				}
+
+				int Build(int value) => value;
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
+			source,
+
+			TestRuleSets.Only(
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+				DiagnosticDescriptors.SeparateCommentedSibling
+			)
+		);
+
+		Assert.HasCount(1, result.Diagnostics);
+
+		Assert.AreEqual(
+			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns.Id,
+			result.Diagnostics[0].Id
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	// Each row is an import rule that asks for the blank line above a commented sibling, under a pragma over this rule.
+	public static IEnumerable<object[]> PragmaImportRules { get; } =
+	[
+		[
+			DiagnosticDescriptors.SeparateImportSection,
+
+			$$"""
+				#pragma warning disable {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				using System;
+				// Say hello.
+				Helpers.DoThing();
+				#pragma warning restore {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				""",
+
+			$$"""
+				#pragma warning disable {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				using System;
+
+				// Say hello.
+				Helpers.DoThing();
+				#pragma warning restore {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				""",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateImportDirectiveGroups,
+
+			$$"""
+				#pragma warning disable {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				using System;
+				// The static imports.
+				using static System.Math;
+				#pragma warning restore {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+
+				class C { }
+				""",
+
+			$$"""
+				#pragma warning disable {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+				using System;
+
+				// The static imports.
+				using static System.Math;
+				#pragma warning restore {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}
+
+				class C { }
+				""",
+		],
+	];
+
+	[TestMethod]
+	[DynamicData(
+		nameof(PragmaImportRules),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task APragmaOverThisRuleHandsTheReportBackToAnImportRule(
+		DiagnosticDescriptor importRule,
+		string source,
+		string fixedSource
+	)
+	{
+		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
+			source,
+			TestRuleSets.Only(importRule, DiagnosticDescriptors.SeparateCommentedSibling)
+		);
+
+		Assert.HasCount(1, result.Diagnostics, importRule.Id);
+		Assert.AreEqual(importRule.Id, result.Diagnostics[0].Id);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result, importRule.Id);
 	}
 
 	// A build that writes no documentation file parses a documentation comment as a plain one, and it counts all the same.
