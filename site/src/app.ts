@@ -227,13 +227,35 @@ export function mountApp(root: HTMLElement, catalog: SiteCatalog): void {
 
 		event.preventDefault();
 		followLink(store, { kind, id });
+	});
 
-		if (kind === 'rule') {
-			revealRule(ruleList, id);
-		} else {
-			optionList.element.querySelector(`[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' });
+	// A selection made from the preview, by a link or a chip, scrolls its row into the list.
+	let revealed = store.get().selection;
+
+	store.subscribe((state) => {
+		const next = state.selection;
+
+		if (next?.kind === revealed?.kind && next?.id === revealed?.id) {
+			return;
+		}
+
+		revealed = next;
+
+		if (next) {
+			(next.kind === 'rule' ? ruleList : optionList).element.querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest' });
 		}
 	});
+
+	// Below the width where the panes stack, the preview sits under the list, so a tap on a row brings it into view.
+	const stacked = window.matchMedia('(max-width: 959px)');
+
+	for (const panel of [rulesPanel, optionsPanel]) {
+		panel.addEventListener('click', (event) => {
+			if (stacked.matches && (event.target as HTMLElement).closest('.row-main')) {
+				preview.element.scrollIntoView({ block: 'start', behavior: 'smooth' });
+			}
+		});
+	}
 
 	window.requestAnimationFrame(() => {
 		if (selection?.kind === 'rule') {

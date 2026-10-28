@@ -113,7 +113,11 @@ export function createRuleList(catalog: SiteCatalog, store: Store): RuleList {
 		for (const row of rows) {
 			const setting = settingOf(state.config, row.rule);
 			const changed = isRuleChanged(setting);
-			const visible = tokens.every((token) => row.haystack.includes(token)) && (!state.changedOnly || changed);
+
+			// A row that holds the focus stays, so setting it back to the default does not drop the focus onto the page.
+			const visible =
+				(tokens.every((token) => row.haystack.includes(token)) && (!state.changedOnly || changed)) || row.element.contains(document.activeElement);
+
 			const selected = state.selection?.kind === 'rule' && state.selection.id === row.id;
 			const effective = effectiveState(row.rule, setting);
 

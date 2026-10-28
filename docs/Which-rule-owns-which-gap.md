@@ -19,7 +19,7 @@ this page maps a gap to the rule that owns it.
 | A blank line between a closing brace and the clause keyword that continues it | [ZA0034](https://github.com/Nickelony/Stanza/wiki/ZA0034-Separate-a-clause-keyword-from-the-brace-before-it) and [ZA0035](https://github.com/Nickelony/Stanza/wiki/ZA0035-Keep-clause-keywords-adjacent) |
 | Whitespace between the braces of an empty body | [ZA0037](https://github.com/Nickelony/Stanza/wiki/ZA0037-Collapse-empty-blocks) |
 | The blank line in a container of two units | [ZA0006](https://github.com/Nickelony/Stanza/wiki/ZA0006-Keep-the-two-units-of-a-container-together) |
-| The blank lines of a loose run of statements, except a gap another rule asks for | [ZA0052](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements), where it is on; it leaves a container of two units to `ZA0006` |
+| The blank lines of a loose run of statements, except a gap another rule asks for | [ZA0052](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements), where it is on; it leaves a container of two units to `ZA0006` where that rule is on |
 | The break between an expression body's arrow and its expression | [ZA0044](https://github.com/Nickelony/Stanza/wiki/ZA0044-Break-the-expression-off-the-signature-line) |
 | The space before a trailing comment on a code line | [ZA0216](https://github.com/Nickelony/Stanza/wiki/ZA0216-Separate-a-trailing-comment-from-the-code) |
 | The elements of a documentation comment | [ZA0201](https://github.com/Nickelony/Stanza/wiki/ZA0201-Lay-out-a-documentation-comment), [ZA0202](https://github.com/Nickelony/Stanza/wiki/ZA0202-Mark-documentation-paragraphs), [ZA0203](https://github.com/Nickelony/Stanza/wiki/ZA0203-Remove-documentation-padding), [ZA0204](https://github.com/Nickelony/Stanza/wiki/ZA0204-Lay-out-the-items-of-a-documentation-list), [ZA0212](https://github.com/Nickelony/Stanza/wiki/ZA0212-Order-the-elements-of-a-documentation-comment) and [ZA0213](https://github.com/Nickelony/Stanza/wiki/ZA0213-Order-the-items-of-a-documentation-list) |
@@ -95,7 +95,7 @@ The table holds for the analyzer. In [`stanza-markup`](https://github.com/Nickel
   because [ZA0053](https://github.com/Nickelony/Stanza/wiki/ZA0053-Separate-a-commented-sibling) writes a blank line above the comment.
   A documentation comment ends it whatever blank lines stand between the comment and its unit.
   Where ZA0053 is off, the run reaches across the comment.
-- A declaration that a commented sibling splits off from its run is a run of its own, so no grouping rule sets it apart from the unit after it.
+- A declaration that a commented sibling splits off from its run stands alone, so no grouping rule sets it apart from the unit after it.
 - A blank line inside an inactive `#if` block separates nothing, so a run reaches across the block.
 
 ## A blank line a fix leaves behind

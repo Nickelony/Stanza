@@ -21,7 +21,7 @@ const optionOf = (key: string) => realCatalog.options.find((option) => option.ke
 
 describe('the real pages', () => {
 	it('parse every rule page, with no list of rules in the site', () => {
-		expect(rulePages.length).toBeGreaterThanOrEqual(72);
+		expect(rulePages.length).toBeGreaterThanOrEqual(74);
 		expect(realCatalog.rules).toHaveLength(rulePages.length);
 
 		for (const page of rulePages) {

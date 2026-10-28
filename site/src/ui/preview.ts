@@ -1,5 +1,5 @@
 import { type EffectiveState, effectiveState, isOptionChanged, settingOf } from '../config.ts';
-import { writtenOptionLine, writtenRuleLine } from '../editorconfig.ts';
+import { writtenOptionLines, writtenRuleLines } from '../editorconfig.ts';
 import { diffLines } from '../diff.ts';
 import type { Block, ExampleRef, Option, Rule, SiteCatalog, Snippet } from '../model.ts';
 import type { AppState, Store } from '../store.ts';
@@ -138,11 +138,14 @@ const statusText: Record<EffectiveState, string> = {
 	off: 'Off by default: the rule reports nothing until a line enables it.',
 };
 
+/** Separates the lines a preview shows when a rule or option is written in both sections. */
+const lineBreak = String.fromCharCode(10);
+
 function ruleStatus<S>(rule: Rule<S>, state: AppState): { text: string; line: string | null; off: boolean } {
 	const setting = settingOf(state.config, rule);
 	const effective = effectiveState(rule, setting);
 	const markupNote = rule.markupOnByDefault && setting === 'default' ? ' stanza-markup applies it unless a file disables it.' : '';
-	const line = writtenRuleLine(rule, state.config);
+	const line = writtenRuleLines(rule, state.config).join(lineBreak) || null;
 
 	const lead = effective === 'off' || effective === 'none' ? '' : `${stateLabels[effective]}. `;
 
@@ -321,8 +324,8 @@ export function createPreview(catalog: SiteCatalog, store: Store): Preview {
 			const value = state.config.options[option.key];
 			const effective = value ?? option.defaultValue;
 
-			const line = writtenOptionLine(option, state.config);
-			const stands = line === null ? 'no line is written' : 'Every setting writes it';
+			const line = writtenOptionLines(option, state.config).join(lineBreak) || null;
+			const stands = line === null ? 'no line is written' : 'Every setting is on, so it is written';
 
 			status.textContent =
 				value === undefined

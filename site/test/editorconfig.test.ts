@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Config, changedCount, emptyConfig } from '../src/config.ts';
-import { generateEditorConfig, writtenOptionLine, writtenRuleLine } from '../src/editorconfig.ts';
+import { generateEditorConfig, writtenOptionLines, writtenRuleLines } from '../src/editorconfig.ts';
 import type { SiteCatalog } from '../src/model.ts';
 import { optionDefaultLabel } from '../src/ui/labels.ts';
 import { catalog, option, realCatalog, rule } from './fixtures.ts';
@@ -33,36 +33,45 @@ const small = catalog(
 
 const config = (changes: Partial<Config>): Config => ({ ...emptyConfig(), ...changes });
 
-describe('the line a preview shows', () => {
-	const [zero, three] = small.rules;
-	const [lineLength, , , tabWidth] = small.options;
+describe('the lines a preview shows', () => {
+	const [zero, three, , markupRule] = small.rules;
+	const [lineLength, , markupOnly, tabWidth] = small.options;
 
-	it('is none while every setting is at its default', () => {
-		expect(writtenRuleLine(zero!, emptyConfig())).toBeNull();
-		expect(writtenOptionLine(lineLength!, emptyConfig())).toBeNull();
+	it('are none while every setting is at its default', () => {
+		expect(writtenRuleLines(zero!, emptyConfig())).toEqual([]);
+		expect(writtenOptionLines(lineLength!, emptyConfig())).toEqual([]);
 	});
 
-	it('is the line the generator writes for a chosen rule or option', () => {
+	it('are the line the generator writes for a chosen rule or option', () => {
 		const chosen = config({ rules: { ZA0003: 'warning' }, options: { stanza_max_line_length: '120' } });
 
-		expect(writtenRuleLine(three!, chosen)).toBe('dotnet_diagnostic.ZA0003.severity = warning');
-		expect(writtenOptionLine(lineLength!, chosen)).toBe('stanza_max_line_length = 120');
+		expect(writtenRuleLines(three!, chosen)).toEqual(['dotnet_diagnostic.ZA0003.severity = warning']);
+		expect(writtenOptionLines(lineLength!, chosen)).toEqual(['stanza_max_line_length = 120']);
 	});
 
-	it('is the line that Every setting adds, a comment for a rule that is off by default', () => {
+	it('are the line that Every setting adds, a comment for a rule that is off by default', () => {
+		const every = config({ everySetting: true, markupSection: false });
+
+		expect(writtenRuleLines(zero!, every)).toEqual(['dotnet_diagnostic.ZA0001.severity = warning']);
+		expect(writtenRuleLines(three!, every)).toEqual(['# dotnet_diagnostic.ZA0003.severity = suggestion']);
+		expect(writtenOptionLines(lineLength!, every)).toEqual(['stanza_max_line_length = 100']);
+		expect(writtenOptionLines(tabWidth!, every)).toEqual([]);
+	});
+
+	it('hold the line of each section, as a rule stanza-markup applies by default is written twice', () => {
 		const every = config({ everySetting: true });
 
-		expect(writtenRuleLine(zero!, every)).toBe('dotnet_diagnostic.ZA0001.severity = warning');
-		expect(writtenRuleLine(three!, every)).toBe('# dotnet_diagnostic.ZA0003.severity = suggestion');
-		expect(writtenOptionLine(lineLength!, every)).toBe('stanza_max_line_length = 100');
-		expect(writtenOptionLine(tabWidth!, every)).toBeNull();
+		expect(writtenRuleLines(markupRule!, every)).toEqual([
+			'# dotnet_diagnostic.ZA0101.severity = warning',
+			'dotnet_diagnostic.ZA0101.severity = warning',
+		]);
+
+		expect(writtenRuleLines(markupRule!, { ...every, markupSection: false })).toEqual(['# dotnet_diagnostic.ZA0101.severity = warning']);
 	});
 
-	it('leaves out an option only the markup section writes while that section is off', () => {
-		const markupOnly = small.options[2]!;
-
-		expect(writtenOptionLine(markupOnly, config({ everySetting: true }))).toBe('stanza_markup_enabled = true');
-		expect(writtenOptionLine(markupOnly, config({ everySetting: true, markupSection: false }))).toBeNull();
+	it('leave out an option only the markup section writes while that section is off', () => {
+		expect(writtenOptionLines(markupOnly!, config({ everySetting: true }))).toEqual(['stanza_markup_enabled = true']);
+		expect(writtenOptionLines(markupOnly!, config({ everySetting: true, markupSection: false }))).toEqual([]);
 	});
 });
 
@@ -116,7 +125,6 @@ describe('the generated .editorconfig', () => {
 
 	it('keeps a markup-only key out of the [*.cs] section', () => {
 		const text = generateEditorConfig(small, config({ options: { stanza_markup_enabled: 'false' } }));
-
 		expect(text).toBe(['[*.{xml,csproj}]', '# The section stanza-markup reads for markup files.', 'stanza_markup_enabled = false', ''].join('\n'));
 	});
 

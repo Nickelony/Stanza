@@ -60,7 +60,7 @@ internal abstract class StanzaCodeFixProvider : CodeFixProvider
 
 			// Every gap of a run carries the fix of the whole run, so the first one builds the changes and the rest are skipped,
 			// rather than each building them again for the merge to drop.
-			if (!IsFirstFixOfRun(root, diagnostic, fixedRuns))
+			if (!TryClaimRun(root, diagnostic, fixedRuns))
 				continue;
 
 			ImmutableArray<TextChange> changes = await row.Create(document: view, diagnostic, cancellationToken: context.CancellationToken)
@@ -76,7 +76,7 @@ internal abstract class StanzaCodeFixProvider : CodeFixProvider
 	}
 
 	/// <summary>Whether no earlier diagnostic of the same run was fixed.</summary>
-	private static bool IsFirstFixOfRun(SyntaxNode root, Diagnostic diagnostic, HashSet<(string Id, int? Start, int? End, int Container)> fixedRuns)
+	private static bool TryClaimRun(SyntaxNode root, Diagnostic diagnostic, HashSet<(string Id, int? Start, int? End, int Container)> fixedRuns)
 	{
 		var fixOptions = FixOptions.Parse(diagnostic);
 

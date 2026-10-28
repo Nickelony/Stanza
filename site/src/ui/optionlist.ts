@@ -139,7 +139,11 @@ export function createOptionList(catalog: SiteCatalog, store: Store): OptionList
 		for (const row of rows) {
 			const value = state.config.options[row.key];
 			const changed = isOptionChanged(row.option, value);
-			const visible = tokens.every((token) => row.key.includes(token)) && (!state.changedOnly || changed);
+
+			// A row that holds the focus stays, so setting it back to the default does not drop the focus onto the page.
+			const visible =
+				(tokens.every((token) => row.key.includes(token)) && (!state.changedOnly || changed)) || row.element.contains(document.activeElement);
+
 			const selected = state.selection?.kind === 'option' && state.selection.id === row.key;
 
 			row.element.hidden = !visible;

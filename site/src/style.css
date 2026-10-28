@@ -497,6 +497,7 @@ button:focus-visible,
 
 .status-line {
 	display: block;
+	white-space: pre-wrap;
 	margin-top: 3px;
 	color: var(--muted);
 	font-size: 12.5px;

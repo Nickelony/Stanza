@@ -74,22 +74,18 @@ export function optionLineIn<S>(option: Option<S>, config: Config, context: Cont
 	return config.everySetting && fallback !== null ? `${option.key} = ${fallback}` : null;
 }
 
-/** The first line the configuration writes for a rule, in the sections it writes. */
-export function writtenRuleLine<S>(rule: Rule<S>, config: Config): string | null {
-	return (
-		writtenContexts(config)
-			.map((context) => ruleLineIn(rule, config, context))
-			.find((line) => line !== null) ?? null
-	);
+/** Every distinct line the configuration writes for a rule, across the sections it writes. */
+export function writtenRuleLines<S>(rule: Rule<S>, config: Config): string[] {
+	return distinct(writtenContexts(config).map((context) => ruleLineIn(rule, config, context)));
 }
 
-/** The first line the configuration writes for an option, in the sections it writes. */
-export function writtenOptionLine<S>(option: Option<S>, config: Config): string | null {
-	return (
-		writtenContexts(config)
-			.map((context) => optionLineIn(option, config, context))
-			.find((line) => line !== null) ?? null
-	);
+/** Every distinct line the configuration writes for an option, across the sections it writes. */
+export function writtenOptionLines<S>(option: Option<S>, config: Config): string[] {
+	return distinct(writtenContexts(config).map((context) => optionLineIn(option, config, context)));
+}
+
+function distinct(lines: Array<string | null>): string[] {
+	return [...new Set(lines.filter((line): line is string => line !== null))];
 }
 
 function writtenContexts(config: Config): Context[] {

@@ -85,6 +85,9 @@ public sealed class RulePageExampleTests
 	[
 		// ZA0001 writes the gap above the first property, and ZA0002 the one above the method.
 		("ZA0002", string.Empty, ["ZA0001"]),
+
+		// ZA0001 would pair the declaration that the comment splits off with the call below it.
+		("ZA0053", string.Empty, ["ZA0001"]),
 		("ZA0044", "with ZA0046 enabled", ["ZA0046"]),
 	];
 
