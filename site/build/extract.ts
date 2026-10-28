@@ -68,8 +68,10 @@ const pageLinks: LinkAttributes = (url) => {
 	return ` target="_blank" rel="noopener"${selected ? ` data-select="${selected}"` : ''}`;
 };
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -----------
 // Fenced code
+// -----------
+
 type Chunk = { kind: 'text'; text: string } | { kind: 'code'; lang: string; code: string };
 
 /** Splits a page into the text between code fences and the fenced blocks. */
@@ -161,8 +163,10 @@ function labelSegments(lang: string, code: string, rule = false): Segment[] {
 	return segments.filter((segment) => segment.code !== '' || segment.label !== '');
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -------------------
 // The analyzer readme
+// -------------------
+
 interface ReadmeRule {
 	id: string;
 	group: string;
@@ -306,8 +310,10 @@ export function literalDefault(cell: string): string | null {
 	return tokens.length > 0 && rest === '' ? tokens.join(', ') : null;
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// ----------
 // Rule pages
+// ----------
+
 export function parseRulePage(
 	file: string,
 	text: string,
@@ -463,8 +469,10 @@ function ruleExamples(file: string, lang: string, code: string): RuleExample<Sou
 	return examples;
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// ------------
 // Option pages
+// ------------
+
 const invalidRow = /\b(absent|anything else|below zero|above \d+|not a number|empty)\b/i;
 
 interface Classified {
@@ -673,6 +681,7 @@ export function parseOptionPage(file: string, text: string, profiles: readonly s
 	}));
 
 	const toolDiffers = toolDefault.test(plainText(defaultMarkdown));
+
 	const tableLiterals = new Set(
 		valueTable.rows
 			.map((row) => row[0] ?? '')
@@ -711,8 +720,10 @@ export function parseOptionPage(file: string, text: string, profiles: readonly s
 	};
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -----------------
 // The other sources
+// -----------------
+
 /** Returns the profiles of the markup behavior page, each with the extensions it claims, without the dot. */
 function parseMarkupProfiles(file: string, text: string): { names: string[]; extensions: string[] } {
 	const lines = normalize(text).split('\n');
@@ -744,6 +755,7 @@ function parseMarkupProfiles(file: string, text: string): { names: string[]; ext
 		if (extensionColumn < 0) {
 			nameColumn = cells.findIndex((cell) => /^profile$/i.test(cell));
 			extensionColumn = cells.findIndex((cell) => /^extensions$/i.test(cell));
+
 			continue;
 		}
 
@@ -792,8 +804,10 @@ function parseMarkupRuleIds(file: string, text: string): Set<string> {
 	return new Set(declared);
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
+// -----------
 // The catalog
+// -----------
+
 /** Names the file in a failure of a page: Markdown the renderer cannot print, or a shape nothing foresaw. */
 function inFile(file: string, error: unknown): ExtractionError {
 	if (error instanceof ExtractionError) {
@@ -855,7 +869,6 @@ export function extractFromSources(sources: ExtractionSources): SourceCatalog {
 
 	const rules: Rule<SourceSnippet>[] = readme.rules.map((row) => {
 		const { optionKeys: named, ...rule } = parsedRules.get(row.id)!;
-
 		return { ...rule, readByMarkup: markupIds.has(row.id), options: named.filter((key) => optionKeys.has(key)).sort() };
 	});
 

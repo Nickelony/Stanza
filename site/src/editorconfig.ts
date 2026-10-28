@@ -102,7 +102,6 @@ function section(header: string, comment: string | null, rules: string[], option
 function leavesOutMarkup<S>(catalog: Catalog<S>, config: Config): boolean {
 	return catalog.options.some((option) => {
 		const value = config.options[option.key];
-
 		return isOptionChanged(option, value) && !isOptionChangedIn(option, value, 'analyzer');
 	});
 }

@@ -264,7 +264,6 @@ describe('a key whose default differs in stanza-markup', () => {
 
 	it('says why the key is missing when the markup section is off and only the tool would have had it', () => {
 		const text = generateEditorConfig(real, config({ options: { stanza_markup_scope: 'all' }, markupSection: false }));
-
 		expect(text).toBe('# stanza-markup settings are left out because Markup section is off.\n');
 	});
 

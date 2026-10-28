@@ -38,6 +38,7 @@ async function copyText(text: string): Promise<boolean> {
 
 		area.style.position = 'fixed';
 		area.style.opacity = '0';
+
 		document.body.append(area);
 		area.select();
 
@@ -63,6 +64,7 @@ export function createOutput(catalog: SiteCatalog, store: Store): Output {
 
 	const announce = (message: string): void => {
 		status.textContent = message;
+
 		window.clearTimeout(timer);
 		timer = window.setTimeout(() => (status.textContent = ''), 2500);
 	};
@@ -83,8 +85,10 @@ export function createOutput(catalog: SiteCatalog, store: Store): Output {
 				const link = h('a', { href: url, download: '.editorconfig' });
 
 				document.body.append(link);
+
 				link.click();
 				link.remove();
+
 				URL.revokeObjectURL(url);
 			},
 		},
@@ -126,6 +130,7 @@ export function createOutput(catalog: SiteCatalog, store: Store): Output {
 	const update = (state: AppState): void => {
 		text = generateEditorConfig(catalog, state.config);
 		code.replaceChildren(...colorize(text));
+
 		everySetting.checked = state.config.everySetting;
 		markup.checked = state.config.markupSection;
 	};

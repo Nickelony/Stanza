@@ -40,6 +40,7 @@ export function renderInline(markdown: string, linkAttributes: LinkAttributes = 
 			if (end > index) {
 				html += `<code>${escapeHtml(markdown.slice(index + 1, end))}</code>`;
 				index = end + 1;
+
 				continue;
 			}
 		} else if (char === '[') {
@@ -54,6 +55,7 @@ export function renderInline(markdown: string, linkAttributes: LinkAttributes = 
 
 				html += `<a href="${escapeHtml(url)}"${linkAttributes(url)}>${renderInline(match[1]!, linkAttributes)}</a>`;
 				index += match[0].length;
+
 				continue;
 			}
 		} else if (char === '!' && imagePattern.test(rest)) {
@@ -66,6 +68,7 @@ export function renderInline(markdown: string, linkAttributes: LinkAttributes = 
 			if (end > index + 2) {
 				html += `<strong>${renderInline(markdown.slice(index + 2, end), linkAttributes)}</strong>`;
 				index = end + 2;
+
 				continue;
 			}
 		} else if (char === '*' && rest.length > 1 && rest[1] !== ' ') {
@@ -74,6 +77,7 @@ export function renderInline(markdown: string, linkAttributes: LinkAttributes = 
 			if (end > index + 1 && markdown[end - 1] !== ' ') {
 				html += `<em>${renderInline(markdown.slice(index + 1, end), linkAttributes)}</em>`;
 				index = end + 1;
+
 				continue;
 			}
 		}

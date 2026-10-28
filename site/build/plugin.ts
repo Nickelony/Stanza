@@ -15,7 +15,6 @@ export function stanzaCatalog(repositoryRoot: string): Plugin {
 
 	const build = async (): Promise<string> => {
 		const { catalog, css } = await highlightCatalog(extractCatalog(repositoryRoot));
-
 		return `export const catalog = ${JSON.stringify(catalog)};\nexport const tokenCss = ${JSON.stringify(css)};\n`;
 	};
 

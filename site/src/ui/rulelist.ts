@@ -61,6 +61,7 @@ export function createRuleList(catalog: SiteCatalog, store: Store): RuleList {
 			select.setAttribute('aria-label', `Severity of ${rule.id}`);
 
 			const li = h('li', { class: 'row', dataset: { id: rule.id } }, button, select);
+
 			const row: RuleRow = {
 				id: rule.id,
 				haystack: `${rule.id} ${rule.title}`.toLowerCase(),
@@ -94,7 +95,6 @@ export function createRuleList(catalog: SiteCatalog, store: Store): RuleList {
 			});
 
 			button.addEventListener('click', () => store.set({ selection: { kind: 'rule', id: rule.id }, variant: 0 }));
-
 			button.addEventListener('keydown', (event) => navigate(event, rows, row));
 
 			list.append(li);

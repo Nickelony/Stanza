@@ -127,7 +127,6 @@ export function createOptionList(catalog: SiteCatalog, store: Store): OptionList
 		});
 
 		button.addEventListener('click', () => store.set({ selection: { kind: 'option', id: option.key }, variant: 0 }));
-
 		button.addEventListener('keydown', (event) => navigate(event, rows, row));
 
 		list.append(li);
