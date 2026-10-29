@@ -37,6 +37,21 @@ internal static class BlankLineAnalysis
 		}
 	}
 
+	/// <summary>Reports the missing blank line above the comment that leads a single-line sibling.</summary>
+	public static void ReportCommentedSiblingGaps(SyntaxNodeAnalysisContext context, ImmutableArray<SyntaxNode> siblings, StanzaRule rule)
+	{
+		for (int index = 1; index < siblings.Length; index++)
+		{
+			context.CancellationToken.ThrowIfCancellationRequested();
+
+			SyntaxNode previous = siblings[index - 1];
+			SyntaxNode next = siblings[index];
+
+			if (BlankLineGaps.IsMissingBlankLineAboveComment(previous, next))
+				ReportGap(context, previous, next, rule);
+		}
+	}
+
 	/// <summary>Reports the missing blank line at each given boundary whose gap no other rule owns.</summary>
 	public static void ReportGroupingBoundaries(
 		SyntaxNodeAnalysisContext context,
@@ -67,12 +82,19 @@ internal static class BlankLineAnalysis
 		Func<SyntaxNode, SyntaxNode, bool> isBoundary
 	)
 	{
+		StanzaOptions? options = null;
+
 		for (int index = 1; index < siblings.Length; index++)
 		{
 			context.CancellationToken.ThrowIfCancellationRequested();
 
-			if (isBoundary(siblings[index - 1], siblings[index]))
-				ReportImportBoundary(context, previous: siblings[index - 1], next: siblings[index], rule);
+			if (!isBoundary(siblings[index - 1], siblings[index]))
+				continue;
+
+			// Options are read once per container, at its first import boundary.
+			options ??= StanzaOptions.From(context.Options, context.Node.SyntaxTree);
+
+			ReportImportBoundary(context, options, previous: siblings[index - 1], next: siblings[index], rule);
 		}
 	}
 
@@ -135,11 +157,17 @@ internal static class BlankLineAnalysis
 
 	/// <summary>Reports the gap unless a directive in it keeps the gap as written.</summary>
 	/// <remarks>
-	/// The import rules own their gaps, so no other rule is asked.
+	/// The import rules own their gaps, so only the commented sibling rule is asked.
 	/// </remarks>
-	private static void ReportImportBoundary(SyntaxNodeAnalysisContext context, SyntaxNode previous, SyntaxNode next, StanzaRule rule)
+	private static void ReportImportBoundary(
+		SyntaxNodeAnalysisContext context,
+		StanzaOptions options,
+		SyntaxNode previous,
+		SyntaxNode next,
+		StanzaRule rule
+	)
 	{
-		if (!BlankLineGaps.HasDirectiveBefore(next))
+		if (!BlankLineGaps.HasDirectiveBefore(next) && !BlankLineOwnership.IsGapAboveOwnedByCommentedSibling(context, options, previous, next, rule))
 			ReportGap(context, previous, next, rule);
 	}
 

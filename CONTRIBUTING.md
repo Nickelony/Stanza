@@ -8,6 +8,7 @@ How to build, test and format the repository, and what a rule, an option or a pu
 - Install the .NET 8 runtime, which the test projects also need.
 - Install PowerShell, which runs the formatting gate.
 - Install [Vale](https://vale.sh/docs/install), which checks the prose of the pages and the comments.
+- Install Node.js 24, the version the Pages workflow pins, which builds and tests the [`site/`](site/) configurator.
 
 ## Documentation
 
@@ -22,7 +23,10 @@ How to build, test and format the repository, and what a rule, an option or a pu
 - `tests/` holds the test projects and the analyzer self-check.
 - `docs/` holds the documentation the wiki mirrors.
   [Architecture](https://github.com/Nickelony/Stanza/wiki/Architecture) maps the code to each part.
-- `.github/` holds the CI and release workflows, the setup action and the scripts they share,
+- `site/` holds the rule configurator, a static page that the [Pages workflow](.github/workflows/pages.yml) publishes.
+  Its build reads the rule pages, the option pages and a few other files, so it keeps no list of rules;
+  [its readme](site/README.md) lists every file it reads.
+- `.github/` holds the CI, release and Pages workflows, the setup action and the scripts they share,
   and the issue and pull request templates; `icon/` holds the package icon.
 - A rule's page is `docs/rules/<id>-<title>.md`, whichever family it is in;
   a code no descriptor backs has its page under `docs/tool/`.
@@ -73,11 +77,20 @@ vale --glob='!**/{bin,obj,artifacts}/**' .
   which the pack step, the publish job and the `Repository` guards read, and give each issue form's product dropdown an option for it.
 - The `StanzaNewestRoslyn` line runs the analyzer tests on a newer Roslyn than the
   [floor](src/Nickelony.Stanza.Analyzers/README.md#installation) they build against.
+- A change to `site/` or to a file the build reads, which [its readme](site/README.md) lists, also runs the site gates, in `site/`:
+  `npm ci`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test` and `npm run build`.
+- `npm run format` writes the changes that `npm run format:check` reports;
+  [the site readme](site/README.md) says what the formatter and the linter require.
+- The site tests read the pages, so a page the site cannot parse fails them.
+  The Pages workflow runs the same steps on a pull request.
 - A narrower command is fine while a change is in progress; CI still runs every gate before the pull request can merge.
 
 ## Releasing
 
 A release is a tag, which the [release workflow](.github/workflows/release.yml) verifies, packs and publishes.
+
+The [Pages workflow](.github/workflows/pages.yml) publishes the site on each push to `main` that changes what the site reads.
+[The site readme](site/README.md) names the one-time repository setting its first deployment needs.
 
 ## Adding or changing a rule
 
@@ -98,6 +111,8 @@ A release is a tag, which the [release workflow](.github/workflows/release.yml) 
    which leads with Adds or Removes for a rule that changes a blank line.
    - The row goes in the table of its group, in ID order.
    - A group is a `###` heading above a table, and `wiki.ps1` takes the groups of the sidebar from those headings.
+   - The [site](site/README.md) lists the rule from its page and this row, so it needs no step of its own;
+     its tests fail when the page and the row disagree on the tier.
 3. Add the rule's row to `src/Nickelony.Stanza.Analyzers/AnalyzerReleases.Unshipped.md` in the shape the release-tracking analyzers read;
    a rule with no row is a build error.
 4. Give the rule exactly one code fix in the `Nickelony.Stanza.Analyzers.CodeFixes` project.
@@ -122,6 +137,7 @@ The `Repository` guards in `tests/` own the exact contracts;
 1. Declare the key. A key that only the analyzer reads goes in `src/Nickelony.Stanza.Analyzers/StanzaOptions.cs`.
    Any other key is a constant in `MarkupKeys.cs` in `src/Nickelony.Stanza.Markup.Core/Options`.
 2. Add `docs/options/<key>.md`, which opens with `# <key>`.
+   The [site](site/README.md) takes the input type of the key from the first column of the value table, so it needs no step of its own.
 3. If the analyzer reads the key, add its row to the option table of the [analyzer readme](src/Nickelony.Stanza.Analyzers/README.md),
    with the default the reader resolves.
 4. Run the [`Repository` guards](#verification), which check the page names, the readme table and its defaults.

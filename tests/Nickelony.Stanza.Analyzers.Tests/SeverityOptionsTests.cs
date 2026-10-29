@@ -239,6 +239,7 @@ public sealed class SeverityOptionsTests
 	[DataRow("stanza_doc_min_line_words", 1000)]
 	[DataRow("stanza_doc_max_overflow_columns", 1000)]
 	[DataRow("stanza_named_argument_count", 1000)]
+	[DataRow("stanza_max_loose_statements", 1000)]
 	[DataRow("stanza_markup_max_blank_lines", 1000)]
 	public void ACountAboveItsCapLeavesTheDefault(string key, int cap)
 	{
@@ -266,6 +267,7 @@ public sealed class SeverityOptionsTests
 			"stanza_max_line_length" => read.MaxLineLength,
 			"stanza_tab_width" => read.TabColumns,
 			"stanza_named_argument_count" => read.NamedArgumentCount,
+			"stanza_max_loose_statements" => read.MaxLooseStatements,
 			"stanza_markup_max_blank_lines" => read.Markup.MaxBlankLines,
 			"stanza_doc_max_line_length" => read.DocLayout!.Value.ContentWidth,
 			"stanza_doc_indent_size" => read.DocLayout!.Value.IndentSize,

@@ -14,5 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which checks and formats markup documents from the command line and can report its findings as MSBuild diagnostics.
 - [`Nickelony.Stanza.Format`](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Format/README.md): the `stanza-format` dotnet tool,
   which runs `dotnet format`, CSharpier and `stanza-markup` in the order the rules need, and checks a working tree without writing.
+- [Rule configurator](https://nickelony.github.io/Stanza/): a web page that lists each rule and option with the code before and after,
+  and writes the `.editorconfig` for the severities and values you pick.
 
 [Unreleased]: https://github.com/Nickelony/Stanza/commits/main

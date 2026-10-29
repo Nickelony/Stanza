@@ -46,6 +46,63 @@ internal static class BlankLineGaps
 	private static bool IsInInactiveBlock(SyntaxTree syntaxTree, int position) =>
 		syntaxTree.GetRoot().FindTrivia(position).IsKind(SyntaxKind.DisabledTextTrivia);
 
+	/// <summary>Whether a comment ends on the line directly above the unit, with no blank line between them.</summary>
+	/// <remarks>
+	/// The commented sibling rule and the tight rules that defer to it read this test, so they never disagree.
+	/// </remarks>
+	public static bool HasCommentDirectlyAbove(SyntaxNode unit) => HasCommentAbove(unit, documentationReachesAcrossBlankLines: false);
+
+	/// <summary>Whether a comment belongs to the unit: the one directly above it, or a documentation comment.</summary>
+	/// <remarks>
+	/// A documentation comment belongs to its unit across any blank lines, as <c>GetLeadingUnit</c> reads it.
+	/// </remarks>
+	public static bool HasCommentAttached(SyntaxNode unit) => HasCommentAbove(unit, documentationReachesAcrossBlankLines: true);
+
+	private static bool HasCommentAbove(SyntaxNode unit, bool documentationReachesAcrossBlankLines)
+	{
+		SyntaxTriviaList leadingTrivia = unit.GetLeadingTrivia();
+
+		for (int index = leadingTrivia.Count - 1; index >= 0; index--)
+		{
+			SyntaxTrivia trivia = leadingTrivia[index];
+
+			if (!StanzaTrivia.IsComment(trivia))
+				continue;
+
+			if (documentationReachesAcrossBlankLines && StanzaTrivia.IsDocumentationComment(trivia))
+				return true;
+
+			// A line comment keeps its break outside its span, and a documentation comment takes it in, so its span ends at column 0.
+			LinePosition end = StanzaSyntax.GetLineSpan(unit, trivia.Span).EndLinePosition;
+			int endLineIndex = end.Character == 0 ? end.Line - 1 : end.Line;
+
+			return endLineIndex == StanzaSyntax.GetLineSpan(unit).StartLinePosition.Line - 1;
+		}
+
+		return false;
+	}
+
+	/// <summary>Whether the gap above a single-line unit lacks the blank line its comment asks for.</summary>
+	/// <remarks>
+	/// The commented sibling rule reports this gap, and the rules that write the same blank line defer to it.
+	/// </remarks>
+	public static bool IsMissingBlankLineAboveComment(SyntaxNode previous, SyntaxNode next)
+	{
+		return HasCommentDirectlyAbove(next)
+			&& IsSingleLineGapWithoutDirective(previous, next)
+			&& StanzaSyntax.GetLeadingUnit(next).StartLineIndex - GetGapStartLineIndex(previous, next) == 1;
+	}
+
+	/// <summary>Whether ZA0053 keeps a blank line above a single-line unit, written or not.</summary>
+	/// <remarks>
+	/// The grouping rules end a run here in every fix order, though that rule reports only a comment directly above.
+	/// </remarks>
+	public static bool IsKeptBlankAboveComment(SyntaxNode previous, SyntaxNode next) =>
+		HasCommentAttached(next) && IsSingleLineGapWithoutDirective(previous, next);
+
+	private static bool IsSingleLineGapWithoutDirective(SyntaxNode previous, SyntaxNode next) =>
+		!HasDirectiveBefore(next) && !StanzaSyntax.IsMultiLine(previous) && !StanzaSyntax.IsMultiLine(next);
+
 	public static bool HasDirectiveBefore(SyntaxNodeOrToken next)
 	{
 		// Roslyn attaches a directive to the leading trivia of the token after it, so only the next unit can hold one.

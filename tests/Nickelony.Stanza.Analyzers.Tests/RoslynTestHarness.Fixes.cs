@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -583,6 +584,90 @@ internal static partial class RoslynTestHarness
 		await AssertTokensKeptAsync(document, fixedDocument, diagnostic.Id).ConfigureAwait(false);
 
 		return fixedDocument;
+	}
+
+	// The diagnostics from an index on stood on the text before a fix, which may have rewritten text ahead of them.
+	private static async Task TranslateStandingAsync(
+		Diagnostic[] standing,
+		int first,
+		Document before,
+		Document after
+	)
+	{
+		SourceText beforeText = await before
+			.GetTextAsync(HarnessBudget.Token)
+			.ConfigureAwait(false);
+
+		SourceText afterText = await after.GetTextAsync(HarnessBudget.Token).ConfigureAwait(false);
+
+		IReadOnlyList<TextChange> changes = afterText.GetTextChanges(beforeText);
+
+		if (changes.Count == 0)
+			return;
+
+		SyntaxTree? syntaxTree = await after
+			.GetSyntaxTreeAsync(HarnessBudget.Token)
+			.ConfigureAwait(false);
+
+		for (int index = first; index < standing.Length; index++)
+			standing[index] = TranslateDiagnostic(standing[index], changes, syntaxTree!);
+	}
+
+	private static Diagnostic TranslateDiagnostic(
+		Diagnostic diagnostic,
+		IReadOnlyList<TextChange> changes,
+		SyntaxTree syntaxTree
+	)
+	{
+		DiagnosticDescriptor descriptor = diagnostic.Descriptor;
+
+		return Diagnostic.Create(
+			id: diagnostic.Id,
+			category: descriptor.Category,
+			message: diagnostic.GetMessage(CultureInfo.InvariantCulture),
+			severity: diagnostic.Severity,
+			defaultSeverity: diagnostic.DefaultSeverity,
+			isEnabledByDefault: descriptor.IsEnabledByDefault,
+			warningLevel: diagnostic.WarningLevel,
+			isSuppressed: diagnostic.IsSuppressed,
+			title: descriptor.Title,
+			description: descriptor.Description,
+			helpLink: descriptor.HelpLinkUri,
+			location: TranslateLocation(diagnostic.Location, changes, syntaxTree),
+
+			additionalLocations: diagnostic.AdditionalLocations.Select(location =>
+				TranslateLocation(location, changes, syntaxTree)
+			),
+
+			customTags: descriptor.CustomTags,
+			properties: diagnostic.Properties
+		);
+	}
+
+	// The changes are in order and apart, so a span moves by the net growth of the changes wholly before it.
+	private static Location TranslateLocation(
+		Location location,
+		IReadOnlyList<TextChange> changes,
+		SyntaxTree syntaxTree
+	)
+	{
+		if (!location.IsInSource)
+			return location;
+
+		TextSpan span = location.SourceSpan;
+		int growth = 0;
+
+		foreach (TextChange change in changes)
+		{
+			// A span that a fix rewrote has no place to move to, so it stays as the rule reported it.
+			if (change.Span.Start < span.End && change.Span.End > span.Start)
+				return location;
+
+			if (change.Span.End <= span.Start)
+				growth += (change.NewText?.Length ?? 0) - change.Span.Length;
+		}
+
+		return Location.Create(syntaxTree, new TextSpan(span.Start + growth, span.Length));
 	}
 
 	// A fix of a rule outside the token rules edits only whitespace and comments, so every token has to stay as it was.

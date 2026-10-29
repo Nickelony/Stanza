@@ -258,6 +258,57 @@ public sealed class CrossRuleTests
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
+	// Gathering the run rewrites the text ahead of the argument names the later fixes wait on.
+	[TestMethod]
+	public async Task AWholeRunFixLeavesTheFixesBeforeItTheirPlaceInOnePass()
+	{
+		const string source = """
+			class A
+			{
+				static void F(int value) { }
+
+				static void M(int value)
+				{
+					F(value: value);
+
+					F(value: value);
+
+					F(value: value);
+
+					F(value: value);
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class A
+			{
+				static void F(int value) { }
+
+				static void M(int value)
+				{
+					F(value);
+					F(value);
+					F(value);
+					F(value);
+				}
+			}
+			""";
+
+		Dictionary<string, ReportDiagnostic> rules = new(
+			TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.RemoveRedundantArgumentName
+			)
+		);
+
+		AnalyzerRunResult onePass = await RoslynTestHarness.RunAllAsync(source, rules);
+		AnalyzerRunResult oneAtATime = await RoslynTestHarness.RunIterativelyAsync(source, rules);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, onePass);
+		RoslynTestHarness.AssertFixedText(fixedSource, oneAtATime);
+	}
+
 	[TestMethod]
 	public async Task TheOptionalFamiliesSettleOneFixAtATime()
 	{

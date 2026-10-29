@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Nickelony.Stanza.Analyzers.BlankLines;
@@ -24,6 +26,9 @@ internal static class BlankLineOwnership
 	{
 		SyntaxNode previous = siblings[boundaryIndex - 1];
 		SyntaxNode next = siblings[boundaryIndex];
+
+		if (IsGapAboveOwnedByCommentedSibling(context, options, previous, next, rule))
+			return true;
 
 		// The import section rule owns the gap after the last import, and the multi-line rule a gap a multi-line unit borders.
 		// Each keeps the gap only where it is on, so an owner that is off hands the gap back.
@@ -52,14 +57,105 @@ internal static class BlankLineOwnership
 			);
 	}
 
+	/// <summary>Whether the commented sibling rule owns the gap above a unit, so the asker defers to it.</summary>
+	public static bool IsGapAboveOwnedByCommentedSibling(
+		SyntaxNodeAnalysisContext context,
+		StanzaOptions options,
+		SyntaxNode previous,
+		SyntaxNode next,
+		StanzaRule rule
+	)
+	{
+		return rule.Defers(DiagnosticDescriptors.SeparateCommentedSibling)
+			&& BlankLineGaps.IsMissingBlankLineAboveComment(previous, next)
+			&& IsCommentedSiblingRuleOn(context, options, next, rule);
+	}
+
+	/// <summary>Whether the commented sibling rule is on above a unit, for a rule that defers to it.</summary>
+	public static bool IsCommentedSiblingRuleOn(SyntaxNodeAnalysisContext context, StanzaOptions options, SyntaxNode next, StanzaRule rule)
+	{
+		return !StanzaRuleState.IsOffAt(
+			scope: context,
+			options,
+			rule: rule.GetDeferral(DiagnosticDescriptors.SeparateCommentedSibling),
+			position: next.SpanStart
+		);
+	}
+
+	/// <summary>Whether the two-unit rule owns the gap of a container of two units, so the asker defers.</summary>
+	public static bool IsGapOwnedByTwoUnitRule(
+		SyntaxNodeAnalysisContext context,
+		StanzaOptions options,
+		ImmutableArray<SyntaxNode> siblings,
+		StanzaRule rule
+	)
+	{
+		return HoldsTwoKeptUnits(siblings)
+			&& !StanzaRuleState.IsOffAt(
+				scope: context,
+				options,
+				rule: rule.GetDeferral(DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether),
+				position: siblings[1].SpanStart
+			);
+	}
+
+	/// <summary>Whether the container holds two units that the two-unit rule judges.</summary>
+	/// <remarks>
+	/// The rule skips a local function and an import.
+	/// </remarks>
+	public static bool HoldsTwoKeptUnits(ImmutableArray<SyntaxNode> siblings) =>
+		siblings.Length == 2 && IsKeptTogetherUnit(siblings[0]) && IsKeptTogetherUnit(siblings[1]);
+
+	private static bool IsKeptTogetherUnit(SyntaxNode unit) =>
+		unit is not (ExternAliasDirectiveSyntax or UsingDirectiveSyntax or LocalFunctionStatementSyntax);
+
+	/// <summary>The borders the grouping rules would own once the gathered gaps are tight.</summary>
+	/// <remarks>
+	/// Both rules read their runs from the blank lines that stand, so a gathered run can start a run of theirs.
+	/// </remarks>
+	public static ImmutableArray<BlankLineGrouping.RunBorder> ReadGatheredGroupingBorders(
+		SyntaxNodeAnalysisContext context,
+		StanzaOptions options,
+		ImmutableArray<SyntaxNode> siblings,
+		StanzaRule rule,
+		GapOwners gapOwners,
+		ImmutableHashSet<int> gathered
+	)
+	{
+		ImmutableArray<BlankLineGrouping.RunBorder> declarationBorders = CollectOwnedDeclarationRunBorders(
+			context,
+			options,
+			siblings,
+			rule,
+			gapOwners,
+			gathered
+		);
+
+		StanzaRule sameTypeGroups = rule.GetDeferral(DiagnosticDescriptors.SeparateSameTypeDeclarationGroups);
+
+		if (StanzaRuleState.IsRuleOff(context, options, sameTypeGroups))
+			return declarationBorders;
+
+		ImmutableArray<BlankLineGrouping.RunBorder> sameTypeBorders = ReadBordersNotSilencedByPragma(
+			scope: context,
+			siblings,
+			borders: BlankLineGrouping.ReadSameTypeDeclarationBorders(siblings, gapOwners, gathered, cancellationToken: context.CancellationToken),
+			ownerRuleId: sameTypeGroups.Descriptor.Id
+		);
+
+		return declarationBorders.AddRange(sameTypeBorders);
+	}
+
 	public static GapOwners ReadGapOwners(SyntaxNodeAnalysisContext context, StanzaOptions options, StanzaRule rule)
 	{
 		StanzaRule multiLine = rule.GetDeferral(DiagnosticDescriptors.SeparateMultiLineConstructs);
 		StanzaRule regionMarker = rule.GetDeferral(DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors);
+		StanzaRule commentedSibling = rule.GetDeferral(DiagnosticDescriptors.SeparateCommentedSibling);
 
 		return new GapOwners(
 			MultiLineId: StanzaRuleState.IsRuleOff(context, options, multiLine) ? null : multiLine.Descriptor.Id,
-			RegionMarkerId: StanzaRuleState.IsRuleOff(context, options, regionMarker) ? null : regionMarker.Descriptor.Id
+			RegionMarkerId: StanzaRuleState.IsRuleOff(context, options, regionMarker) ? null : regionMarker.Descriptor.Id,
+			CommentedSiblingId: StanzaRuleState.IsRuleOff(context, options, commentedSibling) ? null : commentedSibling.Descriptor.Id
 		);
 	}
 
@@ -140,6 +236,15 @@ internal static class BlankLineOwnership
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaRule rule,
 		GapOwners gapOwners
+	) => [.. CollectOwnedDeclarationRunBorders(context, options, siblings, rule, gapOwners, gathered: null).Select(static border => border.Boundary)];
+
+	private static ImmutableArray<BlankLineGrouping.RunBorder> CollectOwnedDeclarationRunBorders(
+		SyntaxNodeAnalysisContext context,
+		StanzaOptions options,
+		ImmutableArray<SyntaxNode> siblings,
+		StanzaRule rule,
+		GapOwners gapOwners,
+		ImmutableHashSet<int>? gathered
 	)
 	{
 		StanzaRule declarationRuns = rule.GetDeferral(DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns);
@@ -147,13 +252,33 @@ internal static class BlankLineOwnership
 		if (StanzaRuleState.IsRuleOff(context, options, declarationRuns))
 			return [];
 
-		HashSet<int> boundaries =
-		[
-			.. BlankLineGrouping.ReadDeclarationRunBoundaries(siblings, options, gapOwners, cancellationToken: context.CancellationToken),
-		];
+		return ReadBordersNotSilencedByPragma(
+			scope: context,
+			siblings,
 
-		RemovePragmaSilencedBoundaries(scope: context, siblings, boundaries, ownerRuleId: declarationRuns.Descriptor.Id);
-		return boundaries;
+			borders: BlankLineGrouping.ReadDeclarationRunBorders(
+				siblings,
+				options,
+				gapOwners,
+				gathered,
+				cancellationToken: context.CancellationToken
+			),
+
+			ownerRuleId: declarationRuns.Descriptor.Id
+		);
+	}
+
+	private static ImmutableArray<BlankLineGrouping.RunBorder> ReadBordersNotSilencedByPragma(
+		RuleScope scope,
+		ImmutableArray<SyntaxNode> siblings,
+		ImmutableArray<BlankLineGrouping.RunBorder> borders,
+		string ownerRuleId
+	)
+	{
+		HashSet<int> boundaries = [.. borders.Select(static border => border.Boundary)];
+
+		RemovePragmaSilencedBoundaries(scope, siblings, boundaries, ownerRuleId);
+		return [.. borders.Where(border => boundaries.Contains(border.Boundary))];
 	}
 
 	private static void RemovePragmaSilencedBoundaries(

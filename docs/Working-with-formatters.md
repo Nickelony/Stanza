@@ -41,6 +41,9 @@ A rule that disagrees with CSharpier is **off** by default, except [ZA0044](#arr
   so a [separating rule](https://github.com/Nickelony/Stanza/wiki/Terms) for a list disagrees with it.
 - **The accessor [gap](https://github.com/Nickelony/Stanza/wiki/Terms)**: CSharpier drops the blank line between accessors whatever their shape,
   so the separating accessor rule disagrees with it.
+- **A commented sibling in a list** ([`ZA0053`](https://github.com/Nickelony/Stanza/wiki/ZA0053-Separate-a-commented-sibling)):
+  CSharpier drops the blank line the rule writes above a comment in an argument, parameter, declarator, array initializer or accessor list.
+  It keeps the line among statements, members, enum members, object initializers, switch arms and switch sections.
 - **Before a clause keyword**: CSharpier drops the blank line before a keyword such as `else`,
   so the separating rule for clause keywords disagrees with it.
 

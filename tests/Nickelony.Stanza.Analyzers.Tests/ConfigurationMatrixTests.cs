@@ -56,6 +56,33 @@ public sealed class ConfigurationMatrixTests
 		#endif
 			}
 
+			void Commented()
+			{
+				Helpers.DoThing();
+				// The next step.
+				Helpers.DoThing();
+
+				// The last step.
+				Helpers.DoThing();
+			}
+
+			void Loose(int x)
+			{
+				x = 1;
+
+				x = 2;
+
+				int count = 3;
+
+				Helpers.DoThing();
+
+				Helpers.DoThing();
+
+				x = 4;
+
+				x = 5;
+			}
+
 			/// <summary>
 			///
 			/// Binds the options.

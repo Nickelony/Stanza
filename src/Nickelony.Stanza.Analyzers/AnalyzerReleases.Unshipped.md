@@ -56,6 +56,8 @@ ZA0048  | Formatting | Disabled | Name the closing region directive.
 ZA0049  | Formatting | Disabled | Remove empty regions.
 ZA0050  | Formatting | Disabled | Name the arguments of a call.
 ZA0051  | Formatting | Disabled | Remove a redundant argument name.
+ZA0052  | Formatting | Disabled | Gather a run of loose statements.
+ZA0053  | Formatting | Disabled | Separate a commented sibling.
 ZA0101  | Formatting | Disabled | Separate multi-line markup elements.
 ZA0102  | Formatting | Disabled | Keep multi-line markup elements together.
 ZA0103  | Formatting | Disabled | Keep single-line markup elements together.

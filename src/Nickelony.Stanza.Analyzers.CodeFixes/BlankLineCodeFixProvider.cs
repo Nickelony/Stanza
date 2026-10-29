@@ -29,6 +29,7 @@ internal sealed class BlankLineCodeFixProvider : StanzaCodeFixProvider
 		{
 			GapFix.MarkupExtraRemoval => "Remove the extra blank lines",
 			GapFix.AdjacentRemoval or GapFix.DeclarationGapRemoval or GapFix.MarkupCapRemoval => "Remove the blank line",
+			GapFix.RunRemoval => "Remove the blank lines of the run",
 			GapFix.SiblingInsertion or GapFix.MarkupInsertion or GapFix.TokenInsertion => "Add the blank line",
 			_ => throw new ArgumentOutOfRangeException(nameof(fix), fix, message: null),
 		};
@@ -47,6 +48,8 @@ internal sealed class BlankLineCodeFixProvider : StanzaCodeFixProvider
 
 			GapFix.AdjacentRemoval => static (document, diagnostic, _) =>
 				CreateTokenRemoval(document.Root, document.Text, diagnostic) is { } removal ? [removal] : [],
+
+			GapFix.RunRemoval => static (document, diagnostic, _) => CreateRunRemoval(document.Root, document.Text, diagnostic),
 
 			GapFix.DeclarationGapRemoval => static (document, diagnostic, cancellationToken) =>
 				CreateDeclarationGapRemoval(root: document.Root, sourceText: document.Text, diagnostic, cancellationToken),
@@ -115,6 +118,15 @@ internal sealed class BlankLineCodeFixProvider : StanzaCodeFixProvider
 		return diagnostic.AdditionalLocations.Count == 0
 			? BlankLineGaps.CreateAnchorRemoval(sourceText, root.FindToken(diagnostic.Location.SourceSpan.Start), diagnostic.Id)
 			: null;
+	}
+
+	private static ImmutableArray<TextChange> CreateRunRemoval(SyntaxNode root, SourceText sourceText, Diagnostic diagnostic)
+	{
+		return
+			FixOptions.Parse(diagnostic) is { RunStart: { } runStart, RunEnd: { } runEnd }
+			&& StanzaDiagnosticLookup.FindNeighborUnits(root, diagnostic) is { Next.Parent: { } container }
+			? BlankLineLooseRuns.CreateRemoval(sourceText, siblings: StanzaSyntax.ReadSiblings(container), runStart, runEnd, ruleId: diagnostic.Id)
+			: [];
 	}
 
 	private static ImmutableArray<TextChange> CreateDeclarationGapRemoval(

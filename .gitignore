@@ -5,6 +5,10 @@ artifacts/
 *.nupkg
 *.snupkg
 
+# The site's installed packages and its build.
+site/node_modules/
+site/dist/
+
 # Test results and logs
 TestResults/
 *.trx

@@ -8,15 +8,31 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 /// <summary>Reports the blank line a tight rule wants gone from a gap.</summary>
 internal static class BlankLineRemoval
 {
-	/// <summary>Reports a blank line between two single-line siblings.</summary>
+	/// <summary>Reports a blank line between two single-line siblings, but not above a comment ZA0053 owns.</summary>
 	public static void ReportSingleLineBoundaries(SyntaxNodeAnalysisContext context, ImmutableArray<SyntaxNode> siblings, StanzaRule rule)
 	{
+		StanzaOptions? options = null;
+
 		for (int index = 1; index < siblings.Length; index++)
 		{
 			context.CancellationToken.ThrowIfCancellationRequested();
 
-			if (!IsMultiLineBoundary(siblings, index))
-				ReportRemovableBoundary(context, previous: siblings[index - 1], next: siblings[index], rule);
+			if (IsMultiLineBoundary(siblings, index))
+				continue;
+
+			SyntaxNode next = siblings[index];
+
+			// The blank line above a comment is the one that rule asks for, so a tight rule leaves it where that rule is on.
+			if (BlankLineGaps.HasCommentDirectlyAbove(next))
+			{
+				// Options are read once per container, at its first commented sibling.
+				options ??= StanzaOptions.From(context.Options, context.Node.SyntaxTree);
+
+				if (BlankLineOwnership.IsCommentedSiblingRuleOn(context, options, next, rule))
+					continue;
+			}
+
+			ReportRemovableBoundary(context, previous: siblings[index - 1], next, rule);
 		}
 	}
 
@@ -44,6 +60,26 @@ internal static class BlankLineRemoval
 				continue;
 
 			ReportRemovableBoundary(context, previous: siblings[index - 1], next, rule);
+		}
+	}
+
+	/// <summary>Reports each blank line of a run, with the run's bounds so that any fix removes them all.</summary>
+	public static void ReportRuns(
+		SyntaxNodeAnalysisContext context,
+		ImmutableArray<SyntaxNode> siblings,
+		ImmutableArray<BlankLineLooseRuns.LooseRun> runs,
+		StanzaRule rule
+	)
+	{
+		foreach (BlankLineLooseRuns.LooseRun run in runs)
+		{
+			var fixOptions = new FixOptions(RunStart: run.Start, RunEnd: run.End);
+
+			for (int index = run.Start + 1; index < run.End; index++)
+			{
+				context.CancellationToken.ThrowIfCancellationRequested();
+				ReportRemovableBoundary(context, previous: siblings[index - 1], next: siblings[index], rule, fixOptions);
+			}
 		}
 	}
 
@@ -89,12 +125,23 @@ internal static class BlankLineRemoval
 	private static bool IsMultiLineBoundary(ImmutableArray<SyntaxNode> siblings, int boundaryIndex) =>
 		StanzaSyntax.IsMultiLine(siblings[boundaryIndex - 1]) || StanzaSyntax.IsMultiLine(siblings[boundaryIndex]);
 
-	private static void ReportRemovableBoundary(SyntaxNodeAnalysisContext context, SyntaxNode previous, SyntaxNode next, StanzaRule rule)
+	private static void ReportRemovableBoundary(
+		SyntaxNodeAnalysisContext context,
+		SyntaxNode previous,
+		SyntaxNode next,
+		StanzaRule rule,
+		FixOptions? fixOptions = null
+	)
 	{
 		if (HoldsARemovableBlankLine(context, previous: previous.GetLastToken(), next: next.GetFirstToken(), rule))
 		{
 			context.ReportDiagnostic(
-				Diagnostic.Create(rule.Descriptor, next.GetFirstToken().GetLocation(), additionalLocations: [previous.GetLocation()])
+				Diagnostic.Create(
+					descriptor: rule.Descriptor,
+					location: next.GetFirstToken().GetLocation(),
+					additionalLocations: [previous.GetLocation()],
+					properties: fixOptions?.ToProperties()
+				)
 			);
 		}
 	}

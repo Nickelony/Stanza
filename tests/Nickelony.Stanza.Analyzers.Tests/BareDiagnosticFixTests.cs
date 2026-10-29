@@ -205,6 +205,31 @@ public sealed class BareDiagnosticFixTests
 		],
 
 		[
+			"the loose run rule",
+			new GatherRunOfLooseStatementsAnalyzer(),
+			OffersNoFix,
+			null,
+
+			"""
+				class C
+				{
+					int first, second, third, fourth;
+
+					void M()
+					{
+						first = 1;
+
+						second = 2;
+
+						third = 3;
+
+						fourth = 4;
+					}
+				}
+				""",
+		],
+
+		[
 			"the leading arrow rule",
 			new PutArrowOnLineAfterSignatureAnalyzer(),
 			OffersAFix,

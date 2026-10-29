@@ -18,8 +18,10 @@ internal static class BodyReturnValues
 			PropertyDeclarationSyntax or IndexerDeclarationSyntax => true,
 			MethodDeclarationSyntax method => ReturnsValue(semanticModel, method.ReturnType, method.Modifiers),
 			LocalFunctionStatementSyntax localFunction => ReturnsValue(semanticModel, localFunction.ReturnType, localFunction.Modifiers),
+
 			// A C# 14 compound assignment or increment operator can return void.
 			OperatorDeclarationSyntax @operator => ReturnsValue(semanticModel, @operator.ReturnType, @operator.Modifiers),
+
 			// The callers pass only conversion operators to this arm, and a conversion always hands a value back.
 			_ => true,
 		};

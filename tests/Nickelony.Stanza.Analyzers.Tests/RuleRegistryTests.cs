@@ -204,6 +204,7 @@ public sealed partial class RuleRegistryTests
 				bool removes =
 					fix
 					is GapFix.AdjacentRemoval
+						or GapFix.RunRemoval
 						or GapFix.DeclarationGapRemoval
 						or GapFix.MarkupCapRemoval
 						or GapFix.MarkupExtraRemoval;
