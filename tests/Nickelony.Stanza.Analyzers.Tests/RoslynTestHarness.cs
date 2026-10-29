@@ -714,22 +714,34 @@ internal static partial class RoslynTestHarness
 			.GetSyntaxRootAsync(HarnessBudget.Token)
 			.ConfigureAwait(false);
 
-		foreach (
-			Diagnostic diagnostic in diagnostics
+		ImmutableArray<Diagnostic> ordered =
+		[
+			.. diagnostics
 				.Where(HasLocation)
-				.OrderByDescending(diagnostic => diagnostic.Location.SourceSpan.Start)
-		)
+				.OrderByDescending(diagnostic => diagnostic.Location.SourceSpan.Start),
+		];
+
+		// Each one stands where the fixed document has it, since a fix that rewrites the text before it,
+		// as a whole-run fix does, moves it.
+		Diagnostic[] standing = [.. ordered];
+
+		for (int index = 0; index < ordered.Length; index++)
 		{
 			// The first fix applied for a run leaves nothing for the rest of its gaps.
-			if (!FixOptions.TryClaimRun(root!, diagnostic, fixedRuns))
+			if (!FixOptions.TryClaimRun(root!, ordered[index], fixedRuns))
 				continue;
+
+			Document before = fixedDocument;
 
 			fixedDocument = await ApplyFirstFixAsync(
 					document: fixedDocument,
-					diagnostic,
+					diagnostic: standing[index],
 					cancellationToken: HarnessBudget.Token,
 					providers: options.Providers
 				)
+				.ConfigureAwait(false);
+
+			await TranslateStandingAsync(standing, first: index + 1, before, after: fixedDocument)
 				.ConfigureAwait(false);
 		}
 
