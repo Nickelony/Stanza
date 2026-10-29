@@ -464,6 +464,7 @@ public sealed class GatherRunOfLooseStatementsTests
 							third = 3;
 
 							fourth = 4;
+
 							break;
 					}
 				}
@@ -495,7 +496,7 @@ public sealed class GatherRunOfLooseStatementsTests
 
 		AnalyzerRunResult result = await RunAsync(source);
 
-		Assert.HasCount(3, result.Diagnostics);
+		Assert.HasCount(4, result.Diagnostics);
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
@@ -980,6 +981,241 @@ public sealed class GatherRunOfLooseStatementsTests
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
+	// Line3 and Line7 sit tight against a neighbor, so they belong to the stanzas beside the run and not to it.
+	[TestMethod]
+	public async Task ARunNeverTakesInTheStatementsOfTheTightStanzasBesideIt()
+	{
+		string source = Method(
+			"""
+			first = 1;
+			second = 2;
+			third = 3;
+
+			fourth = 4;
+
+			fifth = 5;
+
+			sixth = 6;
+
+			first = 7;
+			second = 8;
+			"""
+		);
+
+		string fixedSource = Method(
+			"""
+			first = 1;
+			second = 2;
+			third = 3;
+
+			fourth = 4;
+			fifth = 5;
+			sixth = 6;
+
+			first = 7;
+			second = 8;
+			"""
+		);
+
+		AnalyzerRunResult result = await RunAsync(
+			source,
+			new Dictionary<string, string> { [LimitKey] = "2" }
+		);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task TheStanzasBesideARunOfThreeStayAsWrittenAtTheDefaultLimit()
+	{
+		string source = Method(
+			"""
+			first = 1;
+			second = 2;
+			third = 3;
+
+			fourth = 4;
+
+			fifth = 5;
+
+			sixth = 6;
+
+			first = 7;
+			second = 8;
+			"""
+		);
+
+		AnalyzerRunResult result = await RunAsync(source);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task OneLooseStatementBetweenTwoStanzasKeepsBothBlankLines()
+	{
+		string source = Method(
+			"""
+			first = 1;
+			second = 2;
+
+			third = 3;
+
+			fourth = 4;
+			fifth = 5;
+			"""
+		);
+
+		AnalyzerRunResult result = await RunAsync(
+			source,
+			new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	// ZA0005 asks for the gap above the if,
+	// so the fourth statement belongs to no stanza and joins the run.
+	[TestMethod]
+	public async Task AStatementTightAgainstAGapAnotherRuleAsksForJoinsTheRun()
+	{
+		string source = Method(
+			"""
+			first = 1;
+
+			second = 2;
+
+			third = 3;
+
+			fourth = 4;
+			if (first > 0)
+			{
+				DoThing();
+			}
+			"""
+		);
+
+		string fixedSource = Method(
+			"""
+			first = 1;
+			second = 2;
+			third = 3;
+			fourth = 4;
+			if (first > 0)
+			{
+				DoThing();
+			}
+			"""
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<GatherRunOfLooseStatementsAnalyzer>(
+			source,
+
+			TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.SeparateMultiLineConstructs
+			)
+		);
+
+		Assert.HasCount(3, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	// Where ZA0005 is off, the fourth statement and the if form a stanza,
+	// so the three above it hold no run at the default limit.
+	[TestMethod]
+	public async Task AStatementTightAgainstAMultiLineStatementStaysOutWhereNoRuleAsksForTheGap()
+	{
+		string source = Method(
+			"""
+			first = 1;
+
+			second = 2;
+
+			third = 3;
+
+			fourth = 4;
+			if (first > 0)
+			{
+				DoThing();
+			}
+			"""
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<GatherRunOfLooseStatementsAnalyzer>(
+			source,
+
+			new Dictionary<string, ReportDiagnostic>
+			{
+				[DiagnosticDescriptors.GatherRunOfLooseStatements.Id] = ReportDiagnostic.Warn,
+				[DiagnosticDescriptors.SeparateMultiLineConstructs.Id] = ReportDiagnostic.Suppress,
+			}
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	// A Fix All gathers the pair above and the pair of calls at once, and the calls are tight by the next pass.
+	// So the gap between them is gathered in that step too, as one fix at a time gathers it.
+	[TestMethod]
+	public async Task ARunWaitsForNoSecondPassWhenAnotherRunIsGatheredFirst()
+	{
+		string source = Method(
+			"""
+			int number1 = 1;
+
+			int count2 = 2;
+
+			string text3 = "3";
+
+			first = 4;
+
+			DoThing();
+			"""
+		);
+
+		string fixedSource = Method(
+			"""
+			int number1 = 1;
+			int count2 = 2;
+
+			string text3 = "3";
+			first = 4;
+			DoThing();
+			"""
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			diagnosticOptions: TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationGroups
+			),
+
+			analyzerConfigOptions: new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+
+		await RoslynTestHarness.AssertFixAllPerIdSettlesAsync(
+			expected: fixedSource,
+			source,
+
+			options: new RunOptions(RoslynTestHarness.AllAnalyzers)
+			{
+				DiagnosticOptions = TestRuleSets.Only(
+					DiagnosticDescriptors.GatherRunOfLooseStatements,
+					DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+					DiagnosticDescriptors.SeparateSameTypeDeclarationGroups
+				),
+
+				AnalyzerConfigOptions = new Dictionary<string, string> { [LimitKey] = "1" },
+			}
+		);
+	}
+
 	[TestMethod]
 	public async Task ARuleThatIsOffHandsItsGapBackToTheRun()
 	{
@@ -1123,7 +1359,7 @@ public sealed class GatherRunOfLooseStatementsTests
 	}
 
 	[TestMethod]
-	public async Task ARegionMarkerRuleThatIsOffHandsItsGapBackToTheRun()
+	public async Task ARegionMarkerRuleThatIsOffLeavesTheStatementTightAgainstItsMarkerOutOfTheRun()
 	{
 		const string fixedSource = """
 			class C
@@ -1133,6 +1369,7 @@ public sealed class GatherRunOfLooseStatementsTests
 					DoThing();
 					DoThing();
 					DoThing();
+
 					DoThing();
 			#region Rest
 					DoThing();
@@ -1152,10 +1389,12 @@ public sealed class GatherRunOfLooseStatementsTests
 
 				[DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors.Id] =
 					ReportDiagnostic.Suppress,
-			}
+			},
+
+			new Dictionary<string, string> { [LimitKey] = "2" }
 		);
 
-		Assert.HasCount(3, result.Diagnostics);
+		Assert.HasCount(2, result.Diagnostics);
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 

@@ -14,8 +14,9 @@ This page defines the words the rule, option and guide pages use, such as a gap 
 - **run** of units: two or more neighboring lines or units of one kind, such as declarations, `//` comment lines or blank lines;
   the grouping rules treat a run of declarations or invocations as one block.
 - **run** of a tool: one invocation of `stanza-markup` or `stanza-format`, which ends in one exit code.
-- **loose run**: neighboring single-line statements of one block or switch section, each set apart from the next by a blank line and nothing else,
+- **loose run**: neighboring single-line statements of one block or switch section, each set apart by a blank line and nothing else,
   where no other rule asks for that blank line.
+  A statement tight against a neighbor stays out, unless a rule parts them.
   [`ZA0052`](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) gathers one that holds too many.
 - **view**: a file as one project compiles it, by that project's target framework and compilation symbols.
   A file that several projects compile has one view for each.

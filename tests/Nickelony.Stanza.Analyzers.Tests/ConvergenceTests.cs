@@ -257,6 +257,10 @@ public sealed partial class ConvergenceTests
 	public static IEnumerable<object[]> Seeds { get; } =
 	[.. Enumerable.Range(1, DefaultSeedCount).Select(seed => new object[] { seed })];
 
+	// Seed 5 sets no statement apart from a tight neighbor's stanza, so it holds no run and needs no fix.
+	public static IEnumerable<object[]> LooseRunSeeds { get; } =
+	[.. Seeds.Where(row => (int)row[0] != 5)];
+
 	[TestMethod]
 	[DynamicData(
 		nameof(Seeds),
@@ -947,7 +951,7 @@ public sealed partial class ConvergenceTests
 	// Each set of them has to claim a gap once and settle, whether one fix at a time or one Fix All per rule.
 	[TestMethod]
 	[DynamicData(
-		nameof(Seeds),
+		nameof(LooseRunSeeds),
 		DynamicDataDisplayName = nameof(RowNames.GetRowName),
 		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
 	)]

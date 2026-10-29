@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
@@ -84,7 +86,7 @@ internal static class BlankLineLooseRuns
 		return changes.ToImmutable();
 	}
 
-	/// <summary>The loose boundaries whose blank line no rule asks for once they are tight.</summary>
+	/// <summary>The loose boundaries away from a stanza whose blank line no rule asks for once tight.</summary>
 	/// <remarks>
 	/// A tight gap that a rule would then ask for keeps the gaps of its run blank, so the fix causes no work.
 	/// </remarks>
@@ -99,10 +101,10 @@ internal static class BlankLineLooseRuns
 		GapOwners gapOwners = BlankLineOwnership.ReadGapOwners(context, options, rule);
 
 		ImmutableHashSet<int> asked = ReadAskedBoundaries(context, options, siblings, rule, gapOwners);
-		ImmutableHashSet<int> removable = loose;
+		ImmutableHashSet<int> candidates = ReadRunBoundaries(siblings, loose, asked);
+		ImmutableHashSet<int> removable = candidates;
 
-		// A container that needs more rounds than this is left as it is, so the work stays linear.
-		for (int round = 0; round < MaxRounds; round++)
+		ImmutableHashSet<int> ReadStaying(ImmutableHashSet<int> gathered)
 		{
 			ImmutableArray<BlankLineGrouping.RunBorder> borders = BlankLineOwnership.ReadGatheredGroupingBorders(
 				context,
@@ -110,18 +112,76 @@ internal static class BlankLineLooseRuns
 				siblings,
 				rule,
 				gapOwners,
-				gathered: removable
+				gathered
 			);
 
-			ImmutableHashSet<int> staying = ReadStayingBlankBoundaries(siblings, borders, asked, removable);
+			return ReadStayingBlankBoundaries(siblings, borders, asked, removable: gathered);
+		}
+
+		// A container that needs more rounds than this is left as it is, so the work stays linear.
+		for (int round = 0; round < MaxRounds; round++)
+		{
+			ImmutableHashSet<int> staying = ReadStaying(removable);
 
 			if (staying.IsEmpty)
-				return removable;
+				return ReadRegatheredBoundaries(candidates, removable, ReadStaying);
 
 			removable = removable.Except(staying);
 		}
 
 		return [];
+	}
+
+	/// <summary>The removable boundaries, with each held-back one added again while no rule asks for it.</summary>
+	/// <remarks>
+	/// A gap held back for one that then stayed blank is gathered now, so no run waits for a second pass.
+	/// </remarks>
+	private static ImmutableHashSet<int> ReadRegatheredBoundaries(
+		ImmutableHashSet<int> candidates,
+		ImmutableHashSet<int> removable,
+		Func<ImmutableHashSet<int>, ImmutableHashSet<int>> readStaying
+	)
+	{
+		// Only the first few are tried, so the work stays linear.
+		foreach (int boundary in candidates.Except(removable).OrderBy(held => held).Take(MaxRounds))
+		{
+			ImmutableHashSet<int> trial = removable.Add(boundary);
+
+			if (readStaying(trial).IsEmpty)
+				removable = trial;
+		}
+
+		return removable;
+	}
+
+	/// <summary>The loose boundaries that no statement of a tight stanza stands beside.</summary>
+	/// <remarks>
+	/// A statement tight against a neighbor belongs to that stanza, so the blank line that sets the stanza apart stays.
+	/// </remarks>
+	private static ImmutableHashSet<int> ReadRunBoundaries(
+		ImmutableArray<SyntaxNode> siblings,
+		ImmutableHashSet<int> loose,
+		ImmutableHashSet<int> asked
+	)
+	{
+		ImmutableHashSet<int>.Builder kept = ImmutableHashSet.CreateBuilder<int>();
+
+		foreach (int boundary in loose)
+		{
+			if (!IsTightGap(siblings, asked, boundary - 1) && !IsTightGap(siblings, asked, boundary + 1))
+				kept.Add(boundary);
+		}
+
+		return kept.ToImmutable();
+	}
+
+	/// <summary>Whether the gap at the boundary has no blank line and no rule asks for one.</summary>
+	private static bool IsTightGap(ImmutableArray<SyntaxNode> siblings, ImmutableHashSet<int> asked, int boundary)
+	{
+		return boundary >= 1
+			&& boundary < siblings.Length
+			&& !asked.Contains(boundary)
+			&& !BlankLineGaps.HasBlankLineBetween(siblings[boundary - 1], siblings[boundary]);
 	}
 
 	/// <summary>The boundaries where a rule asks for a blank line whatever is gathered.</summary>

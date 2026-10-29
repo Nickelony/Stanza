@@ -25,6 +25,8 @@ limit = 3;
 - The fix of any gap removes the blank lines of its whole run, so every fix and Fix All gather the run alike.
 - A multi-line statement, a comment, a trailing comment, a directive or a gap with no blank line ends a run.
   A directive keeps its gap as [the gap rules](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#a-comment-or-a-directive-in-a-gap) say.
+- A run never takes in a statement that sits tight against its other neighbor, so the blank line that sets that group apart stays.
+  A statement tight against a neighbor that a rule asks to set apart, as `ZA0005` does beside a multi-line statement, still joins the run.
 - The rule never removes a blank line that another rule would write back.
 - [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-declaration-and-invocation-runs) asks for a blank line around a run of declarations or invocations,
   and [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-same-type-declaration-groups) around a run of declarations of one type.
