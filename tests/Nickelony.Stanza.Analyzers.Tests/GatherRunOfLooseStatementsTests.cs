@@ -1108,14 +1108,15 @@ public sealed class GatherRunOfLooseStatementsTests
 			"""
 		);
 
-		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<GatherRunOfLooseStatementsAnalyzer>(
-			source,
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<GatherRunOfLooseStatementsAnalyzer>(
+				source,
 
-			TestRuleSets.Only(
-				DiagnosticDescriptors.GatherRunOfLooseStatements,
-				DiagnosticDescriptors.SeparateMultiLineConstructs
-			)
-		);
+				TestRuleSets.Only(
+					DiagnosticDescriptors.GatherRunOfLooseStatements,
+					DiagnosticDescriptors.SeparateMultiLineConstructs
+				)
+			);
 
 		Assert.HasCount(3, result.Diagnostics);
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
@@ -1142,15 +1143,18 @@ public sealed class GatherRunOfLooseStatementsTests
 			"""
 		);
 
-		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<GatherRunOfLooseStatementsAnalyzer>(
-			source,
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<GatherRunOfLooseStatementsAnalyzer>(
+				source,
 
-			new Dictionary<string, ReportDiagnostic>
-			{
-				[DiagnosticDescriptors.GatherRunOfLooseStatements.Id] = ReportDiagnostic.Warn,
-				[DiagnosticDescriptors.SeparateMultiLineConstructs.Id] = ReportDiagnostic.Suppress,
-			}
-		);
+				new Dictionary<string, ReportDiagnostic>
+				{
+					[DiagnosticDescriptors.GatherRunOfLooseStatements.Id] = ReportDiagnostic.Warn,
+
+					[DiagnosticDescriptors.SeparateMultiLineConstructs.Id] =
+						ReportDiagnostic.Suppress,
+				}
+			);
 
 		Assert.IsEmpty(result.Diagnostics);
 	}

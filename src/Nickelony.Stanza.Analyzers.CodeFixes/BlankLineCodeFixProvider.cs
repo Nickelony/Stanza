@@ -125,13 +125,7 @@ internal sealed class BlankLineCodeFixProvider : StanzaCodeFixProvider
 		return
 			FixOptions.Parse(diagnostic) is { RunStart: { } runStart, RunEnd: { } runEnd }
 			&& StanzaDiagnosticLookup.FindNeighborUnits(root, diagnostic) is { Next.Parent: { } container }
-			? BlankLineLooseRuns.CreateRemoval(
-				sourceText,
-				siblings: StanzaSyntax.ReadSiblings(container),
-				runStart,
-				runEnd,
-				ruleId: diagnostic.Id
-			)
+			? BlankLineLooseRuns.CreateRemoval(sourceText, siblings: StanzaSyntax.ReadSiblings(container), runStart, runEnd, ruleId: diagnostic.Id)
 			: [];
 	}
 

@@ -280,9 +280,7 @@ public sealed class SiblingRuleSetContractTests
 		params DiagnosticDescriptor[] rules
 	)
 	{
-		return result.Diagnostics.Where(diagnostic =>
-			rules.Any(rule => rule.Id == diagnostic.Id)
-		);
+		return result.Diagnostics.Where(diagnostic => rules.Any(rule => rule.Id == diagnostic.Id));
 	}
 
 	private static Task<AnalyzerRunResult> RunAsync(string source, DiagnosticDescriptor rule)

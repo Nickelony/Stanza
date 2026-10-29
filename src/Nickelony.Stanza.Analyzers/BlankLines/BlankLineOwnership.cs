@@ -139,14 +139,7 @@ internal static class BlankLineOwnership
 		ImmutableArray<BlankLineGrouping.RunBorder> sameTypeBorders = RemovePragmaSilencedBorders(
 			scope: context,
 			siblings,
-
-			borders: BlankLineGrouping.ReadSameTypeDeclarationBorders(
-				siblings,
-				gapOwners,
-				gathered,
-				cancellationToken: context.CancellationToken
-			),
-
+			borders: BlankLineGrouping.ReadSameTypeDeclarationBorders(siblings, gapOwners, gathered, cancellationToken: context.CancellationToken),
 			ownerRuleId: sameTypeGroups.Descriptor.Id
 		);
 
@@ -243,10 +236,7 @@ internal static class BlankLineOwnership
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaRule rule,
 		GapOwners gapOwners
-	) =>
-	[
-		.. CollectOwnedDeclarationRunBorders(context, options, siblings, rule, gapOwners, gathered: null).Select(static border => border.Boundary),
-	];
+	) => [.. CollectOwnedDeclarationRunBorders(context, options, siblings, rule, gapOwners, gathered: null).Select(static border => border.Boundary)];
 
 	private static ImmutableArray<BlankLineGrouping.RunBorder> CollectOwnedDeclarationRunBorders(
 		SyntaxNodeAnalysisContext context,
