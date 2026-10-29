@@ -1,14 +1,12 @@
+import { readStored, writeStored } from './storage.ts';
+
 type Theme = 'light' | 'dark';
 
 const storageKey = 'stanza-theme';
 
 function stored(): Theme | null {
-	try {
-		const value = window.localStorage.getItem(storageKey);
-		return value === 'light' || value === 'dark' ? value : null;
-	} catch {
-		return null;
-	}
+	const value = readStored(storageKey);
+	return value === 'light' || value === 'dark' ? value : null;
 }
 
 function currentTheme(): Theme {
@@ -21,12 +19,7 @@ function applyTheme(theme: Theme): void {
 
 /** Remembers the choice where storage allows, and applies it either way. */
 function chooseTheme(theme: Theme): void {
-	try {
-		window.localStorage.setItem(storageKey, theme);
-	} catch {
-		// Storage can be blocked, and the choice then lasts for the visit only.
-	}
-
+	writeStored(storageKey, theme);
 	applyTheme(theme);
 }
 

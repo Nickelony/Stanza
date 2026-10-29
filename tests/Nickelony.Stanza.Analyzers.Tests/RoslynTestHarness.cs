@@ -720,27 +720,9 @@ internal static partial class RoslynTestHarness
 				.OrderByDescending(diagnostic => diagnostic.Location.SourceSpan.Start)
 		)
 		{
-			// Every gap of a run carries the fix of the whole run, so the first fix applied leaves nothing for the rest.
-			// The bounds are indexes into a container, so the container, found from the previous sibling, joins the key.
-			var fixOptions = FixOptions.Parse(diagnostic);
-
-			if (
-				fixOptions.RunStart is not null
-				&& !fixedRuns.Add(
-					(
-						diagnostic.Id,
-						fixOptions.RunStart,
-						fixOptions.RunEnd,
-						root!
-							.FindNode(diagnostic.AdditionalLocations[0].SourceSpan)
-							.Parent?.SpanStart
-							?? -1
-					)
-				)
-			)
-			{
+			// The first fix applied for a run leaves nothing for the rest of its gaps.
+			if (!FixOptions.TryClaimRun(root!, diagnostic, fixedRuns))
 				continue;
-			}
 
 			fixedDocument = await ApplyFirstFixAsync(
 					document: fixedDocument,

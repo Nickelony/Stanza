@@ -24,6 +24,111 @@ public sealed partial class ConvergenceTests
 
 	private static readonly string[] s_importLines = ["using System.Linq;", "using System.Text;"];
 
+	// A comment above a single-line unit meets the commented sibling rule in every container it judges.
+	// Each template is one statement, written without its indent, and carries loose runs the loose run rule gathers.
+	private static readonly (string Name, Func<int, string[]> Template)[] s_commentedSiblings =
+	[
+		(
+			"statements of a switch section",
+			index =>
+				[
+					"switch (loose)",
+					"{",
+					"\tcase 1:",
+					"\t\tDoThing();",
+					$"\t\t// Note {index}.",
+					"\t\tDoThing();",
+					"",
+					"\t\tloose = 1;",
+					"",
+					"\t\tloose = 2;",
+					"\t\tbreak;",
+					"\tdefault:",
+					"\t\tbreak;",
+					"}",
+				]
+		),
+
+		(
+			"single-line switch sections",
+			index =>
+				[
+					"switch (loose)",
+					"{",
+					"\tcase 1: break;",
+					$"\t// Section note {index}.",
+					"\tcase 2: break;",
+					"\tcase 3: break;",
+					"\t// Default note.",
+					"\tdefault: break;",
+					"}",
+				]
+		),
+
+		(
+			"statements of a lambda block body",
+			index =>
+				[
+					$"Action lambda{index} = () =>",
+					"{",
+					"\tDoThing();",
+					$"\t// Note {index}.",
+					"\tDoThing();",
+					"",
+					"\tloose = 1;",
+					"",
+					"\tloose = 2;",
+					"};",
+				]
+		),
+
+		(
+			"statements of a lambda block body passed as an argument",
+			index =>
+				[
+					"new List<int>().ForEach(item =>",
+					"{",
+					"\tBuild(item);",
+					$"\t// Note {index}.",
+					"\tBuild(item);",
+					"});",
+				]
+		),
+
+		(
+			"members of an initializer",
+			index =>
+				[
+					$"var initialized{index} = new Item",
+					"{",
+					"\tName = \"a\",",
+					$"\t// Count {index}.",
+					"\tCount = 1, // Trailing.",
+					"\t// Below the trailing comment.",
+					"\tTags = [],",
+					"};",
+				]
+		),
+
+		(
+			"elements of a collection expression",
+			index =>
+				[
+					$"int[] elements{index} =",
+					"[",
+					"\t1,",
+					$"\t// Two {index}.",
+					"\t2,",
+					"\t3,",
+					"\t// Four.",
+					"\t4,",
+					"];",
+				]
+		),
+
+		("arguments of a call", index => ["Call(", "\t1,", $"\t// Second {index}.", "\t2);"]),
+	];
+
 	// Each template is one statement, written without its indent.
 	// They mix the kinds the grouping rules read, with comments, directives and multi-line statements among them.
 	private static readonly Func<int, string[]>[] s_statements =
@@ -43,6 +148,7 @@ public sealed partial class ConvergenceTests
 		index => [$"#region Group{index}", "DoThing();", "#endregion"],
 		index => ["if (loose > 0) DoThing();"],
 		index => [$"void Local{index}() {{ }}"],
+		.. s_commentedSiblings.Select(static sibling => sibling.Template),
 	];
 
 	// A run is judged against the limit, so the limits take the rule through its quiet and its busy ends.
@@ -256,10 +362,6 @@ public sealed partial class ConvergenceTests
 
 	public static IEnumerable<object[]> Seeds { get; } =
 	[.. Enumerable.Range(1, DefaultSeedCount).Select(seed => new object[] { seed })];
-
-	// Seed 5 sets no statement apart from a tight neighbor's stanza, so it holds no run and needs no fix.
-	public static IEnumerable<object[]> LooseRunSeeds { get; } =
-	[.. Seeds.Where(row => (int)row[0] != 5)];
 
 	[TestMethod]
 	[DynamicData(
@@ -951,7 +1053,7 @@ public sealed partial class ConvergenceTests
 	// Each set of them has to claim a gap once and settle, whether one fix at a time or one Fix All per rule.
 	[TestMethod]
 	[DynamicData(
-		nameof(LooseRunSeeds),
+		nameof(Seeds),
 		DynamicDataDisplayName = nameof(RowNames.GetRowName),
 		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
 	)]
@@ -964,6 +1066,43 @@ public sealed partial class ConvergenceTests
 			findings,
 			"The generated statements needed no fix, so they prove nothing."
 		);
+	}
+
+	// The seeded statements reach these containers only by chance, so each template runs alone as well.
+	public static IEnumerable<object[]> CommentedSiblingTemplates { get; } =
+	[
+		.. s_commentedSiblings.Select(
+			static (sibling, position) => new object[] { sibling.Name, position }
+		),
+	];
+
+	[TestMethod]
+	[DynamicData(
+		nameof(CommentedSiblingTemplates),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task ACommentedSiblingInEachKindOfContainerIsReportedAndSettles(
+		string name,
+		int position
+	)
+	{
+		string source = WrapStatements(IndentStatement(s_commentedSiblings[position].Template(0)));
+
+		AnalyzerRunResult reported = await RoslynTestHarness.ReportAllAsync(
+			source,
+			TestRuleSets.Only(DiagnosticDescriptors.SeparateCommentedSibling)
+		);
+
+		Assert.IsTrue(
+			reported.Diagnostics.Any(static diagnostic =>
+				diagnostic.Id == DiagnosticDescriptors.SeparateCommentedSibling.Id
+			),
+
+			$"{name}: the commented sibling rule reported nothing."
+		);
+
+		_ = await AssertSourceSettlesAsync(source, limit: 1, label: $"{name}:");
 	}
 
 	[TestMethod]
@@ -1031,7 +1170,7 @@ public sealed partial class ConvergenceTests
 			source,
 			rules: s_layoutRules,
 			options: null,
-			seed
+			label: $"seed {seed}:"
 		);
 
 		Assert.AreSequenceEqual(
@@ -1049,14 +1188,19 @@ public sealed partial class ConvergenceTests
 		return result.Diagnostics.Length;
 	}
 
-	private static async Task<int> AssertLooseRunsSettleAsync(int seed)
+	private static Task<int> AssertLooseRunsSettleAsync(int seed)
 	{
-		string source = CreateStatementSource(new Random(seed));
+		int limit = s_looseLimits[seed % s_looseLimits.Length];
+		string source = CreateStatementSource(new Random(seed), looseRun: limit + 1);
 
-		Dictionary<string, string> options = new()
-		{
-			["stanza_max_loose_statements"] = $"{s_looseLimits[seed % s_looseLimits.Length]}",
-		};
+		return AssertSourceSettlesAsync(source, limit, label: $"seed {seed}:");
+	}
+
+	// A fix order must not change the text,
+	// so the first rule set settles on one text from the top and from the bottom.
+	private static async Task<int> AssertSourceSettlesAsync(string source, int limit, string label)
+	{
+		Dictionary<string, string> options = new() { ["stanza_max_loose_statements"] = $"{limit}" };
 
 		int findings = 0;
 
@@ -1073,18 +1217,40 @@ public sealed partial class ConvergenceTests
 			if (reported.Diagnostics.Length > 0)
 				RoslynTestHarness.AssertEachGapIsClaimedOnce(reported);
 
-			AnalyzerRunResult result = await RunAsync(source, rules: enabled, options, seed);
+			AnalyzerRunResult result = await RunAsync(source, rules: enabled, options, label);
+
+			// The first set holds the most rules and contests the most gaps,
+			// and a second order for each set would outlast the soak's test timeout.
+			if (ReferenceEquals(rules, s_looseRuleSets[0]))
+			{
+				AnalyzerRunResult bottomFirst = await RoslynTestHarness.RunIterativelyAsync(
+					source,
+
+					new RunOptions(RoslynTestHarness.AllAnalyzers)
+					{
+						DiagnosticOptions = enabled,
+						AnalyzerConfigOptions = options,
+						FixesBottomFirst = true,
+					}
+				);
+
+				Assert.AreEqual(
+					result.FixedText,
+					bottomFirst.FixedText,
+					$"{label} fixing the last gap first wrote another text than fixing the first gap first."
+				);
+			}
 
 			Assert.AreSequenceEqual(
 				ReadTokens(source),
 				ReadTokens(result.FixedText),
-				$"seed {seed}: a fix changed a token."
+				$"{label} a fix changed a token."
 			);
 
 			Assert.AreSequenceEqual(
 				ReadComments(source),
 				ReadComments(result.FixedText),
-				$"seed {seed}: a fix changed a comment."
+				$"{label} a fix changed a comment."
 			);
 
 			findings += result.Diagnostics.Length;
@@ -1170,20 +1336,43 @@ public sealed partial class ConvergenceTests
 		return enabled;
 	}
 
-	internal static string CreateStatementSource(Random random)
+	internal static string CreateStatementSource(Random random, int looseRun)
 	{
 		List<string> lines = [];
+
 		int count = random.Next(6, 13);
+		int runIndex = random.Next(count);
 
 		for (int index = 0; index < count; index++)
 		{
 			if (index > 0)
 				lines.AddRange(StatementGap(random));
 
-			foreach (string line in s_statements[random.Next(s_statements.Length)](index))
-				lines.Add(line.Length == 0 || line[0] == '#' ? line : "\t\t" + line);
+			// One run of loose assignments, set apart on both sides, gives every seed a run to gather.
+			if (index == runIndex)
+			{
+				if (index > 0 && lines[^1].Length > 0)
+					lines.Add(string.Empty);
+
+				for (int value = 0; value < looseRun; value++)
+					lines.AddRange([$"\t\tloose = {value};", string.Empty]);
+			}
+
+			lines.AddRange(IndentStatement(s_statements[random.Next(s_statements.Length)](index)));
 		}
 
+		return WrapStatements(lines);
+	}
+
+	private static IEnumerable<string> IndentStatement(IEnumerable<string> statement)
+	{
+		return statement.Select(static line =>
+			line.Length == 0 || line[0] == '#' ? line : "\t\t" + line
+		);
+	}
+
+	private static string WrapStatements(IEnumerable<string> lines)
+	{
 		return "internal sealed class Sample\n{\n\tpublic void Run()\n\t{\n\t\tint loose = 0;\n\n"
 			+ string.Join("\n", lines)
 			+ "\n\t}\n}\n";
@@ -1243,7 +1432,7 @@ public sealed partial class ConvergenceTests
 			source,
 			rules: s_documentationRules,
 			options,
-			seed
+			label: $"seed {seed}:"
 		);
 
 		string[] fixedLines =
@@ -1268,7 +1457,7 @@ public sealed partial class ConvergenceTests
 		string source,
 		IReadOnlyDictionary<string, ReportDiagnostic> rules,
 		IReadOnlyDictionary<string, string>? options,
-		int seed
+		string label
 	)
 	{
 		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
@@ -1287,7 +1476,7 @@ public sealed partial class ConvergenceTests
 				AnalyzerConfigOptions = options,
 			},
 
-			message: $"seed {seed}:"
+			message: label
 		);
 
 		return result;

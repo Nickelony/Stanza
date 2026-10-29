@@ -58,9 +58,9 @@ internal abstract class StanzaCodeFixProvider : CodeFixProvider
 			if (!StanzaDiagnosticLookup.IsDiagnosticInDocument(diagnostic, sourceText))
 				continue;
 
-			// Every gap of a run carries the fix of the whole run, so the first one builds the changes and the rest are skipped,
+			// The first gap of a run builds the changes and the rest are skipped,
 			// rather than each building them again for the merge to drop.
-			if (!TryClaimRun(root, diagnostic, fixedRuns))
+			if (!FixOptions.TryClaimRun(root, diagnostic, fixedRuns))
 				continue;
 
 			ImmutableArray<TextChange> changes = await row.Create(document: view, diagnostic, cancellationToken: context.CancellationToken)
@@ -73,21 +73,6 @@ internal abstract class StanzaCodeFixProvider : CodeFixProvider
 		ImmutableArray<TextChange> merged = FixMerge.Merge(sets, insertsNest: NestsInserts);
 
 		return merged.IsEmpty ? null : document.WithText(sourceText.WithChanges(merged));
-	}
-
-	/// <summary>Whether no earlier diagnostic of the same run was fixed.</summary>
-	private static bool TryClaimRun(SyntaxNode root, Diagnostic diagnostic, HashSet<(string Id, int? Start, int? End, int Container)> fixedRuns)
-	{
-		var fixOptions = FixOptions.Parse(diagnostic);
-
-		// A diagnostic with no run bounds is not part of a run.
-		if (fixOptions.RunStart is null || diagnostic.AdditionalLocations.Count == 0)
-			return true;
-
-		// The bounds are indexes into a container, so the container, found from the previous sibling, joins the key.
-		int container = root.FindNode(diagnostic.AdditionalLocations[0].SourceSpan).Parent?.SpanStart ?? -1;
-
-		return fixedRuns.Add((diagnostic.Id, fixOptions.RunStart, fixOptions.RunEnd, container));
 	}
 
 	public sealed override async Task RegisterCodeFixesAsync(CodeFixContext context)

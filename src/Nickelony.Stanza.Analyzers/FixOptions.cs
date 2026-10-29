@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
@@ -97,6 +98,24 @@ internal sealed record FixOptions(
 			properties[RunEndKey] = runEnd.ToString(CultureInfo.InvariantCulture);
 
 		return properties.ToImmutable();
+	}
+
+	/// <summary>Whether no earlier diagnostic claimed the same run, which this one then claims.</summary>
+	/// <remarks>
+	/// Every gap of a run carries the fix of the whole run, so the first one claims it and the rest are skipped.
+	/// </remarks>
+	public static bool TryClaimRun(SyntaxNode root, Diagnostic diagnostic, HashSet<(string Id, int? Start, int? End, int Container)> claimedRuns)
+	{
+		FixOptions fixOptions = Parse(diagnostic);
+
+		// A diagnostic with no run bounds is not part of a run.
+		if (fixOptions.RunStart is null || diagnostic.AdditionalLocations.Count == 0)
+			return true;
+
+		// The bounds are indexes into a container, so the container, found from the previous sibling, joins the key.
+		int container = root.FindNode(diagnostic.AdditionalLocations[0].SourceSpan).Parent?.SpanStart ?? -1;
+
+		return claimedRuns.Add((diagnostic.Id, fixOptions.RunStart, fixOptions.RunEnd, container));
 	}
 
 	/// <summary>Whether the diagnostic carries a kept count at all, a non-numeric one included.</summary>

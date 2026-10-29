@@ -6,7 +6,11 @@ This page defines the words the rule, option and guide pages use, such as a gap 
 - **unit**: a piece of code or markup beside a gap, such as a statement, a member, the import section, an `if` chain or a tag.
 - **separating rule**: a rule that adds a blank line between two neighboring units.
 - **tight rule**: a rule that removes that blank line.
-- **single-line tight rule**: a tight rule in no pair that judges a gap only when neither unit spans more than one line.
+- **single-line tight rule**: a `Keep single-line ... together` rule, a tight rule in no pair that judges the gaps between the elements
+  of one construct, such as arguments or accessors, only when neither element spans more than one line.
+  [`ZA0006`](https://github.com/Nickelony/Stanza/wiki/ZA0006-Keep-the-two-units-of-a-container-together) and
+  [`ZA0052`](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) are not one.
+- **sibling**: a unit that shares its container with the unit beside it, such as a statement of the same block or an element of the same list.
 - **pair**: two rules that judge one gap in opposite ways, such as a separating rule and its tight rule.
 - **grouping rules**: [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-declaration-and-invocation-runs) to `ZA0004`, which separate a run from its neighbors
   and leave a gap beside a multi-line unit to [`ZA0005`](https://github.com/Nickelony/Stanza/wiki/ZA0005-Separate-multi-line-constructs).

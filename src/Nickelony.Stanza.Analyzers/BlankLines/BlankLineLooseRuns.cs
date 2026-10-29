@@ -142,7 +142,7 @@ internal static class BlankLineLooseRuns
 		Func<ImmutableHashSet<int>, ImmutableHashSet<int>> readStaying
 	)
 	{
-		// Only the first few are tried, so the work stays linear.
+		// Each retry reads the whole container again, so only the first few are tried and the work stays linear.
 		foreach (int boundary in candidates.Except(removable).OrderBy(held => held).Take(MaxRounds))
 		{
 			ImmutableHashSet<int> trial = removable.Add(boundary);

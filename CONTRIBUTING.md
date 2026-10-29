@@ -79,8 +79,8 @@ vale --glob='!**/{bin,obj,artifacts}/**' .
   [floor](src/Nickelony.Stanza.Analyzers/README.md#installation) they build against.
 - A change to `site/` or to a file the build reads, which [its readme](site/README.md) lists, also runs the site gates, in `site/`:
   `npm ci`, `npm run format:check`, `npm run lint`, `npm run typecheck`, `npm test` and `npm run build`.
-- `npm run format` applies Prettier, which formats the site as `./format.ps1` formats the C# code,
-  and oxlint requires braces around the body of every `if` and loop.
+- `npm run format` writes the changes that `npm run format:check` reports;
+  [the site readme](site/README.md) says what the formatter and the linter require.
 - The site tests read the pages, so a page the site cannot parse fails them.
   The Pages workflow runs the same steps on a pull request.
 - A narrower command is fine while a change is in progress; CI still runs every gate before the pull request can merge.
@@ -90,7 +90,7 @@ vale --glob='!**/{bin,obj,artifacts}/**' .
 A release is a tag, which the [release workflow](.github/workflows/release.yml) verifies, packs and publishes.
 
 The [Pages workflow](.github/workflows/pages.yml) publishes the site on each push to `main` that changes what the site reads.
-Its first deployment needs a one-time setting in the repository: Settings, Pages, Source set to GitHub Actions.
+[The site readme](site/README.md) names the one-time repository setting its first deployment needs.
 
 ## Adding or changing a rule
 

@@ -34,6 +34,8 @@ limit = 3;
   [`ZA0047`](https://github.com/Nickelony/Stanza/wiki/ZA0047-Separate-the-region-marker-from-its-neighbors) beside a region marker and
   [`ZA0053`](https://github.com/Nickelony/Stanza/wiki/ZA0053-Separate-a-commented-sibling) above a comment.
 - A gap stays blank when gathering it would leave `ZA0001` or `ZA0004` asking for a blank line that is not there now.
+- A container where those rules keep asking for blank lines back through more than four rounds of that check is left as written,
+  and the rule reports nothing in it.
 - A rule that is [off](https://github.com/Nickelony/Stanza/wiki/Terms) at a gap hands it back, so the gap counts as loose again.
 - The rule judges the statements of a block and of a switch section, not the gaps between sections.
   Members, top-level statements and the elements of a delimited list keep their blank lines.

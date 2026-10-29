@@ -136,7 +136,7 @@ internal static class BlankLineOwnership
 		if (StanzaRuleState.IsRuleOff(context, options, sameTypeGroups))
 			return declarationBorders;
 
-		ImmutableArray<BlankLineGrouping.RunBorder> sameTypeBorders = RemovePragmaSilencedBorders(
+		ImmutableArray<BlankLineGrouping.RunBorder> sameTypeBorders = ReadBordersNotSilencedByPragma(
 			scope: context,
 			siblings,
 			borders: BlankLineGrouping.ReadSameTypeDeclarationBorders(siblings, gapOwners, gathered, cancellationToken: context.CancellationToken),
@@ -252,7 +252,7 @@ internal static class BlankLineOwnership
 		if (StanzaRuleState.IsRuleOff(context, options, declarationRuns))
 			return [];
 
-		return RemovePragmaSilencedBorders(
+		return ReadBordersNotSilencedByPragma(
 			scope: context,
 			siblings,
 
@@ -268,7 +268,7 @@ internal static class BlankLineOwnership
 		);
 	}
 
-	private static ImmutableArray<BlankLineGrouping.RunBorder> RemovePragmaSilencedBorders(
+	private static ImmutableArray<BlankLineGrouping.RunBorder> ReadBordersNotSilencedByPragma(
 		RuleScope scope,
 		ImmutableArray<SyntaxNode> siblings,
 		ImmutableArray<BlankLineGrouping.RunBorder> borders,

@@ -1,14 +1,11 @@
 import { h } from './dom.ts';
+import { readStored, writeStored } from './storage.ts';
 
 const storageKey = 'stanza-marks';
 
 /** Whether the preview marks the lines a rule adds or removes; marked unless the visitor chose otherwise. */
 function stored(): boolean {
-	try {
-		return window.localStorage.getItem(storageKey) !== 'off';
-	} catch {
-		return true;
-	}
+	return readStored(storageKey) !== 'off';
 }
 
 function applyMarks(marked: boolean): void {
@@ -17,12 +14,7 @@ function applyMarks(marked: boolean): void {
 
 /** Remembers the choice where storage allows, and applies it either way. */
 function chooseMarks(marked: boolean): void {
-	try {
-		window.localStorage.setItem(storageKey, marked ? 'on' : 'off');
-	} catch {
-		// Storage can be blocked, and the choice then lasts for the visit only.
-	}
-
+	writeStored(storageKey, marked ? 'on' : 'off');
 	applyMarks(marked);
 }
 
