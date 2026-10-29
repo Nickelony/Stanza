@@ -1,0 +1,105 @@
+name: Pages
+
+# The configurator is built from the files that site/README.md lists, which the paths below name,
+# so a change to one of them rebuilds it, and a page the site cannot parse fails the pull request.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'docs/rules/**'
+      - 'docs/options/**'
+      - 'docs/Markup-behavior.md'
+      - 'src/Nickelony.Stanza.Analyzers/README.md'
+      - 'src/Nickelony.Stanza.Markup.Core/MarkupDiagnostics.cs'
+      - 'icon/Stanza.png'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'docs/rules/**'
+      - 'docs/options/**'
+      - 'docs/Markup-behavior.md'
+      - 'src/Nickelony.Stanza.Analyzers/README.md'
+      - 'src/Nickelony.Stanza.Markup.Core/MarkupDiagnostics.cs'
+      - 'icon/Stanza.png'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# A new push to a pull request supersedes its running build.
+# A deployment is never canceled midway, so the next one waits for it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The token is read-only by default; the deploy job declares what it needs.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: site
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install the packages
+        run: npm ci
+
+      - name: Check the formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check the types
+        run: npm run typecheck
+
+      # The tests read the rule and option pages, so a page that does not parse fails here.
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # A pull request builds and tests only; the artifact is for the deploy job.
+      - name: Upload the site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site/dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

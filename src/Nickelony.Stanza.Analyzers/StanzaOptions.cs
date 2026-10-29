@@ -26,12 +26,14 @@ internal sealed record StanzaOptions(
 	int NamedArgumentCount,
 	bool AllowsNamedArgumentShorthand,
 	StringComparison NamedArgumentComparison,
+	int MaxLooseStatements,
 	DocLayoutOptions? DocLayout,
 	ImmutableHashSet<string> RulesOffUnlessEnabled
 )
 {
 	private const int DefaultMaxLineLength = MarkupOptionReader.DefaultMaxLineLength;
 	private const int DefaultNamedArgumentCount = 4;
+	private const int DefaultMaxLooseStatements = 3;
 
 	/// <summary>Whether a bulk key's severity turns the rules it covers off, which only <c>none</c> does.</summary>
 	private static bool IsDisabledSeverity(string severity) => MarkupOptionReader.Names(severity, "none");
@@ -87,6 +89,7 @@ internal sealed record StanzaOptions(
 			NamedArgumentCount: MarkupOptionReader.ReadCount(ReadKey, "stanza_named_argument_count", DefaultNamedArgumentCount),
 			AllowsNamedArgumentShorthand: ReadNamedArgumentShorthand(options),
 			NamedArgumentComparison: ReadNamedArgumentComparison(options),
+			MaxLooseStatements: MarkupOptionReader.ReadCount(ReadKey, "stanza_max_loose_statements", DefaultMaxLooseStatements),
 			DocLayout: MarkupOptionReader.ResolveDocLayout(ReadKey),
 			RulesOffUnlessEnabled: ReadRulesOffUnlessEnabled(options)
 		);

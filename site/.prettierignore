@@ -1,0 +1,4 @@
+# The build output and the lock file are written by tools, and the readme follows the repository's prose rules.
+dist/
+package-lock.json
+*.md

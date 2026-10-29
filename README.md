@@ -8,7 +8,8 @@ A *stanza* is a group of lines set apart by blank lines,
 and the packages lay out those groups.
 
 [The analyzer readme](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Analyzers/README.md) has the rule table,
-the severity tiers and the configuration keys.
+the severity tiers and the configuration keys,
+and the [rule configurator](https://nickelony.github.io/Stanza/) writes the `.editorconfig` for the severities and values you pick.
 
 ## Analyzers
 

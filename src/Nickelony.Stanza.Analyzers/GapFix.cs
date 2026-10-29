@@ -9,6 +9,7 @@ internal enum GapFix
 	MarkupInsertion,
 	TokenInsertion,
 	AdjacentRemoval,
+	RunRemoval,
 	DeclarationGapRemoval,
 	MarkupCapRemoval,
 	MarkupExtraRemoval,

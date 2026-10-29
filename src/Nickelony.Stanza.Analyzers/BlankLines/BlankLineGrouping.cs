@@ -11,21 +11,34 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 /// <summary>Reads the boundaries of the runs of statements, members and declarations a blank line splits.</summary>
 internal static class BlankLineGrouping
 {
+	/// <summary>A boundary a repeated run asks for, with the run's start and its end, one past the last.</summary>
+	public readonly record struct RunBorder(int Boundary, int RunStart, int RunEnd);
+
 	public static ImmutableArray<int> ReadDeclarationRunBoundaries(
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaOptions options,
 		GapOwners gapOwners,
+		CancellationToken cancellationToken
+	) => ReadBoundaries(ReadDeclarationRunBorders(siblings, options, gapOwners, gathered: null, cancellationToken));
+
+	/// <summary>Reads the declaration run borders, as if the gathered gaps held no blank line.</summary>
+	public static ImmutableArray<RunBorder> ReadDeclarationRunBorders(
+		ImmutableArray<SyntaxNode> siblings,
+		StanzaOptions options,
+		GapOwners gapOwners,
+		ImmutableHashSet<int>? gathered,
 		CancellationToken cancellationToken
 	)
 	{
 		if (siblings.Length < 2)
 			return [];
 
-		return ReadRunBoundaries(
+		return ReadRunBorders(
 			siblings,
 			getKey: node => GetDeclarationRunKey(node, options),
 			includesLoneVariableBoundary: true,
 			gapOwners,
+			gathered,
 			cancellationToken
 		);
 	}
@@ -39,7 +52,9 @@ internal static class BlankLineGrouping
 		if (siblings.Length < 2)
 			return [];
 
-		return ReadRunBoundaries(siblings, getKey: GetMemberGroupKey, includesLoneVariableBoundary: true, gapOwners, cancellationToken);
+		return ReadBoundaries(
+			ReadRunBorders(siblings, getKey: GetMemberGroupKey, includesLoneVariableBoundary: true, gapOwners, gathered: null, cancellationToken)
+		);
 	}
 
 	public static ImmutableArray<int> ReadModifierGroupBoundaries(
@@ -51,14 +66,17 @@ internal static class BlankLineGrouping
 		if (siblings.Length < 2)
 			return [];
 
-		return ReadRunBoundaries(siblings, getKey: GetModifierGroupKey, includesLoneVariableBoundary: false, gapOwners, cancellationToken);
+		return ReadBoundaries(
+			ReadRunBorders(siblings, getKey: GetModifierGroupKey, includesLoneVariableBoundary: false, gapOwners, gathered: null, cancellationToken)
+		);
 	}
 
-	private static ImmutableArray<int> ReadRunBoundaries(
+	private static ImmutableArray<RunBorder> ReadRunBorders(
 		ImmutableArray<SyntaxNode> siblings,
 		Func<SyntaxNode, (RunKind Kind, string? Name)> getKey,
 		bool includesLoneVariableBoundary,
 		GapOwners gapOwners,
+		ImmutableHashSet<int>? gathered,
 		CancellationToken cancellationToken
 	)
 	{
@@ -70,13 +88,8 @@ internal static class BlankLineGrouping
 			keys[index] = getKey(siblings[index]);
 		}
 
-		ImmutableArray<Run> runs = WalkRuns(keys, siblings, gapOwners, cancellationToken);
-
-		// The runs are walked in order and the boundaries they add never fall behind the last one added,
-		// so the walk appends them straight into the builder,
-		// rather than collecting them into a set and sorting that.
-		ImmutableArray<int>.Builder boundaries = ImmutableArray.CreateBuilder<int>();
-		int last = -1;
+		ImmutableArray<Run> runs = WalkRuns(keys, siblings, gapOwners, gathered, cancellationToken);
+		ImmutableArray<RunBorder>.Builder borders = ImmutableArray.CreateBuilder<RunBorder>();
 
 		for (int index = 0; index < runs.Length; index++)
 		{
@@ -86,34 +99,54 @@ internal static class BlankLineGrouping
 				continue;
 
 			// A declaration on its own is set apart only while it stands directly above the run.
+			// A caller that gathers some gaps keeps that boundary once a blank line stands below the declaration too,
+			// since the rule writes that blank line and a fix order that wrote it first would otherwise judge the gap alone.
+			// With no gap gathered the text is read as it stands, so a blank line below the declaration keeps the boundary from being asked.
 			if (
 				includesLoneVariableBoundary
 				&& run.Start >= 2
 				&& IsVariableLikeDeclaration(siblings[run.Start - 1])
 				&& !runs[index - 1].IsRepeated
-				&& !BlankLineGaps.HasBlankLineBetween(siblings[run.Start - 1], siblings[run.Start])
+				&& (gathered is { IsEmpty: false } || !HasBlankLineBefore(siblings, run.Start, gathered: null))
+				&& !IsCommentedSiblingGap(
+					siblings,
+					boundaryIndex: run.Start,
+					commentedSiblingOwnerId: gapOwners.CommentedSiblingId,
+					cancellationToken
+				)
 			)
 			{
-				AddBoundary(boundaries, ref last, run.Start - 1);
+				borders.Add(new RunBorder(run.Start - 1, run.Start, run.End));
 			}
 
 			if (run.Start > 0)
-				AddBoundary(boundaries, ref last, run.Start);
+				borders.Add(new RunBorder(run.Start, run.Start, run.End));
 
 			if (run.End < siblings.Length)
-				AddBoundary(boundaries, ref last, run.End);
+				borders.Add(new RunBorder(run.End, run.Start, run.End));
+		}
+
+		return borders.ToImmutable();
+	}
+
+	private static ImmutableArray<int> ReadBoundaries(ImmutableArray<RunBorder> borders)
+	{
+		// The runs are walked in order and the borders they add never fall behind the last one added,
+		// so the walk appends the boundaries straight into the builder,
+		// rather than collecting them into a set and sorting that.
+		ImmutableArray<int>.Builder boundaries = ImmutableArray.CreateBuilder<int>();
+		int last = -1;
+
+		foreach (RunBorder border in borders)
+		{
+			if (border.Boundary <= last)
+				continue;
+
+			boundaries.Add(border.Boundary);
+			last = border.Boundary;
 		}
 
 		return boundaries.ToImmutable();
-	}
-
-	private static void AddBoundary(ImmutableArray<int>.Builder boundaries, ref int last, int boundary)
-	{
-		if (boundary <= last)
-			return;
-
-		boundaries.Add(boundary);
-		last = boundary;
 	}
 
 	/// <summary>Whether ZA0005 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
@@ -168,6 +201,28 @@ internal static class BlankLineGrouping
 		return IsKeptMarker(first, ownerId, cancellationToken) || IsKeptMarker(last, ownerId, cancellationToken);
 	}
 
+	/// <summary>Whether ZA0053 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <remarks>
+	/// A pragma that silences ZA0053 over the gap leaves it inside the run, as <c>none</c> does.
+	/// </remarks>
+	private static bool IsCommentedSiblingGap(
+		ImmutableArray<SyntaxNode> siblings,
+		int boundaryIndex,
+		string? commentedSiblingOwnerId,
+		CancellationToken cancellationToken
+	)
+	{
+		if (commentedSiblingOwnerId is null || !BlankLineGaps.IsKeptBlankAboveComment(siblings[boundaryIndex - 1], siblings[boundaryIndex]))
+			return false;
+
+		return !StanzaPragmas.IsSilencedByPragma(
+			syntaxTree: siblings[boundaryIndex].SyntaxTree,
+			ruleId: commentedSiblingOwnerId,
+			position: siblings[boundaryIndex].SpanStart,
+			cancellationToken
+		);
+	}
+
 	/// <summary>Whether the directive is a region marker that ZA0047 is not silenced at by a pragma.</summary>
 	private static bool IsKeptMarker(SyntaxNode? directive, string ruleId, CancellationToken cancellationToken)
 	{
@@ -178,10 +233,24 @@ internal static class BlankLineGrouping
 		return !StanzaPragmas.IsSilencedByPragma(syntaxTree: directive.SyntaxTree, ruleId, position, cancellationToken);
 	}
 
+	/// <summary>Whether ZA0005, ZA0047 or ZA0053 keeps the gap, so a run ends there before it is written.</summary>
+	public static bool IsGapKeptBlank(
+		ImmutableArray<SyntaxNode> siblings,
+		int boundaryIndex,
+		GapOwners gapOwners,
+		CancellationToken cancellationToken
+	)
+	{
+		return IsMultiLineGap(siblings, boundaryIndex, multiLineGapOwnerId: gapOwners.MultiLineId, cancellationToken)
+			|| IsRegionMarkerGap(siblings[boundaryIndex], gapOwners.RegionMarkerId, cancellationToken)
+			|| IsCommentedSiblingGap(siblings, boundaryIndex, commentedSiblingOwnerId: gapOwners.CommentedSiblingId, cancellationToken);
+	}
+
 	private static ImmutableArray<Run> WalkRuns(
 		(RunKind Kind, string? Name)[] keys,
 		ImmutableArray<SyntaxNode> siblings,
 		GapOwners gapOwners,
+		ImmutableHashSet<int>? gathered,
 		CancellationToken cancellationToken
 	)
 	{
@@ -199,9 +268,8 @@ internal static class BlankLineGrouping
 				runKey.Kind != RunKind.None
 				&& end < siblings.Length
 				&& keys[end] == runKey
-				&& !BlankLineGaps.HasBlankLineBetween(siblings[end - 1], siblings[end])
-				&& !IsMultiLineGap(siblings, boundaryIndex: end, multiLineGapOwnerId: gapOwners.MultiLineId, cancellationToken)
-				&& !IsRegionMarkerGap(siblings[end], gapOwners.RegionMarkerId, cancellationToken)
+				&& !HasBlankLineBefore(siblings, end, gathered)
+				&& !IsGapKeptBlank(siblings, boundaryIndex: end, gapOwners, cancellationToken)
 			)
 			{
 				end++;
@@ -218,13 +286,25 @@ internal static class BlankLineGrouping
 		ImmutableArray<SyntaxNode> siblings,
 		GapOwners gapOwners,
 		CancellationToken cancellationToken
+	) => ReadBoundaries(ReadSameTypeDeclarationBorders(siblings, gapOwners, gathered: null, cancellationToken));
+
+	/// <summary>Reads the same-type group borders, as if the gathered gaps held no blank line.</summary>
+	public static ImmutableArray<RunBorder> ReadSameTypeDeclarationBorders(
+		ImmutableArray<SyntaxNode> siblings,
+		GapOwners gapOwners,
+		ImmutableHashSet<int>? gathered,
+		CancellationToken cancellationToken
 	)
 	{
 		if (siblings.Length < 2)
 			return [];
 
-		return ReadRunBoundaries(siblings, getKey: GetTypeKey, includesLoneVariableBoundary: false, gapOwners, cancellationToken);
+		return ReadRunBorders(siblings, getKey: GetTypeKey, includesLoneVariableBoundary: false, gapOwners, gathered, cancellationToken);
 	}
+
+	/// <summary>Whether a blank line stands above a sibling, unless the caller reads the gap as gathered.</summary>
+	private static bool HasBlankLineBefore(ImmutableArray<SyntaxNode> siblings, int index, ImmutableHashSet<int>? gathered) =>
+		(gathered is null || !gathered.Contains(index)) && BlankLineGaps.HasBlankLineBetween(siblings[index - 1], siblings[index]);
 
 	private static (RunKind Kind, string? Name) GetDeclarationRunKey(SyntaxNode node, StanzaOptions options)
 	{

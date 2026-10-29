@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
@@ -23,7 +24,9 @@ internal sealed record FixOptions(
 	DocLayoutOptions? DocLayout = null,
 	bool SpacedSlash = false,
 	int? KeptBlankLines = null,
-	TextChange? Change = null
+	TextChange? Change = null,
+	int? RunStart = null,
+	int? RunEnd = null
 )
 {
 	private const string TabColumnsKey = "tabColumns";
@@ -37,6 +40,8 @@ internal sealed record FixOptions(
 	private const string ChangeStartKey = "changeStart";
 	private const string ChangeLengthKey = "changeLength";
 	private const string ChangeTextKey = "changeText";
+	private const string RunStartKey = "runStart";
+	private const string RunEndKey = "runEnd";
 
 	private const string LeadingPlacement = "leading";
 	private const string OwnLine = "own";
@@ -86,7 +91,31 @@ internal sealed record FixOptions(
 			properties[ChangeTextKey] = change.NewText;
 		}
 
+		if (RunStart is { } runStart)
+			properties[RunStartKey] = runStart.ToString(CultureInfo.InvariantCulture);
+
+		if (RunEnd is { } runEnd)
+			properties[RunEndKey] = runEnd.ToString(CultureInfo.InvariantCulture);
+
 		return properties.ToImmutable();
+	}
+
+	/// <summary>Whether no earlier diagnostic claimed the same run, which this one then claims.</summary>
+	/// <remarks>
+	/// Every gap of a run carries the fix of the whole run, so the first one claims it and the rest are skipped.
+	/// </remarks>
+	public static bool TryClaimRun(SyntaxNode root, Diagnostic diagnostic, HashSet<(string Id, int? Start, int? End, int Container)> claimedRuns)
+	{
+		FixOptions fixOptions = Parse(diagnostic);
+
+		// A diagnostic with no run bounds is not part of a run.
+		if (fixOptions.RunStart is null || diagnostic.AdditionalLocations.Count == 0)
+			return true;
+
+		// The bounds are indexes into a container, so the container, found from the previous sibling, joins the key.
+		int container = root.FindNode(diagnostic.AdditionalLocations[0].SourceSpan).Parent?.SpanStart ?? -1;
+
+		return claimedRuns.Add((diagnostic.Id, fixOptions.RunStart, fixOptions.RunEnd, container));
 	}
 
 	/// <summary>Whether the diagnostic carries a kept count at all, a non-numeric one included.</summary>
@@ -109,7 +138,9 @@ internal sealed record FixOptions(
 			DocLayout: properties.TryGetValue(DocLayoutKey, out string? layout) ? ReadLayout(layout) : null,
 			SpacedSlash: spacedSlash,
 			KeptBlankLines: ReadCount(properties, KeptBlankLinesKey),
-			Change: ReadChange(properties)
+			Change: ReadChange(properties),
+			RunStart: ReadCount(properties, RunStartKey),
+			RunEnd: ReadCount(properties, RunEndKey)
 		);
 	}
 

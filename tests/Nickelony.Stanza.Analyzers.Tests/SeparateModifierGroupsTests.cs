@@ -119,7 +119,10 @@ public sealed class SeparateModifierGroupsTests
 			new Dictionary<string, ReportDiagnostic>
 			{
 				[DiagnosticDescriptors.SeparateModifierGroups.Id] = ReportDiagnostic.Warn,
-				[DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns.Id] = ReportDiagnostic.Suppress,
+
+				[DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns.Id] =
+					ReportDiagnostic.Suppress,
+
 				[DiagnosticDescriptors.SeparateMemberGroups.Id] = ReportDiagnostic.Suppress,
 			}
 		);

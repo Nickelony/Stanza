@@ -80,6 +80,7 @@ internal static class MarkupKeyCheck
 
 			MarkupKeys.Expand => MarkupOptionReader.IsExpansionName(value) ? null : "neither 'none', 'sections' nor 'all', so the default applies",
 			MarkupKeys.IndentStyle => MarkupOptionReader.IsIndentStyleName(value) ? null : "neither 'nested' nor 'hanging', so the default applies",
+
 			// A word list takes any value, so only a misspelled key can be wrong.
 			MarkupKeys.WeakTailWords => null,
 			_ => "not a key this tool reads, so it was ignored",

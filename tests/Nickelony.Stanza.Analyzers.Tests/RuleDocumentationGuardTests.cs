@@ -785,6 +785,7 @@ public sealed class RuleDocumentationGuardTests
 			["stanza_max_line_length"] = $"{options.MaxLineLength}",
 			["stanza_doc_max_line_length"] = $"{doc.ContentWidth}",
 			["stanza_named_argument_count"] = $"{options.NamedArgumentCount}",
+			["stanza_max_loose_statements"] = $"{options.MaxLooseStatements}",
 			["stanza_named_argument_match"] = ReadNamedArgumentMatch(options),
 			["stanza_named_argument_case"] = ReadNamedArgumentCase(options),
 			["stanza_multiline_body_trigger"] = ReadMultiLineTrigger(options),

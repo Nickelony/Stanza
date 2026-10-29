@@ -29,4 +29,7 @@ internal sealed record RunOptions(ImmutableArray<DiagnosticAnalyzer> Analyzers)
 
 	/// <summary>Whether the run fails when its fixes leave a diagnostic standing.</summary>
 	public bool AssertFixedPoint { get; init; } = true;
+
+	/// <summary>Whether an iterative run fixes the last located diagnostic first.</summary>
+	public bool FixesBottomFirst { get; init; }
 }

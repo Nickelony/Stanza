@@ -1,0 +1,29 @@
+{
+	"name": "stanza-configurator",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"description": "The rule configurator of the Stanza analyzers, built from the pages under docs/.",
+	"engines": {
+		"node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+	},
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview",
+		"typecheck": "tsc --noEmit",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"lint": "oxlint .",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"@types/node": "^24.19.2",
+		"oxlint": "^1.90.0",
+		"prettier": "^3.9.10",
+		"shiki": "^4.5.0",
+		"typescript": "^7.0.2",
+		"vite": "^8.3.5",
+		"vitest": "^5.0.5"
+	}
+}

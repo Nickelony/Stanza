@@ -49,6 +49,7 @@ public sealed class RulePageExampleTests
 	{
 		["stanza_markup_max_blank_lines"] = "ZA0104",
 		["stanza_max_line_length"] = "ZA0041",
+		["stanza_max_loose_statements"] = "ZA0052",
 		["stanza_named_argument_count"] = "ZA0050",
 	};
 
@@ -71,6 +72,12 @@ public sealed class RulePageExampleTests
 			"at a width of 40",
 			new Dictionary<string, string> { ["stanza_max_line_length"] = "40" }
 		),
+
+		(
+			"stanza_max_loose_statements",
+			"at a limit of 2",
+			new Dictionary<string, string> { ["stanza_max_loose_statements"] = "2" }
+		),
 	];
 
 	// The other rules whose output an example shows, keyed by its page and a part of its marker.
@@ -78,6 +85,9 @@ public sealed class RulePageExampleTests
 	[
 		// ZA0001 writes the gap above the first property, and ZA0002 the one above the method.
 		("ZA0002", string.Empty, ["ZA0001"]),
+
+		// ZA0001 would pair the declaration that the comment splits off with the call below it.
+		("ZA0053", string.Empty, ["ZA0001"]),
 		("ZA0044", "with ZA0046 enabled", ["ZA0046"]),
 	];
 

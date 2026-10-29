@@ -42,6 +42,7 @@ internal abstract class StanzaCodeFixProvider : CodeFixProvider
 
 		var view = new FixDocument(document, root, sourceText);
 		var sets = new List<ImmutableArray<TextChange>>();
+		var fixedRuns = new HashSet<(string Id, int? Start, int? End, int Container)>();
 
 		foreach (Diagnostic diagnostic in diagnostics.OrderBy(static diagnostic => diagnostic.Location.SourceSpan.Start))
 		{
@@ -55,6 +56,11 @@ internal abstract class StanzaCodeFixProvider : CodeFixProvider
 				continue;
 
 			if (!StanzaDiagnosticLookup.IsDiagnosticInDocument(diagnostic, sourceText))
+				continue;
+
+			// The first gap of a run builds the changes and the rest are skipped,
+			// rather than each building them again for the merge to drop.
+			if (!FixOptions.TryClaimRun(root, diagnostic, fixedRuns))
 				continue;
 
 			ImmutableArray<TextChange> changes = await row.Create(document: view, diagnostic, cancellationToken: context.CancellationToken)
