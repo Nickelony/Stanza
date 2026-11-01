@@ -256,7 +256,12 @@ button:focus-visible,
 	font-size: 12px;
 }
 
+/*
+ * The panel is positioned so that the screen-reader notes inside its rows are clipped with it.
+ * Unpositioned, each one sits at its row's place in the page and stretches the page by the height of the whole list.
+ */
 .panel {
+	position: relative;
 	max-height: 58vh;
 	max-height: 58dvh;
 	overflow: auto;
@@ -536,6 +541,7 @@ button:focus-visible,
 }
 
 .code {
+	position: relative;
 	max-height: 55vh;
 	padding: 4px 0;
 	overflow: auto;
@@ -823,14 +829,22 @@ th {
 }
 
 @media (max-width: 520px) {
-	.row {
-		grid-template-columns: minmax(0, 1fr);
+	/* The control stays beside the title in a narrow column of its own, so a tap aimed at the title cannot land on it. */
+	.row-main {
+		min-height: 44px;
+		padding-block: 8px;
 	}
 
 	.row-select,
 	.row-input {
-		width: calc(100% - 12px);
-		margin: 0 0 6px 9px;
+		width: 8.5rem;
+		height: 36px;
+		margin: 0 0 0 4px;
+	}
+
+	/* The desktop lift is tuned to a 28px dropdown, and a phone centers the text of a taller one itself. */
+	.row-select {
+		padding-bottom: 0;
 	}
 
 	.intro {
