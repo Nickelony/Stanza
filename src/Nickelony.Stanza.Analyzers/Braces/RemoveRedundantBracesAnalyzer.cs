@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
@@ -32,15 +33,17 @@ internal sealed class RemoveRedundantBracesAnalyzer()
 		SourceText sourceText = context.Node.SyntaxTree.GetText(context.CancellationToken);
 		int tabColumns = options.TabColumns;
 
-		foreach (BraceTarget target in targets)
+		ImmutableArray<BlockSyntax> blocks = [.. targets.Select(static target => target.Block).OfType<BlockSyntax>()];
+		ImmutableArray<BlockSyntax> removable = [.. blocks.Where(block => !BraceEdits.CreateSafeBraceRemoval(sourceText, block, tabColumns).IsEmpty)];
+
+		// IDE0011 braces a chain with one braced branch, so a block that keeps its braces keeps those of the chain,
+		// unless the option asks for no braces, where each block that can lose them does.
+		if (options.PreferBraces is null && removable.Length < blocks.Length)
+			return;
+
+		foreach (BlockSyntax block in removable)
 		{
 			context.CancellationToken.ThrowIfCancellationRequested();
-
-			if (target.Block is not { } block)
-				continue;
-
-			if (BraceEdits.CreateSafeBraceRemoval(sourceText, block, tabColumns).IsEmpty)
-				continue;
 
 			// The report points at the opening brace and adds the closing one as a second location:
 			// a span over both braces would make the editor fade the body too.

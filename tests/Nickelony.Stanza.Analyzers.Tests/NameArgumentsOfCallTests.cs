@@ -65,6 +65,70 @@ public sealed class NameArgumentsOfCallTests
 	}
 
 	[TestMethod]
+	[DataRow("")]
+	[DataRow("#define B\n")]
+	public async Task AnArgumentListWithADirectiveIsNamedInNeitherView(string view)
+	{
+		// Without B the last argument binds to `c`, and with B it binds to `b`,
+		// so the name written in one view would skip a parameter in the other.
+		string source =
+			view
+			+ """
+				internal static class Sample
+				{
+					internal static void M(int a, int b = 0, int c = 0)
+					{
+					}
+
+					internal static void Call() =>
+						M(
+							1,
+				#if !B
+							2,
+				#endif
+							3
+						);
+				}
+				""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<NameArgumentsOfCallAnalyzer>(
+			source,
+			Rule,
+			analyzerConfigOptions: Config(minArguments: 2)
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task AnArgumentListWithAnyKindOfDirectiveIsNotNamed()
+	{
+		const string source = """
+			internal static class Sample
+			{
+				internal static void M(int a, int b)
+				{
+				}
+
+				internal static void Call() =>
+					M(
+						1,
+			#pragma warning disable CS0618
+						2
+					);
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<NameArgumentsOfCallAnalyzer>(
+			source,
+			Rule,
+			analyzerConfigOptions: Config(minArguments: 2)
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
 	public async Task ACallThatPassesEnoughArgumentsNamesThemAll()
 	{
 		const string source = """

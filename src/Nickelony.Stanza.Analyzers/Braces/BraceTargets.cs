@@ -145,6 +145,60 @@ internal static class BraceTargets
 			return StanzaSyntax.IsMultiLine(body);
 
 		int statementCount = block.Statements.Count;
-		return statementCount > 1 || (statementCount == 1 && StanzaSyntax.IsMultiLine(block.Statements[0]));
+		return statementCount > 1 || (statementCount == 1 && StanzaSyntax.IsMultiLine(block.Statements[0])) || HoldsALineBesidesItsStatement(block);
+	}
+
+	/// <summary>Whether a line of the block holds a comment or a directive besides the statement.</summary>
+	private static bool HoldsALineBesidesItsStatement(BlockSyntax block)
+	{
+		// A comment on the statement's own line stays there when the braces go, so only the other lines count.
+		bool holdsOnTheBraces =
+			HasNonLayoutTrivia(block.OpenBraceToken.TrailingTrivia)
+			|| HasNonLayoutTrivia(block.CloseBraceToken.LeadingTrivia)
+			|| HasNonLayoutTrivia(block.CloseBraceToken.TrailingTrivia);
+
+		return holdsOnTheBraces || (block.Statements.Count == 1 && HoldsALineAbove(block.Statements[0].GetFirstToken().LeadingTrivia));
+	}
+
+	private static bool HasNonLayoutTrivia(SyntaxTriviaList triviaList)
+	{
+		foreach (SyntaxTrivia trivia in triviaList)
+		{
+			if (!trivia.IsKind(SyntaxKind.WhitespaceTrivia) && !trivia.IsKind(SyntaxKind.EndOfLineTrivia))
+				return true;
+		}
+
+		return false;
+	}
+
+	/// <summary>Whether the trivia before a statement holds a directive, or a comment on a line above it.</summary>
+	private static bool HoldsALineAbove(SyntaxTriviaList triviaList)
+	{
+		for (int index = 0; index < triviaList.Count; index++)
+		{
+			SyntaxTrivia trivia = triviaList[index];
+
+			if (trivia.IsKind(SyntaxKind.WhitespaceTrivia) || trivia.IsKind(SyntaxKind.EndOfLineTrivia))
+				continue;
+
+			if (trivia.IsDirective || EndsLineBeforeStatement(triviaList, index))
+				return true;
+		}
+
+		return false;
+	}
+
+	private static bool EndsLineBeforeStatement(SyntaxTriviaList triviaList, int index)
+	{
+		if (StanzaSyntax.IsMultiLine(triviaList[index].SyntaxTree, triviaList[index].Span))
+			return true;
+
+		for (int next = index + 1; next < triviaList.Count; next++)
+		{
+			if (triviaList[next].IsKind(SyntaxKind.EndOfLineTrivia))
+				return true;
+		}
+
+		return false;
 	}
 }

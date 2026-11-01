@@ -15,6 +15,9 @@ Draw(width, height, smooth: true, path);
 - The rule reads the arguments in order and stops at the first one that is not at its parameter's own position,
   or that fills a `params` array.
 - A call that writes no name is left alone.
+- An argument list that holds a directive of any kind, even inside a lambda argument, is left alone.
+  A directive can shift the positions after it in another [view](https://github.com/Nickelony/Stanza/wiki/Terms),
+  so a name that is redundant in one view could be needed in the other.
 - A comment beside the name stays, and the removal leaves no extra space beside it.
 - A call stays as written when dropping the names would bind it to a different overload,
   or would bind a call that takes it in a lambda argument to a different overload.

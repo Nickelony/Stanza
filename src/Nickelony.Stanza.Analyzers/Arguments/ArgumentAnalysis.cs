@@ -34,6 +34,10 @@ internal static class ArgumentAnalysis
 		if (options.NamedArgumentCount == 0)
 			return;
 
+		// A directive can shift which parameter an argument binds to in another view, so a name written from this view could be wrong there.
+		if (argumentList.ContainsDirectives)
+			return;
+
 		if (argumentList.Arguments.Count < options.NamedArgumentCount)
 			return;
 
@@ -114,6 +118,10 @@ internal static class ArgumentAnalysis
 		// A file that requires names would have the naming rule write back the names this rule removes,
 		// so the rule runs only where the shorthand is allowed.
 		if (!options.AllowsNamedArgumentShorthand)
+			return;
+
+		// A directive can shift which parameter an argument binds to in another view, so a name this view finds redundant could be needed there.
+		if (argumentList.ContainsDirectives)
 			return;
 
 		// A call that writes no name colon has no name to take away, so it skips the binding.

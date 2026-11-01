@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.Braces;
+using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
 
@@ -211,11 +212,12 @@ public sealed class RemoveRedundantBracesTests
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
 			source,
-			TestRuleSets.StandaloneRulesEnabled
+			TestRuleSets.StandaloneRulesEnabled,
+			new Dictionary<string, string> { ["csharp_prefer_braces"] = "false" }
 		);
 
 		// Removing the first branch's braces would hand its else to the inner if.
-		// So only the second branch is unwrapped.
+		// So where the option asks for no braces, only the second branch is unwrapped.
 		Assert.HasCount(1, result.Diagnostics);
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
@@ -309,7 +311,8 @@ public sealed class RemoveRedundantBracesTests
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
 			source,
-			TestRuleSets.StandaloneRulesEnabled
+			TestRuleSets.StandaloneRulesEnabled,
+			new Dictionary<string, string> { ["csharp_prefer_braces"] = "false" }
 		);
 
 		// A label is no barrier: the first branch would still hand its else to the if behind it.
@@ -800,6 +803,162 @@ public sealed class RemoveRedundantBracesTests
 		);
 
 		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task HandAddedBracesOnTheBranchesOfACommentedChainSurvive()
+	{
+		const string source = """
+			class C
+			{
+				void M(bool isIssue, bool isEdit)
+				{
+					if (isIssue)
+					{
+						DoThing();
+					}
+					else if (isEdit)
+					{
+						// An empty edit changes nothing,
+						// so it is skipped.
+						Call(1, 2);
+					}
+				}
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	[DynamicData(
+		nameof(BraceFamilyFixtures.HeldBlocks),
+		typeof(BraceFamilyFixtures),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task AChainKeepsAllItsBracesWhenABlockHoldsALineBesidesItsStatement(
+		string shape,
+		string block
+	)
+	{
+		string source = BraceFamilyFixtures.Chain(block, bracedFirst: true);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		Assert.IsEmpty(result.Diagnostics, shape);
+	}
+
+	// IDE0011 braces a chain with one braced branch, so unbracing the rest would never settle.
+	[TestMethod]
+	[DataRow("a local declaration", "{|\tint value = 1;|}")]
+	[DataRow("a blank line above the statement", "{||\tDoThing();|}")]
+	[DataRow("no statement", "{ }")]
+	public async Task AChainKeepsAllItsBracesWhenABlockCannotLoseItsOwn(string shape, string block)
+	{
+		string source = BraceFamilyFixtures.Chain(block, bracedFirst: true);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled,
+			new Dictionary<string, string> { ["csharp_prefer_braces"] = "when_multiline" }
+		);
+
+		Assert.IsEmpty(result.Diagnostics, shape);
+	}
+
+	[TestMethod]
+	public async Task AChainKeepsAllItsBracesWhenAnElseCouldAttachToAnInnerIf()
+	{
+		const string source = """
+			class C
+			{
+				void M(bool first, bool second)
+				{
+					if (first)
+					{
+						if (second)
+							DoThing();
+					}
+					else
+					{
+						DoThing();
+					}
+				}
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled,
+			new Dictionary<string, string> { ["csharp_prefer_braces"] = "when_multiline" }
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task EachBlockThatCanLoseItsBracesDoesWhereTheOptionAsksForNone()
+	{
+		string source = BraceFamilyFixtures.Chain("{|\tint value = 1;|}", bracedFirst: true);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled,
+			new Dictionary<string, string> { ["csharp_prefer_braces"] = "false" }
+		);
+
+		Assert.HasCount(1, result.Diagnostics);
+
+		RoslynTestHarness.AssertFixedText(
+			BraceFamilyFixtures.Chain("{|\tint value = 1;|}", bracedFirst: false),
+			result
+		);
+	}
+
+	[TestMethod]
+	public async Task ACommentOnTheStatementsLineDoesNotKeepTheBraces()
+	{
+		string source = BraceFamilyFixtures.Chain("{|\tDoThing(); // Done.|}", bracedFirst: true);
+		string fixedSource = BraceFamilyFixtures.Chain("\tDoThing(); // Done.", bracedFirst: false);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task ABlockCommentBeforeTheStatementDoesNotKeepTheBraces()
+	{
+		string source = BraceFamilyFixtures.Chain(
+			"{|\t/* Skip it. */ DoThing();|}",
+			bracedFirst: true
+		);
+
+		string fixedSource = BraceFamilyFixtures.Chain(
+			"\t/* Skip it. */ DoThing();",
+			bracedFirst: false
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
 	[TestMethod]

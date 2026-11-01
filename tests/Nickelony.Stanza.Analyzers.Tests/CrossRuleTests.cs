@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
 
@@ -525,6 +526,53 @@ public sealed class CrossRuleTests
 		);
 
 		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	[DynamicData(
+		nameof(BraceFamilyFixtures.HeldBlocks),
+		typeof(BraceFamilyFixtures),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task TheBraceRulesAgreeOnAChainWhoseBlockHoldsALineBesidesItsStatement(
+		string shape,
+		string block
+	)
+	{
+		string braced = BraceFamilyFixtures.Chain(block, bracedFirst: true);
+
+		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
+			DiagnosticDescriptors.UseBracesConsistently,
+			DiagnosticDescriptors.RemoveRedundantBraces
+		);
+
+		// The half braced chain gets its braces, and the braced chain keeps them: neither undoes the other.
+		AnalyzerRunResult fromHalfBraced = await RoslynTestHarness.RunAllAsync(
+			BraceFamilyFixtures.Chain(block, bracedFirst: false),
+			rules
+		);
+
+		AnalyzerRunResult fromBraced = await RoslynTestHarness.RunAllAsync(braced, rules);
+
+		RoslynTestHarness.AssertFixedText(braced, fromHalfBraced);
+		Assert.IsEmpty(fromBraced.Diagnostics, shape);
+	}
+
+	[TestMethod]
+	public async Task TheBraceRulesAgreeOnAChainWhoseBlockHoldsOnlyACommentOnTheStatementsLine()
+	{
+		string braced = BraceFamilyFixtures.Chain("{|\tDoThing(); // Done.|}", bracedFirst: true);
+		string unbraced = BraceFamilyFixtures.Chain("\tDoThing(); // Done.", bracedFirst: false);
+
+		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
+			DiagnosticDescriptors.UseBracesConsistently,
+			DiagnosticDescriptors.RemoveRedundantBraces
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(braced, rules);
+
+		RoslynTestHarness.AssertFixedText(unbraced, result);
 	}
 
 	private static string RenderCounts(Dictionary<string, int> counts)

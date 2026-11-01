@@ -1220,6 +1220,304 @@ public sealed class GatherRunOfLooseStatementsTests
 		);
 	}
 
+	// A conditional statement gives each view runs of its own, so gathering for one view would fight ZA0001 in the other.
+	[TestMethod]
+	[DataRow("")]
+	[DataRow("#define B\n")]
+	public async Task AContainerWithAConditionalStatementIsLeftAsWrittenInEveryView(string view)
+	{
+		string source =
+			view
+			+ Method(
+				"""
+				first = 1;
+
+				DoThing();
+
+				#if !B
+				first = 2;
+				#endif
+
+				first = 3;
+
+				DoThing();
+				"""
+			);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			diagnosticOptions: TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether
+			),
+
+			analyzerConfigOptions: new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		RoslynTestHarness.AssertFixedText(source, result);
+	}
+
+	[TestMethod]
+	public async Task ARegionAmongTheStatementsLeavesTheContainerJudged()
+	{
+		string source = Method(
+			"""
+			first = 1;
+
+			first = 2;
+
+			#region Rest
+
+			first = 3;
+
+			#endregion
+			"""
+		);
+
+		string fixedSource = Method(
+			"""
+			first = 1;
+			first = 2;
+
+			#region Rest
+
+			first = 3;
+
+			#endregion
+			"""
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+			diagnosticOptions: TestRuleSets.Only(DiagnosticDescriptors.GatherRunOfLooseStatements),
+			analyzerConfigOptions: new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	// Each copy holds two held-back gaps, and the first pass gathers every one of them, however many copies the block holds.
+	// One fix at a time and Fix All per ID settle on the same text, whatever the count of copies.
+	[TestMethod]
+	[DataRow(2)]
+	[DataRow(6)]
+	[DataRow(25)]
+	public async Task ManyRunsThatWaitForNoSecondPassSettleTheSameWayInEveryFixOrder(int copies)
+	{
+		string source = Method(
+			string.Join(
+				"\n\n",
+
+				Enumerable
+					.Range(1, copies)
+					.Select(copy =>
+						$"""
+							int number{copy} = 1;
+
+							int count{copy} = 2;
+
+							string text{copy} = "3";
+
+							first = 4;
+
+							DoThing();
+							"""
+					)
+			)
+		);
+
+		string fixedSource = Method(
+			string.Join(
+				"\n\n",
+
+				Enumerable
+					.Range(1, copies)
+					.Select(copy =>
+						$"""
+							int number{copy} = 1;
+							int count{copy} = 2;
+
+							string text{copy} = "3";
+							first = 4;
+							DoThing();
+							"""
+					)
+			)
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			diagnosticOptions: TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationGroups
+			),
+
+			analyzerConfigOptions: new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+
+		await RoslynTestHarness.AssertFixAllPerIdSettlesAsync(
+			expected: fixedSource,
+			source,
+
+			options: new RunOptions(RoslynTestHarness.AllAnalyzers)
+			{
+				DiagnosticOptions = TestRuleSets.Only(
+					DiagnosticDescriptors.GatherRunOfLooseStatements,
+					DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+					DiagnosticDescriptors.SeparateSameTypeDeclarationGroups
+				),
+
+				AnalyzerConfigOptions = new Dictionary<string, string> { [LimitKey] = "1" },
+			}
+		);
+	}
+
+	// A retried gap is judged from the runs beside it alone, so the run that follows them has to be read too.
+	[TestMethod]
+	public async Task AHeldBackGapStaysBlankForTheRunBelowIt()
+	{
+		string source = Method(
+			"""
+			first = 1;
+
+			DoThing();
+
+			const int limit1 = 1;
+
+			var count1 = first;
+
+			var count2 = first;
+			"""
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			diagnosticOptions: TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationGroups
+			),
+
+			analyzerConfigOptions: new Dictionary<string, string> { [LimitKey] = "2" }
+		);
+
+		RoslynTestHarness.AssertFixedText(source, result);
+	}
+
+	// The runs beside a retried gap reach up to the nearest gap that no run crosses, however far above the gap that is.
+	[TestMethod]
+	public async Task AHeldBackGapStaysBlankForTheRunAboveIt()
+	{
+		string source = Method(
+			"""
+			// note
+			int count1 = 1;
+
+			int count2 = 2;
+
+			DoThing();
+			"""
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			diagnosticOptions: TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationGroups
+			),
+
+			analyzerConfigOptions: new Dictionary<string, string> { [LimitKey] = "2" }
+		);
+
+		RoslynTestHarness.AssertFixedText(source, result);
+	}
+
+	// A retried gap is judged from the runs beside it alone, which still has to see the lone declaration above the first of them.
+	[TestMethod]
+	public async Task AGapBesideALoneDeclarationSettlesTheSameWayInEveryFixOrder()
+	{
+		string source = Method(
+			"""
+			string text1 = "a";
+			const int limit1 = 1;
+
+			string text2 = "b";
+
+			string text3 = "c";
+
+			int count1 = 2;
+
+			int count2 = 3;
+
+			int count3 = 4;
+
+			DoThing();
+
+			int count4 = 5;
+
+			int count5 = 6;
+			"""
+		);
+
+		string fixedSource = Method(
+			"""
+			string text1 = "a";
+			const int limit1 = 1;
+
+			string text2 = "b";
+
+			string text3 = "c";
+			int count1 = 2;
+
+			int count2 = 3;
+			int count3 = 4;
+
+			DoThing();
+
+			int count4 = 5;
+			int count5 = 6;
+			"""
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			diagnosticOptions: TestRuleSets.Only(
+				DiagnosticDescriptors.GatherRunOfLooseStatements,
+				DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationGroups
+			),
+
+			analyzerConfigOptions: new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+
+		await RoslynTestHarness.AssertFixAllPerIdSettlesAsync(
+			expected: fixedSource,
+			source,
+
+			options: new RunOptions(RoslynTestHarness.AllAnalyzers)
+			{
+				DiagnosticOptions = TestRuleSets.Only(
+					DiagnosticDescriptors.GatherRunOfLooseStatements,
+					DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns,
+					DiagnosticDescriptors.SeparateSameTypeDeclarationGroups
+				),
+
+				AnalyzerConfigOptions = new Dictionary<string, string> { [LimitKey] = "1" },
+			}
+		);
+	}
+
 	[TestMethod]
 	public async Task ARuleThatIsOffHandsItsGapBackToTheRun()
 	{
