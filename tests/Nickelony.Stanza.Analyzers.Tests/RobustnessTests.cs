@@ -21,6 +21,7 @@ public sealed class RobustnessTests
 		["an expression body with no statement after it", "class C { int Value => \n"],
 		["a control header with no body", "class C { void M(bool first) { if (first"],
 		["a lone closing brace", "}"],
+		["an enum of two members whose first has no name", "enum Size { 2, Large }"],
 		["nothing at all", ""],
 
 		[

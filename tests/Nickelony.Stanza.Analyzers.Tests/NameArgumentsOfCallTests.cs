@@ -129,6 +129,36 @@ public sealed class NameArgumentsOfCallTests
 	}
 
 	[TestMethod]
+	public async Task ADirectiveInsideALambdaArgumentLeavesTheListUnnamed()
+	{
+		const string source = """
+			internal static class Sample
+			{
+				internal static void M(System.Action a, int b)
+				{
+				}
+
+				internal static void Call() =>
+					M(
+						() =>
+						{
+			#pragma warning disable CS0618
+						},
+						2
+					);
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<NameArgumentsOfCallAnalyzer>(
+			source,
+			Rule,
+			analyzerConfigOptions: Config(minArguments: 2)
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
 	public async Task ACallThatPassesEnoughArgumentsNamesThemAll()
 	{
 		const string source = """

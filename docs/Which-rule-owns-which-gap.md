@@ -105,5 +105,6 @@ The table holds for the analyzer. In [`stanza-markup`](https://github.com/Nickel
   and the blank lines [ZA0005](https://github.com/Nickelony/Stanza/wiki/ZA0005-Separate-multi-line-constructs) wrote beside it stay,
   because no rule removes a blank line between single-line members,
   except [ZA0006](https://github.com/Nickelony/Stanza/wiki/ZA0006-Keep-the-two-units-of-a-container-together) in a container of exactly two units.
+  That rule skips the container where a conditional directive can change the count.
 - [ZA0039](https://github.com/Nickelony/Stanza/wiki/ZA0039-Remove-redundant-braces) can drop the braces above an `else` and leave a blank line before it,
   because [ZA0035](https://github.com/Nickelony/Stanza/wiki/ZA0035-Keep-clause-keywords-adjacent) owns only the gap after a closing brace.

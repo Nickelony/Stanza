@@ -14,7 +14,7 @@ internal static class BlankLineGrouping
 	/// <summary>A boundary a repeated run asks for, with the run's start and its end, one past the last.</summary>
 	public readonly record struct RunBorder(int Boundary, int RunStart, int RunEnd);
 
-	/// <summary>The gaps a read treats as gathered, and the stretch of siblings it reads, up to <c>End</c>.</summary>
+	/// <summary>The gaps a read gathers and its siblings from <c>Start</c> to one before <c>End</c>.</summary>
 	/// <remarks>
 	/// A stretch short of the whole container ends where no run crosses, so its runs are the container's.
 	/// </remarks>

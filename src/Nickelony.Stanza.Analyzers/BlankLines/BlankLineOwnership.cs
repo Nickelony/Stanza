@@ -138,7 +138,8 @@ internal static class BlankLineOwnership
 		SyntaxToken nextStart = next.GetFirstToken();
 		SyntaxToken between = previous.GetLastToken().GetNextToken(includeZeroWidth: true);
 
-		while (between.FullSpan.Start < nextStart.FullSpan.Start)
+		// A unit of broken code can hold no token, and the walk then has no token to stand on.
+		while (!between.IsKind(SyntaxKind.None) && between.FullSpan.Start < nextStart.FullSpan.Start)
 		{
 			if (HasConditionalDirective(between.LeadingTrivia))
 				return true;

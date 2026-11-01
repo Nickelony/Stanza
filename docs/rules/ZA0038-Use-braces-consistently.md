@@ -34,7 +34,7 @@ else
 - A branch is multi-line when its header spans lines, its statement spans lines,
   its block holds two or more statements,
   or a comment or directive stands on a line of its block that holds no statement.
-- A comment on the statement's own line does not make a branch multi-line, and neither does one above an unbraced statement.
+- A comment wholly on the statement's own line does not make a branch multi-line, and neither does one above an unbraced statement.
 - A loop, `using`, `lock` or `fixed` body is judged on its own, without chain logic.
 - A `try`, `catch` or `finally` body is not judged; [`ZA0036`](https://github.com/Nickelony/Stanza/wiki/ZA0036-Remove-brace-padding) and [`ZA0037`](https://github.com/Nickelony/Stanza/wiki/ZA0037-Collapse-empty-blocks) still check its padding and its emptiness.
 - A body that shares its line with its header is left to `csharp_prefer_braces`.

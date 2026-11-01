@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -24,6 +25,40 @@ internal static class BraceTargets
 	/// <summary>Whether the block of an <see langword="else"/> holds an <see langword="if"/> alone.</summary>
 	public static bool IsElseHoldingAnIf(BlockSyntax block) =>
 		block.Parent is ElseClauseSyntax && block.Statements.Count == 1 && block.Statements[0] is IfStatementSyntax;
+
+	/// <summary>Whether a directive stands among the branches, or a disabled <c>else</c> follows.</summary>
+	public static bool HoldsAConditionalBranch(SyntaxNode statement)
+	{
+		// A directive above the statement is its first token's trivia, outside the span, so it is not judged here.
+		if (statement.ContainsDirectives && statement.DescendantTrivia(statement.Span).Any(static trivia => trivia.IsDirective))
+			return true;
+
+		if (!CanTakeAnElse(statement))
+			return false;
+
+		// An else in an inactive #if is disabled text on the token after the statement, which can be the end of the file.
+		SyntaxToken next = statement.GetLastToken().GetNextToken(includeZeroWidth: true);
+
+		return next.LeadingTrivia.Any(static trivia => trivia.IsKind(SyntaxKind.DisabledTextTrivia) && StartsWithAnElse(trivia));
+	}
+
+	/// <summary>Whether the statement is a chain with no bare <see langword="else"/> at its end.</summary>
+	private static bool CanTakeAnElse(SyntaxNode statement)
+	{
+		while (statement is IfStatementSyntax ifStatement)
+		{
+			if (ifStatement.Else is not { } elseClause)
+				return true;
+
+			statement = elseClause.Statement;
+		}
+
+		return false;
+	}
+
+	/// <summary>Whether the first token of the disabled text is an <see langword="else"/>.</summary>
+	private static bool StartsWithAnElse(SyntaxTrivia disabledText) =>
+		SyntaxFactory.ParseTokens(disabledText.ToString()).FirstOrDefault().IsKind(SyntaxKind.ElseKeyword);
 
 	public static bool HasMultiLineTarget(ImmutableArray<BraceTarget> targets)
 	{
@@ -151,13 +186,20 @@ internal static class BraceTargets
 	/// <summary>Whether a line of the block holds a comment or a directive besides the statement.</summary>
 	private static bool HoldsALineBesidesItsStatement(BlockSyntax block)
 	{
-		// A comment on the statement's own line stays there when the braces go, so only the other lines count.
-		bool holdsOnTheBraces =
-			HasNonLayoutTrivia(block.OpenBraceToken.TrailingTrivia)
-			|| HasNonLayoutTrivia(block.CloseBraceToken.LeadingTrivia)
-			|| HasNonLayoutTrivia(block.CloseBraceToken.TrailingTrivia);
+		SyntaxToken open = block.OpenBraceToken;
+		SyntaxToken close = block.CloseBraceToken;
 
-		return holdsOnTheBraces || (block.Statements.Count == 1 && HoldsALineAbove(block.Statements[0].GetFirstToken().LeadingTrivia));
+		if (block.Statements.Count != 1)
+			return HasNonLayoutTrivia(open.TrailingTrivia) || HasNonLayoutTrivia(close.LeadingTrivia) || HasNonLayoutTrivia(close.TrailingTrivia);
+
+		StatementSyntax statement = block.Statements[0];
+		SyntaxTree syntaxTree = block.SyntaxTree;
+
+		// A comment on the statement's own line stays there when the braces go, so only the other lines count.
+		return (HasNonLayoutTrivia(open.TrailingTrivia) && StanzaSyntax.IsMultiLine(syntaxTree, TextSpan.FromBounds(open.SpanStart, statement.SpanStart)))
+			|| HasNonLayoutTrivia(close.LeadingTrivia)
+			|| (HasNonLayoutTrivia(close.TrailingTrivia) && StanzaSyntax.IsMultiLine(syntaxTree, TextSpan.FromBounds(statement.Span.End, close.SpanStart)))
+			|| HoldsALineAbove(statement.GetFirstToken().LeadingTrivia);
 	}
 
 	private static bool HasNonLayoutTrivia(SyntaxTriviaList triviaList)

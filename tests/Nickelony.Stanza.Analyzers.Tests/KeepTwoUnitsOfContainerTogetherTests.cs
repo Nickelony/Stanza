@@ -706,7 +706,7 @@ public sealed class KeepTwoUnitsOfContainerTogetherTests
 			}
 			""";
 
-		// The `#define` of a view stays on the first token of a file too.
+		// A directive of another kind on the first or the last token of the file changes no count either.
 		const string otherDirectives = """
 			#nullable enable
 			#pragma warning disable CS0219

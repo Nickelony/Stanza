@@ -117,6 +117,33 @@ public sealed class RemoveRedundantArgumentNameTests
 	}
 
 	[TestMethod]
+	public async Task ADirectiveInsideALambdaArgumentKeepsEveryName()
+	{
+		const string source = """
+			internal static class Sample
+			{
+				internal static void M(System.Action a, int b)
+				{
+				}
+
+				internal static void Call(int b) =>
+					M(
+						a: () =>
+						{
+			#pragma warning disable CS0618
+						},
+						b: b
+					);
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<RemoveRedundantArgumentNameAnalyzer>(source, Rule);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
 	public async Task ADirectiveOutsideTheArgumentListLeavesItsNamesRedundant()
 	{
 		const string source = """

@@ -20,6 +20,10 @@ internal sealed class RemoveRedundantBracesAnalyzer()
 
 		ImmutableArray<BraceTarget> targets = BraceTargets.GetTargets(context.Node);
 
+		// A chain is judged at its head, so a long chain is walked once.
+		if (targets.IsEmpty)
+			return;
+
 		// One multi-line branch pins the whole chain to the braced shape, and so does an else that holds only an if,
 		// so the chain keeps one shape and the braced rule has nothing to restore.
 		if (
@@ -37,8 +41,9 @@ internal sealed class RemoveRedundantBracesAnalyzer()
 		ImmutableArray<BlockSyntax> removable = [.. blocks.Where(block => !BraceEdits.CreateSafeBraceRemoval(sourceText, block, tabColumns).IsEmpty)];
 
 		// IDE0011 braces a chain with one braced branch, so a block that keeps its braces keeps those of the chain,
-		// unless the option asks for no braces, where each block that can lose them does.
-		if (options.PreferBraces is null && removable.Length < blocks.Length)
+		// and ZA0038 braces the view with a multi-line branch, so a chain whose branches a directive can change keeps them too.
+		// Where the option asks for no braces, each block that can lose them does.
+		if (options.PreferBraces is null && (removable.Length < blocks.Length || BraceTargets.HoldsAConditionalBranch(context.Node)))
 			return;
 
 		foreach (BlockSyntax block in removable)

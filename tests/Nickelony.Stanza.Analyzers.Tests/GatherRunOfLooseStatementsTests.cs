@@ -1297,7 +1297,8 @@ public sealed class GatherRunOfLooseStatementsTests
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
-	// Each copy holds two held-back gaps, and the first pass gathers every one of them, however many copies the block holds.
+	// Each copy holds two held-back gaps, and the first pass retries them all, however many copies the block holds.
+	// It gathers the gap above `first`, and the gap above `text` stays blank for ZA0004.
 	// One fix at a time and Fix All per ID settle on the same text, whatever the count of copies.
 	[TestMethod]
 	[DataRow(2)]
@@ -1410,7 +1411,7 @@ public sealed class GatherRunOfLooseStatementsTests
 		RoslynTestHarness.AssertFixedText(source, result);
 	}
 
-	// The runs beside a retried gap reach up to the nearest gap that no run crosses, however far above the gap that is.
+	// The run above a retried gap reaches up to the nearest gap that no run crosses, so a retry reads all of that run.
 	[TestMethod]
 	public async Task AHeldBackGapStaysBlankForTheRunAboveIt()
 	{

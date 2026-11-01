@@ -19,6 +19,7 @@ internal static class BraceFamilyFixtures
 		["a comment on the opening brace line", "{ // Skip it.|\tDoThing();|}"],
 		["a block comment on its own line", "{|\t/* Skip it. */|\tDoThing();|}"],
 		["a block comment that ends on the statement line", "{|\t/* Skip|\t   it. */ DoThing();|}"],
+		["a block comment that starts on the opening brace line", "{ /* Skip|   it. */ DoThing(); }"],
 		["a comment on the closing brace line", "{|\tDoThing();|} // Done."],
 		["a comment and nothing else", "{|\t// Nothing to do.|}"],
 		["pragma directives", "{|#pragma warning disable|\tDoThing();|#pragma warning restore|}"],
@@ -33,6 +34,8 @@ internal static class BraceFamilyFixtures
 		["a comment after the statement", "{|\tDoThing(); // Done.|}"],
 		["a block comment before the statement", "{|\t/* Skip it. */ DoThing();|}"],
 		["a comment above the opening brace", "// Skip it.|{|\tDoThing();|}"],
+		["a comment after the opening brace on the statement's line", "{ /* Skip it. */ DoThing(); }"],
+		["a comment after the closing brace on the statement's line", "{ DoThing(); } // Done."],
 	];
 
 	/// <summary>A first branch, braced or not, then an else-if branch holding the block.</summary>
