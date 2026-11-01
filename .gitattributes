@@ -9,6 +9,7 @@
 *.slnx text eol=crlf
 *.sln text eol=crlf
 *.editorconfig text eol=crlf
+*.globalconfig text eol=crlf
 *.ps1 text eol=crlf
 
 # Extensionless files and the git dotfiles use the project-file line endings.
@@ -22,17 +23,16 @@ CODEOWNERS text eol=crlf
 *.config text eol=crlf
 # A case-sensitive checkout matches `*.config` by letter case, so the capitalized name is pinned too.
 *.Config text eol=crlf
+*.runsettings text eol=crlf
 *.xaml text eol=crlf
 *.axaml text eol=crlf
 
 *.json text eol=lf
+*.txt text eol=lf
 *.ini text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
 *.md text eol=lf
-
-# The site's sources are built by Node on every platform, so they keep one ending.
-site/** text eol=lf
 
 # The icon files are binary, so git neither converts their endings nor diffs them as text.
 *.png binary

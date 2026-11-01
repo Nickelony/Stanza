@@ -1,0 +1,10 @@
+{
+	"plugins": ["stylelint-order"],
+	"extends": ["stylelint-config-property-sort-order-smacss"],
+	"overrides": [
+		{
+			"files": ["src/**/*.{ts,tsx}"],
+			"customSyntax": "postcss-styled-syntax"
+		}
+	]
+}

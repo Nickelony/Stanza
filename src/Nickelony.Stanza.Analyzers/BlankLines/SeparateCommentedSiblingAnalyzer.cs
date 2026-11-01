@@ -7,5 +7,5 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 internal sealed class SeparateCommentedSiblingAnalyzer() : StanzaRuleAnalyzer(StanzaRules.SeparateCommentedSibling)
 {
 	protected override void Analyze(SyntaxNodeAnalysisContext context) =>
-		BlankLineAnalysis.ReportCommentedSiblingGaps(context, StanzaSyntax.ReadSiblings(context.Node), Rule);
+		RequiredBlankLineAnalysis.ReportCommentedSiblingGaps(context, StanzaSyntax.ReadSiblings(context.Node), Rule);
 }

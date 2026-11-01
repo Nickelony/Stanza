@@ -20,7 +20,7 @@ internal abstract class ClauseKeywordGapAnalyzer(StanzaRule rule) : StanzaRuleAn
 			options ??= StanzaOptions.From(context.Options, context.Node.SyntaxTree);
 
 			// The other half of the pair shares this gap, so only the half that owns it reports.
-			if (!StanzaRuleState.OwnsTheSharedGap(scope: context, options, rule: Rule, position: keyword.SpanStart))
+			if (!StanzaRuleState.IsTheOwningHalf(scope: context, options, rule: Rule, position: keyword.SpanStart))
 				continue;
 
 			ReportGap(context, keyword, brace);

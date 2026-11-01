@@ -61,7 +61,6 @@ public sealed class MarkupElementTests
 		Assert.AreSequenceEqual([text, inner], new List<IMarkupBodyNode>(outer.Body));
 		Assert.AreSequenceEqual([inner, comment, instruction], new List<IMarkupItem>(outer.Items));
 		Assert.AreSequenceEqual([inner], new List<MarkupElement>(outer.ChildElements));
-
 		Assert.IsTrue(outer.HasElementChildren);
 	}
 
@@ -152,6 +151,7 @@ public sealed class MarkupElementTests
 		Assert.ThrowsExactly<InvalidOperationException>(() => element.HasCharacterData = true);
 		Assert.ThrowsExactly<InvalidOperationException>(() => element.IsSpacePreserved = true);
 		Assert.ThrowsExactly<InvalidOperationException>(() => element.SourceText = null);
+		Assert.AreEqual(0, element.EndLineIndex);
 	}
 
 	[TestMethod]

@@ -1,0 +1,56 @@
+{
+	"name": "stylelint-config-stanza",
+	"version": "0.9.0",
+	"private": true,
+	"type": "module",
+	"description": "A Stylelint config that lays out the blank lines of CSS, SCSS and the CSS-in-JS of Emotion, the sibling of the Stanza analyzers.",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Nickelony/Stanza.git",
+		"directory": "js/stylelint-config"
+	},
+	"keywords": [
+		"stylelint",
+		"stylelint-config",
+		"emotion",
+		"css-in-js",
+		"formatting",
+		"blank lines"
+	],
+	"engines": {
+		"node": "^22.18.0 || ^24.0.0 || >=26.0.0"
+	},
+	"exports": {
+		".": "./index.mjs",
+		"./syntax": "./syntax.mjs"
+	},
+	"files": [
+		"index.mjs",
+		"syntax.mjs",
+		"emotion-tag.mjs"
+	],
+	"scripts": {
+		"test": "node --test \"test/**/*.test.mjs\"",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"lint": "eslint ."
+	},
+	"peerDependencies": {
+		"postcss": "^8.5.1",
+		"stylelint": "^17.0.0 || ^18.0.0"
+	},
+	"dependencies": {
+		"postcss-scss": "^4.0.9",
+		"postcss-styled-syntax": "^0.7.4",
+		"typescript": "^6.0.3"
+	},
+	"devDependencies": {
+		"@eslint/js": "^9.39.5",
+		"@ianvs/prettier-plugin-sort-imports": "^4.7.1",
+		"eslint": "^9.39.0",
+		"postcss": "^8.5.28",
+		"prettier": "^3.9.10",
+		"stylelint": "^17.16.0"
+	}
+}

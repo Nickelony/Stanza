@@ -1,5 +1,6 @@
 namespace Nickelony.Stanza.Analyzers.Documentation;
 
+/// <summary>How a documentation comment is delimited: as <c>///</c> lines or as a <c>/** */</c> block.</summary>
 internal readonly struct DocCommentDelimiters(string marker, string opening, string closing)
 {
 	public static DocCommentDelimiters Lines { get; } = new(marker: "///", opening: string.Empty, closing: string.Empty);

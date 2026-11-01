@@ -2,7 +2,7 @@
 
 Controls the fewest words a [tail](https://github.com/Nickelony/Stanza/wiki/Terms) or a [fragment](https://github.com/Nickelony/Stanza/wiki/Terms) may hold before the wrapper gives it a [penalty](https://github.com/Nickelony/Stanza/wiki/Terms).
 Default: `2`.
-Read by the documentation layout rules, such as [`ZA0201`](https://github.com/Nickelony/Stanza/wiki/ZA0201-Lay-out-a-documentation-comment),
+Read by the documentation layout rules, such as [`ZA0901`](https://github.com/Nickelony/Stanza/wiki/ZA0901-Lay-out-a-documentation-comment),
 and by the stanza-markup [reprint](https://github.com/Nickelony/Stanza/wiki/Terms).
 
 | Value                                           | Effect                                                                  |

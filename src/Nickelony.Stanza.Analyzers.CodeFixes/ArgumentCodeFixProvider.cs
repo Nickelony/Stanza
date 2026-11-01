@@ -20,6 +20,16 @@ internal sealed class ArgumentCodeFixProvider : StanzaCodeFixProvider
 		),
 
 		FixRow.For(
+			DiagnosticDescriptors.NameLiteralArgumentsOfCall,
+			"Add the literal argument names",
+
+			FromSync(
+				static (document, diagnostic, cancellationToken) =>
+					ArgumentEdits.CreateNameInsertions(root: document.Root, diagnostic, cancellationToken)
+			)
+		),
+
+		FixRow.For(
 			DiagnosticDescriptors.RemoveRedundantArgumentName,
 			"Remove the argument name",
 

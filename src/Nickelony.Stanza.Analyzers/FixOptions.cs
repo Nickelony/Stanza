@@ -26,9 +26,18 @@ internal sealed record FixOptions(
 	int? KeptBlankLines = null,
 	TextChange? Change = null,
 	int? RunStart = null,
-	int? RunEnd = null
+	int? RunEnd = null,
+	MarkupNameSet? Keywords = null,
+	int? MergedIfs = null,
+	bool SeparatesNeighbors = false,
+	bool JoinsNeighbors = false,
+	bool WritesGapAbove = false,
+	int SeparatedUnits = 0,
+	ImmutableArray<int> Boundaries = default
 )
 {
+	internal const string WritesGapAboveKey = "writesGapAbove";
+
 	private const string TabColumnsKey = "tabColumns";
 	private const string IndentStepColumnsKey = "indentStepColumns";
 	private const string PlacementKey = "arrowPlacement";
@@ -42,12 +51,68 @@ internal sealed record FixOptions(
 	private const string ChangeTextKey = "changeText";
 	private const string RunStartKey = "runStart";
 	private const string RunEndKey = "runEnd";
+	private const string KeywordsKey = "keywords";
+	private const string MergedIfsKey = "mergedIfs";
+	private const string SeparatesNeighborsKey = "separatesNeighbors";
+	private const string JoinsNeighborsKey = "joinsNeighbors";
+	private const string SeparatedUnitsKey = "separatedUnits";
+	private const string BoundariesKey = "boundaries";
 
 	private const string LeadingPlacement = "leading";
 	private const string OwnLine = "own";
 	private const string SpacedSlashShape = "spaced";
 
-	private const int LayoutFieldCount = 10;
+	/// <summary>The counts of a layout in the order the value writes them, each with the largest it reads.</summary>
+	/// <remarks>
+	/// The weak line end words follow them as a text. A new count takes one row here, which is its whole change.
+	/// </remarks>
+	private static readonly LayoutCount[] s_layoutCounts =
+	[
+		new(
+			Max: MarkupLimits.MaxCount,
+			Get: static layout => layout.ContentWidth,
+			With: static (layout, value) => layout with { ContentWidth = value }
+		),
+
+		new(
+			Max: MarkupLimits.MaxIndentColumns,
+			Get: static layout => layout.TabColumns,
+			With: static (layout, value) => layout with { TabColumns = value }
+		),
+
+		new(
+			Max: MarkupLimits.MaxCount,
+			Get: static layout => layout.MinTailWords,
+			With: static (layout, value) => layout with { MinTailWords = value }
+		),
+
+		new(
+			Max: MarkupLimits.MaxCount,
+			Get: static layout => layout.MinLineWords,
+			With: static (layout, value) => layout with { MinLineWords = value }
+		),
+
+		new(
+			Max: MarkupLimits.MaxCount,
+			Get: static layout => layout.MaxOverflowColumns,
+			With: static (layout, value) => layout with { MaxOverflowColumns = value }
+		),
+
+		new(
+			Max: MarkupLimits.MaxIndentColumns,
+			Get: static layout => layout.IndentSize,
+			With: static (layout, value) => layout with { IndentSize = value }
+		),
+
+		new(Max: 1, Get: static layout => layout.IndentText ? 1 : 0, With: static (layout, value) => layout with { IndentText = value == 1 }),
+		new(Max: 1, Get: static layout => layout.IndentWithTabs ? 1 : 0, With: static (layout, value) => layout with { IndentWithTabs = value == 1 }),
+
+		new(
+			Max: (int)DocBlockElements.All,
+			Get: static layout => (int)layout.BlockElements,
+			With: static (layout, value) => layout with { BlockElements = (DocBlockElements)value }
+		),
+	];
 
 	/// <summary>Writes each option that differs from its default; a missing property parses as the default.</summary>
 	public ImmutableDictionary<string, string?> ToProperties()
@@ -97,6 +162,28 @@ internal sealed record FixOptions(
 		if (RunEnd is { } runEnd)
 			properties[RunEndKey] = runEnd.ToString(CultureInfo.InvariantCulture);
 
+		if (Keywords is { } keywords)
+			properties[KeywordsKey] = keywords.ToString();
+
+		if (MergedIfs is { } mergedIfs)
+			properties[MergedIfsKey] = mergedIfs.ToString(CultureInfo.InvariantCulture);
+
+		if (SeparatesNeighbors)
+			properties[SeparatesNeighborsKey] = "1";
+
+		if (JoinsNeighbors)
+			properties[JoinsNeighborsKey] = "1";
+
+		if (SeparatedUnits != 0)
+			properties[SeparatedUnitsKey] = SeparatedUnits.ToString(CultureInfo.InvariantCulture);
+
+		if (WritesGapAbove)
+			properties[WritesGapAboveKey] = "1";
+
+		// Each boundary writes its index, as in "3,7".
+		if (!Boundaries.IsDefaultOrEmpty)
+			properties[BoundariesKey] = string.Join(",", Boundaries.Select(static boundary => boundary.ToString(CultureInfo.InvariantCulture)));
+
 		return properties.ToImmutable();
 	}
 
@@ -140,8 +227,31 @@ internal sealed record FixOptions(
 			KeptBlankLines: ReadCount(properties, KeptBlankLinesKey),
 			Change: ReadChange(properties),
 			RunStart: ReadCount(properties, RunStartKey),
-			RunEnd: ReadCount(properties, RunEndKey)
+			RunEnd: ReadCount(properties, RunEndKey),
+			Keywords: properties.TryGetValue(KeywordsKey, out string? keywords) ? MarkupNameSet.Parse(keywords ?? string.Empty) : null,
+			MergedIfs: ReadCount(properties, MergedIfsKey),
+			SeparatesNeighbors: properties.ContainsKey(SeparatesNeighborsKey),
+			JoinsNeighbors: properties.ContainsKey(JoinsNeighborsKey),
+			WritesGapAbove: properties.ContainsKey(WritesGapAboveKey),
+			SeparatedUnits: ReadCount(properties, SeparatedUnitsKey) ?? 0,
+			Boundaries: properties.TryGetValue(BoundariesKey, out string? boundaries) ? ReadBoundaries(boundaries) : default
 		);
+	}
+
+	/// <summary>Drops the whole list at an entry that is not an index, so a fix writes none of it.</summary>
+	private static ImmutableArray<int> ReadBoundaries(string? boundaries)
+	{
+		ImmutableArray<int>.Builder parsed = ImmutableArray.CreateBuilder<int>();
+
+		foreach (string entry in (boundaries ?? string.Empty).Split([','], StringSplitOptions.RemoveEmptyEntries))
+		{
+			if (ReadCount(entry, int.MaxValue) is not { } boundary)
+				return default;
+
+			parsed.Add(boundary);
+		}
+
+		return parsed.ToImmutable();
 	}
 
 	/// <summary>
@@ -169,54 +279,32 @@ internal sealed record FixOptions(
 	/// </summary>
 	private static string WriteLayout(DocLayoutOptions layout)
 	{
-		// The weak tail words hold no ';', because Roslyn ends an .editorconfig value at an inline ';' comment.
-		return string.Join(
-			";",
-			layout.ContentWidth.ToString(CultureInfo.InvariantCulture),
-			layout.TabColumns.ToString(CultureInfo.InvariantCulture),
-			layout.MinTailWords.ToString(CultureInfo.InvariantCulture),
-			layout.MinLineWords.ToString(CultureInfo.InvariantCulture),
-			layout.MaxOverflowColumns.ToString(CultureInfo.InvariantCulture),
-			layout.IndentSize.ToString(CultureInfo.InvariantCulture),
-			layout.IndentText ? "1" : "0",
-			layout.IndentWithTabs ? "1" : "0",
-			((int)layout.Expansion).ToString(CultureInfo.InvariantCulture),
-			layout.WeakTailWords?.ToString()
-		);
+		// The weak line end words hold no ';', because Roslyn ends an .editorconfig value at an inline ';' comment.
+		IEnumerable<string> counts = s_layoutCounts.Select(count => count.Get(layout).ToString(CultureInfo.InvariantCulture));
+		return string.Join(";", counts.Append(layout.WeakLineEndWords?.ToString() ?? string.Empty));
 	}
 
 	private static DocLayoutOptions? ReadLayout(string? text)
 	{
 		string[] parts = (text ?? string.Empty).Split(';');
 
-		if (
-			parts.Length != LayoutFieldCount
-			|| ReadCount(parts[0], MarkupLimits.MaxCount) is not { } contentWidth
-			|| ReadCount(parts[1], MarkupLimits.MaxIndentColumns) is not { } tabColumns
-			|| ReadCount(parts[2], MarkupLimits.MaxCount) is not { } minTailWords
-			|| ReadCount(parts[3], MarkupLimits.MaxCount) is not { } minLineWords
-			|| ReadCount(parts[4], MarkupLimits.MaxCount) is not { } maxOverflowColumns
-			|| ReadCount(parts[5], MarkupLimits.MaxIndentColumns) is not { } indentSize
-			|| ReadCount(parts[6], 1) is not { } indentText
-			|| ReadCount(parts[7], 1) is not { } indentWithTabs
-			|| ReadCount(parts[8], (int)DocExpansion.All) is not { } expansion
-		)
-		{
+		if (parts.Length != s_layoutCounts.Length + 1)
 			return null;
+
+		DocLayoutOptions layout = default;
+
+		for (int index = 0; index < s_layoutCounts.Length; index++)
+		{
+			if (ReadCount(parts[index], s_layoutCounts[index].Max) is not { } value)
+				return null;
+
+			layout = s_layoutCounts[index].With(layout, value);
 		}
 
-		return new DocLayoutOptions(
-			ContentWidth: contentWidth,
-			TabColumns: tabColumns,
-			MinTailWords: minTailWords,
-			MinLineWords: minLineWords,
-			MaxOverflowColumns: maxOverflowColumns,
-			IndentSize: indentSize,
-			IndentText: indentText == 1,
-			Expansion: (DocExpansion)expansion,
-			WeakTailWords: DocNameSet.Parse(parts[9]),
-			IndentWithTabs: indentWithTabs == 1
-		);
+		return layout with
+		{
+			WeakLineEndWords = MarkupNameSet.Parse(parts[s_layoutCounts.Length]),
+		};
 	}
 
 	private static TextChange? ReadChange(ImmutableDictionary<string, string?> properties)
@@ -237,4 +325,7 @@ internal sealed record FixOptions(
 		properties.TryGetValue(key, out string? value) ? ReadCount(value, int.MaxValue) : null;
 
 	private static int? ReadCount(string? text, int max) => MarkupOptionReader.TryReadCount(text, max, out int count) ? count : null;
+
+	/// <summary>One count of a layout, with the largest value it reads and how a layout gives and takes it.</summary>
+	private readonly record struct LayoutCount(int Max, Func<DocLayoutOptions, int> Get, Func<DocLayoutOptions, int, DocLayoutOptions> With);
 }

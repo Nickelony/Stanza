@@ -5,7 +5,7 @@ namespace Nickelony.Stanza.Markup.Core.DocComments;
 internal static partial class DocWalk
 {
 	/// <summary>Writes the nodes of one body as laid-out lines.</summary>
-	private sealed class BodyWriter(DocLayoutOptions layout, bool markParagraphs, bool closeParagraphs)
+	private sealed class BodyWriter(DocLayoutOptions layout, bool markParagraphs, DocCleanupOptions cleanup)
 	{
 		/// <summary>An element is a child of the block, so its tags stand at the indentation's top level.</summary>
 		private const int ElementDepth = 0;
@@ -28,6 +28,16 @@ internal static partial class DocWalk
 
 			if (node is not DocElement child)
 				return false;
+
+			// An element kept as written is a block of its own, and the text after it starts a new run.
+			if (child.VerbatimLines is { } verbatim)
+			{
+				Flush();
+				_lines.AddRange(verbatim);
+				_words.EndRun();
+
+				return true;
+			}
 
 			if (IsContentless(child))
 			{
@@ -157,7 +167,7 @@ internal static partial class DocWalk
 		}
 
 		/// <summary>
-		/// One line when the whole of it fits, both tags included, and a block when not or an expansion setting asks;
+		/// One line when the whole of it fits, both tags included, and a block when not or the element setting asks;
 		/// an element that wraps a phrase joins the run around it however long the line turns out.
 		/// </summary>
 		private bool TryWritePlainText(DocElement element, string name, List<DocAtom> atoms, bool wrapsAPhrase)
@@ -177,7 +187,7 @@ internal static partial class DocWalk
 			string openIndent = layout.GetIndent(ElementDepth, text: false);
 
 			if (
-				!layout.IsExpanded(name)
+				!layout.IsBlockElement(name)
 				&& layout.GetIndentationColumns(ElementDepth, text: false)
 					+ layout.GetColumns(openTag)
 					+ layout.GetColumns(text)
@@ -234,18 +244,20 @@ internal static partial class DocWalk
 
 				foreach (DocParagraph paragraph in block.Paragraphs)
 				{
-					if (plainText)
-					{
-						if (!TryAddTextLines(lines: _lines, atoms: paragraph.Atoms, layout, depth: ElementDepth))
-							return false;
+					// Plain text takes the atoms of each paragraph with no paragraph tags around them.
+					if (plainText && !TryAddTextLines(lines: _lines, atoms: paragraph.Atoms, layout, depth: ElementDepth))
+						return false;
 
+					if (plainText)
 						continue;
-					}
 
 					_lines.Add(paragraphIndent + (ownTags ? openTag : paragraph.OpenTag ?? "<para>"));
 
-					// The next pass judges each paragraph on its own, so the period rule closes every one this pass writes.
-					List<DocAtom> atoms = closeParagraphs ? CloseParagraph(paragraph.Atoms) : paragraph.Atoms;
+					// The next pass judges each paragraph on its own, so the capital and period rules settle every one this pass writes.
+					List<DocAtom> atoms = cleanup.Period ? CloseParagraph(paragraph.Atoms) : paragraph.Atoms;
+
+					if (cleanup.Capital is { } keywords)
+						atoms = OpenParagraph(atoms, keywords);
 
 					if (!TryAddTextLines(lines: _lines, atoms, layout, depth: textDepth))
 						return false;

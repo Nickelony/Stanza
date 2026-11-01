@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using Nickelony.Stanza.Markup.Core;
 using Nickelony.Stanza.Markup.Core.DocComments;
 using Nickelony.Stanza.Markup.Core.Options;
-using Nickelony.Stanza.Markup.Core.Xml;
 using Nickelony.Stanza.Markup.Notices;
 using Nickelony.Stanza.Markup.Paths;
 using Nickelony.Stanza.Shared;
@@ -16,16 +15,13 @@ internal sealed class MarkupConfiguration(MarkupPaths paths, MarkupNotices notic
 	private readonly EditorConfigReader _reader = new(paths, notices);
 
 	/// <summary>The values of each path, so the questions a run asks about one file evaluate its chain once.</summary>
-	/// <remarks>
-	/// Measured over 20,000 markup files and 10,000 others, a run without it takes 8 to 12% longer.
-	/// </remarks>
 	private readonly Dictionary<string, IReadOnlyDictionary<string, string>> _values = new(PathComparison.Comparer);
 
 	public bool IsEnabled(string path)
 	{
 		// Only an explicit `false` takes the file out of the run;
 		// a value that is neither `true` nor `false` keeps it in, and the reader warns.
-		return !GetValues(path).TryGetValue(MarkupKeys.Enabled, out string? value) || MarkupKeyCheck.FromBooleanName(value) is not false;
+		return !GetValues(path).TryGetValue(OptionKeys.MarkupEnabled, out string? value) || OptionValues.Boolean.Find(value) is not false;
 	}
 
 	/// <summary>The forced profile wins over the profile key, which wins over the extension map.</summary>
@@ -34,21 +30,16 @@ internal sealed class MarkupConfiguration(MarkupPaths paths, MarkupNotices notic
 	public MarkupOptions GetOptions(string path, MarkupProfile profile, bool profileWasForced = false)
 	{
 		IReadOnlyDictionary<string, string> values = GetValues(path);
-		MarkupOptions defaults = new(profile.Policy);
-		MarkupRuleSet rules = ReadRules(values);
 
-		// A forced profile keeps its own scope, so the scope key cannot override it.
-		return defaults with
+		MarkupOptions options = MarkupOptionReader.ReadOptions(
+			read: key => FindValue(values, key),
+			fallbackPolicy: profile.Policy,
+			isPolicyForced: profileWasForced
+		);
+
+		return options with
 		{
-			Policy = profileWasForced
-				? defaults.Policy
-				: defaults.Policy with
-				{
-					ContainersOnly = ReadScope(values) ?? defaults.Policy.ContainersOnly,
-				},
-
-			MaxBlankLines = ReadMaxBlankLines(values) ?? defaults.MaxBlankLines,
-			Rules = rules,
+			Rules = ReadRules(values),
 			DisabledRules = ReadDisabledRules(values),
 		};
 	}
@@ -57,8 +48,15 @@ internal sealed class MarkupConfiguration(MarkupPaths paths, MarkupNotices notic
 	{
 		IReadOnlyDictionary<string, string> values = GetValues(path);
 
-		if (!reprintForced && (!values.TryGetValue(MarkupKeys.DocReprint, out string? reprint) || !MarkupOptionReader.Names(reprint, "members")))
+		if (
+			!reprintForced
+			&& (
+				!values.TryGetValue(OptionKeys.MarkupDocReprint, out string? reprint) || !OptionValues.MarkupDocReprint.Read(reprint, fallback: false)
+			)
+		)
+		{
 			return null;
+		}
 
 		return MarkupOptionReader.ResolveDocLayout(key => FindValue(values, key));
 	}
@@ -66,11 +64,8 @@ internal sealed class MarkupConfiguration(MarkupPaths paths, MarkupNotices notic
 	private static string? FindValue(IReadOnlyDictionary<string, string> values, string key) =>
 		values.TryGetValue(key, out string? value) ? value : null;
 
-	private static bool? ReadScope(IReadOnlyDictionary<string, string> values) =>
-		values.TryGetValue(MarkupKeys.Scope, out string? scope) ? MarkupKeyCheck.FromScopeName(scope) : null;
-
 	private MarkupProfile? FindProfileFromKey(string path) =>
-		GetValues(path).TryGetValue(MarkupKeys.Profile, out string? name) && name.Length > 0 ? MarkupProfiles.FindByName(name) : null;
+		GetValues(path).TryGetValue(OptionKeys.MarkupProfile, out string? name) && name.Length > 0 ? MarkupProfiles.FindByName(name) : null;
 
 	private static MarkupRuleSet ReadRules(IReadOnlyDictionary<string, string> values) => MarkupRuleSet.From(ReadRuleIds(values, IsEnablingSeverity));
 
@@ -93,15 +88,15 @@ internal sealed class MarkupConfiguration(MarkupPaths paths, MarkupNotices notic
 	private static string? ReadRuleId(string key)
 	{
 		if (
-			!key.StartsWith(MarkupKeys.SeverityPrefix, StringComparison.Ordinal) || !key.EndsWith(MarkupKeys.SeveritySuffix, StringComparison.Ordinal)
+			!key.StartsWith(OptionKeys.SeverityPrefix, StringComparison.Ordinal) || !key.EndsWith(OptionKeys.SeveritySuffix, StringComparison.Ordinal)
 		)
 		{
 			return null;
 		}
 
 		// The reader lower-cases a key, so the ID is upper-cased again to read as the rule's own.
-		int start = MarkupKeys.SeverityPrefix.Length;
-		int length = key.Length - start - MarkupKeys.SeveritySuffix.Length;
+		int start = OptionKeys.SeverityPrefix.Length;
+		int length = key.Length - start - OptionKeys.SeveritySuffix.Length;
 
 		if (length <= 0)
 			return null;
@@ -115,15 +110,6 @@ internal sealed class MarkupConfiguration(MarkupPaths paths, MarkupNotices notic
 		return MarkupOptionReader.NamesASeverity(severity)
 			&& !MarkupOptionReader.Names(severity, "none")
 			&& !MarkupOptionReader.Names(severity, "default");
-	}
-
-	private static int? ReadMaxBlankLines(IReadOnlyDictionary<string, string> values)
-	{
-		return
-			values.TryGetValue(MarkupKeys.MaxBlankLines, out string? value)
-			&& MarkupOptionReader.TryReadCount(MarkupKeys.MaxBlankLines, value, out int parsed)
-			? parsed
-			: null;
 	}
 
 	private IReadOnlyDictionary<string, string> GetValues(string path)

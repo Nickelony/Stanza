@@ -8,30 +8,6 @@ namespace Nickelony.Stanza.Markup.Core.Tests;
 public sealed class MarkupItemsTests
 {
 	[TestMethod]
-	public void AChildAddedAfterTheSealIsRefused()
-	{
-		MarkupElement element = new("root", 0);
-
-		element.Seal();
-
-		_ = Assert.ThrowsExactly<InvalidOperationException>(() =>
-			element.Add(new MarkupElement("a", 0))
-		);
-	}
-
-	[TestMethod]
-	public void APropertySetAfterTheSealIsRefused()
-	{
-		MarkupElement element = new("root", 0);
-
-		element.Seal();
-
-		_ = Assert.ThrowsExactly<InvalidOperationException>(() => element.EndLineIndex = 3);
-		_ = Assert.ThrowsExactly<InvalidOperationException>(() => element.HasCharacterData = true);
-		Assert.AreEqual(0, element.EndLineIndex);
-	}
-
-	[TestMethod]
 	public void TheParserRecordsTheTagTextAndTheBodyOfAnElement()
 	{
 		const string document =
@@ -102,14 +78,6 @@ public sealed class MarkupItemsTests
 
 		Assert.AreEqual("one & two", text.Text);
 	}
-
-	[TestMethod]
-	[DataRow("Grid.Background", true)]
-	[DataRow("x:Grid.Background", true)]
-	[DataRow("Grid", false)]
-	[DataRow("x.Grid:Background", false)]
-	public void OnlyADotAfterThePrefixMakesAPropertyElement(string name, bool isPropertyElement) =>
-		Assert.AreEqual(isPropertyElement, new MarkupElement(name, 0).IsPropertyElement);
 
 	[TestMethod]
 	public void TheTextDirectlyInsideAnElementIsItsCharacterData()

@@ -7,7 +7,7 @@ namespace Nickelony.Stanza.Analyzers;
 /// <summary>Reads the text of a source file: its indentation, line endings, columns and blank lines.</summary>
 internal static class StanzaText
 {
-	public const int DefaultTabColumns = MarkupColumns.DefaultTabColumns;
+	public const int DefaultTabColumns = TextColumns.DefaultTabColumns;
 
 	/// <summary>The columns of one indent step when neither <c>indent_size</c> nor <c>tab_width</c> is set.</summary>
 	public const int DefaultIndentStepColumns = 4;
@@ -18,7 +18,7 @@ internal static class StanzaText
 		TextLine line = sourceText.Lines.GetLineFromPosition(span.Start);
 		string before = sourceText.ToString(TextSpan.FromBounds(line.Start, span.Start));
 
-		return MarkupColumns.GetColumns(sourceText.ToString(span), tabColumns, startColumn: MarkupColumns.GetColumns(before, tabColumns));
+		return TextColumns.GetColumns(sourceText.ToString(span), tabColumns, startColumn: TextColumns.GetColumns(before, tabColumns));
 	}
 
 	public static string GetIndentation(SourceText sourceText, int position)
@@ -68,6 +68,9 @@ internal static class StanzaText
 
 	public static bool IsIndentationCharacter(char character) => character is ' ' or '\t';
 
+	/// <summary>Whether a character is a line break that Roslyn counts but the engine's XML rule does not.</summary>
+	public static bool IsExtraLineBreak(char character) => character is (char)0x85 or (char)0x2028 or (char)0x2029;
+
 	/// <summary>The line break to write in front of a line, which is the one that ends the line above it.</summary>
 	private static string GetLineEndingAbove(SourceText sourceText, int lineIndex) => ReadPreferredLineEnding(sourceText, Math.Max(lineIndex - 1, 0));
 
@@ -99,7 +102,12 @@ internal static class StanzaText
 	/// <summary>
 	/// Whether a span holds only <see cref="char.IsWhiteSpace(char)"/> characters, line breaks among them.
 	/// </summary>
-	public static bool IsWhitespaceOnly(SourceText sourceText, TextSpan span) => SkipWhitespace(sourceText, span.Start, span.End) == span.End;
+	public static bool IsWhitespaceOnly(SourceText sourceText, TextSpan span) => IsWhitespaceOnly(sourceText, span.Start, span.End);
+
+	/// <summary>
+	/// Whether the positions from <paramref name="start"/> up to <paramref name="end"/> hold only whitespace.
+	/// </summary>
+	public static bool IsWhitespaceOnly(SourceText sourceText, int start, int end) => SkipWhitespace(sourceText, start, end) == end;
 
 	/// <summary>
 	/// The first position from <paramref name="start"/> that is not whitespace, or <paramref name="end"/>.
@@ -113,6 +121,36 @@ internal static class StanzaText
 
 		return position;
 	}
+
+	/// <summary>
+	/// The first position from <paramref name="start"/> that is not a space or a tab, or <paramref name="end"/>.
+	/// </summary>
+	public static int SkipBlanksForward(SourceText sourceText, int start, int end)
+	{
+		int position = start;
+
+		while (position < end && IsIndentationCharacter(sourceText[position]))
+			position++;
+
+		return position;
+	}
+
+	/// <summary>
+	/// The last position back from <paramref name="end"/> with no space or tab before it, or <paramref name="limit"/>.
+	/// </summary>
+	public static int SkipBlanksBackward(SourceText sourceText, int end, int limit)
+	{
+		int position = end;
+
+		while (position > limit && IsIndentationCharacter(sourceText[position - 1]))
+			position--;
+
+		return position;
+	}
+
+	/// <summary>Whether only whitespace stands between the start of the position's line and the position.</summary>
+	public static bool StartsItsLine(SourceText sourceText, int position) =>
+		IsWhitespaceOnly(sourceText, TextSpan.FromBounds(sourceText.Lines.GetLineFromPosition(position).Start, position));
 
 	public static bool IsBlankLine(SourceText sourceText, int lineIndex)
 	{

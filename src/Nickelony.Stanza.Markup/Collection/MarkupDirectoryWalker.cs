@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Nickelony.Stanza.Shared;
 
 namespace Nickelony.Stanza.Markup.Collection;
 
@@ -17,13 +18,17 @@ internal static class MarkupDirectoryWalker
 		"bin",
 		"obj",
 		"node_modules",
+		".venv",
+		"venv",
+		"__pycache__",
+		"dist",
 	};
 
 	/// <summary>The directory names a scan never enters, whatever their case; a test seam.</summary>
 	public static IReadOnlyCollection<string> SkippedDirectories => s_skippedDirectories;
 
 	/// <summary>Lists the files below a directory, to <paramref name="maxDepth"/> levels when it is set.</summary>
-	public static IEnumerable<FileSystemInfo> EnumerateEntries(string directory, MarkupCollectionContext context, int? maxDepth = null)
+	public static IEnumerable<FileSystemInfo> EnumerateFiles(string directory, MarkupCollectionContext context, int? maxDepth = null)
 	{
 		Stack<(string Directory, int Depth)> pending = new();
 		List<(string DisplayPath, string Reason)> unscanned = [];
@@ -50,16 +55,11 @@ internal static class MarkupDirectoryWalker
 				if (depth >= maxDepth)
 					continue;
 
-				if (MarkupLinkPolicy.IsLinkOrUnreadable(entry, out string? inspectionError))
+				if (MarkupLinks.IsLinkOrUnreadable(entry, out string? inspectionError))
 				{
 					// A linked directory is pruned silently; one whose attributes cannot be read is reported,
 					// so the walk never passes over a directory it cannot inspect without a word.
-					if (inspectionError is not null)
-					{
-						string displayPath = context.Paths.GetDisplayPath(entry.FullName);
-						context.Notices.AddWarning(MarkupLinkPolicy.Describe(displayPath, inspectionError), displayPath);
-					}
-
+					ReportUninspected(entry, inspectionError, context);
 					continue;
 				}
 
@@ -71,6 +71,16 @@ internal static class MarkupDirectoryWalker
 		}
 
 		ReportUnscanned(unscanned, context);
+	}
+
+	/// <summary>Warns about a directory whose attributes could not be read, not a link.</summary>
+	internal static void ReportUninspected(FileSystemInfo entry, string? inspectionError, MarkupCollectionContext context)
+	{
+		if (inspectionError is null)
+			return;
+
+		string displayPath = context.Paths.GetDisplayPath(entry.FullName);
+		context.Notices.AddWarning(MarkupLinks.Describe(displayPath, inspectionError), displayPath);
 	}
 
 	/// <summary>Reports the directories the walk could not list as one warning, so a drive root stays short.</summary>
@@ -101,7 +111,7 @@ internal static class MarkupDirectoryWalker
 		{
 			CollectEntries(new DirectoryInfo(directory).EnumerateFileSystemInfos(), entries, context);
 		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+		catch (Exception exception) when (FileFailures.IsFileFailure(exception))
 		{
 			unscanned.Add((context.Paths.GetDisplayPath(directory), exception.Message));
 		}

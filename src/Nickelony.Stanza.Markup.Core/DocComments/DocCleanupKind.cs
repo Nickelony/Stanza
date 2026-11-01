@@ -4,7 +4,8 @@ namespace Nickelony.Stanza.Markup.Core.DocComments;
 internal enum DocCleanupKind
 {
 	Padding,
-	NullKeyword,
+	Keyword,
+	Capital,
 	Period,
 	EmptyElement,
 	SlashShape,

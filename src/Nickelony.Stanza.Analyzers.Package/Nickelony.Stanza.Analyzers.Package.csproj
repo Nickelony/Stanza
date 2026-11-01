@@ -7,7 +7,7 @@
 		<SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 		<PackageId>Nickelony.Stanza.Analyzers</PackageId>
 		<PackageTags>$(StanzaPackageTags);roslyn;roslyn-analyzer;analyzers;code-fixes;csharp;xml-documentation</PackageTags>
-		<Description>Roslyn analyzers and code fixes that lay out blank lines, braces, member bodies and comments in C#.</Description>
+		<Description>Roslyn analyzers and code fixes for the layout and readability of C#, from blank lines and braces to argument names, limits, documentation markup and regions.</Description>
 	</PropertyGroup>
 
 	<!-- The NoTargets SDK builds no assembly here; the project packs the two assemblies the compiler and `dotnet format` load. -->
@@ -35,7 +35,7 @@
 			<_StanzaSymbols Include="@(_StanzaAssembly->'%(RootDir)%(Directory)%(Filename).pdb')" />
 			<TfmSpecificPackageFile Include="@(_StanzaAssembly)" PackagePath="analyzers/dotnet/$(StanzaRoslynDirectory)/cs" />
 
-			<!-- A PDB is included only where one exists; PackageLayoutTests pins each one, so a build that writes none fails it. -->
+			<!-- A PDB is included only where one exists; PackageLayoutGuardTests pins each one, so a build that writes none fails it. -->
 			<TfmSpecificPackageFile
 				Include="@(_StanzaSymbols)"
 				PackagePath="analyzers/dotnet/$(StanzaRoslynDirectory)/cs"
@@ -46,5 +46,10 @@
 
 	<ItemGroup>
 		<None Include="..\Nickelony.Stanza.Analyzers\README.md" Pack="true" PackagePath="" Link="README.md" />
+	</ItemGroup>
+
+	<!-- NuGet imports build/Nickelony.Stanza.Analyzers.targets into a consumer, and that file picks one of the presets beside it. -->
+	<ItemGroup>
+		<None Update="build\**" Pack="true" PackagePath="" />
 	</ItemGroup>
 </Project>

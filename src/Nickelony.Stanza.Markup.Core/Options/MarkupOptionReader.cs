@@ -17,7 +17,7 @@ internal static class MarkupOptionReader
 	{
 		string value = StripComment(rawValue, honorsEscapes: false);
 
-		if (key.StartsWith("stanza_", StringComparison.Ordinal) || key.StartsWith("csharp_", StringComparison.Ordinal))
+		if (key.StartsWith(OptionKeys.StanzaPrefix, StringComparison.Ordinal) || key.StartsWith("csharp_", StringComparison.Ordinal))
 		{
 			int separator = value.IndexOf(':');
 
@@ -46,6 +46,27 @@ internal static class MarkupOptionReader
 		return text.Trim();
 	}
 
+	/// <summary>Reads the markup options of a file, falling back to the policy an unset scope key leaves.</summary>
+	/// <remarks>
+	/// A forced policy keeps its own scope; the rule sets stay empty, since only the tool reads them.
+	/// </remarks>
+	public static MarkupOptions ReadOptions(Func<string, string?> read, MarkupPolicy fallbackPolicy, bool isPolicyForced = false)
+	{
+		MarkupPolicy policy = isPolicyForced
+			? fallbackPolicy
+			: fallbackPolicy with
+			{
+				ContainersOnly = OptionValues.MarkupScope.Read(read(OptionKeys.MarkupScope), fallback: fallbackPolicy.ContainersOnly),
+			};
+
+		return new MarkupOptions(
+			Policy: policy,
+			MaxBlankLines: ReadCount(read, OptionKeys.MarkupMaxBlankLines, MarkupOptions.DefaultMaxBlankLines),
+			Langwords: ReadLangwords(read),
+			SeparatedElements: ReadSeparatedElements(read)
+		);
+	}
+
 	/// <summary>
 	/// A zero, a negative or an unreadable value is unset here, so the next key, then the default, applies.
 	/// </summary>
@@ -59,7 +80,7 @@ internal static class MarkupOptionReader
 				return columns;
 		}
 
-		return MarkupColumns.DefaultTabColumns;
+		return TextColumns.DefaultTabColumns;
 	}
 
 	/// <summary>
@@ -80,7 +101,7 @@ internal static class MarkupOptionReader
 
 	public static int GetMaxCount(string key)
 	{
-		return key is MarkupKeys.StanzaTabWidth or MarkupKeys.DocIndentSize or MarkupKeys.TabWidth or MarkupKeys.IndentSize
+		return key is OptionKeys.DocIndentSize or OptionKeys.TabWidth or OptionKeys.IndentSize
 			? MarkupLimits.MaxIndentColumns
 			: MarkupLimits.MaxCount;
 	}
@@ -88,20 +109,19 @@ internal static class MarkupOptionReader
 	public static bool Names(string? value, string word) => string.Equals(value, word, StringComparison.OrdinalIgnoreCase);
 
 	/// <summary>
-	/// Some keys the layout reads carry no documentation prefix, so the prefix alone does not name them.
+	/// A value that is not a count in range is unset here, so <c>max_line_length</c> applies, then the default.
 	/// </summary>
-	public static bool IsDocumentationKey(string key) =>
-		key.StartsWith(MarkupKeys.DocPrefix, StringComparison.Ordinal) || key is MarkupKeys.MaxLineLength or MarkupKeys.StanzaTabWidth;
-
-	public static bool IsExpansionName(string? value) => Names(value, "none") || Names(value, "sections") || Names(value, "all");
-
-	public static bool IsIndentStyleName(string? value) => Names(value, "nested") || Names(value, "hanging");
+	public static int ResolveMaxLineLength(Func<string, string?> read)
+	{
+		// The standard key takes a positive width or `off`, so its zero turns no width off and falls through.
+		int standard = ReadCount(read, OptionKeys.StandardMaxLineLength, DefaultMaxLineLength);
+		return ReadCount(read, OptionKeys.MaxLineLength, fallback: standard > 0 ? standard : DefaultMaxLineLength);
+	}
 
 	public static DocLayoutOptions? ResolveDocLayout(Func<string, string?> read)
 	{
-		// The doc key wins when set; otherwise, the general key's width, then the default.
-		int fallback = ReadCount(read, MarkupKeys.MaxLineLength, DefaultMaxLineLength);
-		int maxLineLength = ReadCount(read, MarkupKeys.DocMaxLineLength, fallback);
+		// The doc key wins when set; otherwise, the code width.
+		int maxLineLength = ReadCount(read, OptionKeys.DocMaxLineLength, ResolveMaxLineLength(read));
 
 		// A width of zero disables the layout.
 		// ReadCount replaces a negative or unreadable width with the fallback,
@@ -113,46 +133,116 @@ internal static class MarkupOptionReader
 
 		// `tab` writes one tab per level where a number writes that many columns,
 		// so the width of one level is the tab width.
-		bool indentWithTabs = Names(read(MarkupKeys.DocIndentSize), "tab");
+		bool indentWithTabs = Names(read(OptionKeys.DocIndentSize), OptionValues.IndentTab);
 
 		return new DocLayoutOptions(
 			ContentWidth: maxLineLength,
 			TabColumns: tabColumns,
-			MinTailWords: ReadCount(read, MarkupKeys.MinTailWords, DocLayoutOptions.DefaultMinTailWords),
-			MinLineWords: ReadCount(read, MarkupKeys.MinLineWords, DocLayoutOptions.DefaultMinLineWords),
-			MaxOverflowColumns: ReadCount(read, MarkupKeys.MaxOverflowColumns, DocLayoutOptions.DefaultMaxOverflowColumns),
-			IndentSize: indentWithTabs ? tabColumns : ReadCount(read, MarkupKeys.DocIndentSize, DocLayoutOptions.DefaultIndentSize),
-			IndentText: !Names(read(MarkupKeys.IndentStyle), "hanging"),
-			Expansion: ReadExpansion(read(MarkupKeys.Expand)),
-			WeakTailWords: ReadWordSet(read, MarkupKeys.WeakTailWords),
+			MinTailWords: ReadCount(read, OptionKeys.DocMinTailWords, DocLayoutOptions.DefaultMinTailWords),
+			MinLineWords: ReadCount(read, OptionKeys.DocMinLineWords, DocLayoutOptions.DefaultMinLineWords),
+			MaxOverflowColumns: ReadCount(read, OptionKeys.DocMaxOverflowColumns, DocLayoutOptions.DefaultMaxOverflowColumns),
+			IndentSize: indentWithTabs ? tabColumns : ReadCount(read, OptionKeys.DocIndentSize, DocLayoutOptions.DefaultIndentSize),
+			IndentText: OptionValues.DocTextIndent.Read(read(OptionKeys.DocTextIndent), fallback: true),
+			BlockElements: OptionValues.DocBlockElements.Read(read(OptionKeys.DocBlockElements), fallback: DocBlockElements.Minimal),
+			WeakLineEndWords: ReadWordSet(read, OptionKeys.DocWeakLineEndWords),
 			IndentWithTabs: indentWithTabs
 		);
 	}
 
-	private static DocExpansion ReadExpansion(string? value)
-	{
-		if (Names(value, "sections"))
-			return DocExpansion.Sections;
-
-		if (Names(value, "all"))
-			return DocExpansion.All;
-
-		return DocExpansion.None;
-	}
-
 	public static bool NamesASeverity(string? value)
 	{
-		// Roslyn reads `refactoring` as another name for `silent`.
-		return Names(value, "none")
-			|| Names(value, "silent")
-			|| Names(value, "refactoring")
-			|| Names(value, "suggestion")
-			|| Names(value, "warning")
-			|| Names(value, "error")
-			|| Names(value, "default");
+		foreach (string severity in s_severities)
+		{
+			if (Names(value, severity))
+				return true;
+		}
+
+		return false;
 	}
 
-	private static DocNameSet? ReadWordSet(Func<string, string?> read, string key)
+	/// <summary>Reads the keywords a file lists, or <see langword="null"/> when it lists none.</summary>
+	public static MarkupNameSet? ReadLangwords(Func<string, string?> read)
+	{
+		if (read(OptionKeys.DocLangwords) is not { } value)
+			return null;
+
+		HashSet<string> words = new(StringComparer.Ordinal);
+
+		foreach (string word in ReadKeywords(value))
+		{
+			string lowered = word.ToLowerInvariant();
+
+			if (DocTextRules.ListableKeywords.Contains(lowered))
+				words.Add(lowered);
+		}
+
+		return words.Count == 0 ? null : new MarkupNameSet([.. words]);
+	}
+
+	/// <summary>Reads the element names a file lists, or <see langword="null"/> when it lists none.</summary>
+	/// <remarks>
+	/// Only the lowercase <c>none</c> lists none, so <c>None</c> names an element; a name is kept as written.
+	/// </remarks>
+	public static MarkupNameSet? ReadSeparatedElements(Func<string, string?> read)
+	{
+		if (read(OptionKeys.MarkupSeparatedElements) is not { } value || value.Trim() == "none")
+			return null;
+
+		List<string> names = [.. ReadKeywords(value)];
+		return names.Count == 0 ? null : new MarkupNameSet([.. names]);
+	}
+
+	/// <summary>Finds the first listed entry that is no local name, or <see langword="null"/>.</summary>
+	public static string? FindInvalidElementName(string value)
+	{
+		foreach (string name in ReadKeywords(value))
+		{
+			if (!IsLocalName(name))
+				return name;
+		}
+
+		return null;
+	}
+
+	/// <summary>Finds the first word of a keyword list that no file may list, or <see langword="null"/>.</summary>
+	public static string? FindUnlistableKeyword(string value)
+	{
+		foreach (string word in ReadKeywords(value))
+		{
+			if (!DocTextRules.ListableKeywords.Contains(word.ToLowerInvariant()))
+				return word;
+		}
+
+		return null;
+	}
+
+	/// <summary>Whether the text is a name without a prefix, such as <c>Separator</c>.</summary>
+	private static bool IsLocalName(string name)
+	{
+		if (!char.IsLetter(name[0]) && name[0] != '_')
+			return false;
+
+		foreach (char character in name)
+		{
+			if (!char.IsLetterOrDigit(character) && character is not ('_' or '-' or '.'))
+				return false;
+		}
+
+		return true;
+	}
+
+	private static IEnumerable<string> ReadKeywords(string value)
+	{
+		foreach (string word in value.Split(s_wordSeparators, StringSplitOptions.RemoveEmptyEntries))
+		{
+			string trimmed = word.Trim();
+
+			if (trimmed.Length > 0)
+				yield return trimmed;
+		}
+	}
+
+	private static MarkupNameSet? ReadWordSet(Func<string, string?> read, string key)
 	{
 		if (read(key) is not { } value || Names(value.Trim(), "none"))
 			return null;
@@ -165,9 +255,12 @@ internal static class MarkupOptionReader
 				words.Add(normalized);
 		}
 
-		return words.Count == 0 ? null : new DocNameSet([.. words]);
+		return words.Count == 0 ? null : new MarkupNameSet([.. words]);
 	}
 
-	private static readonly List<string> s_indentKeys = [MarkupKeys.StanzaTabWidth, MarkupKeys.TabWidth, MarkupKeys.IndentSize];
+	private static readonly List<string> s_indentKeys = [OptionKeys.TabWidth, OptionKeys.IndentSize];
 	private static readonly char[] s_wordSeparators = [','];
+
+	/// <summary>The severities Roslyn reads, <c>refactoring</c> being another name for <c>silent</c>.</summary>
+	private static readonly string[] s_severities = ["none", "silent", "refactoring", "suggestion", "warning", "error", "default"];
 }

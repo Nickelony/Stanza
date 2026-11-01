@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -8,35 +10,118 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Nickelony.Stanza.Analyzers.BlankLines;
 
-/// <summary>Reads the boundaries of the runs of statements, members and declarations a blank line splits.</summary>
+/// <summary>Reads the borders of the runs of statements, members and declarations a blank line splits.</summary>
 internal static class BlankLineGrouping
 {
-	/// <summary>A boundary a repeated run asks for, with the run's start and its end, one past the last.</summary>
-	public readonly record struct RunBorder(int Boundary, int RunStart, int RunEnd);
+	/// <summary>The rule that owns a run of statements, by what the run holds.</summary>
+	public enum RunFamily
+	{
+		Declaration,
+		Invocation,
+		Assertion,
+		Await,
+		Subscription,
+		Assignment,
+	}
+
+	/// <summary>How the key of a rule reads the gap between two siblings, whatever blank line stands there.</summary>
+	/// <remarks>
+	/// <c>Unnamed</c> is a key that names a sibling of the gap no run, so the rule has no say there.
+	/// </remarks>
+	public enum GapReading
+	{
+		Unnamed,
+		Together,
+		Apart,
+	}
+
+	/// <summary>A gap read by one key, with the family of the run each sibling belongs to.</summary>
+	public readonly record struct GapRead(GapReading Reading, RunFamily? Previous = null, RunFamily? Next = null);
+
+	/// <summary>The kind of what an assignment writes, which splits a run where the setting asks.</summary>
+	/// <remarks>
+	/// <c>None</c> is no kind and joins any neighbor, and <c>Several</c>, a mixed deconstruction, joins none.
+	/// </remarks>
+	public enum AssignmentKind
+	{
+		None,
+		Field,
+		Property,
+		Local,
+		Element,
+		Several,
+	}
+
+	/// <summary>What an assignment writes: its kind, and the root it writes through.</summary>
+	/// <remarks>
+	/// The root is the symbol a target starts from, as <c>_a</c> is for <c>_a.B</c>, and none where it does not bind.
+	/// </remarks>
+	public readonly record struct AssignmentTarget(AssignmentKind Kind, ISymbol? Root = null);
+
+	/// <summary>The key name of a deconstruction of several kinds, which no run continues through.</summary>
+	private const string SeveralTargets = nameof(AssignmentKind.Several);
+
+	/// <summary>A border of a repeated run: its boundary, and the run's start and its end, one past the last.</summary>
+	/// <remarks>
+	/// A run of statements is tagged with its family, and a run of members or types has none.
+	/// </remarks>
+	public readonly record struct RunBorder(int Boundary, int RunStart, int RunEnd, RunFamily? Family = null);
 
 	/// <summary>The gaps a read gathers and its siblings from <c>Start</c> to one before <c>End</c>.</summary>
 	/// <remarks>
-	/// A stretch short of the whole container ends where no run crosses, so its runs are the container's.
+	/// A stretch short of the container ends where no run crosses, and a written gap reads as blank.
 	/// </remarks>
-	public readonly record struct GatheredStretch(ImmutableHashSet<int> Gaps, int Start, int End);
+	public readonly record struct GatheredStretch(
+		ImmutableHashSet<int> Boundaries,
+		int Start,
+		int End,
+		bool ContinuesAbove = false,
+		ImmutableHashSet<int>? Written = null
+	);
+
+	/// <summary>What puts a sibling in a run: its kind, a name that splits the kind, and an assignment root.</summary>
+	private readonly record struct RunKey(RunKind Kind, string? Name = null, ISymbol? Root = null);
 
 	/// <summary>The keys of a stretch of siblings, read by a sibling's index in the container.</summary>
-	private readonly record struct RunKeys((RunKind Kind, string? Name)[] Keys, int Start)
+	private readonly record struct RunKeys(RunKey[] Keys, int Start)
 	{
-		public (RunKind Kind, string? Name) this[int index] => Keys[index - Start];
+		public RunKey this[int index] => Keys[index - Start];
 	}
 
-	public static ImmutableArray<int> ReadDeclarationRunBoundaries(
+	/// <summary>Reads the run borders of every family, as if the gathered gaps held no blank line.</summary>
+	/// <remarks>
+	/// A lone declaration above a run is set apart by the family of that run, and a target reader splits assignments.
+	/// </remarks>
+	public static ImmutableArray<RunBorder> ReadRunBorders(
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaOptions options,
 		GapOwners gapOwners,
+		GatheredStretch? gathered,
+		Func<SyntaxNode, AssignmentTarget>? readTarget,
 		CancellationToken cancellationToken
-	) => ReadBoundaries(ReadDeclarationRunBorders(siblings, options, gapOwners, gathered: null, cancellationToken));
+	)
+	{
+		if (siblings.Length < 2)
+			return [];
 
-	/// <summary>Reads the declaration run borders, as if the gathered gaps held no blank line.</summary>
-	public static ImmutableArray<RunBorder> ReadDeclarationRunBorders(
+		return WalkBorders(
+			siblings,
+			getKey: BuildStatementKeyReader(options, gapOwners, readTarget),
+			mode: WalkMode.LoneVariableBoundary | WalkMode.TagsFamily,
+			gapOwners,
+			gathered,
+			cancellationToken
+		);
+	}
+
+	/// <summary>Reads the run borders of the siblings the caller names as subscriptions.</summary>
+	/// <remarks>
+	/// The caller decides what a subscription is, so the read that needs a semantic model stays out of this class.
+	/// </remarks>
+	public static ImmutableArray<RunBorder> ReadSubscriptionRunBorders(
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaOptions options,
+		Func<SyntaxNode, bool> isSubscription,
 		GapOwners gapOwners,
 		GatheredStretch? gathered,
 		CancellationToken cancellationToken
@@ -45,49 +130,51 @@ internal static class BlankLineGrouping
 		if (siblings.Length < 2)
 			return [];
 
-		return ReadRunBorders(
+		// The other statements keep their own keys, so a declaration that ends a run of declarations is not a lone one.
+		ImmutableArray<RunBorder> borders = WalkBorders(
 			siblings,
-			getKey: node => GetDeclarationRunKey(node, options),
-			includesLoneVariableBoundary: true,
+			getKey: BuildSubscriptionKeyReader(options, gapOwners, isSubscription),
+			mode: WalkMode.LoneVariableBoundary | WalkMode.TagsFamily,
 			gapOwners,
 			gathered,
 			cancellationToken
 		);
+
+		return [.. borders.Where(static border => border.Family == RunFamily.Subscription)];
 	}
 
-	public static ImmutableArray<int> ReadMemberGroupBoundaries(
+	/// <summary>Reads the member group borders, as if the gathered gaps held no blank line.</summary>
+	public static ImmutableArray<RunBorder> ReadMemberGroupBorders(
 		ImmutableArray<SyntaxNode> siblings,
 		GapOwners gapOwners,
+		GatheredStretch? gathered,
 		CancellationToken cancellationToken
 	)
 	{
 		if (siblings.Length < 2)
 			return [];
 
-		return ReadBoundaries(
-			ReadRunBorders(siblings, getKey: GetMemberGroupKey, includesLoneVariableBoundary: true, gapOwners, gathered: null, cancellationToken)
-		);
+		return WalkBorders(siblings, getKey: GetMemberGroupKey, mode: WalkMode.LoneVariableBoundary, gapOwners, gathered, cancellationToken);
 	}
 
-	public static ImmutableArray<int> ReadModifierGroupBoundaries(
+	/// <summary>Reads the modifier group borders, as if the gathered gaps held no blank line.</summary>
+	public static ImmutableArray<RunBorder> ReadModifierGroupBorders(
 		ImmutableArray<SyntaxNode> siblings,
 		GapOwners gapOwners,
+		GatheredStretch? gathered,
 		CancellationToken cancellationToken
 	)
 	{
 		if (siblings.Length < 2)
 			return [];
 
-		return ReadBoundaries(
-			ReadRunBorders(siblings, getKey: GetModifierGroupKey, includesLoneVariableBoundary: false, gapOwners, gathered: null, cancellationToken)
-		);
+		return WalkBorders(siblings, getKey: GetModifierGroupKey, mode: WalkMode.None, gapOwners, gathered, cancellationToken);
 	}
 
-	private static ImmutableArray<RunBorder> ReadRunBorders(
+	/// <summary>Reads the keys of the stretch and the two siblings above it, which its first run needs.</summary>
+	private static RunKeys ReadRunKeys(
 		ImmutableArray<SyntaxNode> siblings,
-		Func<SyntaxNode, (RunKind Kind, string? Name)> getKey,
-		bool includesLoneVariableBoundary,
-		GapOwners gapOwners,
+		Func<SyntaxNode, RunKey> getKey,
 		GatheredStretch? gathered,
 		CancellationToken cancellationToken
 	)
@@ -95,9 +182,8 @@ internal static class BlankLineGrouping
 		int stretchStart = gathered?.Start ?? 0;
 		int stretchEnd = gathered?.End ?? siblings.Length;
 
-		// The keys start two siblings above the stretch, which is what the run that ends at its start needs to be judged repeated.
 		int keysStart = Math.Max(0, stretchStart - 2);
-		(RunKind Kind, string? Name)[] readKeys = new (RunKind, string?)[stretchEnd - keysStart];
+		var readKeys = new RunKey[stretchEnd - keysStart];
 
 		for (int index = keysStart; index < stretchEnd; index++)
 		{
@@ -105,7 +191,20 @@ internal static class BlankLineGrouping
 			readKeys[index - keysStart] = getKey(siblings[index]);
 		}
 
-		var keys = new RunKeys(readKeys, keysStart);
+		return new RunKeys(readKeys, keysStart);
+	}
+
+	/// <summary>Walks the runs of the keys and reads the borders of the repeated ones, as the mode asks.</summary>
+	private static ImmutableArray<RunBorder> WalkBorders(
+		ImmutableArray<SyntaxNode> siblings,
+		Func<SyntaxNode, RunKey> getKey,
+		WalkMode mode,
+		GapOwners gapOwners,
+		GatheredStretch? gathered,
+		CancellationToken cancellationToken
+	)
+	{
+		RunKeys keys = ReadRunKeys(siblings, getKey, gathered, cancellationToken);
 
 		ImmutableArray<Run> runs = WalkRuns(keys, siblings, gapOwners, gathered, cancellationToken);
 		ImmutableArray<RunBorder>.Builder borders = ImmutableArray.CreateBuilder<RunBorder>();
@@ -117,42 +216,40 @@ internal static class BlankLineGrouping
 			if (!run.IsRepeated)
 				continue;
 
+			RunFamily? family = (mode & WalkMode.TagsFamily) != 0 ? FindFamily(run.Kind) : null;
+
+			bool followsLoneDeclaration =
+				(mode & WalkMode.LoneVariableBoundary) != 0
+				&& !run.ContinuesAbove
+				&& run.Start >= 2
+				&& IsVariableLikeDeclaration(siblings[run.Start - 1]);
+
 			// A declaration on its own is set apart only while it stands directly above the run.
 			// A caller that gathers some gaps keeps that boundary once a blank line stands below the declaration too,
 			// since the rule writes that blank line and a fix order that wrote it first would otherwise judge the gap alone.
 			// With no gap gathered the text is read as it stands, so a blank line below the declaration keeps the boundary from being asked.
 			if (
-				includesLoneVariableBoundary
-				&& run.Start >= 2
-				&& IsVariableLikeDeclaration(siblings[run.Start - 1])
-				&& !(
-					index > 0
-						? runs[index - 1].IsRepeated
-						: IsRepeatedRunBefore(keys, siblings, index: run.Start, gapOwners, gathered, cancellationToken)
-				)
-				&& (gathered is { Gaps.IsEmpty: false } || !HasBlankLineBefore(siblings, run.Start, gathered: null))
-				&& !IsCommentedSiblingGap(
-					siblings,
-					boundaryIndex: run.Start,
-					commentedSiblingOwnerId: gapOwners.CommentedSiblingId,
-					cancellationToken
-				)
+				followsLoneDeclaration
+				&& !IsRepeatedAboveLoneDeclaration(runs, index, keys, siblings, gapOwners, gathered, cancellationToken)
+				&& (gathered is { Boundaries.IsEmpty: false } || !HasBlankLineBefore(siblings, run.Start, gathered: null))
+				&& !IsCommentedSiblingGap(siblings, boundary: run.Start, commentedSiblingOwnerId: gapOwners.CommentedSiblingId, cancellationToken)
 			)
 			{
-				borders.Add(new RunBorder(run.Start - 1, run.Start, run.End));
+				borders.Add(new RunBorder(Boundary: run.Start - 1, RunStart: run.Start, RunEnd: run.End, Family: family));
 			}
 
-			if (run.Start > 0)
-				borders.Add(new RunBorder(run.Start, run.Start, run.End));
+			if (run.Start > 0 && !run.ContinuesAbove)
+				borders.Add(new RunBorder(Boundary: run.Start, RunStart: run.Start, RunEnd: run.End, Family: family));
 
 			if (run.End < siblings.Length)
-				borders.Add(new RunBorder(run.End, run.Start, run.End));
+				borders.Add(new RunBorder(Boundary: run.End, RunStart: run.Start, RunEnd: run.End, Family: family));
 		}
 
 		return borders.ToImmutable();
 	}
 
-	private static ImmutableArray<int> ReadBoundaries(ImmutableArray<RunBorder> borders)
+	/// <summary>Reads the boundaries of the borders one walk read, in order and without repeats.</summary>
+	public static ImmutableArray<int> ReadBorderBoundaries(ImmutableArray<RunBorder> borders)
 	{
 		// The runs are walked in order and the borders they add never fall behind the last one added,
 		// so the walk appends the boundaries straight into the builder,
@@ -172,101 +269,58 @@ internal static class BlankLineGrouping
 		return boundaries.ToImmutable();
 	}
 
-	/// <summary>Whether ZA0005 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <summary>Whether ZA0001 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
 	/// <remarks>
-	/// A pragma that silences ZA0005 over the gap leaves it inside the run, as <c>none</c> does.
+	/// A pragma that silences ZA0001 over the gap leaves it inside the run, as <c>none</c> does.
 	/// </remarks>
 	private static bool IsMultiLineGap(
 		ImmutableArray<SyntaxNode> siblings,
-		int boundaryIndex,
+		int boundary,
 		string? multiLineGapOwnerId,
 		CancellationToken cancellationToken
 	)
 	{
-		if (
-			multiLineGapOwnerId is null
-			|| (!StanzaSyntax.IsMultiLine(siblings[boundaryIndex - 1]) && !StanzaSyntax.IsMultiLine(siblings[boundaryIndex]))
-		)
-		{
+		if (multiLineGapOwnerId is null || (!StanzaSyntax.IsMultiLine(siblings[boundary - 1]) && !StanzaSyntax.IsMultiLine(siblings[boundary])))
 			return false;
-		}
 
 		return !StanzaPragmas.IsSilencedByPragma(
-			syntaxTree: siblings[boundaryIndex].SyntaxTree,
+			syntaxTree: siblings[boundary].SyntaxTree,
 			ruleId: multiLineGapOwnerId,
-			position: siblings[boundaryIndex].SpanStart,
+			position: siblings[boundary].SpanStart,
 			cancellationToken
 		);
 	}
 
-	/// <summary>Whether ZA0047 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <summary>Whether ZA0012 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
 	/// <remarks>
-	/// ZA0047 separates a marker only from a unit beside it, so the first and the last directive of the gap decide.
-	/// </remarks>
-	private static bool IsRegionMarkerGap(SyntaxNode next, string? ownerId, CancellationToken cancellationToken)
-	{
-		if (ownerId is null)
-			return false;
-
-		DirectiveTriviaSyntax? first = null;
-		DirectiveTriviaSyntax? last = null;
-
-		// A directive is leading trivia of the token after it, so the next unit holds every directive of the gap.
-		foreach (SyntaxTrivia trivia in next.GetLeadingTrivia())
-		{
-			if (trivia.GetStructure() is not DirectiveTriviaSyntax directive)
-				continue;
-
-			first ??= directive;
-			last = directive;
-		}
-
-		return IsKeptMarker(first, ownerId, cancellationToken) || IsKeptMarker(last, ownerId, cancellationToken);
-	}
-
-	/// <summary>Whether ZA0053 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
-	/// <remarks>
-	/// A pragma that silences ZA0053 over the gap leaves it inside the run, as <c>none</c> does.
+	/// A pragma that silences ZA0012 over the gap leaves it inside the run, as <c>none</c> does.
 	/// </remarks>
 	private static bool IsCommentedSiblingGap(
 		ImmutableArray<SyntaxNode> siblings,
-		int boundaryIndex,
+		int boundary,
 		string? commentedSiblingOwnerId,
 		CancellationToken cancellationToken
 	)
 	{
-		if (commentedSiblingOwnerId is null || !BlankLineGaps.IsKeptBlankAboveComment(siblings[boundaryIndex - 1], siblings[boundaryIndex]))
+		if (commentedSiblingOwnerId is null || !BlankLineGaps.IsKeptBlankAboveComment(siblings[boundary - 1], siblings[boundary]))
 			return false;
 
 		return !StanzaPragmas.IsSilencedByPragma(
-			syntaxTree: siblings[boundaryIndex].SyntaxTree,
+			syntaxTree: siblings[boundary].SyntaxTree,
 			ruleId: commentedSiblingOwnerId,
-			position: siblings[boundaryIndex].SpanStart,
+			position: siblings[boundary].SpanStart,
 			cancellationToken
 		);
 	}
 
-	/// <summary>Whether the directive is a region marker that ZA0047 is not silenced at by a pragma.</summary>
-	private static bool IsKeptMarker(SyntaxNode? directive, string ruleId, CancellationToken cancellationToken)
+	/// <summary>Whether an owning rule keeps the gap blank, so a run ends there.</summary>
+	public static bool IsGapKeptBlank(ImmutableArray<SyntaxNode> siblings, int boundary, GapOwners gapOwners, CancellationToken cancellationToken)
 	{
-		if (directive is not (RegionDirectiveTriviaSyntax or EndRegionDirectiveTriviaSyntax))
-			return false;
-
-		int position = directive.SpanStart;
-		return !StanzaPragmas.IsSilencedByPragma(syntaxTree: directive.SyntaxTree, ruleId, position, cancellationToken);
-	}
-
-	/// <summary>Whether ZA0005, ZA0047 or ZA0053 keeps the gap, so a run ends there before it is written.</summary>
-	public static bool IsGapKeptBlank(
-		ImmutableArray<SyntaxNode> siblings,
-		int boundaryIndex,
-		GapOwners gapOwners,
-		CancellationToken cancellationToken
-	)
-	{
-		return IsMultiLineGap(siblings, boundaryIndex, multiLineGapOwnerId: gapOwners.MultiLineId, cancellationToken)
-			|| IsRegionMarkerGap(siblings[boundaryIndex], gapOwners.RegionMarkerId, cancellationToken)
-			|| IsCommentedSiblingGap(siblings, boundaryIndex, commentedSiblingOwnerId: gapOwners.CommentedSiblingId, cancellationToken);
+		return gapOwners.Owns(boundary)
+			|| IsMultiLineGap(siblings, boundary, multiLineGapOwnerId: gapOwners.MultiLineId, cancellationToken)
+			|| BlankLineDirectives.IsRegionMarkerGap(siblings[boundary], gapOwners.RegionMarkerId, cancellationToken)
+			|| BlankLineDirectives.IsConditionalBlockGap(siblings[boundary], gapOwners.ConditionalBlockId, cancellationToken)
+			|| IsCommentedSiblingGap(siblings, boundary, commentedSiblingOwnerId: gapOwners.CommentedSiblingId, cancellationToken);
 	}
 
 	private static ImmutableArray<Run> WalkRuns(
@@ -282,39 +336,176 @@ internal static class BlankLineGrouping
 		int stretchEnd = gathered?.End ?? siblings.Length;
 		int start = gathered?.Start ?? 0;
 
+		// A stretch that continues above starts inside the runs that cross its first gap, and those keep no border at their start.
+		// Such a run reaches the sibling above, so it holds more than one.
+		bool continuesAbove =
+			gathered is { ContinuesAbove: true, Start: > 0 }
+			&& ContinuesRun(keys[start - 1], keys[start])
+			&& IsOpenGap(siblings, boundary: start, gapOwners, gathered, cancellationToken);
+
 		while (start < stretchEnd)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			(RunKind Kind, string? Name) runKey = keys[start];
+			RunKey runKey = keys[start];
 			int end = start + 1;
 
 			while (
-				end < stretchEnd && ContinuesRun(keys[end - 1], keys[end]) && IsOpenGap(siblings, index: end, gapOwners, gathered, cancellationToken)
+				end < stretchEnd
+				&& ContinuesRun(keys[end - 1], keys[end])
+				&& IsOpenGap(siblings, boundary: end, gapOwners, gathered, cancellationToken)
 			)
 			{
 				end++;
 			}
 
-			runs.Add(new Run(start, end, runKey.Kind != RunKind.None && end - start > 1));
+			runs.Add(
+				new Run(
+					Start: start,
+					End: end,
+					Kind: runKey.Kind,
+					IsRepeated: runKey.Kind != RunKind.None && (end - start > 1 || continuesAbove),
+					ContinuesAbove: continuesAbove
+				)
+			);
+
 			start = end;
+			continuesAbove = false;
 		}
 
 		return runs.ToImmutable();
 	}
 
 	/// <summary>Whether a sibling of this key can join the run of the sibling above it.</summary>
-	private static bool ContinuesRun((RunKind Kind, string? Name) previousKey, (RunKind Kind, string? Name) key) =>
-		previousKey.Kind != RunKind.None && key == previousKey;
+	/// <remarks>
+	/// An assignment of no kind joins either neighbor, and a deconstruction of several kinds joins neither.
+	/// </remarks>
+	private static bool ContinuesRun(RunKey previousKey, RunKey key)
+	{
+		if (previousKey.Kind == RunKind.None || key.Kind != previousKey.Kind)
+			return false;
 
-	/// <summary>Whether no blank line stands above the sibling at the index and no rule keeps one there.</summary>
+		if (key.Kind != RunKind.Assignment)
+			return key.Name == previousKey.Name;
+
+		if (previousKey.Name == SeveralTargets || key.Name == SeveralTargets)
+			return false;
+
+		if (previousKey.Name is null || key.Name is null || key.Name == previousKey.Name)
+			return true;
+
+		// Two assignments through one root join whatever their kinds, as `_a = Read();` and `_a.B = 1;` do.
+		return key.Root is not null && SymbolEqualityComparer.Default.Equals(key.Root, previousKey.Root);
+	}
+
+	/// <summary>Whether no blank line stands above the sibling at the boundary and no rule keeps one there.</summary>
 	private static bool IsOpenGap(
 		ImmutableArray<SyntaxNode> siblings,
-		int index,
+		int boundary,
 		GapOwners gapOwners,
 		GatheredStretch? gathered,
 		CancellationToken cancellationToken
-	) => !HasBlankLineBefore(siblings, index, gathered) && !IsGapKeptBlank(siblings, boundaryIndex: index, gapOwners, cancellationToken);
+	) => !HasBlankLineBefore(siblings, boundary, gathered) && !IsGapKeptBlank(siblings, boundary, gapOwners, cancellationToken);
+
+	/// <summary>Reads the gap by the keys of the declaration, call, assertion, await and assignment runs.</summary>
+	/// <remarks>
+	/// A target reader splits the assignments, and every gap is read as if its blank line were not there.
+	/// </remarks>
+	public static GapRead ReadStatementGap(
+		ImmutableArray<SyntaxNode> siblings,
+		int boundary,
+		StanzaOptions options,
+		GapOwners gapOwners,
+		Func<SyntaxNode, AssignmentTarget>? readTarget,
+		CancellationToken cancellationToken
+	)
+	{
+		return ReadGap(getKey: BuildStatementKeyReader(options, gapOwners, readTarget), siblings, boundary, gapOwners, cancellationToken);
+	}
+
+	/// <summary>Reads the gap by the key of the subscription runs, where the caller names the subscriptions.</summary>
+	public static GapRead ReadSubscriptionGap(
+		ImmutableArray<SyntaxNode> siblings,
+		int boundary,
+		StanzaOptions options,
+		GapOwners gapOwners,
+		Func<SyntaxNode, bool> isSubscription,
+		CancellationToken cancellationToken
+	)
+	{
+		return ReadGap(getKey: BuildSubscriptionKeyReader(options, gapOwners, isSubscription), siblings, boundary, gapOwners, cancellationToken);
+	}
+
+	/// <summary>Reads the gap by the key of the runs of declarations of one type.</summary>
+	public static GapRead ReadSameTypeGap(
+		ImmutableArray<SyntaxNode> siblings,
+		int boundary,
+		GapOwners gapOwners,
+		CancellationToken cancellationToken
+	) => ReadGap(getKey: GetTypeKey, siblings, boundary, gapOwners, cancellationToken);
+
+	/// <summary>Reads the gap by the key of the runs of members of one kind.</summary>
+	public static GapRead ReadMemberGroupGap(
+		ImmutableArray<SyntaxNode> siblings,
+		int boundary,
+		GapOwners gapOwners,
+		CancellationToken cancellationToken
+	) => ReadGap(getKey: GetMemberGroupKey, siblings, boundary, gapOwners, cancellationToken);
+
+	/// <summary>Reads the gap by the key of the runs of members that share their modifiers.</summary>
+	public static GapRead ReadModifierGroupGap(
+		ImmutableArray<SyntaxNode> siblings,
+		int boundary,
+		GapOwners gapOwners,
+		CancellationToken cancellationToken
+	) => ReadGap(getKey: GetModifierGroupKey, siblings, boundary, gapOwners, cancellationToken);
+
+	/// <summary>Reads whether the key holds both siblings of a gap in one run, unless a rule keeps it blank.</summary>
+	private static GapRead ReadGap(
+		Func<SyntaxNode, RunKey> getKey,
+		ImmutableArray<SyntaxNode> siblings,
+		int boundary,
+		GapOwners gapOwners,
+		CancellationToken cancellationToken
+	)
+	{
+		RunKey previous = getKey(siblings[boundary - 1]);
+		RunKey next = getKey(siblings[boundary]);
+
+		if (previous.Kind == RunKind.None || next.Kind == RunKind.None)
+			return new GapRead(GapReading.Unnamed);
+
+		bool together = ContinuesRun(previous, next) && !IsGapKeptBlank(siblings, boundary, gapOwners, cancellationToken);
+
+		return new GapRead(together ? GapReading.Together : GapReading.Apart, FindFamily(previous.Kind), FindFamily(next.Kind));
+	}
+
+	/// <summary>Whether the declaration above the run at the index ends a repeated run, so it is no lone one.</summary>
+	/// <remarks>
+	/// A gap written above the declaration reads open, or its border would be asked for only because it is written.
+	/// </remarks>
+	private static bool IsRepeatedAboveLoneDeclaration(
+		ImmutableArray<Run> runs,
+		int index,
+		RunKeys keys,
+		ImmutableArray<SyntaxNode> siblings,
+		GapOwners gapOwners,
+		GatheredStretch? gathered,
+		CancellationToken cancellationToken
+	)
+	{
+		int above = runs[index].Start - 1;
+
+		if (gathered is { Written: { } written } stretch && written.Contains(above))
+		{
+			GatheredStretch unwritten = stretch with { Written = written.Remove(above) };
+			return IsRepeatedRunBefore(keys, siblings, index: runs[index].Start, gapOwners, gathered: unwritten, cancellationToken);
+		}
+
+		return index > 0
+			? runs[index - 1].IsRepeated
+			: IsRepeatedRunBefore(keys, siblings, index: runs[index].Start, gapOwners, gathered, cancellationToken);
+	}
 
 	/// <summary>Whether the run that ends where the one at the index starts holds more than one sibling.</summary>
 	private static bool IsRepeatedRunBefore(
@@ -324,13 +515,7 @@ internal static class BlankLineGrouping
 		GapOwners gapOwners,
 		GatheredStretch? gathered,
 		CancellationToken cancellationToken
-	) => ContinuesRun(keys[index - 2], keys[index - 1]) && IsOpenGap(siblings, index: index - 1, gapOwners, gathered, cancellationToken);
-
-	public static ImmutableArray<int> ReadSameTypeDeclarationBoundaries(
-		ImmutableArray<SyntaxNode> siblings,
-		GapOwners gapOwners,
-		CancellationToken cancellationToken
-	) => ReadBoundaries(ReadSameTypeDeclarationBorders(siblings, gapOwners, gathered: null, cancellationToken));
+	) => ContinuesRun(keys[index - 2], keys[index - 1]) && IsOpenGap(siblings, boundary: index - 1, gapOwners, gathered, cancellationToken);
 
 	/// <summary>Reads the same-type group borders, as if the gathered gaps held no blank line.</summary>
 	public static ImmutableArray<RunBorder> ReadSameTypeDeclarationBorders(
@@ -343,42 +528,52 @@ internal static class BlankLineGrouping
 		if (siblings.Length < 2)
 			return [];
 
-		return ReadRunBorders(siblings, getKey: GetTypeKey, includesLoneVariableBoundary: false, gapOwners, gathered, cancellationToken);
+		return WalkBorders(siblings, getKey: GetTypeKey, mode: WalkMode.None, gapOwners, gathered, cancellationToken);
 	}
 
 	/// <summary>Reads the stretch of siblings around a gathered gap whose runs the gap can change.</summary>
 	/// <remarks>
-	/// It spans the runs beside the gap and the one after, and ends where neither kind of run crosses.
+	/// It spans the runs beside the gap and the one after, and ends where no kind of run crosses.
 	/// </remarks>
 	public static GatheredStretch ReadStretchAround(
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaOptions options,
 		GapOwners gapOwners,
 		ImmutableHashSet<int> gathered,
-		int boundaryIndex,
+		int boundary,
 		CancellationToken cancellationToken
 	)
 	{
 		GatheredStretch read = new(gathered, Start: 0, End: siblings.Length);
 
-		bool IsCrossed(int index)
+		bool IsCrossed(int candidate)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			return IsOpenGap(siblings, index, gapOwners, gathered: read, cancellationToken)
+			// Assignments are read as one kind here, so a stretch holds every run a split of them can make and binds no symbol.
+			return IsOpenGap(siblings, boundary: candidate, gapOwners, gathered: read, cancellationToken)
 				&& (
-					ContinuesRun(GetDeclarationRunKey(siblings[index - 1], options), GetDeclarationRunKey(siblings[index], options))
-					|| ContinuesRun(GetTypeKey(siblings[index - 1]), GetTypeKey(siblings[index]))
+					ContinuesRun(
+						GetDeclarationRunKey(siblings[candidate - 1], options, gapOwners.AwaitRuleEnabled),
+						GetDeclarationRunKey(siblings[candidate], options, gapOwners.AwaitRuleEnabled)
+					)
+					|| ContinuesRun(GetTypeKey(siblings[candidate - 1]), GetTypeKey(siblings[candidate]))
+					|| ContinuesRun(GetMemberGroupKey(siblings[candidate - 1]), GetMemberGroupKey(siblings[candidate]))
+					|| ContinuesRun(GetModifierGroupKey(siblings[candidate - 1]), GetModifierGroupKey(siblings[candidate]))
 				);
 		}
 
-		int start = boundaryIndex - 1;
+		int start = boundary - 1;
 
-		while (start > 0 && IsCrossed(start))
+		// A gathered gap directly above is inside the runs that cross it, and the read that gathered it judged where they start.
+		// So the stretch begins at that gap, rather than at the start of a run that grows with each retry.
+		bool continuesAbove = start > 0 && gathered.Contains(start);
+
+		while (!continuesAbove && start > 0 && IsCrossed(start))
 			start--;
 
 		// The sibling below the gap's own can start the run that a lone declaration at the gap's own sets apart, so the stretch takes it in.
-		int end = Math.Min(boundaryIndex + 2, siblings.Length);
+		int end = Math.Min(boundary + 2, siblings.Length);
 
 		while (end < siblings.Length && IsCrossed(end))
 			end++;
@@ -387,16 +582,71 @@ internal static class BlankLineGrouping
 		{
 			Start = start,
 			End = end,
+			ContinuesAbove = continuesAbove,
 		};
 	}
 
-	/// <summary>Whether a blank line stands above a sibling, unless the caller reads the gap as gathered.</summary>
-	private static bool HasBlankLineBefore(ImmutableArray<SyntaxNode> siblings, int index, GatheredStretch? gathered) =>
-		(gathered is null || !gathered.Value.Gaps.Contains(index)) && BlankLineGaps.HasBlankLineBetween(siblings[index - 1], siblings[index]);
-
-	private static (RunKind Kind, string? Name) GetDeclarationRunKey(SyntaxNode node, StanzaOptions options)
+	/// <summary>Whether a blank line stands or is written above a sibling, unless the gap is gathered.</summary>
+	private static bool HasBlankLineBefore(ImmutableArray<SyntaxNode> siblings, int boundary, GatheredStretch? gathered)
 	{
-		(RunKind Kind, string? Name) variableKey = GetVariableLikeKey(node);
+		if (gathered is not { } stretch)
+			return BlankLineGaps.HasBlankLineBetween(siblings[boundary - 1], siblings[boundary]);
+
+		return stretch.Written?.Contains(boundary) == true
+			|| (!stretch.Boundaries.Contains(boundary) && BlankLineGaps.HasBlankLineBetween(siblings[boundary - 1], siblings[boundary]));
+	}
+
+	/// <summary>Builds the reader of the keys that form the runs of statements.</summary>
+	private static Func<SyntaxNode, RunKey> BuildStatementKeyReader(
+		StanzaOptions options,
+		GapOwners gapOwners,
+		Func<SyntaxNode, AssignmentTarget>? readTarget
+	) => node => GetSplitRunKey(node, options, awaitRuleEnabled: gapOwners.AwaitRuleEnabled, readTarget);
+
+	/// <summary>Builds the reader of the keys that form the runs of subscriptions.</summary>
+	private static Func<SyntaxNode, RunKey> BuildSubscriptionKeyReader(
+		StanzaOptions options,
+		GapOwners gapOwners,
+		Func<SyntaxNode, bool> isSubscription
+	) => node => isSubscription(node) ? new RunKey(RunKind.Subscription) : GetDeclarationRunKey(node, options, gapOwners.AwaitRuleEnabled);
+
+	/// <summary>Reads the run kind of a statement, where a target reader names what an assignment writes.</summary>
+	/// <remarks>
+	/// Without a reader every assignment is one kind, as the setting <c>mixed</c> asks.
+	/// </remarks>
+	private static RunKey GetSplitRunKey(
+		SyntaxNode node,
+		StanzaOptions options,
+		bool awaitRuleEnabled,
+		Func<SyntaxNode, AssignmentTarget>? readTarget
+	)
+	{
+		RunKey key = GetDeclarationRunKey(node, options, awaitRuleEnabled);
+
+		if (key.Kind != RunKind.Assignment || readTarget is null)
+			return key;
+
+		AssignmentTarget target = readTarget(node);
+		return new RunKey(RunKind.Assignment, Name: ReadTargetName(target.Kind), Root: target.Root);
+	}
+
+	private static string? ReadTargetName(AssignmentKind kind)
+	{
+		return kind switch
+		{
+			AssignmentKind.Field => nameof(AssignmentKind.Field),
+			AssignmentKind.Property => nameof(AssignmentKind.Property),
+			AssignmentKind.Local => nameof(AssignmentKind.Local),
+			AssignmentKind.Element => nameof(AssignmentKind.Element),
+			AssignmentKind.Several => SeveralTargets,
+			_ => null,
+		};
+	}
+
+	/// <summary>Reads the run kind of a statement, where an await is a kind of its own while ZA0006 is on.</summary>
+	private static RunKey GetDeclarationRunKey(SyntaxNode node, StanzaOptions options, bool awaitRuleEnabled)
+	{
+		RunKey variableKey = GetVariableLikeKey(node);
 
 		if (variableKey.Kind != RunKind.None)
 			return variableKey;
@@ -404,46 +654,70 @@ internal static class BlankLineGrouping
 		if (node is not ExpressionStatementSyntax expressionStatement)
 			return default;
 
-		if (FindInvocation(expressionStatement.Expression) is not { } invocation)
-			return default;
+		RunKey expressionKey = GetExpressionRunKey(expressionStatement.Expression, options);
 
-		string? outerName = FindName(invocation.Expression);
-
-		if (outerName is null)
-			return default;
-
-		InvocationExpressionSyntax rootInvocation = GetRootInvocation(invocation);
-
-		string? rootName = FindName(rootInvocation.Expression);
-		string? receiverName = FindAssertionRoot(rootInvocation.Expression, options.AssertionRoots);
-		string? groupName = options.AssertionRoots.Contains(rootName ?? string.Empty) ? rootName : receiverName ?? outerName;
-
-		return (RunKind.Call, groupName);
+		// An awaited assertion stays an assertion, since checking a result is the more specific intent.
+		return awaitRuleEnabled && expressionKey.Kind != RunKind.Assertion && BlankLineExpressions.IsAwaitStatement(expressionStatement.Expression)
+			? new RunKey(RunKind.Await)
+			: expressionKey;
 	}
 
-	private static (RunKind Kind, string? Name) GetMemberGroupKey(SyntaxNode node)
+	private static RunKey GetExpressionRunKey(ExpressionSyntax expression, StanzaOptions options)
+	{
+		if (BlankLineExpressions.FindInvocation(expression) is not { } invocation)
+			return BlankLineExpressions.FindAssignment(expression) is not null ? new RunKey(RunKind.Assignment) : default;
+
+		// A chain is named by the call it starts from, so what it goes on to do with the result, such as `.ConfigureAwait(false)`, names no run.
+		InvocationExpressionSyntax rootInvocation = BlankLineExpressions.GetRootInvocation(invocation);
+
+		string? rootName = BlankLineExpressions.FindName(rootInvocation.Expression);
+
+		if (rootName is null)
+			return default;
+
+		string? receiverName = BlankLineExpressions.FindRoot(rootInvocation.Expression, options.AssertionRoots);
+
+		return receiverName is null ? new RunKey(RunKind.Call, Name: rootName) : new RunKey(RunKind.Assertion, Name: receiverName);
+	}
+
+	/// <summary>Finds the family that owns a run of this kind, or none for a kind of member or type.</summary>
+	private static RunFamily? FindFamily(RunKind kind)
+	{
+		return kind switch
+		{
+			RunKind.Constant or RunKind.Variable or RunKind.ExplicitDeclaration or RunKind.UsingDeclaration => RunFamily.Declaration,
+			RunKind.Call => RunFamily.Invocation,
+			RunKind.Assertion => RunFamily.Assertion,
+			RunKind.Await => RunFamily.Await,
+			RunKind.Subscription => RunFamily.Subscription,
+			RunKind.Assignment => RunFamily.Assignment,
+			_ => null,
+		};
+	}
+
+	private static RunKey GetMemberGroupKey(SyntaxNode node)
 	{
 		if (IsVariableLikeDeclaration(node))
 			return GetVariableLikeKey(node);
 
 		RunKind memberKind = GetMemberKind(node);
-		return memberKind == RunKind.None ? default : (memberKind, null);
+		return memberKind == RunKind.None ? default : new RunKey(memberKind);
 	}
 
-	/// <summary>Splits a member group by its static and readonly modifiers.</summary>
-	private static (RunKind Kind, string? Name) GetModifierGroupKey(SyntaxNode node)
+	/// <summary>Splits a member group by its access, static and readonly modifiers.</summary>
+	private static RunKey GetModifierGroupKey(SyntaxNode node)
 	{
 		// A top-level statement shares a member's container but is no member, so it joins no run.
 		if (node is not MemberDeclarationSyntax member)
 			return default;
 
-		(RunKind Kind, string? Name) memberKey = GetMemberGroupKey(node);
+		RunKey memberKey = GetMemberGroupKey(node);
 
 		if (memberKey.Kind == RunKind.None)
 			return memberKey;
 
-		bool isStatic = StanzaSyntax.HasModifier(member.Modifiers, SyntaxKind.StaticKeyword);
-		bool isReadOnly = StanzaSyntax.HasModifier(member.Modifiers, SyntaxKind.ReadOnlyKeyword);
+		bool isStatic = member.Modifiers.Any(SyntaxKind.StaticKeyword);
+		bool isReadOnly = member.Modifiers.Any(SyntaxKind.ReadOnlyKeyword);
 
 		string? modifiers = (isStatic, isReadOnly) switch
 		{
@@ -453,8 +727,89 @@ internal static class BlankLineGrouping
 			_ => null,
 		};
 
-		return (memberKey.Kind, modifiers);
+		string? access = FindAccessLevel(member);
+
+		return new RunKey(
+			memberKey.Kind,
+
+			Name: access is null ? modifiers
+				: modifiers is null ? access
+				: $"{access} {modifiers}"
+		);
 	}
+
+	/// <summary>Finds the access of a member, or the default its container gives; an enum member has none.</summary>
+	private static string? FindAccessLevel(MemberDeclarationSyntax member)
+	{
+		if (member is EnumMemberDeclarationSyntax)
+			return null;
+
+		return ReadWrittenAccess(member)
+			?? FindAccessOfOtherPart(member)
+			?? member.Parent switch
+			{
+				InterfaceDeclarationSyntax => "public",
+				TypeDeclarationSyntax => "private",
+				_ => "internal",
+			};
+	}
+
+	private static string? ReadWrittenAccess(MemberDeclarationSyntax member)
+	{
+		bool isPublic = member.Modifiers.Any(SyntaxKind.PublicKeyword);
+		bool isPrivate = member.Modifiers.Any(SyntaxKind.PrivateKeyword);
+		bool isProtected = member.Modifiers.Any(SyntaxKind.ProtectedKeyword);
+		bool isInternal = member.Modifiers.Any(SyntaxKind.InternalKeyword);
+
+		return (isPublic, isPrivate, isProtected, isInternal) switch
+		{
+			(true, _, _, _) => "public",
+			(_, true, true, _) => "private protected",
+			(_, true, _, _) => "private",
+			(_, _, true, true) => "protected internal",
+			(_, _, true, _) => "protected",
+			(_, _, _, true) => "internal",
+			_ => null,
+		};
+	}
+
+	/// <summary>Finds the access another part of a partial type writes, as all parts share one access.</summary>
+	/// <remarks>
+	/// Only a part beside it is read, as a part elsewhere may write one the tree does not show.
+	/// </remarks>
+	private static string? FindAccessOfOtherPart(MemberDeclarationSyntax member)
+	{
+		if (member is not TypeDeclarationSyntax part || !part.Modifiers.Any(SyntaxKind.PartialKeyword))
+			return null;
+
+		if (part.Parent is not { } container)
+			return null;
+
+		// One pass over the container reads the access of every partial type in it, so a part does not scan its siblings.
+		Dictionary<(SyntaxKind Kind, string Name, int Arity), string> accesses = s_partAccesses.GetOrCompute(container, ReadPartAccesses);
+
+		return accesses.TryGetValue(ReadPartKey(part), out string? access) ? access : null;
+	}
+
+	/// <summary>Reads the first access written for each partial type of a container.</summary>
+	private static Dictionary<(SyntaxKind Kind, string Name, int Arity), string> ReadPartAccesses(SyntaxNode container)
+	{
+		Dictionary<(SyntaxKind Kind, string Name, int Arity), string> accesses = [];
+
+		foreach (SyntaxNode child in container.ChildNodes())
+		{
+			if (child is not TypeDeclarationSyntax other || !other.Modifiers.Any(SyntaxKind.PartialKeyword))
+				continue;
+
+			if (ReadWrittenAccess(other) is { } access && !accesses.ContainsKey(ReadPartKey(other)))
+				accesses.Add(ReadPartKey(other), access);
+		}
+
+		return accesses;
+	}
+
+	private static (SyntaxKind Kind, string Name, int Arity) ReadPartKey(TypeDeclarationSyntax type) =>
+		(type.Kind(), type.Identifier.ValueText, type.TypeParameterList?.Parameters.Count ?? 0);
 
 	private static RunKind GetMemberKind(SyntaxNode node)
 	{
@@ -476,7 +831,7 @@ internal static class BlankLineGrouping
 		};
 	}
 
-	private static (RunKind Kind, string? Name) GetTypeKey(SyntaxNode node)
+	private static RunKey GetTypeKey(SyntaxNode node)
 	{
 		TypeSyntax? type = node switch
 		{
@@ -492,7 +847,8 @@ internal static class BlankLineGrouping
 		string typeKey = ReadTypeKey(type);
 
 		// A const declaration never joins a run of non-const ones.
-		return GetDeclarationKind(node) == RunKind.Constant ? (RunKind.ConstantType, typeKey) : (RunKind.Type, typeKey);
+		RunKind kind = GetDeclarationKind(node) == RunKind.Constant ? RunKind.ConstantType : RunKind.Type;
+		return new RunKey(kind, Name: typeKey);
 	}
 
 	/// <summary>Joins the type's tokens with single spaces, so whitespace inside a type cannot split a run.</summary>
@@ -511,27 +867,62 @@ internal static class BlankLineGrouping
 		return builder.ToString();
 	}
 
-	private static (RunKind Kind, string? Name) GetVariableLikeKey(SyntaxNode node)
+	private static RunKey GetVariableLikeKey(SyntaxNode node)
 	{
 		RunKind kind = GetDeclarationKind(node);
-		return kind == RunKind.None ? default : (kind, null);
+		return kind == RunKind.None ? default : new RunKey(kind);
 	}
 
 	private static RunKind GetDeclarationKind(SyntaxNode node)
 	{
 		return node switch
 		{
-			LocalDeclarationStatementSyntax localDeclaration => GetDeclarationKind(localDeclaration.IsConst, localDeclaration.Declaration.Type),
+			// Taking a resource is a different job from declaring a value, so a `using` declaration is a kind of its own.
+			LocalDeclarationStatementSyntax localDeclaration => localDeclaration.UsingKeyword.IsKind(SyntaxKind.UsingKeyword)
+				? RunKind.UsingDeclaration
+				: GetDeclarationKind(localDeclaration.IsConst, localDeclaration.Declaration.Type),
 
 			FieldDeclarationSyntax fieldDeclaration => GetDeclarationKind(
-				StanzaSyntax.HasModifier(fieldDeclaration.Modifiers, SyntaxKind.ConstKeyword),
+				fieldDeclaration.Modifiers.Any(SyntaxKind.ConstKeyword),
 				fieldDeclaration.Declaration.Type
 			),
 
 			// An event field is a field for a declaration run, but it can never be const.
 			EventFieldDeclarationSyntax eventField => GetDeclarationKind(isConst: false, eventField.Declaration.Type),
+
+			// A deconstruction such as `var (a, b) = Read();` declares in the syntax of an assignment.
+			ExpressionStatementSyntax { Expression: AssignmentExpressionSyntax { Left: DeclarationExpressionSyntax deconstruction } } =>
+				GetDeclarationKind(isConst: false, deconstruction.Type),
+
+			// So does `(int a, int b) = Read();`, while a tuple that writes an existing name, as `(int a, b)` does, assigns.
+			ExpressionStatementSyntax { Expression: AssignmentExpressionSyntax { Left: TupleExpressionSyntax tuple } } => GetDeclarationKind(tuple),
 			_ => RunKind.None,
 		};
+	}
+
+	/// <summary>Reads the kind a tuple declares, which is none unless every element declares.</summary>
+	private static RunKind GetDeclarationKind(TupleExpressionSyntax tuple)
+	{
+		RunKind kind = RunKind.Variable;
+
+		foreach (ArgumentSyntax argument in tuple.Arguments)
+		{
+			RunKind element = argument.Expression switch
+			{
+				DeclarationExpressionSyntax declaration => GetDeclarationKind(isConst: false, declaration.Type),
+				TupleExpressionSyntax nested => GetDeclarationKind(nested),
+				_ => RunKind.None,
+			};
+
+			if (element == RunKind.None)
+				return RunKind.None;
+
+			// One explicit type makes the whole a declaration with types, as `var` declares only where every element does.
+			if (element == RunKind.ExplicitDeclaration)
+				kind = RunKind.ExplicitDeclaration;
+		}
+
+		return kind;
 	}
 
 	private static RunKind GetDeclarationKind(bool isConst, TypeSyntax type)
@@ -545,100 +936,7 @@ internal static class BlankLineGrouping
 		return RunKind.ExplicitDeclaration;
 	}
 
-	/// <summary>Finds the call a statement makes, through a `?.` that guards it.</summary>
-	private static InvocationExpressionSyntax? FindInvocation(ExpressionSyntax expression)
-	{
-		expression = Unwrap(expression);
-
-		while (expression is ConditionalAccessExpressionSyntax conditionalAccess)
-			expression = Unwrap(conditionalAccess.WhenNotNull);
-
-		return expression as InvocationExpressionSyntax;
-	}
-
-	private static InvocationExpressionSyntax GetRootInvocation(InvocationExpressionSyntax invocation)
-	{
-		InvocationExpressionSyntax current = invocation;
-
-		while (
-			Unwrap(current.Expression) is MemberAccessExpressionSyntax memberAccess
-			&& Unwrap(memberAccess.Expression) is InvocationExpressionSyntax nestedInvocation
-		)
-		{
-			current = nestedInvocation;
-		}
-
-		return current;
-	}
-
-	private static string? FindName(ExpressionSyntax expression)
-	{
-		expression = Unwrap(expression);
-
-		return expression switch
-		{
-			SimpleNameSyntax simpleName => simpleName.Identifier.ValueText,
-			MemberBindingExpressionSyntax memberBinding => memberBinding.Name.Identifier.ValueText,
-			MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
-			_ => null,
-		};
-	}
-
-	private static string? FindAssertionRoot(ExpressionSyntax expression, ImmutableHashSet<string> roots)
-	{
-		if (roots.Count == 0)
-			return null;
-
-		expression = Unwrap(expression);
-
-		// A receiver that is a single name has no chain to walk, so none is built for it.
-		if (expression is SimpleNameSyntax singleName)
-		{
-			string single = singleName.Identifier.ValueText;
-			return roots.Contains(single) ? single : null;
-		}
-
-		// The chain is walked from the called name back to its receiver, so the matching name nearest the call wins.
-		while (expression is MemberAccessExpressionSyntax memberAccess)
-		{
-			string name = memberAccess.Name.Identifier.ValueText;
-
-			if (roots.Contains(name))
-				return name;
-
-			expression = Unwrap(memberAccess.Expression);
-		}
-
-		return expression is SimpleNameSyntax leaf && roots.Contains(leaf.Identifier.ValueText) ? leaf.Identifier.ValueText : null;
-	}
-
-	private static ExpressionSyntax Unwrap(ExpressionSyntax expression)
-	{
-		while (true)
-		{
-			switch (expression)
-			{
-				case AwaitExpressionSyntax awaitExpression:
-					expression = awaitExpression.Expression;
-					continue;
-
-				case ParenthesizedExpressionSyntax parenthesizedExpression:
-					expression = parenthesizedExpression.Expression;
-					continue;
-
-				case PostfixUnaryExpressionSyntax postfixUnaryExpression
-					when postfixUnaryExpression.IsKind(SyntaxKind.SuppressNullableWarningExpression):
-					expression = postfixUnaryExpression.Operand;
-					continue;
-
-				default:
-					return expression;
-			}
-		}
-	}
-
-	private static bool IsVariableLikeDeclaration(SyntaxNode node) =>
-		node is LocalDeclarationStatementSyntax or FieldDeclarationSyntax or EventFieldDeclarationSyntax;
+	private static bool IsVariableLikeDeclaration(SyntaxNode node) => GetDeclarationKind(node) != RunKind.None;
 
 	private enum RunKind
 	{
@@ -646,6 +944,7 @@ internal static class BlankLineGrouping
 		Constant,
 		Variable,
 		ExplicitDeclaration,
+		UsingDeclaration,
 		Type,
 		ConstantType,
 		Constructor,
@@ -660,12 +959,27 @@ internal static class BlankLineGrouping
 		TypeDeclaration,
 		Namespace,
 		Call,
+		Assertion,
+		Await,
+		Subscription,
+		Assignment,
 	}
 
-	private readonly struct Run(int start, int end, bool isRepeated)
+	private static readonly WeakCache<SyntaxNode, Dictionary<(SyntaxKind Kind, string Name, int Arity), string>> s_partAccesses = new();
+
+	/// <summary>A stretch of siblings one key holds, from <c>Start</c> to one before <c>End</c>.</summary>
+	private readonly record struct Run(int Start, int End, RunKind Kind, bool IsRepeated, bool ContinuesAbove);
+
+	/// <summary>What a walk of borders adds beside the borders of its runs.</summary>
+	[Flags]
+	private enum WalkMode
 	{
-		public int End { get; } = end;
-		public bool IsRepeated { get; } = isRepeated;
-		public int Start { get; } = start;
+		None = 0,
+
+		/// <summary>A lone declaration above a run is set apart by it.</summary>
+		LoneVariableBoundary = 1,
+
+		/// <summary>A border carries the family of its run.</summary>
+		TagsFamily = 2,
 	}
 }

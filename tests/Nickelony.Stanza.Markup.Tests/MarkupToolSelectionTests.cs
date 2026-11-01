@@ -86,15 +86,6 @@ public sealed class MarkupToolSelectionTests
 				new[] { "*.xml" },
 				"'*.xml' matched 2 file(s), but 2 of them are disabled in their .editorconfig",
 			],
-
-			[
-				"an exclude pattern the dialect refuses",
-				new[] { "sample.xml" },
-				Formatted,
-				null,
-				new[] { "--exclude", "file[z-a].xml", "sample.xml" },
-				"the exclude pattern 'file[z-a].xml' is refused",
-			],
 		];
 	}
 
@@ -102,6 +93,7 @@ public sealed class MarkupToolSelectionTests
 	public void ADirectoryIsScannedRecursively()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("nested/deeper/sample.xml", LineFeed(Source));
 		_ = directory.Write("nested/other.txt", LineFeed(Source));
 
@@ -109,7 +101,6 @@ public sealed class MarkupToolSelectionTests
 
 		Assert.AreEqual(0, result.ExitCode);
 		Assert.Contains("1 file(s) formatted.", result.Output);
-
 		Assert.AreEqual(LineFeed(Formatted), directory.Read("nested/deeper/sample.xml"));
 	}
 
@@ -117,6 +108,7 @@ public sealed class MarkupToolSelectionTests
 	public void AGlobSelectsTheFilesItMatches()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("nested/sample.xml", LineFeed(Source));
 		_ = directory.Write("nested/sample.config", LineFeed(Source));
 
@@ -161,6 +153,7 @@ public sealed class MarkupToolSelectionTests
 	public void ABraceGlobSelectsTheFilesItLists()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("a.xml", LineFeed(Source));
 		_ = directory.Write("b.xml", LineFeed(Source));
 		_ = directory.Write("c.xml", LineFeed(Source));
@@ -206,6 +199,7 @@ public sealed class MarkupToolSelectionTests
 
 		// Joined into the pattern, a working directory this long passed the size limit of the matcher, which then matched nothing.
 		string longName = new('w', 140);
+
 		_ = directory.Write($"{longName}/src/kept.xml", LineFeed(Source));
 		_ = directory.Write($"{longName}/src/gen/dropped.xml", LineFeed(Source));
 
@@ -219,9 +213,7 @@ public sealed class MarkupToolSelectionTests
 
 		Assert.AreEqual(0, result.ExitCode, result.Error);
 		Assert.Contains("1 file(s) formatted.", result.Output);
-
 		Assert.AreEqual(LineFeed(Formatted), directory.Read($"{longName}/src/kept.xml"));
-
 		Assert.AreEqual(LineFeed(Source), directory.Read($"{longName}/src/gen/dropped.xml"));
 	}
 
@@ -274,15 +266,13 @@ public sealed class MarkupToolSelectionTests
 	}
 
 	[TestMethod]
-	[DataRow("{1..3}.xml", false, 0, "warning")]
-	[DataRow("[^a].xml", false, 0, "warning")]
-	[DataRow("{1..3}.xml", true, 2, "error")]
-	[DataRow("[^a].xml", true, 2, "error")]
-	public void ARefusedExcludeBelowALongDirectoryIsAWarningThatStrictRaises(
+	[DataRow("{1..3}.xml", false)]
+	[DataRow("[^a].xml", false)]
+	[DataRow("{1..3}.xml", true)]
+	[DataRow("[^a].xml", true)]
+	public void ARefusedExcludeBelowALongDirectoryFailsTheRunInEveryMode(
 		string exclude,
-		bool strict,
-		int exitCode,
-		string level
+		bool strict
 	)
 	{
 		using TempDirectory directory = new();
@@ -297,8 +287,35 @@ public sealed class MarkupToolSelectionTests
 
 		RunResult result = RunIn(longDirectory, ["check", .. mode, "--exclude", exclude, "a.xml"]);
 
-		Assert.AreEqual(exitCode, result.ExitCode, result.Error);
-		Assert.StartsWith($"{level}: the exclude pattern '{exclude}' is refused (", result.Error);
+		Assert.AreEqual(2, result.ExitCode, result.Error);
+		Assert.StartsWith($"error: the exclude pattern '{exclude}' is refused (", result.Error);
+	}
+
+	[TestMethod]
+	public void ARefusedExcludeEndsAFormatRunBeforeItWritesAFile()
+	{
+		using TempDirectory directory = new();
+
+		_ = directory.Write("kept.xml", LineFeed(Source));
+		_ = directory.Write("sample.xml", LineFeed(Source));
+
+		// The typo would leave the file it was meant to protect open to the write, whatever else the run excludes.
+		RunResult result = Run(
+			directory,
+			"format",
+			"--exclude",
+			"sample.xml",
+			"--exclude",
+			"file[z-a].xml",
+			"."
+		);
+
+		Assert.AreEqual(2, result.ExitCode, result.Error);
+		Assert.StartsWith("error: the exclude pattern 'file[z-a].xml' is refused (", result.Error);
+		Assert.DoesNotContain("formatted", result.Output);
+
+		Assert.AreEqual(LineFeed(Source), directory.Read("kept.xml"));
+		Assert.AreEqual(LineFeed(Source), directory.Read("sample.xml"));
 	}
 
 	[TestMethod]
@@ -307,6 +324,7 @@ public sealed class MarkupToolSelectionTests
 	public void AnExcludePatternNamingADirectoryDropsItsSubtree(string pattern)
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("src/kept.xml", LineFeed(Source));
 		_ = directory.Write("src/dropped/deep.xml", LineFeed(Source));
 
@@ -322,6 +340,7 @@ public sealed class MarkupToolSelectionTests
 	public void APlainNameExcludeSkipsNoDirectoryAboveTheWorkingDirectory()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("test/src/kept.xml", LineFeed(Source));
 		_ = directory.Write("test/src/src/dropped.xml", LineFeed(Source));
 
@@ -332,7 +351,6 @@ public sealed class MarkupToolSelectionTests
 		Assert.AreEqual(0, scan.ExitCode, scan.Error);
 		Assert.Contains("1 file(s) formatted.", scan.Output);
 		Assert.AreEqual(LineFeed(Formatted), directory.Read("test/src/kept.xml"));
-
 		Assert.AreEqual(LineFeed(Source), directory.Read("test/src/src/dropped.xml"));
 
 		_ = directory.Write("test/src/kept.xml", LineFeed(Source));
@@ -390,6 +408,7 @@ public sealed class MarkupToolSelectionTests
 	public void AWildcardExcludeDoesNotPruneADirectoryItOnlyPartlyMatches()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("src/kept.xml", LineFeed(Source));
 		_ = directory.Write("src/deep/deep.xml", LineFeed(Source));
 
@@ -405,6 +424,7 @@ public sealed class MarkupToolSelectionTests
 	public void ATrailingDoubleStarPrunesTheDirectoryItCovers()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("kept.xml", LineFeed(Source));
 		_ = directory.Write("dropped/deep.xml", LineFeed(Source));
 
@@ -420,6 +440,7 @@ public sealed class MarkupToolSelectionTests
 	public void AnExcludeMayBeRepeatedAndEveryOneApplies()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("a.xml", LineFeed(Source));
 		_ = directory.Write("b.xml", LineFeed(Source));
 		_ = directory.Write("c.xml", LineFeed(Source));
@@ -497,6 +518,7 @@ public sealed class MarkupToolSelectionTests
 	public void ADirectoryScanPrunesASkippedDirectoryInAnyLetterCase(string first, string second)
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write($"{first}/generated.props", LineFeed(Project));
 		_ = directory.Write($"{second}/generated.props", LineFeed(Project));
 		_ = directory.Write("generated.props", LineFeed(Project));
@@ -512,10 +534,35 @@ public sealed class MarkupToolSelectionTests
 		);
 
 		Assert.AreEqual(LineFeed(Project), directory.Read($"{first}/generated.props"));
-
 		Assert.AreEqual(LineFeed(Project), directory.Read($"{second}/generated.props"));
-
 		Assert.AreEqual(LineFeed(ProjectFormatted), directory.Read("generated.props"));
+	}
+
+	[TestMethod]
+	[DataRow(".venv/Lib/site-packages/pkg")]
+	[DataRow("venv/lib/site-packages/pkg")]
+	[DataRow("src/__pycache__")]
+	[DataRow("dist/assets")]
+	public void ADirectoryScanSkipsTheEnvironmentAndOutputDirectoriesOfPythonAndJavaScript(
+		string directoryPath
+	)
+	{
+		using TempDirectory directory = new();
+
+		_ = directory.Write($"{directoryPath}/generated.props", LineFeed(Project));
+		_ = directory.Write("generated.props", LineFeed(Project));
+
+		RunResult result = Run(directory, "format", ".");
+
+		Assert.AreEqual(0, result.ExitCode);
+
+		Assert.Contains(
+			"1 file(s) formatted.",
+			result.Output,
+			"only the root file may be scanned."
+		);
+
+		Assert.AreEqual(LineFeed(Project), directory.Read($"{directoryPath}/generated.props"));
 	}
 
 	[TestMethod]
@@ -597,6 +644,7 @@ public sealed class MarkupToolSelectionTests
 	public void AnAbsolutePatternScansItsOwnDirectory()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("sample.xml", LineFeed(Source));
 		_ = directory.Write("nested/other.xml", LineFeed(Source));
 
@@ -612,6 +660,7 @@ public sealed class MarkupToolSelectionTests
 	public void ARootRelativeExcludePatternIsAppliedInsteadOfCrashing()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("drop.xml", LineFeed(Source));
 		_ = directory.Write("keep.xml", LineFeed(Source));
 
@@ -627,6 +676,7 @@ public sealed class MarkupToolSelectionTests
 	public void ACharacterClassInAnInputPathSelectsTheFilesItMatches()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("nested/file1.xml", LineFeed(Source));
 		_ = directory.Write("nested/filea.xml", LineFeed(Source));
 
@@ -642,6 +692,7 @@ public sealed class MarkupToolSelectionTests
 	public void ACharacterClassInAnExcludePatternIsHonored()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("file1.xml", LineFeed(Source));
 		_ = directory.Write("filea.xml", LineFeed(Source));
 
@@ -657,6 +708,7 @@ public sealed class MarkupToolSelectionTests
 	public void AFileNamedWithGlobCharactersIsTakenLiterally()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("a[1].xml", LineFeed(Source));
 		_ = directory.Write("a1.xml", LineFeed(Source));
 		_ = directory.Write("b{x,y}.xml", LineFeed(Source));
@@ -677,6 +729,7 @@ public sealed class MarkupToolSelectionTests
 	public void AFileNamedWithAStarIsTakenLiterally()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("a*.xml", LineFeed(Source));
 		_ = directory.Write("ab.xml", LineFeed(Source));
 
@@ -730,6 +783,7 @@ public sealed class MarkupToolSelectionTests
 	public void AnEditorConfigProblemKeepsItsPlaceAmongTheNoticesOfTheScan()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("a/sample.xml", LineFeed(Formatted));
 		_ = directory.Write("a/.editorconfig", "[*.xml]\nstanza_markup_max_blank_lines = many\n");
 
@@ -840,6 +894,7 @@ public sealed class MarkupToolSelectionTests
 	)
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("nested/sample.xml", LineFeed(Source));
 		_ = directory.Write("sample1.xml", LineFeed(Source));
 
@@ -871,6 +926,7 @@ public sealed class MarkupToolSelectionTests
 	public void AGlobThatEachSpellingReadsDifferentlyIsCollectedForBoth()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("sample.xml", LineFeed(Source));
 		_ = directory.Write("nested/sample.xml", LineFeed(Source));
 
@@ -916,6 +972,7 @@ public sealed class MarkupToolSelectionTests
 	public void ANoteNamesTheFileAsTheReportsDo()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("sub/b.xml", LineFeed(Source));
 		_ = directory.Write("sub/notes.txt", "plain text");
 
@@ -953,6 +1010,7 @@ public sealed class MarkupToolSelectionTests
 	public void AGlobWithoutADoubleStarSelectsOnlyAsDeepAsItsSegmentsReach()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("src/a.xml", LineFeed(Source));
 		_ = directory.Write("src/deep/b.xml", LineFeed(Source));
 
@@ -971,6 +1029,7 @@ public sealed class MarkupToolSelectionTests
 	public void AGlobWithoutADoubleStarNeverEntersADirectoryBelowItsReach()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("src/a.xml", LineFeed(Source));
 		_ = directory.Write("src/locked/b.xml", LineFeed(Source));
 
@@ -1010,15 +1069,15 @@ public sealed class MarkupToolSelectionTests
 	}
 
 	[TestMethod]
-	public void AnExcludePatternThatCannotBeResolvedIsReported()
+	public void AnExcludePatternThatCannotBeResolvedFailsTheRunAndWritesNothing()
 	{
 		using TempDirectory directory = new();
 		_ = directory.Write("sample.xml", LineFeed(Source));
 
 		RunResult result = Run(directory, "format", "--exclude", "a\0b/sample.xml", "sample.xml");
 
-		Assert.AreEqual(0, result.ExitCode, "one unusable pattern is that pattern's problem.");
+		Assert.AreEqual(2, result.ExitCode, result.Error);
 		Assert.Contains("could not be resolved to a path", result.Error);
-		Assert.AreEqual(LineFeed(Formatted), directory.Read("sample.xml"));
+		Assert.AreEqual(LineFeed(Source), directory.Read("sample.xml"));
 	}
 }

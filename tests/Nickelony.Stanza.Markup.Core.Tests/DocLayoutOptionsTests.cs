@@ -1,20 +1,14 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Core.DocComments;
+using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Markup.Core.Tests;
 
 [TestClass]
 public sealed class DocLayoutOptionsTests
 {
-	private static readonly DocLayoutOptions s_layout = new(
-		ContentWidth: 80,
-		TabColumns: 4,
-		MinTailWords: 2,
-		MinLineWords: 2,
-		MaxOverflowColumns: 4,
-		IndentSize: 0,
-		IndentText: true,
-		Expansion: DocExpansion.None
+	private static readonly DocLayoutOptions s_layout = MarkupFormatFixtures.ReprintLayout(
+		contentWidth: 80
 	);
 
 	[TestMethod]

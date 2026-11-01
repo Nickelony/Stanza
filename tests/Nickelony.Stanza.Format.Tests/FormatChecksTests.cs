@@ -98,6 +98,35 @@ public sealed class FormatChecksTests
 	}
 
 	[TestMethod]
+	public void AScopeKeepsTheWrongLineEndingsOfItsFilesOnly()
+	{
+		const string wrongLf = "i/lf    w/crlf  attr/text eol=lf      \tdocs/a.md";
+		const string wrongCrlf = "i/lf    w/lf    attr/text eol=crlf    \tsrc/C café.cs";
+
+		string listing = string.Join((char)0, wrongLf, wrongCrlf);
+
+		Assert.AreSequenceEqual(
+			[wrongCrlf],
+			FormatChecks.CollectWrongLineEndings(listing, scope: ["src/C café.cs", "other.cs"])
+		);
+
+		Assert.IsEmpty(FormatChecks.CollectWrongLineEndings(listing, scope: ["other.cs"]));
+	}
+
+	[TestMethod]
+	public void AScopeKeepsTheMarkedFilesOfItsFilesOnly()
+	{
+		string output = string.Join((char)0, "a.cs", "dir/b café.cs", "c.cs") + (char)0;
+
+		Assert.AreSequenceEqual(
+			["dir/b café.cs"],
+			FormatChecks.CollectMarkedFiles(output, scope: ["dir/b café.cs"])
+		);
+
+		Assert.HasCount(3, FormatChecks.CollectMarkedFiles(output));
+	}
+
+	[TestMethod]
 	public void AFileWhoseEndingDiffersFromItsPinIsWrong()
 	{
 		const string wrongLf = "i/lf    w/crlf  attr/text eol=lf      \tdocs/a.md";

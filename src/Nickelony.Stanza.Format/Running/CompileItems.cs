@@ -10,7 +10,9 @@ using Nickelony.Stanza.Shared;
 
 namespace Nickelony.Stanza.Format.Running;
 
-/// <summary>Reads the sources each project of a solution compiles, with one MSBuild evaluation per project.</summary>
+/// <summary>
+/// Reads the sources each project of a solution compiles, with an evaluation per project and per framework.
+/// </summary>
 internal static class CompileItems
 {
 	public static ImmutableArray<CompiledFile> Collect(string root, string solution, CancellationToken cancellationToken)
@@ -64,7 +66,7 @@ internal static class CompileItems
 			: [.. lines.Skip(dashes + 1).Where(static project => Path.GetExtension(project).ToUpperInvariant() is ".CSPROJ" or ".VBPROJ")];
 	}
 
-	/// <summary>The view holds the framework, which sets its symbols, and the symbols the project defines.</summary>
+	/// <summary>The view holds the framework, the symbols the project defines and the analyzers it lists.</summary>
 	/// <remarks>
 	/// A project that targets several frameworks has one view, because <c>dotnet format</c> merges those views itself.
 	/// </remarks>
@@ -74,8 +76,7 @@ internal static class CompileItems
 
 		JsonElement result = document.RootElement;
 
-		string relativeProject = RepositoryPath.ToRelative(root, project);
-
+		string relativeProject = SlashPath.ToRelative(root, project);
 		string shownView = view ?? ReadView(result);
 
 		if (!result.TryGetProperty("Items", out JsonElement items) || !items.TryGetProperty("Compile", out JsonElement compile))
@@ -85,7 +86,7 @@ internal static class CompileItems
 
 		foreach (JsonElement item in compile.EnumerateArray())
 		{
-			string path = RepositoryPath.ToRelative(root, ReadMetadata(item, "FullPath"));
+			string path = SlashPath.ToRelative(root, ReadMetadata(item, "FullPath"));
 
 			// A file outside the repository is not this repository's to format.
 			if (!RelativePathScope.LeavesDirectory(path))
@@ -147,7 +148,7 @@ internal static class CompileItems
 		[
 			"msbuild",
 			project,
-			"-getItem:Compile",
+			"-getItem:Compile,PackageReference,Analyzer,ProjectReference",
 			"-getProperty:TargetFramework,TargetFrameworks,DefineConstants",
 			"-nologo",
 			"-noAutoResponse",
@@ -159,7 +160,7 @@ internal static class CompileItems
 		if (result.ExitCode != 0)
 		{
 			throw new FormatRunException(
-				$"MSBuild could not list the files {RepositoryPath.ToRelative(root, project)} compiles (exit code {result.ExitCode}): "
+				$"MSBuild could not list the files {SlashPath.ToRelative(root, project)} compiles (exit code {result.ExitCode}): "
 					+ ReadErrors(result.Output + "\n" + result.Error)
 			);
 		}
@@ -178,8 +179,34 @@ internal static class CompileItems
 		return JsonDocument.Parse(output[start..]);
 	}
 
-	private static string ReadView(JsonElement result) =>
-		BuildView(ReadProperty(result, "TargetFramework") + ReadProperty(result, "TargetFrameworks"), ReadProperty(result, "DefineConstants"));
+	private static string ReadView(JsonElement result)
+	{
+		string framework = ReadProperty(result, "TargetFramework") + ReadProperty(result, "TargetFrameworks");
+		return BuildView(framework, ReadProperty(result, "DefineConstants"), ReadAnalyzers(result));
+	}
+
+	/// <summary>Names each package, analyzer file and analyzer project, in a fixed order.</summary>
+	private static string ReadAnalyzers(JsonElement result)
+	{
+		if (!result.TryGetProperty("Items", out JsonElement items))
+			return string.Empty;
+
+		IEnumerable<string> packages = ReadItemList(items, "PackageReference")
+			.Select(static item =>
+				$"package:{ReadMetadata(item, "Identity")}/{ReadMetadata(item, "Version")}{ReadMetadata(item, "VersionOverride")}"
+			);
+
+		IEnumerable<string> files = ReadItemList(items, "Analyzer").Select(static item => $"analyzer:{ReadMetadata(item, "FullPath")}");
+
+		IEnumerable<string> projects = ReadItemList(items, "ProjectReference")
+			.Where(static item => ReadMetadata(item, "OutputItemType") == "Analyzer")
+			.Select(static item => $"project:{ReadMetadata(item, "FullPath")}");
+
+		return string.Join(';', packages.Concat(files).Concat(projects).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal));
+	}
+
+	private static JsonElement[] ReadItemList(JsonElement items, string name) =>
+		items.TryGetProperty(name, out JsonElement list) && list.ValueKind == JsonValueKind.Array ? [.. list.EnumerateArray()] : [];
 
 	private static string ReadView(string output)
 	{
@@ -193,13 +220,13 @@ internal static class CompileItems
 	private static string ReadMetadata(JsonElement item, string name) =>
 		item.TryGetProperty(name, out JsonElement value) ? value.GetString() ?? string.Empty : string.Empty;
 
-	private static string BuildView(string framework, string constants)
+	private static string BuildView(string framework, string constants, string analyzers)
 	{
 		IEnumerable<string> symbols = constants
 			.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
 			.Distinct(StringComparer.Ordinal)
 			.Order(StringComparer.Ordinal);
 
-		return $"{framework}|{string.Join(';', symbols)}";
+		return $"{framework}|{string.Join(';', symbols)}|{analyzers}";
 	}
 }

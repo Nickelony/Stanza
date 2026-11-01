@@ -9,9 +9,12 @@ internal static partial class DocWalk
 	public const int MaxElementDepth = 32;
 
 	/// <summary>Returns the laid-out lines, or <see langword="null"/> when the body is left as written.</summary>
-	public static List<string>? Write(IReadOnlyList<DocNode> body, DocLayoutOptions layout, bool markParagraphs, bool closeParagraphs = false)
+	/// <remarks>
+	/// A paragraph the walk wraps takes the capital and period the clean-ups ask for, as the next pass judges it alone.
+	/// </remarks>
+	public static List<string>? Write(IReadOnlyList<DocNode> body, DocLayoutOptions layout, bool markParagraphs, DocCleanupOptions cleanup = default)
 	{
-		BodyWriter writer = new(layout, markParagraphs, closeParagraphs);
+		BodyWriter writer = new(layout, markParagraphs, cleanup);
 
 		foreach (DocNode node in body)
 		{
@@ -63,6 +66,7 @@ internal static partial class DocWalk
 	{
 		DocBlock prose = new();
 		prose.Paragraphs.Add(new DocParagraph());
+
 		return prose;
 	}
 
@@ -110,5 +114,17 @@ internal static partial class DocWalk
 		closed[closed.Count - 1] = last with { Text = DocTextRules.WritePeriod(last.Text, end) };
 
 		return closed;
+	}
+
+	private static List<DocAtom> OpenParagraph(List<DocAtom> atoms, MarkupNameSet keywords)
+	{
+		if (atoms.Count == 0 || DocTextRules.FindCapital(atoms[0].Text, keywords) is not { } offset)
+			return atoms;
+
+		List<DocAtom> capitalized = [.. atoms];
+
+		capitalized[0] = atoms[0] with { Text = DocTextRules.WriteCapital(atoms[0].Text, offset) };
+
+		return capitalized;
 	}
 }

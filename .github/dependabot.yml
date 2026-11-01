@@ -48,6 +48,33 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: npm
+    directory: /js
+    schedule:
+      interval: weekly
+    groups:
+      js:
+        patterns:
+          - "*"
+
+  - package-ecosystem: npm
+    directory: /js/stylelint-config
+    schedule:
+      interval: weekly
+    groups:
+      stylelint-config:
+        patterns:
+          - "*"
+
+  - package-ecosystem: pip
+    directory: /py
+    schedule:
+      interval: weekly
+    groups:
+      py:
+        patterns:
+          - "*"
+
   - package-ecosystem: dotnet-sdk
     directory: /
     schedule:

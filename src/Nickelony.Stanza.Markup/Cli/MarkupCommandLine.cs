@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Nickelony.Stanza.Markup.Configuration;
@@ -109,9 +110,15 @@ internal sealed class MarkupCommandLine
 	}
 
 	/// <summary>Holds what the arguments read so far set, until the last one is read.</summary>
-	private sealed class ArgumentReader : IToolArgumentHandler
+	private sealed class ArgumentReader : ToolArgumentReader
 	{
 		private static readonly string[] s_valueOptions = ["--profile", "--exclude", "--format"];
+
+		/// <summary>The value options a line may repeat; every other one is refused a second time.</summary>
+		private static readonly string[] s_repeatableOptions = ["--exclude"];
+
+		protected override IReadOnlyCollection<string> ValueOptions => s_valueOptions;
+		protected override IReadOnlyCollection<string> RepeatableOptions => s_repeatableOptions;
 
 		private readonly ImmutableArray<string>.Builder _paths = ImmutableArray.CreateBuilder<string>();
 		private readonly ImmutableArray<string>.Builder _excludes = ImmutableArray.CreateBuilder<string>();
@@ -121,18 +128,12 @@ internal sealed class MarkupCommandLine
 
 		private string? _profile;
 
-		private bool _help;
-		private bool _version;
 		private bool _strict;
 		private bool _reprint;
-		private bool _formatGiven;
-
-		public bool TryReadAll(string[] args, [NotNullWhen(false)] out string? error) =>
-			ToolArguments.TryRead(args, valueOptions: s_valueOptions, handler: this, out error);
 
 		public bool TryBuild([NotNullWhen(true)] out MarkupCommandLine? commandLine, [NotNullWhen(false)] out string? error)
 		{
-			error = _help || _version ? null : FindCommandError();
+			error = Help || Version ? null : FindCommandError();
 
 			if (error is not null)
 			{
@@ -144,8 +145,8 @@ internal sealed class MarkupCommandLine
 			{
 				// Reachable only with --help or --version, where no command is required.
 				Command = _command ?? MarkupCommand.Format,
-				Help = _help,
-				Version = _version,
+				Help = Help,
+				Version = Version,
 				Strict = _strict,
 				ReportFormat = _format,
 				Reprint = _reprint,
@@ -160,7 +161,7 @@ internal sealed class MarkupCommandLine
 		/// <summary>
 		/// The first command word is the command; any other positional, a later command word too, is a path.
 		/// </summary>
-		public bool TryAcceptPositional(string argument, [NotNullWhen(false)] out string? error)
+		protected override bool TryAcceptPositional(string argument, [NotNullWhen(false)] out string? error)
 		{
 			if (_command is null && TryParseCommand(argument, out MarkupCommand parsed))
 				_command = parsed;
@@ -171,18 +172,10 @@ internal sealed class MarkupCommandLine
 			return true;
 		}
 
-		public bool TryAcceptFlag(string option)
+		protected override bool TryAcceptToolFlag(string option)
 		{
 			switch (option)
 			{
-				case "-h" or "--help":
-					_help = true;
-					return true;
-
-				case "--version":
-					_version = true;
-					return true;
-
 				case "--strict":
 					_strict = true;
 					return true;
@@ -196,21 +189,13 @@ internal sealed class MarkupCommandLine
 			}
 		}
 
-		public bool TryAcceptValue(string option, string value, [NotNullWhen(false)] out string? error)
+		protected override bool TryAcceptValue(string option, string value, [NotNullWhen(false)] out string? error)
 		{
 			error = null;
 
 			switch (option)
 			{
 				case "--format":
-					if (_formatGiven)
-					{
-						error = BuildRepeatError(option);
-						return false;
-					}
-
-					_formatGiven = true;
-
 					if (TryParseFormat(value, out _format))
 						return true;
 
@@ -218,12 +203,6 @@ internal sealed class MarkupCommandLine
 					return false;
 
 				case "--profile":
-					if (_profile is not null)
-					{
-						error = BuildRepeatError(option);
-						return false;
-					}
-
 					_profile = value;
 					return true;
 
@@ -232,11 +211,9 @@ internal sealed class MarkupCommandLine
 					return true;
 
 				default:
-					throw new ArgumentOutOfRangeException(nameof(option), option, "The value option has no case here.");
+					throw BuildUnreadValueOption(option);
 			}
 		}
-
-		private static string BuildRepeatError(string option) => $"the {option} option was given more than once.";
 
 		/// <summary>
 		/// Weighs the command and the options it cannot carry before the paths,

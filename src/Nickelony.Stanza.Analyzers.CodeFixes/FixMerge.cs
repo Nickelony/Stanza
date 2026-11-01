@@ -119,6 +119,7 @@ internal static class FixMerge
 
 			MergeSteps += _replacements.Count - (index + 1);
 			_replacements.Insert(index + 1, change);
+
 			return true;
 		}
 

@@ -91,6 +91,7 @@ public sealed class MarkupAtomicWriteTests
 				// A directory at the original's name makes the move into its place fail as well.
 				File.Delete(destination);
 				_ = Directory.CreateDirectory(destination);
+
 				throw new IOException("The replace failed halfway.");
 			},
 
@@ -134,6 +135,7 @@ public sealed class MarkupAtomicWriteTests
 				// A directory at the original's name makes the move into its place fail as well.
 				File.Delete(destination);
 				_ = Directory.CreateDirectory(destination);
+
 				throw new IOException("The replace failed halfway.");
 			},
 

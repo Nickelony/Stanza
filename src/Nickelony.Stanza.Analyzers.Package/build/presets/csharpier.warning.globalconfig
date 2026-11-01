@@ -1,0 +1,16 @@
+# The csharpier formatter of Nickelony.Stanza.Analyzers at warning, which the package adds over the strong level.
+# It turns off each rule that CSharpier undoes when it runs on its own, and turns on the other half of each such pair.
+# Written from levels.txt. A .editorconfig line wins over this file, and so does a .globalconfig of the project.
+
+is_global = true
+global_level = -99
+
+dotnet_diagnostic.ZA0012.severity = none
+dotnet_diagnostic.ZA0141.severity = none
+dotnet_diagnostic.ZA0142.severity = warning
+dotnet_diagnostic.ZA0151.severity = none
+dotnet_diagnostic.ZA0152.severity = warning
+dotnet_diagnostic.ZA0161.severity = none
+dotnet_diagnostic.ZA0162.severity = warning
+dotnet_diagnostic.ZA0171.severity = none
+dotnet_diagnostic.ZA0172.severity = warning

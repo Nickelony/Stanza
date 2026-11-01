@@ -1,0 +1,14 @@
+<Project>
+	<!-- MSBuild reads only the nearest Directory.Build.props, so the repository's own is imported by hand. -->
+	<Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+	<!-- The self-check is a library the analyzers compile into, so only the projects that end in `.Tests` run as tests. -->
+	<PropertyGroup Condition="$(MSBuildProjectName.EndsWith('.Tests'))">
+		<IsPackable>false</IsPackable>
+		<IsTestProject>true</IsTestProject>
+		<MSTestParallelizeScope>MethodLevel</MSTestParallelizeScope>
+
+		<!-- The settings stop a test that never ends, which the cooperative token of a harness run cannot. -->
+		<RunSettingsFilePath>$(MSBuildThisFileDirectory)test.runsettings</RunSettingsFilePath>
+	</PropertyGroup>
+</Project>

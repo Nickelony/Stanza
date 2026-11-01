@@ -12,5 +12,10 @@ internal enum GapFix
 	RunRemoval,
 	DeclarationGapRemoval,
 	MarkupCapRemoval,
-	MarkupExtraRemoval,
+
+	/// <summary>Cuts a markup gap back to the cap, and has no count to fall back on.</summary>
+	MarkupSurplusRemoval,
+
+	/// <summary>Removes the span the rule reports, which holds only the blank lines past the cap.</summary>
+	TriviaRunRemoval,
 }

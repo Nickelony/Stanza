@@ -269,7 +269,6 @@ internal static class DocCommentOrder
 		public XmlNodeSyntax Node { get; } = node;
 		public string Name { get; } = name;
 		public int Index { get; } = index;
-
 		public int Rank { get; } = DocElementOrder.FindRank(DocElementOrder.ElementOrder, name);
 		public int StartLineIndex { get; } = sourceText.Lines.GetLineFromPosition(node.SpanStart).LineNumber;
 		public int EndLineIndex { get; } = DocCommentLines.GetLastLineIndex(sourceText, node.Span);

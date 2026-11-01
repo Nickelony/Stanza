@@ -22,7 +22,7 @@ internal static class DocCommentEdits
 		if (layout.ContentWidth <= 0 || DocCommentSyntax.IsDamaged(comment))
 			return null;
 
-		return DocCommentSyntax.BuildBody(comment.Content, depth: 0) is { } body ? DocWalk.Write(body, layout, markParagraphs) : null;
+		return DocCommentSyntax.BuildLayoutBody(comment) is { } body ? DocWalk.Write(body, layout, markParagraphs) : null;
 	}
 
 	/// <summary>Writes the comment in the layout, or returns <see langword="null"/> when it stands so.</summary>
@@ -96,7 +96,12 @@ internal static class DocCommentEdits
 		BuildEdits(FindCleanupChanges(comment, DocCleanupKind.Padding), static change => ToTextSpan(change.Span));
 
 	/// <summary>Finds the changes of one clean-up, each standing against the comment as written.</summary>
-	private static List<MarkupChange> FindCleanupChanges(DocumentationCommentTriviaSyntax comment, DocCleanupKind kind, bool spacedSlash = false)
+	private static List<MarkupChange> FindCleanupChanges(
+		DocumentationCommentTriviaSyntax comment,
+		DocCleanupKind kind,
+		bool spacedSlash = false,
+		MarkupNameSet? keywords = null
+	)
 	{
 		// The clean-up judges the prose around a code sample and leaves the sample as written, so the body it reads keeps it.
 		// The slash of a tag stands apart from the markup around it, so a comment, a CDATA section or an instruction is skipped for it alone.
@@ -110,7 +115,7 @@ internal static class DocCommentEdits
 			return [];
 		}
 
-		return DocCleanup.FindChanges(body, kind, spacedSlash);
+		return DocCleanup.FindChanges(body, kind, spacedSlash, keywords);
 	}
 
 	private static List<DocCommentEdit> BuildEdits(List<MarkupChange> changes, Func<MarkupChange, TextSpan> findAnchor)
@@ -169,9 +174,16 @@ internal static class DocCommentEdits
 		return last;
 	}
 
-	/// <summary>Builds the <see langword="null"/> keywords of the prose, with the element each becomes.</summary>
-	public static List<DocCommentEdit> CreateNullKeywordEdits(DocumentationCommentTriviaSyntax comment, bool spacedSlash) =>
-		BuildEdits(FindCleanupChanges(comment, DocCleanupKind.NullKeyword, spacedSlash), static change => ToTextSpan(change.Span));
+	/// <summary>Builds the listed keywords of the prose, with the element each becomes.</summary>
+	public static List<DocCommentEdit> CreateKeywordEdits(DocumentationCommentTriviaSyntax comment, bool spacedSlash, MarkupNameSet? keywords)
+	{
+		List<MarkupChange> changes = FindCleanupChanges(comment, kind: DocCleanupKind.Keyword, spacedSlash, keywords);
+		return BuildEdits(changes, static change => ToTextSpan(change.Span));
+	}
+
+	/// <summary>Builds each capital the text lacks, as the letter it replaces.</summary>
+	public static List<DocCommentEdit> CreateCapitalEdits(DocumentationCommentTriviaSyntax comment, MarkupNameSet? keywords) =>
+		BuildEdits(FindCleanupChanges(comment, DocCleanupKind.Capital, keywords: keywords), static change => ToTextSpan(change.Span));
 
 	/// <summary>Builds each period the text lacks, as the insertion and the character it follows.</summary>
 	public static List<DocCommentEdit> CreateMissingPeriodEdits(DocumentationCommentTriviaSyntax comment, SourceText sourceText)
@@ -291,18 +303,23 @@ internal static class DocCommentEdits
 				if (gap.IndexOf('\n') >= 0 || gap.IndexOf('\r') >= 0)
 					continue;
 
-				foreach (SyntaxTrivia piece in token.LeadingTrivia)
-				{
-					// The marker of a comment without stars is the indentation of its line, not space inside a tag.
-					if (piece.IsKind(SyntaxKind.DocumentationCommentExteriorTrivia) || !IsHorizontalWhitespaceRun(piece.ToString()))
-						continue;
-
-					runs.Add(piece.Span);
-				}
+				AddLeadingRuns(token, runs);
 			}
 		}
 
 		return runs;
+	}
+
+	private static void AddLeadingRuns(SyntaxToken token, List<TextSpan> runs)
+	{
+		foreach (SyntaxTrivia piece in token.LeadingTrivia)
+		{
+			// The marker of a comment without stars is the indentation of its line, not space inside a tag.
+			if (piece.IsKind(SyntaxKind.DocumentationCommentExteriorTrivia) || !IsHorizontalWhitespaceRun(piece.ToString()))
+				continue;
+
+			runs.Add(piece.Span);
+		}
 	}
 
 	private static bool IsHorizontalWhitespaceRun(string text)
@@ -312,7 +329,7 @@ internal static class DocCommentEdits
 
 		foreach (char character in text)
 		{
-			if (character is not (' ' or '\t'))
+			if (!StanzaText.IsIndentationCharacter(character))
 				return false;
 		}
 

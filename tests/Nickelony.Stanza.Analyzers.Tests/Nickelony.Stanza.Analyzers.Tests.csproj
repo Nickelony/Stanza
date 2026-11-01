@@ -1,13 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
-		<IsPackable>false</IsPackable>
-		<IsTestProject>true</IsTestProject>
-		<MSTestParallelizeScope>MethodLevel</MSTestParallelizeScope>
-
-		<!-- The settings stop a test that never ends, which the cooperative token of a harness run cannot. -->
-		<RunSettingsFilePath>$(MSBuildProjectDirectory)/../test.runsettings</RunSettingsFilePath>
-
 		<DefineConstants Condition="'$(StanzaNewestRoslyn)' == 'true'">$(DefineConstants);STANZA_NEWEST_ROSLYN</DefineConstants>
 	</PropertyGroup>
 
@@ -17,6 +10,11 @@
 		<PackageReference Include="MSTest" />
 	</ItemGroup>
 
+	<!-- Nearly every test calls the harness, so its namespace is imported once here instead of by each file. -->
+	<ItemGroup>
+		<Using Include="Nickelony.Stanza.Analyzers.Tests.Harness" />
+	</ItemGroup>
+
 	<!-- The tests call into both assemblies, so the references the shared props attach carry them too. -->
 	<ItemGroup>
 		<ProjectReference Update="$(StanzaAnalyzerProject)" ReferenceOutputAssembly="true" />
@@ -24,7 +22,7 @@
 	</ItemGroup>
 
 	<!--
-		PackageLayoutTests packs the solution without building it, so a targeted run of this project builds what the pack reads.
+		PackageLayoutGuardTests packs the solution without building it, so a targeted run of this project builds what the pack reads.
 		The newest-Roslyn leg builds this project alone and that test is inconclusive there, so it takes no references.
 	-->
 	<ItemGroup Condition="'$(StanzaNewestRoslyn)' != 'true'">
@@ -39,10 +37,14 @@
 
 	<ItemGroup>
 		<Compile Include="..\Shared\RepositoryPaths.cs" Link="RepositoryPaths.cs" />
+		<Compile Include="..\Shared\ChildBuild.cs" Link="ChildBuild.cs" />
 		<Compile Include="..\Shared\ChildProcess.cs" Link="ChildProcess.cs" />
 		<Compile Include="..\Shared\DotnetHost.cs" Link="DotnetHost.cs" />
 		<Compile Include="..\Shared\ExpectedSkip.cs" Link="ExpectedSkip.cs" />
+		<Compile Include="..\Shared\FixedConfigOptions.cs" Link="FixedConfigOptions.cs" />
 		<Compile Include="..\Shared\GeneratedDocBody.cs" Link="GeneratedDocBody.cs" />
 		<Compile Include="..\Shared\RowNames.cs" Link="RowNames.cs" />
+		<Compile Include="..\Shared\SoakRun.cs" Link="SoakRun.cs" />
+		<Compile Include="..\Shared\TempDirectory.cs" Link="TempDirectory.cs" />
 	</ItemGroup>
 </Project>

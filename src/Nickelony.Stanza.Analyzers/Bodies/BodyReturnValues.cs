@@ -18,10 +18,8 @@ internal static class BodyReturnValues
 			PropertyDeclarationSyntax or IndexerDeclarationSyntax => true,
 			MethodDeclarationSyntax method => ReturnsValue(semanticModel, method.ReturnType, method.Modifiers),
 			LocalFunctionStatementSyntax localFunction => ReturnsValue(semanticModel, localFunction.ReturnType, localFunction.Modifiers),
-
 			// A C# 14 compound assignment or increment operator can return void.
 			OperatorDeclarationSyntax @operator => ReturnsValue(semanticModel, @operator.ReturnType, @operator.Modifiers),
-
 			// The callers pass only conversion operators to this arm, and a conversion always hands a value back.
 			_ => true,
 		};
@@ -34,7 +32,7 @@ internal static class BodyReturnValues
 
 		// An async member returns a value only when its task type has type arguments, such as Task<T>.
 		// The type is bound, so an alias resolves to its target, and a type the model cannot bind keeps its written arity.
-		return !StanzaSyntax.HasModifier(modifiers, SyntaxKind.AsyncKeyword)
+		return !modifiers.Any(SyntaxKind.AsyncKeyword)
 			|| semanticModel.GetTypeInfo(returnType).Type is INamedTypeSymbol { TypeArguments.Length: > 0 };
 	}
 }

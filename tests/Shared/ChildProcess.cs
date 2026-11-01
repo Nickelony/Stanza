@@ -10,12 +10,14 @@ namespace Nickelony.Stanza.Tests.Shared;
 internal static class ChildProcess
 {
 	private static readonly TimeSpan s_exitTimeout = TimeSpan.FromSeconds(30);
+	private static readonly TimeSpan s_drainTimeout = TimeSpan.FromSeconds(30);
 
 	/// <summary>Runs the process, and fails the test if the program is missing or hangs.</summary>
 	internal static async Task<RunResult> RunAsync(
 		ProcessStartInfo start,
 		string description,
-		TimeSpan? exitTimeout = null
+		TimeSpan? exitTimeout = null,
+		TimeSpan? drainTimeout = null
 	)
 	{
 		using Process process = Start(start);
@@ -28,22 +30,43 @@ internal static class ChildProcess
 		Task<string> output = process.StandardOutput.ReadToEndAsync();
 		Task<string> error = process.StandardError.ReadToEndAsync();
 
+		bool exited = false;
+		bool closed;
+
 		try
 		{
-			if (!process.WaitForExit(limit))
-			{
-				process.Kill(entireProcessTree: true);
+			exited = process.WaitForExit(limit);
 
-				throw new AssertFailedException(
-					$"The process did not exit within {limit}: {description}"
-				);
-			}
+			if (!exited)
+				process.Kill(entireProcessTree: true);
 		}
 		finally
 		{
-			// Both drains are awaited before control leaves,
-			// so a killed run does not leave a read on a closed pipe behind.
-			_ = await Task.WhenAll(output, error).ConfigureAwait(false);
+			// A drain also waits for a child the process started and left running, which holds the pipes after the exit.
+			// So the drains are awaited for a while only, and a run that outlasts it fails and does not hold its test.
+			Task drained = Task.WhenAll(output, error);
+
+			closed =
+				await Task.WhenAny(drained, Task.Delay(drainTimeout ?? s_drainTimeout))
+					.ConfigureAwait(false) == drained;
+
+			// The reads that stay open end with the pipes, and nothing reads their result.
+			if (!closed)
+				_ = drained.ContinueWith(static task => _ = task.Exception, TaskScheduler.Default);
+		}
+
+		if (!exited)
+		{
+			throw new AssertFailedException(
+				$"The process did not exit within {limit}: {description}"
+			);
+		}
+
+		if (!closed)
+		{
+			throw new AssertFailedException(
+				$"The process exited, but a process it started still holds its output: {description}"
+			);
 		}
 
 		return new(
@@ -57,8 +80,9 @@ internal static class ChildProcess
 	internal static RunResult Run(
 		ProcessStartInfo start,
 		string description,
-		TimeSpan? exitTimeout = null
-	) => RunAsync(start, description, exitTimeout).GetAwaiter().GetResult();
+		TimeSpan? exitTimeout = null,
+		TimeSpan? drainTimeout = null
+	) => RunAsync(start, description, exitTimeout, drainTimeout).GetAwaiter().GetResult();
 
 	private static Process Start(ProcessStartInfo start)
 	{

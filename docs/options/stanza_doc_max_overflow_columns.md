@@ -3,7 +3,7 @@
 Controls how many columns a documentation line may stand over its width at a low cost,
 which [`stanza_doc_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_max_line_length) sets.
 Default: `4`.
-Read by the documentation layout rules, such as [`ZA0201`](https://github.com/Nickelony/Stanza/wiki/ZA0201-Lay-out-a-documentation-comment),
+Read by the documentation layout rules, such as [`ZA0901`](https://github.com/Nickelony/Stanza/wiki/ZA0901-Lay-out-a-documentation-comment),
 and by the stanza-markup [reprint](https://github.com/Nickelony/Stanza/wiki/Terms).
 
 | Value                                           | Effect                                                                  |
@@ -38,5 +38,5 @@ which leaves 24 content columns as [`stanza_doc_max_line_length`](https://github
 - The wrapper spends overflow only to avoid a [penalty](https://github.com/Nickelony/Stanza/wiki/Terms):
   a line shorter than [`stanza_doc_min_line_words`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_min_line_words),
   a tail or fragment shorter than [`stanza_doc_min_tail_words`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_min_tail_words),
-  or a [weak tail word](https://github.com/Nickelony/Stanza/wiki/stanza_doc_weak_tail_words).
+  or a [weak line end word](https://github.com/Nickelony/Stanza/wiki/stanza_doc_weak_line_end_words).
 - An unbreakable token may exceed the width whatever this key says.

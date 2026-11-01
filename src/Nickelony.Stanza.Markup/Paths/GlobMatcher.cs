@@ -18,11 +18,9 @@ internal static class GlobMatcher
 	private const int MaxLength = 1_024;
 
 	private static readonly char[] s_classRefusals = ['[', ']', '^', '\\'];
-
 	private static readonly char[] s_wildcards = ['*', '?', '{', '['];
 
 	public static bool IsGlob(string value) => FindWildcard(value) >= 0;
-
 	public static int FindWildcard(string value, int startOffset = 0) => value.IndexOfAny(s_wildcards, startOffset);
 
 	/// <summary>The offset of the first wildcard a backslash escapes, or -1 when none is.</summary>
@@ -184,6 +182,7 @@ internal static class GlobMatcher
 			{
 				translation.HasSeparator = true;
 				translation.Builder.Append('/');
+
 				continue;
 			}
 
@@ -199,6 +198,7 @@ internal static class GlobMatcher
 
 				offset++;
 				translation.Builder.Append(Regex.Escape(pattern[offset].ToString()));
+
 				continue;
 			}
 
@@ -431,7 +431,7 @@ internal static class GlobMatcher
 		return offset + 1;
 	}
 
-	/// <summary>The translation of each pattern, taking a check of this repository from 1.4 s to 0.13 s.</summary>
+	/// <summary>The translation of each pattern, made once, not once for each path matched.</summary>
 	private static readonly ConcurrentDictionary<string, Compiled> s_cache = new(StringComparer.Ordinal);
 
 	private sealed record Compiled(Regex? Matcher, string? Refusal, bool HasSeparator);
@@ -440,9 +440,7 @@ internal static class GlobMatcher
 	private sealed class Translation
 	{
 		public StringBuilder Builder { get; } = new("^");
-
 		public string? Refusal { get; set; }
-
 		public bool HasSeparator { get; set; }
 	}
 }

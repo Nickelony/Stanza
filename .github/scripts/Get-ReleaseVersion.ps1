@@ -8,10 +8,10 @@
 	Fails when the tag has any other form.
 
 .PARAMETER Tag
-	The tag name, such as v1.0.0 or v1.0.0-rc.1.
+	The tag name, such as v0.9.0 or v0.9.0-rc.1.
 
 .EXAMPLE
-	./.github/scripts/Get-ReleaseVersion.ps1 -Tag v1.0.0
+	./.github/scripts/Get-ReleaseVersion.ps1 -Tag v0.9.0
 #>
 [CmdletBinding()]
 param(

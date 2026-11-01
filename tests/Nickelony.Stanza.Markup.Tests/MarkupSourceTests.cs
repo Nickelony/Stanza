@@ -199,6 +199,25 @@ public sealed class MarkupSourceTests
 		Assert.AreEqual(Source, source!.Text);
 	}
 
+	// A program that keeps the file open for writing, as a log or an editor can, lets others read it; the read still has to.
+	[TestMethod]
+	public void AFileThatAnotherProgramHoldsOpenForWritingIsRead()
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", Source);
+
+		using var held = new FileStream(
+			path,
+			mode: FileMode.Open,
+			access: FileAccess.Write,
+			share: FileShare.ReadWrite
+		);
+
+		Assert.IsTrue(MarkupSource.TryRead(path, out MarkupSource? source, out string? error));
+		Assert.IsNull(error);
+		Assert.AreEqual(Source, source!.Text);
+	}
+
 	[TestMethod]
 	public void AFileEmptiedSinceTheListingIsReadAsNoText()
 	{

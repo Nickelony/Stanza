@@ -68,7 +68,7 @@ public sealed class FormatRunnerTests
 		using TempDirectory directory = new(editorConfig: false);
 		_ = directory.Write("conflict.txt", "<<<<<<< ours\n");
 
-		RunGit(directory.Root, "init", "--quiet");
+		TestGit.Init(directory.Root);
 
 		FormatStep markers = BuildStep("Merge markers", FormatStepKind.Markers);
 		FormatStep later = BuildStep("Later", FormatStepKind.Commands, command: ["--version"]);
@@ -131,7 +131,7 @@ public sealed class FormatRunnerTests
 	}
 
 	[TestMethod]
-	public void AFormatThatFailsAfterTheCheckListedTheFileEndsTheRunAndIsNoChange()
+	public void AFormatThatFailsAfterTheCheckListedTheFileEndsTheRunWithAnError()
 	{
 		using TempDirectory directory = new(editorConfig: false);
 		_ = directory.Write("A.cs", "class  A{}\n");
@@ -214,6 +214,141 @@ public sealed class FormatRunnerTests
 		Assert.Contains("==> Later", output.ToString());
 	}
 
+	[TestMethod]
+	public void ACheckStepReportsEveryCommandThatWouldChangeAFile()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		_ = directory.Write("One.cs", "System.Console.WriteLine(\"first batch\");\nreturn 2;\n");
+		_ = directory.Write("Two.cs", "System.Console.WriteLine(\"second batch\");\nreturn 2;\n");
+
+		FormatStep diagnostics = new(
+			Title: "Analyzers",
+			Kind: FormatStepKind.Diagnostics,
+
+			Commands:
+			[
+				["run", "One.cs"],
+				["run", "Two.cs"],
+			],
+
+			Watched: [],
+			ChangeExitCodes: [2],
+			WorkingDirectory: "."
+		);
+
+		using StringWriter output = new();
+		using StringWriter error = new();
+
+		ImmutableArray<FormatStep> failed = Run(
+			root: directory.Root,
+			output,
+			error,
+			steps: [diagnostics],
+			check: true
+		);
+
+		Assert.AreSequenceEqual([diagnostics], failed);
+		Assert.Contains("first batch", output.ToString());
+		Assert.Contains("second batch", output.ToString());
+	}
+
+	[TestMethod]
+	public void ASourceLayoutCheckReadsTheReportOfEachBatchOfFiles()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		// Each batch prints the file it found and its own summary, and exits with the change code.
+		_ = directory.Write(
+			"One.cs",
+			"System.Console.WriteLine(@\".\\One.props: error: Was not formatted.\");\nSystem.Console.WriteLine(\"Checked 1 files in 1ms.\");\nreturn 1;\n"
+		);
+
+		_ = directory.Write(
+			"Two.cs",
+			"System.Console.WriteLine(@\".\\Two.props: error: Was not formatted.\");\nSystem.Console.WriteLine(\"Checked 2 files in 1ms.\");\nreturn 1;\n"
+		);
+
+		_ = directory.Write("One.props", "<Project />\n");
+		_ = directory.Write("Two.props", "<Project />\n");
+
+		FormatStep layout = new(
+			Title: "Source layout",
+			Kind: FormatStepKind.SourceLayout,
+
+			Commands:
+			[
+				["run", "One.cs"],
+				["run", "Two.cs"],
+			],
+
+			Watched: [],
+			ChangeExitCodes: [1],
+			WorkingDirectory: "."
+		);
+
+		using StringWriter output = new();
+		using StringWriter error = new();
+
+		// A project file is compared exactly, so both are drift.
+		ImmutableArray<FormatStep> failed = Run(
+			root: directory.Root,
+			output,
+			error,
+			steps: [layout],
+			check: true
+		);
+
+		Assert.AreSequenceEqual([layout], failed);
+		Assert.Contains("    One.props", output.ToString());
+		Assert.Contains("    Two.props", output.ToString());
+		Assert.DoesNotContain("checked no file", output.ToString());
+	}
+
+	[TestMethod]
+	public void AScopedSourceLayoutCheckOfFilesCSharpierIgnoresPassesAndAWholeOneDoesNot()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		// CSharpier checks no file it ignores, and says so with a summary and the exit code 0.
+		_ = directory.Write(
+			"Check.cs",
+			"System.Console.WriteLine(\"Checked 0 files in 1ms.\");\nreturn 0;\n"
+		);
+
+		FormatStep whole = new(
+			Title: "Source layout",
+			Kind: FormatStepKind.SourceLayout,
+
+			Commands:
+			[
+				["run", "Check.cs"],
+			],
+
+			Watched: [],
+			ChangeExitCodes: [1],
+			WorkingDirectory: "."
+		);
+
+		FormatStep scoped = whole with { Scope = ["Ignored.cs"] };
+
+		using StringWriter output = new();
+		using StringWriter error = new();
+
+		Assert.IsEmpty(Run(root: directory.Root, output, error, steps: [scoped], check: true));
+
+		ImmutableArray<FormatStep> failed = Run(
+			root: directory.Root,
+			output,
+			error,
+			steps: [whole],
+			check: true
+		);
+
+		Assert.AreSequenceEqual([whole], failed);
+		Assert.Contains("CSharpier checked no file (exit code 0).", output.ToString());
+	}
+
 	private static ImmutableArray<FormatStep> Run(
 		string root,
 		StringWriter output,
@@ -241,18 +376,5 @@ public sealed class FormatRunnerTests
 			ChangeExitCodes: [],
 			WorkingDirectory: "."
 		);
-	}
-
-	private static void RunGit(string root, params string[] arguments)
-	{
-		ProcessResult result = ProcessRunner.Run(
-			fileName: "git",
-			arguments,
-			workingDirectory: root,
-			echo: null,
-			cancellationToken: CancellationToken.None
-		);
-
-		Assert.AreEqual(0, result.ExitCode, result.Error);
 	}
 }

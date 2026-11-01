@@ -36,6 +36,8 @@ dotnet tool install Nickelony.Stanza.Markup
 - `stanza-format` formats the files git reports as changed; the [scope](https://github.com/Nickelony/Stanza/wiki/Format-command-reference#scope) says which tool takes each one.
 - `stanza-format --all` formats the whole solution.
 - `stanza-format --check` writes nothing, and exits with `1` when a step would change a file.
+- `stanza-format --since origin/main` formats the files changed since the branch left that ref, and `--check --since origin/main` checks them alone;
+  the [`--since` section](https://github.com/Nickelony/Stanza/wiki/Format-command-reference#since-a-ref) says how it reads the ref.
 
 The path is a solution file or a directory that holds one, and the working directory is the default.
 The [command reference](https://github.com/Nickelony/Stanza/wiki/Format-command-reference) lists the steps, the options and the exit codes.

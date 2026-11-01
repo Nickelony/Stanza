@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -9,9 +8,7 @@ internal sealed class GatherRunOfLooseStatementsAnalyzer() : StanzaRuleAnalyzer(
 {
 	protected override void Analyze(SyntaxNodeAnalysisContext context)
 	{
-		ImmutableArray<SyntaxNode> siblings = StanzaSyntax.ReadSiblings(context.Node);
-		var options = StanzaOptions.From(context.Options, context.Node.SyntaxTree);
-
-		BlankLineRemoval.ReportRuns(context, siblings, runs: BlankLineLooseRuns.ReadRuns(context, options, siblings, rule: Rule), rule: Rule);
+		var container = ContainerContext.From(context);
+		RemovableBlankLineAnalysis.ReportRuns(container, runs: BlankLineLooseRuns.ReadRuns(container, rule: Rule, judgesMembers: false), rule: Rule);
 	}
 }

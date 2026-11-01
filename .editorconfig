@@ -1,10 +1,21 @@
 root = true
 
+# Every file is UTF-8 without a byte order mark, and a data file ends with a newline.
+# The indent keys stay in the C# section: FormatterSettingsGuardTests reads each indent key of this file as one setting,
+# so the two spaces of root JSON and YAML and the tabs of the site, which Prettier keeps, cannot be stated here.
+[*]
+charset = utf-8
+
+[*.{json,yml,yaml,md}]
+insert_final_newline = true
+
 [*.cs]
 
 # A pin is a `dotnet_diagnostic.<ID>.severity` line. FormatterSettingsGuardTests requires a ZA pin in this section for each rule,
 # with `none` exactly for its `disabled` array, and the `[tests/**/*.cs]` pins match its `offInTests` array.
-# A `none` rule ships off and stays off: it is the half of a pair whose other half is on, or a rule that asks for a shape the tree does not write.
+# A `none` rule ships off and stays off: it is the half of a pair whose other half is on, a rule that asks for a shape the tree does not write,
+# or a rule that reports so many sites that the tree is not rewritten for it, as ZA1001 does.
+# Stanza's own code is the extreme example of its rules working together, so it runs the opt-in rules ZA0054 and ZA0055 that no level enables.
 # A rule added or disabled changes its pin and those arrays together.
 
 # Blank lines between units.
@@ -17,87 +28,127 @@ dotnet_diagnostic.ZA0006.severity = warning
 dotnet_diagnostic.ZA0007.severity = warning
 dotnet_diagnostic.ZA0008.severity = warning
 dotnet_diagnostic.ZA0009.severity = warning
-dotnet_diagnostic.ZA0052.severity = warning
-dotnet_diagnostic.ZA0053.severity = warning
-
-# Blank lines inside delimited lists.
-dotnet_diagnostic.ZA0010.severity = none
+dotnet_diagnostic.ZA0010.severity = warning
 dotnet_diagnostic.ZA0011.severity = warning
 dotnet_diagnostic.ZA0012.severity = warning
 dotnet_diagnostic.ZA0013.severity = warning
-dotnet_diagnostic.ZA0014.severity = none
+dotnet_diagnostic.ZA0014.severity = warning
 dotnet_diagnostic.ZA0015.severity = warning
 dotnet_diagnostic.ZA0016.severity = warning
-dotnet_diagnostic.ZA0017.severity = none
-dotnet_diagnostic.ZA0018.severity = warning
-dotnet_diagnostic.ZA0019.severity = warning
-dotnet_diagnostic.ZA0020.severity = none
-dotnet_diagnostic.ZA0021.severity = warning
-dotnet_diagnostic.ZA0022.severity = warning
-dotnet_diagnostic.ZA0023.severity = none
-dotnet_diagnostic.ZA0024.severity = warning
-dotnet_diagnostic.ZA0025.severity = warning
-dotnet_diagnostic.ZA0026.severity = none
-dotnet_diagnostic.ZA0027.severity = warning
-dotnet_diagnostic.ZA0028.severity = warning
-dotnet_diagnostic.ZA0029.severity = none
-dotnet_diagnostic.ZA0030.severity = warning
-dotnet_diagnostic.ZA0031.severity = warning
-dotnet_diagnostic.ZA0032.severity = none
-dotnet_diagnostic.ZA0033.severity = warning
+dotnet_diagnostic.ZA0017.severity = warning
+dotnet_diagnostic.ZA0051.severity = warning
+dotnet_diagnostic.ZA0052.severity = warning
+dotnet_diagnostic.ZA0053.severity = warning
+dotnet_diagnostic.ZA0054.severity = warning
+dotnet_diagnostic.ZA0055.severity = warning
+dotnet_diagnostic.ZA0056.severity = warning
+
+# Delimited lists.
+dotnet_diagnostic.ZA0101.severity = none
+dotnet_diagnostic.ZA0102.severity = warning
+dotnet_diagnostic.ZA0103.severity = warning
+dotnet_diagnostic.ZA0111.severity = warning
+dotnet_diagnostic.ZA0112.severity = none
+dotnet_diagnostic.ZA0113.severity = warning
+dotnet_diagnostic.ZA0121.severity = warning
+dotnet_diagnostic.ZA0122.severity = none
+dotnet_diagnostic.ZA0123.severity = warning
+dotnet_diagnostic.ZA0131.severity = warning
+dotnet_diagnostic.ZA0132.severity = none
+dotnet_diagnostic.ZA0133.severity = warning
+dotnet_diagnostic.ZA0141.severity = warning
+dotnet_diagnostic.ZA0142.severity = none
+dotnet_diagnostic.ZA0143.severity = warning
+dotnet_diagnostic.ZA0151.severity = warning
+dotnet_diagnostic.ZA0152.severity = none
+dotnet_diagnostic.ZA0153.severity = warning
+dotnet_diagnostic.ZA0161.severity = warning
+dotnet_diagnostic.ZA0162.severity = none
+dotnet_diagnostic.ZA0163.severity = warning
+dotnet_diagnostic.ZA0171.severity = warning
+dotnet_diagnostic.ZA0172.severity = none
+dotnet_diagnostic.ZA0173.severity = warning
+dotnet_diagnostic.ZA0198.severity = warning
+dotnet_diagnostic.ZA0199.severity = none
 
 # Clauses and braces.
-dotnet_diagnostic.ZA0034.severity = none
-dotnet_diagnostic.ZA0035.severity = warning
-dotnet_diagnostic.ZA0036.severity = warning
-dotnet_diagnostic.ZA0037.severity = warning
-dotnet_diagnostic.ZA0038.severity = warning
-dotnet_diagnostic.ZA0039.severity = warning
-
-# Member bodies.
-dotnet_diagnostic.ZA0040.severity = warning
-dotnet_diagnostic.ZA0041.severity = warning
-dotnet_diagnostic.ZA0042.severity = none
-dotnet_diagnostic.ZA0043.severity = warning
-dotnet_diagnostic.ZA0044.severity = warning
-dotnet_diagnostic.ZA0045.severity = warning
-dotnet_diagnostic.ZA0046.severity = none
-
-# Regions.
-dotnet_diagnostic.ZA0047.severity = warning
-dotnet_diagnostic.ZA0048.severity = warning
-dotnet_diagnostic.ZA0049.severity = warning
-
-# Argument names.
-dotnet_diagnostic.ZA0050.severity = warning
-dotnet_diagnostic.ZA0051.severity = warning
-
-# Markup in raw strings.
-dotnet_diagnostic.ZA0101.severity = warning
-dotnet_diagnostic.ZA0102.severity = none
-dotnet_diagnostic.ZA0103.severity = warning
-dotnet_diagnostic.ZA0104.severity = warning
-dotnet_diagnostic.ZA0105.severity = warning
-
-# Documentation comments.
-dotnet_diagnostic.ZA0201.severity = warning
+dotnet_diagnostic.ZA0201.severity = none
 dotnet_diagnostic.ZA0202.severity = warning
 dotnet_diagnostic.ZA0203.severity = warning
 dotnet_diagnostic.ZA0204.severity = warning
 dotnet_diagnostic.ZA0205.severity = warning
 dotnet_diagnostic.ZA0206.severity = warning
-dotnet_diagnostic.ZA0207.severity = none
-dotnet_diagnostic.ZA0208.severity = warning
-dotnet_diagnostic.ZA0209.severity = warning
-dotnet_diagnostic.ZA0210.severity = warning
-dotnet_diagnostic.ZA0211.severity = warning
-dotnet_diagnostic.ZA0212.severity = warning
-dotnet_diagnostic.ZA0213.severity = warning
+
+# Member bodies.
+dotnet_diagnostic.ZA0301.severity = warning
+dotnet_diagnostic.ZA0302.severity = warning
+dotnet_diagnostic.ZA0303.severity = none
+dotnet_diagnostic.ZA0304.severity = warning
+dotnet_diagnostic.ZA0305.severity = warning
+dotnet_diagnostic.ZA0306.severity = warning
+dotnet_diagnostic.ZA0307.severity = none
+
+# Regions and conditional blocks.
+dotnet_diagnostic.ZA0401.severity = warning
+dotnet_diagnostic.ZA0402.severity = warning
+dotnet_diagnostic.ZA0403.severity = warning
+dotnet_diagnostic.ZA0404.severity = warning
+dotnet_diagnostic.ZA0405.severity = warning
+
+# Argument names.
+dotnet_diagnostic.ZA0501.severity = warning
+dotnet_diagnostic.ZA0502.severity = none
+dotnet_diagnostic.ZA0503.severity = warning
+
+# Statement simplification.
+dotnet_diagnostic.ZA0601.severity = warning
+dotnet_diagnostic.ZA0602.severity = warning
+
+# Expression style.
+dotnet_diagnostic.ZA0651.severity = warning
+dotnet_diagnostic.ZA0652.severity = none
+
+# Documentation comments.
+dotnet_diagnostic.ZA0901.severity = warning
+dotnet_diagnostic.ZA0902.severity = warning
+dotnet_diagnostic.ZA0903.severity = warning
+dotnet_diagnostic.ZA0904.severity = warning
+dotnet_diagnostic.ZA0905.severity = warning
+dotnet_diagnostic.ZA0906.severity = warning
+dotnet_diagnostic.ZA0907.severity = none
+dotnet_diagnostic.ZA0908.severity = warning
+dotnet_diagnostic.ZA0909.severity = warning
+dotnet_diagnostic.ZA0910.severity = warning
+dotnet_diagnostic.ZA0911.severity = warning
+dotnet_diagnostic.ZA0912.severity = warning
+dotnet_diagnostic.ZA0913.severity = warning
+dotnet_diagnostic.ZA0914.severity = warning
 
 # Plain comments.
-dotnet_diagnostic.ZA0214.severity = warning
-dotnet_diagnostic.ZA0215.severity = warning
-dotnet_diagnostic.ZA0216.severity = warning
+dotnet_diagnostic.ZA0951.severity = warning
+dotnet_diagnostic.ZA0952.severity = warning
+dotnet_diagnostic.ZA0953.severity = warning
+
+# Limits.
+dotnet_diagnostic.ZA1001.severity = none
+dotnet_diagnostic.ZA1002.severity = warning
+dotnet_diagnostic.ZA1003.severity = warning
+dotnet_diagnostic.ZA1004.severity = warning
+dotnet_diagnostic.ZA1005.severity = warning
+dotnet_diagnostic.ZA1006.severity = warning
+dotnet_diagnostic.ZA1007.severity = warning
+
+# Markup in raw strings.
+dotnet_diagnostic.ZA2001.severity = warning
+dotnet_diagnostic.ZA2002.severity = none
+dotnet_diagnostic.ZA2003.severity = warning
+dotnet_diagnostic.ZA2004.severity = warning
+dotnet_diagnostic.ZA2005.severity = warning
+dotnet_diagnostic.ZA2006.severity = warning
+dotnet_diagnostic.ZA2007.severity = warning
+dotnet_diagnostic.ZA2008.severity = warning
+dotnet_diagnostic.ZA2009.severity = none
+dotnet_diagnostic.ZA2010.severity = warning
 
 # Disables expression body suggestions that conflict with the configured Stanza body rules.
 dotnet_diagnostic.IDE0021.severity = none
@@ -224,7 +275,7 @@ stanza_max_line_length = 150
 stanza_doc_max_line_length = 120
 stanza_doc_min_tail_words = 3
 
-stanza_multiline_body_trigger = body
+stanza_multi_line_member_part = body
 
 # Indentation and line endings.
 indent_size = 4
@@ -544,13 +595,19 @@ stanza_max_line_length = 100
 stanza_doc_max_line_length = 100
 
 # A raw string in a test is the input the test reads, so the markup-literal rules would change what it checks.
-dotnet_diagnostic.ZA0101.severity = none
-dotnet_diagnostic.ZA0103.severity = none
-dotnet_diagnostic.ZA0104.severity = none
-dotnet_diagnostic.ZA0105.severity = none
+dotnet_diagnostic.ZA2001.severity = none
+dotnet_diagnostic.ZA2003.severity = none
+dotnet_diagnostic.ZA2004.severity = none
+dotnet_diagnostic.ZA2005.severity = none
+dotnet_diagnostic.ZA2006.severity = none
+dotnet_diagnostic.ZA2007.severity = none
+dotnet_diagnostic.ZA2008.severity = none
+dotnet_diagnostic.ZA2009.severity = none
+dotnet_diagnostic.ZA2010.severity = none
 
-# A test sets its arrange, act and assert steps apart with blank lines, which ZA0052 would gather.
+# A test sets its arrange, act and assert steps apart with blank lines, which ZA0052 would gather and ZA0054 would join.
 dotnet_diagnostic.ZA0052.severity = none
+dotnet_diagnostic.ZA0054.severity = none
 
 # MSTest finds a test class only when it is public.
 dotnet_diagnostic.CA1515.severity = none

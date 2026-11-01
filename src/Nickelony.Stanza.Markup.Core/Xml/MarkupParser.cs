@@ -71,7 +71,6 @@ internal static class MarkupParser
 		return new XmlReaderSettings
 		{
 			ConformanceLevel = ConformanceLevel.Document,
-
 			// The DOCTYPE is parsed, but no external resource is resolved:
 			// an entity the document declares itself is expanded, and an external one cannot be reached.
 			DtdProcessing = DtdProcessing.Parse,
@@ -108,13 +107,13 @@ internal static class MarkupParser
 				if (++state.ElementCount > state.MaxElements)
 				{
 					// The element that passes the cap is where the refusal stands, so a report points at it and not at the first line.
-					IXmlLineInfo position = GetLineInfo(reader);
+					IXmlLineInfo lineInfo = GetLineInfo(reader);
 
 					throw new XmlException(
 						message: $"The document holds more than {state.MaxElements} elements, past the limit this parser lays out.",
 						innerException: null,
-						lineNumber: position.LineNumber,
-						linePosition: position.LinePosition
+						lineNumber: lineInfo.LineNumber,
+						linePosition: lineInfo.LinePosition
 					);
 				}
 
@@ -263,17 +262,21 @@ internal static class MarkupParser
 
 				cursor = end + 1;
 			}
-			else if (current == '[')
+			else
 			{
-				insideSubset = true;
-			}
-			else if (current == ']')
-			{
-				insideSubset = false;
-			}
-			else if (current == '>' && !insideSubset)
-			{
-				return MarkupSpan.FromBounds(start, cursor + 1);
+				switch (current)
+				{
+					case '[':
+						insideSubset = true;
+						break;
+
+					case ']':
+						insideSubset = false;
+						break;
+
+					case '>' when !insideSubset:
+						return MarkupSpan.FromBounds(start, cursor + 1);
+				}
 			}
 		}
 
@@ -447,11 +450,8 @@ internal static class MarkupParser
 
 		for (int candidate = offset; candidate >= offset - 4 && candidate >= 0; candidate--)
 		{
-			if (candidate + 1 < sourceText.Length && sourceText[candidate] == '<')
-			{
-				if (sourceText[candidate + 1] == '/')
-					return candidate;
-			}
+			if (candidate + 1 < sourceText.Length && sourceText[candidate] == '<' && sourceText[candidate + 1] == '/')
+				return candidate;
 		}
 
 		return offset;
@@ -528,11 +528,8 @@ internal static class MarkupParser
 	private sealed class ParseState
 	{
 		public OpenElements Open { get; } = new();
-
 		public List<MarkupComment> Comments { get; } = [];
-
 		public MarkupElement? Root { get; set; }
-
 		public MarkupSpan DocumentType { get; set; }
 
 		/// <summary>The depth of an entity's markup the parse is skipping; zero outside one.</summary>
@@ -540,9 +537,7 @@ internal static class MarkupParser
 
 		/// <summary>Whether content was read; a placeholder document holds only comments and instructions.</summary>
 		public bool SawContent { get; set; }
-
 		public int ElementCount { get; set; }
-
 		public int MaxElements { get; init; }
 	}
 

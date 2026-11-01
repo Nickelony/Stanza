@@ -38,7 +38,7 @@ public sealed partial class ToolDocumentationTests
 	public void EveryIdNoAnalyzerReportsIsNamedInTheCommandReference()
 	{
 		// An ID with a page under docs/tool is one no analyzer reports, so the command reference names it;
-		// the other ZA01 IDs are markup rules, which the reference links as a group.
+		// the other ZA2 IDs are markup rules, which the reference links as a group.
 		string[] ids =
 		[
 			.. typeof(MarkupDiagnostics)
@@ -47,7 +47,7 @@ public sealed partial class ToolDocumentationTests
 				.Select(field => field.GetRawConstantValue() as string)
 				.Where(IsDiagnosticId)
 				.Select(id => id!)
-				.Where(id => id.StartsWith("ZA01", StringComparison.Ordinal)),
+				.Where(id => id.StartsWith("ZA2", StringComparison.Ordinal)),
 		];
 
 		Assert.IsNotEmpty(
@@ -75,9 +75,9 @@ public sealed partial class ToolDocumentationTests
 		}
 
 		Assert.Contains(
-			"README.md#markup-in-raw-strings",
+			"wiki/Markup-behavior#what-it-changes",
 			reference,
-			"The command reference does not link the markup rules of the analyzer readme."
+			"The command reference does not link the markup rules on the Markup behavior page."
 		);
 	}
 

@@ -27,4 +27,7 @@ internal sealed class DocElement(
 
 	/// <summary>The whitespace before the slash of a self-closing tag, as written, when the reader knows it.</summary>
 	public string? SlashGap { get; init; }
+
+	/// <summary>The lines of an element kept as written, or <see langword="null"/> for one laid out.</summary>
+	public IReadOnlyList<string>? VerbatimLines { get; init; }
 }

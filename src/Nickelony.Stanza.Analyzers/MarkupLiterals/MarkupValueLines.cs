@@ -30,7 +30,7 @@ internal sealed class MarkupValueLines
 				line++;
 				_lines.Add((line, offset + 1));
 			}
-			else if (IsExtraLineBreak(current))
+			else if (StanzaText.IsExtraLineBreak(current))
 			{
 				line++;
 			}
@@ -45,15 +45,15 @@ internal sealed class MarkupValueLines
 	{
 		// A line past the value's last stands at its end.
 		(int line, int start) = lineIndex < _lines.Count ? _lines[lineIndex] : (_fileLineAtEnd, _text.Length);
-
 		int fileLineOffset = indentationLength;
 
 		for (int offset = 0; offset < offsetInLine && start + offset < _text.Length; offset++)
 		{
-			if (IsExtraLineBreak(_text[start + offset]))
+			if (StanzaText.IsExtraLineBreak(_text[start + offset]))
 			{
 				line++;
 				fileLineOffset = indentationLength;
+
 				continue;
 			}
 
@@ -62,7 +62,4 @@ internal sealed class MarkupValueLines
 
 		return (line, fileLineOffset);
 	}
-
-	/// <summary>Whether a character is a line break that Roslyn counts but the engine's XML rule does not.</summary>
-	private static bool IsExtraLineBreak(char character) => character is '\u0085' or '\u2028' or '\u2029';
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -15,15 +14,12 @@ namespace Nickelony.Stanza.Analyzers.Tests;
 [TestClass]
 public sealed class TruncationFuzzTests
 {
-	private const string SoakVariable = "STANZA_SOAK_SEEDS";
-
 	// Every Nth fixture is cut at this many evenly spaced offsets, so the default run stays brief.
 	private const int FixtureStride = 6;
-
 	private const int CutsPerFixture = 6;
 
-	// The default timeout of these tests would stop a soak that cuts every fixture at every offset.
-	private const int MaxSoakMilliseconds = 1_800_000;
+	// The cuts grow with the fixtures and not with the seed count, and they take about 30 minutes, so the limit is fixed and stands well above that.
+	private const int MaxSoakMilliseconds = 3_600_000;
 
 	// A batch is one project, and the cuts of a fixture declare the same types, so its cost climbs steeply with the count.
 	private const int BatchSources = 100;
@@ -46,7 +42,7 @@ public sealed class TruncationFuzzTests
 		}
 
 		foreach (string[] batch in cuts.Chunk(BatchSources))
-			await RoslynTestHarness.AssertSurvivesAsync(batch);
+			await SurviveAsync(batch);
 	}
 
 	[TestMethod]
@@ -54,17 +50,7 @@ public sealed class TruncationFuzzTests
 	[Timeout(MaxSoakMilliseconds)]
 	public async Task NoAnalyzerOrFixThrowsOnAnyFixtureCutAtAnyOffset()
 	{
-		string? setting = Environment.GetEnvironmentVariable(SoakVariable);
-
-		bool isCount = int.TryParse(
-			s: setting,
-			style: NumberStyles.None,
-			provider: CultureInfo.InvariantCulture,
-			result: out int count
-		);
-
-		if (!isCount || count < 1)
-			ExpectedSkip.Skip($"Set {SoakVariable} to run every cut of every fixture.");
+		_ = SoakRun.ReadCountOrSkip($"Set {SoakRun.Variable} to run every cut of every fixture.");
 
 		List<string> batch = [];
 
@@ -87,8 +73,8 @@ public sealed class TruncationFuzzTests
 			await SurviveAsync(batch);
 	}
 
-	// Each batch gets the budget of a whole test, so the soak's time grows with the fixtures and not against the budget.
-	private static async Task SurviveAsync(List<string> batch)
+	// Each batch gets the budget of a whole test, so the time of a run grows with the fixtures and not against the budget.
+	private static async Task SurviveAsync(IReadOnlyList<string> batch)
 	{
 		HarnessBudget.Restart();
 		await RoslynTestHarness.AssertSurvivesAsync(batch);

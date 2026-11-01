@@ -1,61 +1,31 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { HtmlTagDescriptor, Plugin } from 'vite';
 
-/** The address the Pages workflow publishes the site at; a link preview needs every address whole. */
-export const siteUrl = 'https://nickelony.github.io/Stanza/';
+import type { Plugin } from 'vite';
 
-/** The preview image keeps one name, so a card a site cached still finds it after the logo changes. */
-const imageName = 'stanza.png';
-
-function readHead(html: string, pattern: RegExp, what: string): string {
-	const match = pattern.exec(html);
-
-	if (!match?.[1]) {
-		throw new Error(`index.html has no ${what}, which the link preview repeats.`);
-	}
-
-	return match[1];
-}
+import type { LanguageId } from '../src/languages/language.ts';
 
 /**
- * Writes the canonical address and the Open Graph and Twitter card tags, from the title and description of index.html,
- * and publishes the logo as the preview image.
+ * The image of each page's link preview: the logo of its product in `icon/`, published under a name that stays,
+ * so a card a site cached still finds it after the logo changes. The C# page keeps the name the site first published.
  */
+export const previewImages: Record<LanguageId, { source: string; name: string }> = {
+	csharp: { source: 'Stanza.png', name: 'stanza.png' },
+	markup: { source: 'Stanza-Mu.png', name: 'stanza-markup.png' },
+	js: { source: 'Stanza-JS.png', name: 'stanza-js.png' },
+	python: { source: 'Stanza-Py.png', name: 'stanza-py.png' },
+};
+
+/** Publishes the logo of each product as the image of a link preview, which the tags of its page name. */
 export function stanzaPreview(repositoryRoot: string): Plugin {
 	return {
 		name: 'stanza-preview',
 		apply: 'build',
 
 		generateBundle() {
-			this.emitFile({ type: 'asset', fileName: imageName, source: readFileSync(join(repositoryRoot, 'icon', 'Stanza.png')) });
-		},
-
-		transformIndexHtml(html): HtmlTagDescriptor[] {
-			const title = readHead(html, /<title>([^<]+)<\/title>/, 'title');
-
-			// Prettier wraps a long tag, so the attributes may sit on lines of their own.
-			const description = readHead(html, /<meta\s+name="description"\s+content="([^"]+)"/, 'description');
-
-			const meta = (key: 'property' | 'name', name: string, content: string): HtmlTagDescriptor => ({
-				tag: 'meta',
-				attrs: { [key]: name, content },
-				injectTo: 'head',
-			});
-
-			return [
-				{ tag: 'link', attrs: { rel: 'canonical', href: siteUrl }, injectTo: 'head' },
-				meta('property', 'og:type', 'website'),
-				meta('property', 'og:site_name', 'Stanza'),
-				meta('property', 'og:title', title),
-				meta('property', 'og:description', description),
-				meta('property', 'og:url', siteUrl),
-				meta('property', 'og:image', `${siteUrl}${imageName}`),
-				meta('property', 'og:image:width', '256'),
-				meta('property', 'og:image:height', '256'),
-				meta('property', 'og:image:alt', 'The Stanza logo'),
-				meta('name', 'twitter:card', 'summary'),
-			];
+			for (const { source, name } of Object.values(previewImages)) {
+				this.emitFile({ type: 'asset', fileName: name, source: readFileSync(join(repositoryRoot, 'icon', source)) });
+			}
 		},
 	};
 }

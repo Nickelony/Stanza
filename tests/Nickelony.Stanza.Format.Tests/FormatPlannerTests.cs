@@ -12,7 +12,7 @@ namespace Nickelony.Stanza.Format.Tests;
 [TestClass]
 public sealed class FormatPlannerTests
 {
-	private const string Bodies = "ZA0040 ZA0041 ZA0042 ZA0043 ZA0044 ZA0045 ZA0046";
+	private const string Bodies = "ZA0301 ZA0302 ZA0303 ZA0304 ZA0305 ZA0306 ZA0307";
 
 	private static readonly FormatOptions s_changed = new(
 		All: false,
@@ -23,6 +23,7 @@ public sealed class FormatPlannerTests
 
 	private static readonly FormatOptions s_all = s_changed with { All = true };
 	private static readonly FormatOptions s_check = s_changed with { Check = true };
+	private static readonly FormatOptions s_since = s_changed with { Since = "origin/main" };
 
 	[TestMethod]
 	public void AWholeRunFollowsTheRunOrder()
@@ -33,14 +34,14 @@ public sealed class FormatPlannerTests
 		Assert.AreSequenceEqual(
 			[
 				"Local tools: tool restore",
-				$"Analyzers, body shapes aside: format App.slnx analyzers --severity info --exclude-diagnostics {Bodies}",
-				"IDE style fixes: format App.slnx style --severity info",
+				$"Analyzers, body shapes aside: format App.slnx analyzers --severity info --exclude-diagnostics {Bodies} --include ./",
+				"IDE style fixes: format App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./",
 				"Merge markers",
 				"CSharpier: csharpier format .",
-				$"Body shapes: format App.slnx analyzers --severity info --diagnostics {Bodies}",
+				$"Body shapes: format App.slnx analyzers --severity info --diagnostics {Bodies} --include ./",
 				"Merge markers",
 				"CSharpier again: csharpier format .",
-				$"Analyzers, body shapes aside, again: format App.slnx analyzers --severity info --exclude-diagnostics {Bodies}",
+				$"Analyzers, body shapes aside, again: format App.slnx analyzers --severity info --exclude-diagnostics {Bodies} --include ./",
 				"Merge markers",
 			],
 
@@ -158,12 +159,12 @@ public sealed class FormatPlannerTests
 
 		Assert.AreSequenceEqual(
 			[
-				$"Analyzers, body shapes aside: format App.slnx analyzers --severity info --exclude-diagnostics {Bodies}",
-				"IDE style fixes: format App.slnx style --severity info",
-				"Whitespace: format App.slnx whitespace",
-				$"Body shapes: format App.slnx analyzers --severity info --diagnostics {Bodies}",
-				"Whitespace again: format App.slnx whitespace",
-				$"Analyzers, body shapes aside, again: format App.slnx analyzers --severity info --exclude-diagnostics {Bodies}",
+				$"Analyzers, body shapes aside: format App.slnx analyzers --severity info --exclude-diagnostics {Bodies} --include ./",
+				"IDE style fixes: format App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./",
+				"Whitespace: format App.slnx whitespace --include ./",
+				$"Body shapes: format App.slnx analyzers --severity info --diagnostics {Bodies} --include ./",
+				"Whitespace again: format App.slnx whitespace --include ./",
+				$"Analyzers, body shapes aside, again: format App.slnx analyzers --severity info --exclude-diagnostics {Bodies} --include ./",
 				"Merge markers",
 			],
 
@@ -197,8 +198,8 @@ public sealed class FormatPlannerTests
 		Assert.AreSequenceEqual(
 			[
 				"Local tools: tool restore",
-				"Analyzers: format App.slnx analyzers --verify-no-changes --severity info",
-				"IDE style rules: format App.slnx style --verify-no-changes --severity info",
+				"Analyzers: format App.slnx analyzers --verify-no-changes --severity info --include ./",
+				"IDE style rules: format App.slnx style --verify-no-changes --severity info --exclude-diagnostics IDE0130 --include ./",
 				"Source layout (CSharpier, blank lines aside): csharpier check . --log-format MsBuild",
 				"Markup files: stanza-markup check . --strict",
 				"Line endings",
@@ -234,9 +235,9 @@ public sealed class FormatPlannerTests
 
 		Assert.AreSequenceEqual(
 			[
-				"format App.slnx style --severity info --exclude ./shared",
-				"format src/Wpf/Wpf.csproj style --severity info",
-				"format src/Avalonia/Avalonia.csproj style --severity info",
+				"format App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./ --exclude ./shared",
+				"format src/Wpf/Wpf.csproj style --severity info --exclude-diagnostics IDE0130 --include ./",
+				"format src/Avalonia/Avalonia.csproj style --severity info --exclude-diagnostics IDE0130 --include ./",
 			],
 
 			ShowCommands(Plan(s_all, facts), "IDE style fixes")
@@ -257,9 +258,9 @@ public sealed class FormatPlannerTests
 
 		Assert.AreSequenceEqual(
 			[
-				"format App.slnx style --severity info --exclude ./shared/Both.cs",
-				"format src/A/A.csproj style --severity info",
-				"format src/B/B.csproj style --severity info",
+				"format App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./ --exclude ./shared/Both.cs",
+				"format src/A/A.csproj style --severity info --exclude-diagnostics IDE0130 --include ./",
+				"format src/B/B.csproj style --severity info --exclude-diagnostics IDE0130 --include ./",
 			],
 
 			ShowCommands(Plan(s_all, facts), "IDE style fixes")
@@ -278,7 +279,7 @@ public sealed class FormatPlannerTests
 		);
 
 		Assert.AreSequenceEqual(
-			["format App.slnx style --severity info"],
+			["format App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./"],
 			ShowCommands(Plan(s_all, facts), "IDE style fixes")
 		);
 	}
@@ -304,8 +305,8 @@ public sealed class FormatPlannerTests
 
 		Assert.AreSequenceEqual(
 			[
-				"format src/A/A.csproj style --severity info",
-				"format src/B/B.csproj style --severity info",
+				"format src/A/A.csproj style --severity info --exclude-diagnostics IDE0130 --include ./",
+				"format src/B/B.csproj style --severity info --exclude-diagnostics IDE0130 --include ./",
 			],
 
 			ShowCommands(Plan(s_all, BuildFacts(compiled: compiled)), "IDE style fixes")
@@ -334,9 +335,9 @@ public sealed class FormatPlannerTests
 
 		Assert.AreSequenceEqual(
 			[
-				"format App.slnx style --severity info --include ./src/Wpf/View.cs",
-				"format src/Wpf/Wpf.csproj style --severity info --include ./shared/Editor.cs",
-				"format src/Avalonia/Avalonia.csproj style --severity info --include ./shared/Editor.cs",
+				"format App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./src/Wpf/View.cs",
+				"format src/Wpf/Wpf.csproj style --severity info --exclude-diagnostics IDE0130 --include ./shared/Editor.cs",
+				"format src/Avalonia/Avalonia.csproj style --severity info --exclude-diagnostics IDE0130 --include ./shared/Editor.cs",
 			],
 
 			ShowCommands(steps, "IDE style fixes")
@@ -399,7 +400,7 @@ public sealed class FormatPlannerTests
 			[
 				"Local tools: tool restore",
 				$"Analyzers, body shapes aside: format App.slnx analyzers --severity info --exclude-diagnostics {Bodies} --include ./src/A/A.cs",
-				"IDE style fixes: format App.slnx style --severity info --include ./src/A/A.cs",
+				"IDE style fixes: format App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./src/A/A.cs",
 				"Merge markers",
 				"CSharpier: csharpier format ./src/A/A.cs",
 				$"Body shapes: format App.slnx analyzers --severity info --diagnostics {Bodies} --include ./src/A/A.cs",
@@ -450,7 +451,10 @@ public sealed class FormatPlannerTests
 		ImmutableArray<FormatStep> steps = Plan(s_changed, facts);
 
 		Assert.AreSequenceEqual(
-			["format app/App.slnx style --severity info --include ./app/Tool.cs ./other/D.cs"],
+			[
+				"format app/App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./app/Tool.cs ./other/D.cs",
+			],
+
 			ShowCommands(steps, "IDE style fixes")
 		);
 
@@ -480,14 +484,251 @@ public sealed class FormatPlannerTests
 	}
 
 	[TestMethod]
-	public void ARunWithNothingChangedPlansNoStep()
+	public void ARunWithNothingChangedPlansNoStep() =>
+		Assert.IsEmpty(Plan(s_changed, BuildFacts()));
+
+	[TestMethod]
+	public void ARunThatFormatsNoChangedFileStillReadsTheirMergeMarkers()
 	{
 		FormatFacts facts = BuildFacts(changed: ["README.md"]);
-		Assert.IsEmpty(Plan(s_changed, facts));
+
+		FormatStep step = Plan(s_changed, facts).Single();
+
+		Assert.AreEqual(FormatStepKind.Markers, step.Kind);
+		Assert.AreSequenceEqual(facts.ScopedFiles, step.Scope);
 	}
 
 	[TestMethod]
-	public void ACheckRunsTheMarkupCheckStrictlyAsFormatPs1Does()
+	public void ACheckSinceARefReadsOnlyTheChangedFilesWithoutWriting()
+	{
+		FormatFacts facts = BuildFacts(
+			hasMarkup: true,
+			changed: ["src/A/A.cs", "src/A/A.csproj", "Notes.md", "docs/Page.xaml"],
+			compiled: [new("src/A/A.cs", "src/A/A.csproj", "net8.0|")]
+		);
+
+		ImmutableArray<FormatStep> steps = Plan(s_since with { Check = true }, facts);
+
+		Assert.AreSequenceEqual(
+			[
+				"Local tools: tool restore",
+				"Analyzers: format App.slnx analyzers --verify-no-changes --severity info --include ./src/A/A.cs",
+				"IDE style rules: format App.slnx style --verify-no-changes --severity info --exclude-diagnostics IDE0130 --include ./src/A/A.cs",
+				"Source layout (CSharpier, blank lines aside): csharpier check ./src/A/A.cs ./src/A/A.csproj ./docs/Page.xaml --log-format MsBuild",
+				"Markup files: stanza-markup check --strict -- src/A/A.csproj docs/Page.xaml",
+				"Line endings",
+				"Merge markers",
+			],
+
+			Show(steps)
+		);
+
+		Assert.AreEqual(FormatStepKind.Diagnostics, steps[1].Kind);
+		Assert.AreSequenceEqual([2], steps[1].ChangeExitCodes);
+		Assert.AreEqual(FormatStepKind.SourceLayout, steps[3].Kind);
+		Assert.AreSequenceEqual([1], steps[3].ChangeExitCodes);
+		Assert.AreEqual(FormatStepKind.Markup, steps[4].Kind);
+		Assert.AreSequenceEqual([1, 2], steps[4].ChangeExitCodes);
+
+		// CSharpier ignores a file it is named, and the layout check passes when all of them are ignored.
+		Assert.AreSequenceEqual(facts.ScopedFiles, steps[3].Scope);
+
+		// The two git checks read the repository whole, so each keeps the entries of the changed files.
+		Assert.AreSequenceEqual(facts.ScopedFiles, steps[^2].Scope);
+		Assert.AreSequenceEqual(facts.ScopedFiles, steps[^1].Scope);
+	}
+
+	[TestMethod]
+	public void AWholeCheckLeavesTheGitChecksUnscoped()
+	{
+		ImmutableArray<FormatStep> steps = Plan(s_check, BuildFacts());
+
+		Assert.IsTrue(steps[^2].Scope.IsDefault);
+		Assert.IsTrue(steps[^1].Scope.IsDefault);
+	}
+
+	[TestMethod]
+	public void AWriteRunChecksTheMergeMarkersOfTheChangedFilesAndAWholeRunOfTheRepository()
+	{
+		FormatFacts facts = BuildFacts(
+			changed: ["src/A/A.cs"],
+			compiled: [new("src/A/A.cs", "src/A/A.csproj", "net8.0|")]
+		);
+
+		foreach (FormatOptions options in (FormatOptions[])[s_changed, s_since])
+		{
+			FormatStep[] markers =
+			[
+				.. Plan(options, facts).Where(static step => step.Kind == FormatStepKind.Markers),
+			];
+
+			Assert.IsNotEmpty(markers);
+
+			foreach (FormatStep marker in markers)
+				Assert.AreSequenceEqual(facts.ScopedFiles, marker.Scope);
+		}
+
+		foreach (
+			FormatStep marker in Plan(s_all, facts)
+				.Where(static step => step.Kind == FormatStepKind.Markers)
+		)
+		{
+			Assert.IsTrue(marker.Scope.IsDefault);
+		}
+	}
+
+	[TestMethod]
+	public void AScopedCheckUnderTheWhitespaceLayoutVerifiesTheChangedSourcesThroughTheirProjects()
+	{
+		FormatFacts facts = BuildFacts(
+			changed: ["src/A/A.cs", "Notes.md"],
+			compiled: [new("src/A/A.cs", "src/A/A.csproj", "net8.0|")]
+		);
+
+		Assert.AreSequenceEqual(
+			[
+				"Analyzers: format App.slnx analyzers --verify-no-changes --severity info --include ./src/A/A.cs",
+				"IDE style rules: format App.slnx style --verify-no-changes --severity info --exclude-diagnostics IDE0130 --include ./src/A/A.cs",
+				"Whitespace: format App.slnx whitespace --verify-no-changes --include ./src/A/A.cs",
+				"Line endings",
+				"Merge markers",
+			],
+
+			Show(Plan(s_since with { Check = true }, facts, hasCSharpier: false))
+		);
+	}
+
+	[TestMethod]
+	public void AScopedCheckOfASourceNoProjectCompilesChecksItsLayoutAlone()
+	{
+		FormatFacts facts = BuildFacts(changed: ["Loose.cs"]);
+
+		Assert.AreSequenceEqual(
+			[
+				"Local tools: tool restore",
+				"Source layout (CSharpier, blank lines aside): csharpier check ./Loose.cs --log-format MsBuild",
+				"Line endings",
+				"Merge markers",
+			],
+
+			Show(Plan(s_since with { Check = true }, facts))
+		);
+	}
+
+	[TestMethod]
+	public void AScopedCheckSendsAFileOfTwoViewsThroughEachViewAndRunsFromTheSolutionsDirectory()
+	{
+		FormatFacts facts = BuildFacts(
+			solution: "src/App.slnx",
+			changed: ["src/Shared.cs"],
+
+			compiled:
+			[
+				new("src/Shared.cs", "src/Wpf/Wpf.csproj", "net8.0|WPF"),
+				new("src/Shared.cs", "src/Avalonia/Avalonia.csproj", "net8.0|AVALONIA"),
+			]
+		);
+
+		ImmutableArray<FormatStep> steps = Plan(s_since with { Check = true }, facts);
+
+		Assert.AreSequenceEqual(
+			[
+				"format src/Wpf/Wpf.csproj analyzers --verify-no-changes --severity info --include ./src/Shared.cs",
+				"format src/Avalonia/Avalonia.csproj analyzers --verify-no-changes --severity info --include ./src/Shared.cs",
+			],
+
+			ShowCommands(steps, "Analyzers")
+		);
+
+		Assert.AreSequenceEqual(
+			["csharpier check ./Shared.cs --log-format MsBuild"],
+			ShowCommands(steps, "Source layout (CSharpier, blank lines aside)")
+		);
+
+		Assert.AreEqual(
+			"src",
+			steps.Single(static step => step.Kind == FormatStepKind.SourceLayout).WorkingDirectory
+		);
+	}
+
+	[TestMethod]
+	public void AScopedCheckOfNothingChangedPlansNoStep() =>
+		Assert.IsEmpty(Plan(s_since with { Check = true }, BuildFacts(hasMarkup: true)));
+
+	[TestMethod]
+	public void AScopedCheckOfAFileNoToolReadsStillChecksItsEndingsAndMarkers()
+	{
+		FormatFacts facts = BuildFacts(changed: ["README.md"], hasMarkup: true);
+
+		Assert.AreSequenceEqual(
+			["Line endings", "Merge markers"],
+			Show(Plan(s_since with { Check = true }, facts))
+		);
+	}
+
+	[TestMethod]
+	public void AScopedCheckSplitsALongListOfChangedFilesIntoCommandsThatFitTheBudget()
+	{
+		string[] changed =
+		[
+			.. Enumerable
+				.Range(0, 2000)
+				.Select(index => $"src/A/Sub/A{index:D4}{new string('x', 40)}.cs"),
+		];
+
+		FormatFacts facts = BuildFacts(
+			changed: changed,
+
+			compiled:
+			[
+				.. changed.Select(static path => new CompiledFile(
+					path,
+					"src/A/A.csproj",
+					"net8.0|"
+				)),
+			]
+		);
+
+		ImmutableArray<FormatStep> steps = Plan(s_since with { Check = true }, facts);
+
+		foreach (
+			string title in (string[])["Analyzers", "Source layout (CSharpier, blank lines aside)"]
+		)
+		{
+			string[] commands = ShowCommands(steps, title);
+
+			Assert.IsGreaterThan(1, commands.Length, title);
+
+			foreach (string command in commands)
+			{
+				Assert.IsLessThanOrEqualTo(
+					CommandBatches.ArgumentBudget + 200,
+					command.Length,
+					title
+				);
+			}
+
+			Assert.AreEqual(
+				changed.Length,
+				commands.Sum(static command => command.Split("./src/").Length - 1),
+				title
+			);
+		}
+	}
+
+	[TestMethod]
+	public void ASinceRunWritesTheChangedFilesTheFactsHoldLikeADefaultRun()
+	{
+		FormatFacts facts = BuildFacts(
+			changed: ["src/A/A.cs"],
+			compiled: [new("src/A/A.cs", "src/A/A.csproj", "net8.0|")]
+		);
+
+		Assert.AreSequenceEqual(Show(Plan(s_changed, facts)), Show(Plan(s_since, facts)));
+	}
+
+	[TestMethod]
+	public void ACheckRunsTheMarkupCheckStrictly()
 	{
 		FormatFacts facts = BuildFacts(hasMarkup: true);
 
@@ -528,9 +769,9 @@ public sealed class FormatPlannerTests
 
 		Assert.AreSequenceEqual(
 			[
-				"format App.slnx style --severity info --include ./@a.cs",
-				"format src/A/A.csproj style --severity info --include ./@shared/b.cs",
-				"format src/B/B.csproj style --severity info --include ./@shared/b.cs",
+				"format App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./@a.cs",
+				"format src/A/A.csproj style --severity info --exclude-diagnostics IDE0130 --include ./@shared/b.cs",
+				"format src/B/B.csproj style --severity info --exclude-diagnostics IDE0130 --include ./@shared/b.cs",
 			],
 
 			ShowCommands(Plan(s_changed, changed), "IDE style fixes")
@@ -538,9 +779,9 @@ public sealed class FormatPlannerTests
 
 		Assert.AreSequenceEqual(
 			[
-				"format App.slnx style --severity info --exclude ./@shared",
-				"format src/A/A.csproj style --severity info",
-				"format src/B/B.csproj style --severity info",
+				"format App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./ --exclude ./@shared",
+				"format src/A/A.csproj style --severity info --exclude-diagnostics IDE0130 --include ./",
+				"format src/B/B.csproj style --severity info --exclude-diagnostics IDE0130 --include ./",
 			],
 
 			ShowCommands(Plan(s_all, BuildFacts(compiled: compiled)), "IDE style fixes")
@@ -548,12 +789,12 @@ public sealed class FormatPlannerTests
 
 		// The solution and the projects are arguments too, so a name that starts with an at sign takes the dot slash.
 		Assert.AreSequenceEqual(
-			["format ./@App.slnx style --severity info"],
+			["format ./@App.slnx style --severity info --exclude-diagnostics IDE0130 --include ./"],
 			ShowCommands(Plan(s_all, BuildFacts(solution: "@App.slnx")), "IDE style fixes")
 		);
 
 		Assert.AreSequenceEqual(
-			["format ./@App.slnx analyzers --verify-no-changes --severity info"],
+			["format ./@App.slnx analyzers --verify-no-changes --severity info --include ./"],
 			ShowCommands(Plan(s_check, BuildFacts(solution: "@App.slnx")), "Analyzers")
 		);
 	}
@@ -670,6 +911,86 @@ public sealed class FormatPlannerTests
 		);
 	}
 
+	[TestMethod]
+	public void EveryDotnetFormatCommandIncludesOnlyTheFilesOfTheRepository()
+	{
+		// A solution's pass formats each project it loads, so one referenced from outside the repository too.
+		CompiledFile[] compiled =
+		[
+			new("src/A/A.cs", "src/A/A.csproj", "net8.0|A"),
+			new("shared/Both.cs", "src/A/A.csproj", "net8.0|A"),
+			new("shared/Both.cs", "src/B/B.csproj", "net8.0|B"),
+		];
+
+		FormatFacts facts = BuildFacts(compiled: compiled);
+
+		foreach (FormatOptions options in (FormatOptions[])[s_all, s_check])
+		{
+			foreach (
+				FormatLayout layout in (FormatLayout[])
+					[FormatLayout.CSharpier, FormatLayout.Whitespace]
+			)
+			{
+				ImmutableArray<ImmutableArray<string>> commands =
+				[
+					.. FormatPlanner
+						.Plan(options, facts, layout)
+						.SelectMany(static step => step.Commands)
+						.Where(static command => command[0] == "format"),
+				];
+
+				Assert.IsNotEmpty(commands);
+
+				foreach (ImmutableArray<string> command in commands)
+				{
+					string shown = string.Join(' ', command);
+					Assert.Contains("--include ./", shown, $"{options} {layout}");
+				}
+			}
+		}
+	}
+
+	[TestMethod]
+	public void AWholeWriteRunEndsWithTheWholeCheckOfEachToolItRan()
+	{
+		FormatFacts facts = BuildFacts(
+			hasMarkup: true,
+			compiled: [new("src/A/A.cs", "src/A/A.csproj", "net8.0|")]
+		);
+
+		Assert.AreSequenceEqual(
+			[
+				"Analyzers: format App.slnx analyzers --verify-no-changes --severity info --include ./",
+				"IDE style rules: format App.slnx style --verify-no-changes --severity info --exclude-diagnostics IDE0130 --include ./",
+				"Source layout (CSharpier, blank lines aside): csharpier check . --log-format MsBuild",
+				"Markup files: stanza-markup check . --strict",
+			],
+
+			Show(FormatPlanner.PlanSettleCheck(s_all, facts, FormatLayout.CSharpier))
+		);
+	}
+
+	[TestMethod]
+	public void ADefaultWriteRunEndsWithACheckOfTheFilesItFormatted()
+	{
+		FormatFacts facts = BuildFacts(
+			hasMarkup: true,
+			changed: ["src/A/A.cs", "src/A/A.csproj", "Notes.md"],
+			compiled: [new("src/A/A.cs", "src/A/A.csproj", "net8.0|")]
+		);
+
+		Assert.AreSequenceEqual(
+			[
+				"Analyzers: format App.slnx analyzers --verify-no-changes --severity info --include ./src/A/A.cs",
+				"IDE style rules: format App.slnx style --verify-no-changes --severity info --exclude-diagnostics IDE0130 --include ./src/A/A.cs",
+				"Whitespace: format App.slnx whitespace --verify-no-changes --include ./src/A/A.cs",
+				"Markup files: stanza-markup check --strict -- src/A/A.csproj",
+			],
+
+			Show(FormatPlanner.PlanSettleCheck(s_changed, facts, FormatLayout.Whitespace))
+		);
+	}
+
 	private static ImmutableArray<FormatStep> Plan(
 		FormatOptions options,
 		FormatFacts facts,
@@ -689,7 +1010,10 @@ public sealed class FormatPlannerTests
 			ChangedFiles: [.. changed ?? []],
 			SkippedSources: [],
 			CompiledFiles: [.. compiled ?? []]
-		);
+		)
+		{
+			ScopedFiles = [.. changed ?? []],
+		};
 	}
 
 	private static string[] Show(ImmutableArray<FormatStep> steps)

@@ -7,5 +7,5 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 internal sealed class SeparateClauseKeywordFromBraceBeforeItAnalyzer() : ClauseKeywordGapAnalyzer(StanzaRules.SeparateClauseKeywordFromBraceBeforeIt)
 {
 	protected override void ReportGap(SyntaxNodeAnalysisContext context, SyntaxToken keyword, SyntaxToken brace) =>
-		BlankLineAnalysis.ReportRequiredBlankLine(context, anchor: keyword, neighbor: brace, rule: Rule);
+		RequiredBlankLineAnalysis.ReportRequiredBlankLine(context, anchor: keyword, neighbor: brace, rule: Rule);
 }

@@ -18,7 +18,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-# The multi-line <a> and the <c> after it share no blank line, which ZA0101 asks for.
+# The multi-line <a> and the <c> after it share no blank line, which ZA2001 asks for.
 Set-Content -Path $Path -Value @(
 	'<root>'
 	'  <a>'

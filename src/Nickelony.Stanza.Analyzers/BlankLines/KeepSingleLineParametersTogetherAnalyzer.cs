@@ -4,5 +4,4 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Nickelony.Stanza.Analyzers.BlankLines;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-internal sealed class KeepSingleLineParametersTogetherAnalyzer()
-	: KeepSingleLineSiblingsTogetherAnalyzer(StanzaRules.KeepSingleLineParametersTogether);
+internal sealed class KeepSingleLineParametersTogetherAnalyzer() : RemovableSingleLineGapAnalyzer(StanzaRules.KeepSingleLineParametersTogether);

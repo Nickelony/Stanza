@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Nickelony.Stanza.Analyzers.Arguments;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-internal sealed class NameArgumentsOfCallAnalyzer() : StanzaNodeAnalyzer(DiagnosticDescriptors.NameArgumentsOfCall, ArgumentAnalysis.CallKinds)
+internal sealed class NameArgumentsOfCallAnalyzer() : StanzaRuleAnalyzer(StanzaRules.NameArgumentsOfCall)
 {
 	protected override void Analyze(SyntaxNodeAnalysisContext context)
 	{

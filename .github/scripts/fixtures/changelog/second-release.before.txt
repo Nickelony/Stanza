@@ -1,0 +1,18 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+## [Unreleased]
+
+### Fixed
+
+- A fix after the first release.
+
+## [1.0.0] - 2030-01-02
+
+### Added
+
+- The first feature.
+
+[Unreleased]: https://github.com/example/project/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/example/project/releases/tag/v1.0.0

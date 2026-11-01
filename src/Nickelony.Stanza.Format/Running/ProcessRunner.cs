@@ -35,6 +35,7 @@ internal static class ProcessRunner
 		ProcessStartInfo start = new(fileName)
 		{
 			WorkingDirectory = workingDirectory,
+			RedirectStandardInput = true,
 			RedirectStandardOutput = true,
 			RedirectStandardError = true,
 			StandardOutputEncoding = s_utf8,
@@ -47,21 +48,36 @@ internal static class ProcessRunner
 
 		using Process process = Start(start);
 
-		// A canceled run stops the child too, so a pass does not go on writing files after the tool has ended.
-		using CancellationTokenRegistration registration = cancellationToken.Register(() => Stop(process));
+		try
+		{
+			// The child's input ends at once, so a child that reads it, such as a prompt, does not wait on the tool's own input.
+			process.StandardInput.Close();
 
-		// Both streams drain while the process runs, because a full pipe blocks it.
-		Task<string> output = CopyAsync(process.StandardOutput, echo?.Output);
-		Task<string> error = CopyAsync(process.StandardError, echo?.Error);
+			// A canceled run stops the child too, so a pass does not go on writing files after the tool has ended.
+			using CancellationTokenRegistration registration = cancellationToken.Register(() => Stop(process));
 
-		process.WaitForExit();
+			// Both streams drain while the process runs, because a full pipe blocks it.
+			Task<string> output = CopyAsync(process.StandardOutput, echo?.Output);
+			Task<string> error = CopyAsync(process.StandardError, echo?.Error);
 
-		string outputText = output.GetAwaiter().GetResult();
-		string errorText = error.GetAwaiter().GetResult();
+			// A drain that fails, as an echo to a closed console does, ends the run at once:
+			// the child would block on the pipe that the failed drain leaves unread, and never exit.
+			Task.WhenAny(output, error).GetAwaiter().GetResult().GetAwaiter().GetResult();
 
-		cancellationToken.ThrowIfCancellationRequested();
+			string outputText = output.GetAwaiter().GetResult();
+			string errorText = error.GetAwaiter().GetResult();
 
-		return new ProcessResult(process.ExitCode, outputText, errorText);
+			process.WaitForExit();
+			cancellationToken.ThrowIfCancellationRequested();
+
+			return new ProcessResult(process.ExitCode, outputText, errorText);
+		}
+		finally
+		{
+			// A child that outlives the run, as one does when the run throws, ends with its tree.
+			if (!process.HasExited)
+				Stop(process);
+		}
 	}
 
 	/// <summary>Runs each item a few at a time, and returns the results in the items' order.</summary>

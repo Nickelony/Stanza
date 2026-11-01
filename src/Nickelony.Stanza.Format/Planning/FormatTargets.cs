@@ -9,6 +9,12 @@ namespace Nickelony.Stanza.Format.Planning;
 /// <summary>The solution and projects a run formats through, and the filter each one takes.</summary>
 internal static class FormatTargets
 {
+	/// <summary>Keeps a whole pass in the repository, as a solution's pass formats the projects it loads.</summary>
+	/// <remarks>
+	/// <c>dotnet format</c> reads <c>./</c> as its working directory, the repository root, and <c>.</c> as no file.
+	/// </remarks>
+	public static readonly ImmutableArray<string> RepositoryFilter = ["--include", "./"];
+
 	/// <summary>Holds a file of several views out of the solution's pass, and formats it per view in turn.</summary>
 	/// <seealso href="https://github.com/Nickelony/Stanza/wiki/Format-command-reference#shared-source"/>
 	public static ImmutableArray<FormatTarget> ForSolution(FormatFacts facts)
@@ -17,19 +23,19 @@ internal static class FormatTargets
 		ImmutableArray<string> shared = [.. views.Where(static view => view.Value.Length > 1).Select(static view => view.Key)];
 
 		if (shared.IsEmpty)
-			return [new FormatTarget(facts.Solution, Filter: [])];
+			return [new FormatTarget(facts.Solution, Filter: RepositoryFilter)];
 
 		ImmutableArray<string> projects = CollectProjects(facts.CompiledFiles);
 		ImmutableArray<string> excluded = [.. CollectExclusions(shared, views.Keys).Select(ArgumentPath.ToPrefixed)];
 
 		// An exclusion list cannot be split across commands, so a list too long for one formats each project in turn.
 		if (CommandBatches.Measure(excluded) > CommandBatches.ArgumentBudget)
-			return [.. projects.Select(static project => new FormatTarget(project, Filter: []))];
+			return [.. projects.Select(static project => new FormatTarget(project, Filter: RepositoryFilter))];
 
 		HashSet<string> owners = new(shared.SelectMany(path => views[path]), PathComparison.Comparer);
-		FormatTarget solution = new(facts.Solution, Filter: ["--exclude", .. excluded]);
+		FormatTarget solution = new(facts.Solution, Filter: [.. RepositoryFilter, "--exclude", .. excluded]);
 
-		return [solution, .. projects.Where(owners.Contains).Select(static project => new FormatTarget(project, Filter: []))];
+		return [solution, .. projects.Where(owners.Contains).Select(static project => new FormatTarget(project, Filter: RepositoryFilter))];
 	}
 
 	/// <summary>Routes a changed source by its views, and leaves one no project compiles to the layout step.</summary>
@@ -97,7 +103,7 @@ internal static class FormatTargets
 		{
 			bool isShared = sharedFiles.Contains(path);
 
-			for (string directory = RepositoryPath.GetDirectory(path); directory.Length > 0; directory = RepositoryPath.GetDirectory(directory))
+			for (string directory = SlashPath.GetDirectory(path); directory.Length > 0; directory = SlashPath.GetDirectory(directory))
 				sharedDirectories[directory] = isShared && sharedDirectories.GetValueOrDefault(directory, true);
 		}
 
@@ -115,9 +121,9 @@ internal static class FormatTargets
 		string? top = null;
 
 		for (
-			string directory = RepositoryPath.GetDirectory(path);
+			string directory = SlashPath.GetDirectory(path);
 			directory.Length > 0 && sharedDirectories[directory];
-			directory = RepositoryPath.GetDirectory(directory)
+			directory = SlashPath.GetDirectory(directory)
 		)
 		{
 			top = directory;

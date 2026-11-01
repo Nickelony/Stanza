@@ -2,7 +2,7 @@
 
 Controls whether case matters when an identifier matches the name of its parameter.
 Default: `sensitive`.
-Read by the argument-naming rules, such as [`ZA0050`](https://github.com/Nickelony/Stanza/wiki/ZA0050-Name-the-arguments-of-a-call).
+Read by the argument-naming rules, such as [`ZA0501`](https://github.com/Nickelony/Stanza/wiki/ZA0501-Name-the-arguments-of-a-call).
 
 | Value         | Effect                                                                                                                                                                            |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

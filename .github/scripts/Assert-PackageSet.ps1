@@ -4,7 +4,7 @@
 	Fails unless a directory holds exactly one .nupkg for each package ID that ships, and no other .nupkg.
 
 .DESCRIPTION
-	package-ids.txt beside this script lists the IDs, and PackageLayoutTests reads the same file,
+	package-ids.txt beside this script lists the IDs, and PackageLayoutGuardTests reads the same file,
 	so the packages a publish sends are the ones the tests pack.
 
 .PARAMETER Directory
@@ -22,6 +22,8 @@ $ErrorActionPreference = 'Stop'
 
 Set-StrictMode -Version Latest
 
+. (Join-Path $PSScriptRoot 'Get-PackagePattern.ps1')
+
 $ids = @(
 	Get-Content -LiteralPath (Join-Path $PSScriptRoot 'package-ids.txt') |
 		ForEach-Object { $_.Trim() } |
@@ -36,8 +38,7 @@ $files = @(Get-ChildItem -Path $Directory -Filter *.nupkg -File)
 $claimed = @()
 
 foreach ($id in $ids) {
-	# The version starts with a digit, so `Nickelony.Stanza.Markup.Core.*` cannot stand in for `Nickelony.Stanza.Markup`.
-	$pattern = "^$([regex]::Escape($id))\.\d.*\.nupkg$"
+	$pattern = Get-PackagePattern $id
 	$found = @($files | Where-Object { $_.Name -match $pattern })
 
 	if ($found.Count -ne 1) {

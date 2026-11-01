@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using Nickelony.Stanza.Markup.Core.Xml;
+using Nickelony.Stanza.Markup.Core.Options;
 using Nickelony.Stanza.Shared;
 
 namespace Nickelony.Stanza.Markup.Configuration;

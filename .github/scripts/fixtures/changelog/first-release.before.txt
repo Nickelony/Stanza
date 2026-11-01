@@ -1,0 +1,12 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+## [Unreleased]
+
+### Added
+
+- The first feature.
+- The second feature.
+
+[Unreleased]: https://github.com/example/project/commits/main

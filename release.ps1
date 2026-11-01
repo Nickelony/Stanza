@@ -5,12 +5,14 @@
 
 .DESCRIPTION
 	Preserves each file's line endings. A changelog section that already exists is reported and left unchanged.
+	The changelog gets the new section under an empty `## [Unreleased]` heading, and the link references of both versions.
 	A prerelease leaves the release tracking files alone, because the release tracking analyzer refuses a suffix in a release heading.
 	Fails when a file is missing, -Version or -Date is invalid, a write fails, or any of these holds:
 	- AnalyzerReleases.Shipped.md already has a section for the version.
 	- AnalyzerReleases.Unshipped.md has no `###` section.
 	- AnalyzerReleases.Unshipped.md has no rule rows, unless `-AllowNoRules` is set.
 	- CHANGELOG.md has neither a section for the version nor a `## [Unreleased]` heading.
+	- CHANGELOG.md has no `[Unreleased]:` link reference to build the version links from.
 	- The working tree has uncommitted changes.
 
 .PARAMETER Version
@@ -23,7 +25,7 @@
 	Allows an empty analyzer release section.
 
 .EXAMPLE
-	./release.ps1 -Version 1.0.0
+	./release.ps1 -Version 0.9.0
 #>
 [CmdletBinding()]
 param(
@@ -46,6 +48,10 @@ $unshippedPath = Join-Path $analyzerDirectory 'AnalyzerReleases.Unshipped.md'
 $changelogPath = Join-Path $repoRoot 'CHANGELOG.md'
 
 $ruleRow = '^\s*ZA\d{4}\s*\|'
+
+# The workflow finds the same headings with the same patterns, so a heading this script accepts is one the workflow accepts.
+. (Join-Path $repoRoot '.github/scripts/Get-ChangelogHeadingPattern.ps1')
+. (Join-Path $repoRoot '.github/scripts/Get-TrackingHeadingPattern.ps1')
 
 # Returns the line ending the file uses beside its lines, so a write can keep it.
 function Read-TextLines {
@@ -99,12 +105,65 @@ function Remove-TrailingBlankLines {
 	return $(if ($end -eq 0) { @() } else { @($Lines[0..($end - 1)]) })
 }
 
+# Retitles the Unreleased section for the version, opens an empty Unreleased section above it and writes the links of both versions.
+# The links are the ones the release workflow checks: the version links its compare range from the last release, or its tag for the first.
+function Add-ChangelogRelease {
+	param(
+		# Not mandatory, because a mandatory parameter refuses a collection that holds an empty line.
+		[System.Collections.Generic.List[string]] $Lines,
+
+		[Parameter(Mandatory = $true)]
+		[string] $Version,
+
+		[Parameter(Mandatory = $true)]
+		[string] $Date
+	)
+
+	$headingIndex = -1
+	$linkIndex = -1
+
+	for ($index = 0; $index -lt $Lines.Count; $index++) {
+		if ($headingIndex -lt 0 -and $Lines[$index] -match '^##\s*\[Unreleased\]\s*$') {
+			$headingIndex = $index
+		}
+		elseif ($linkIndex -lt 0 -and $Lines[$index] -match '^\[Unreleased\]:\s*(?<base>https://github\.com/[^/\s]+/[^/\s]+)/(?<target>\S+)\s*$') {
+			$linkIndex = $index
+			$base = $Matches['base']
+			$target = $Matches['target']
+		}
+	}
+
+	if ($headingIndex -lt 0) {
+		throw "CHANGELOG.md carries neither a section for $Version nor a '## [Unreleased]' heading, so there is nothing to retitle."
+	}
+
+	if ($linkIndex -lt 0) {
+		throw "CHANGELOG.md carries no '[Unreleased]:' link reference, so the links of $Version cannot be written."
+	}
+
+	# The Unreleased link of a changelog that has released before names the last release; before the first release it names no tag.
+	$previous = if ($target -match '^compare/v(?<previous>\S+)\.\.\.HEAD$') { $Matches['previous'] } else { $null }
+
+	$versionLink = if ($null -eq $previous) { "$base/releases/tag/v${Version}" } else { "$base/compare/v${previous}...v${Version}" }
+
+	$Lines[$linkIndex] = "[Unreleased]: $base/compare/v${Version}...HEAD"
+	$Lines.Insert($linkIndex + 1, "[$Version]: $versionLink")
+
+	# A link above the heading pushed the heading down by the line it gained.
+	if ($linkIndex -lt $headingIndex) {
+		$headingIndex++
+	}
+
+	$Lines.Insert($headingIndex + 1, '')
+	$Lines.Insert($headingIndex + 2, "## [$Version] - $Date")
+}
+
 # The workflow reads the pushed tag with the same script, so a version this script accepts is one the workflow accepts.
 try {
 	$null = & (Join-Path $repoRoot '.github/scripts/Get-ReleaseVersion.ps1') -Tag "v$Version"
 }
 catch {
-	throw "'$Version' is not a version. Pass the version of the tag that will be pushed, for example 1.0.0."
+	throw "'$Version' is not a version. Pass the version of the tag that will be pushed, for example 0.9.0."
 }
 
 if ($Date -notmatch '^\d{4}-\d{2}-\d{2}$') {
@@ -136,7 +195,7 @@ $prerelease = $Version.Contains('-')
 # --- the release tracking files --------------------------------------------------------------------
 
 if (-not $prerelease) {
-	if (@($shipped.Lines | Where-Object { $_ -match "^## Release $([regex]::Escape($Version))\s*$" }).Count -gt 0) {
+	if (@($shipped.Lines | Where-Object { $_ -match (Get-TrackingHeadingPattern -Version $Version) }).Count -gt 0) {
 		throw "AnalyzerReleases.Shipped.md already carries a '## Release $Version' section, so its rule rows have been moved already."
 	}
 
@@ -219,25 +278,13 @@ if (-not $prerelease) {
 
 $writeChangelog = $false
 
-if (@($changelog.Lines | Where-Object { $_ -match "^##\s*\[$([regex]::Escape($Version))\]" }).Count -gt 0) {
+if (@($changelog.Lines | Where-Object { $_ -match (Get-ChangelogHeadingPattern -Version $Version) }).Count -gt 0) {
 	$changelogNote = "CHANGELOG.md already carries a section for $Version, so it was left untouched"
 }
 else {
-	$headingIndex = -1
+	Add-ChangelogRelease -Lines $changelog.Lines -Version $Version -Date $Date
 
-	for ($index = 0; $index -lt $changelog.Lines.Count; $index++) {
-		if ($changelog.Lines[$index] -match '^##\s*\[Unreleased\]\s*$') {
-			$headingIndex = $index
-			break
-		}
-	}
-
-	if ($headingIndex -lt 0) {
-		throw "CHANGELOG.md carries neither a section for $Version nor a '## [Unreleased]' heading, so there is nothing to retitle."
-	}
-
-	$changelog.Lines[$headingIndex] = "## [$Version] - $Date"
-	$changelogNote = "'## [Unreleased]' is now '## [$Version] - $Date'"
+	$changelogNote = "'## [Unreleased]' is now '## [$Version] - $Date' under a new empty '## [Unreleased]', and the links of both versions are written"
 	$writeChangelog = $true
 }
 
@@ -257,6 +304,9 @@ try {
 
 	if ($writeChangelog) {
 		Write-TextLines -Path $changelogPath -Lines $changelog.Lines -NewLine $changelog.NewLine
+
+		# The workflow runs the same script once the tag is pushed, so a file that passes here passes there.
+		& (Join-Path $repoRoot '.github/scripts/Assert-ChangelogReleased.ps1') -Version $Version -Path $changelogPath
 	}
 }
 catch {
@@ -293,7 +343,16 @@ else {
 Write-Host ''
 Write-Host "==> CHANGELOG.md" -ForegroundColor Cyan
 Write-Host "    $changelogNote"
-Write-Host '    the version link references at the bottom of the file are maintained by hand: check them before the tag'
+
+if ($writeChangelog -eq $false) {
+	# A section left as written may lack the heading or the links, which the workflow refuses after the tag is pushed.
+	try {
+		& (Join-Path $repoRoot '.github/scripts/Assert-ChangelogReleased.ps1') -Version $Version -Path $changelogPath
+	}
+	catch {
+		Write-Host "    $($_.Exception.Message)" -ForegroundColor Yellow
+	}
+}
 
 Write-Host ''
 Write-Host 'Nothing was committed and nothing was tagged: review the diff with `git diff`, commit it, publish the wiki and push the tag.' -ForegroundColor Yellow

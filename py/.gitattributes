@@ -1,0 +1,4 @@
+* text eol=lf
+
+# LICENSE is a copy of the root file, which the checkout writes with CRLF.
+LICENSE text eol=crlf

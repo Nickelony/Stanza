@@ -64,10 +64,7 @@ internal static class DocCommentAnalysis
 
 	public static void ReportPadding(SyntaxTreeAnalysisContext context, CompilationOptions compilationOptions, DiagnosticDescriptor descriptor)
 	{
-		var options = StanzaOptions.From(context.Options, context.Tree);
-		var scope = new RuleScope(compilationOptions, context.Tree, context.CancellationToken);
-
-		StanzaRule rule = StanzaRules.Get(descriptor);
+		var pass = new RulePass(context, compilationOptions, descriptor);
 
 		ForEachDocComment(
 			context,
@@ -78,10 +75,11 @@ internal static class DocCommentAnalysis
 				// The break is where that rule reports, so its state is read there rather than at the member.
 				if (
 					DocCommentSyntax.FindParagraphBreak(comment) is { } paragraphBreak
-					&& !StanzaRuleState.IsOffAt(
-						scope,
-						options,
-						rule: rule.GetDeferral(DiagnosticDescriptors.MarkDocumentationParagraphs),
+					&& StanzaRuleState.IsRequiredDeferralOnAt(
+						scope: pass.Scope,
+						options: pass.Options,
+						rule: pass.Rule,
+						target: DiagnosticDescriptors.MarkDocumentationParagraphs,
 						position: paragraphBreak.Start
 					)
 				)
@@ -94,12 +92,9 @@ internal static class DocCommentAnalysis
 		);
 	}
 
-	public static void ReportNullKeywords(SyntaxTreeAnalysisContext context, CompilationOptions compilationOptions, DiagnosticDescriptor descriptor)
+	public static void ReportKeywords(SyntaxTreeAnalysisContext context, CompilationOptions compilationOptions, DiagnosticDescriptor descriptor)
 	{
-		var options = StanzaOptions.From(context.Options, context.Tree);
-		var scope = new RuleScope(compilationOptions, context.Tree, context.CancellationToken);
-
-		StanzaRule rule = StanzaRules.Get(descriptor);
+		var pass = new RulePass(context, compilationOptions, descriptor);
 
 		ForEachDocComment(
 			context,
@@ -107,24 +102,19 @@ internal static class DocCommentAnalysis
 			(trivia, comment) =>
 			{
 				// The shape of the tag changes the text the keyword becomes, not where it stands.
-				if (DocCommentEdits.CreateNullKeywordEdits(comment, spacedSlash: false) is not { Count: > 0 } keywords)
+				if (DocCommentEdits.CreateKeywordEdits(comment, spacedSlash: false, pass.Options.Markup.Langwords) is not { Count: > 0 } keywords)
 					return;
 
-				// A null keyword takes the self-closing shape of whichever half owns the tag gap here;
+				// A keyword takes the self-closing shape of whichever half owns the tag gap here;
 				// a pragma over the member can hand that gap to the other half.
-				bool spaced = !StanzaRuleState.OwnsTheSharedGap(
-					scope,
-					options,
-					rule: rule.GetDeferral(DiagnosticDescriptors.KeepSlashOfSelfClosingTagTight),
-					position: trivia.FullSpan.Start
-				);
+				bool spaced = !pass.OwnsTightSlash(trivia);
 
 				ReportEach(
 					context,
 					descriptor,
 					trivia,
 					spans: [.. keywords.Select(static edit => edit.Anchor)],
-					fixOptions: new FixOptions(SpacedSlash: spaced)
+					fixOptions: new FixOptions(SpacedSlash: spaced, Keywords: pass.Options.Markup.Langwords)
 				);
 			}
 		);
@@ -132,22 +122,14 @@ internal static class DocCommentAnalysis
 
 	public static void ReportEmptyElements(SyntaxTreeAnalysisContext context, CompilationOptions compilationOptions, DiagnosticDescriptor descriptor)
 	{
-		var options = StanzaOptions.From(context.Options, context.Tree);
-		var scope = new RuleScope(compilationOptions, context.Tree, context.CancellationToken);
-
-		StanzaRule rule = StanzaRules.Get(descriptor);
+		var pass = new RulePass(context, compilationOptions, descriptor);
 
 		ForEachDocComment(
 			context,
 
 			(trivia, comment) =>
 			{
-				bool spaced = !StanzaRuleState.OwnsTheSharedGap(
-					scope,
-					options,
-					rule: rule.GetDeferral(DiagnosticDescriptors.KeepSlashOfSelfClosingTagTight),
-					position: trivia.FullSpan.Start
-				);
+				bool spaced = !pass.OwnsTightSlash(trivia);
 
 				ImmutableArray<TextChange> changes = DocCommentEdits.CreateEmptyElement(comment, spaced, context.CancellationToken);
 
@@ -159,6 +141,25 @@ internal static class DocCommentAnalysis
 					fixOptions: new FixOptions(SpacedSlash: spaced)
 				);
 			}
+		);
+	}
+
+	public static void ReportMissingCapitals(SyntaxTreeAnalysisContext context, DiagnosticDescriptor descriptor)
+	{
+		// The keywords the file lists keep their first letter, so the keyword rule still finds them.
+		MarkupNameSet? keywords = StanzaOptions.From(context.Options, context.Tree).Markup.Langwords;
+
+		ForEachDocComment(
+			context,
+
+			(trivia, comment) =>
+				ReportEach(
+					context,
+					descriptor,
+					trivia,
+					spans: [.. DocCommentEdits.CreateCapitalEdits(comment, keywords).Select(static edit => edit.Anchor)],
+					fixOptions: new FixOptions(Keywords: keywords)
+				)
 		);
 	}
 
@@ -186,10 +187,7 @@ internal static class DocCommentAnalysis
 		bool spaced
 	)
 	{
-		var options = StanzaOptions.From(context.Options, context.Tree);
-		var scope = new RuleScope(compilationOptions, context.Tree, context.CancellationToken);
-
-		StanzaRule rule = StanzaRules.Get(descriptor);
+		var pass = new RulePass(context, compilationOptions, descriptor);
 
 		ForEachDocComment(
 			context,
@@ -204,7 +202,7 @@ internal static class DocCommentAnalysis
 
 					// A gap without a line break that is neither one space nor none changes under both halves, so ownership picks the half that reports it.
 					// When the owner is off at this tag, the other half reports the gap, but only when the file enables a half of the pair.
-					if (StanzaRuleState.OwnsTheSharedGap(scope, options, rule, position: edit.Change.Span.Start))
+					if (StanzaRuleState.IsTheOwningHalf(scope: pass.Scope, options: pass.Options, rule: pass.Rule, position: edit.Change.Span.Start))
 						slashes.Add(edit.Anchor);
 				}
 
@@ -236,16 +234,12 @@ internal static class DocCommentAnalysis
 
 	public static void ReportListLayout(SyntaxTreeAnalysisContext context, CompilationOptions compilationOptions, DiagnosticDescriptor descriptor)
 	{
-		SyntaxTree tree = context.Tree;
+		var pass = new RulePass(context, compilationOptions, descriptor);
 
-		var options = StanzaOptions.From(context.Options, tree);
-		var scope = new RuleScope(compilationOptions, context.Tree, context.CancellationToken);
-
-		if (options.DocLayout is null)
+		if (pass.Options.DocLayout is null)
 			return;
 
-		StanzaRule rule = StanzaRules.Get(descriptor);
-		SourceText sourceText = tree.GetText(context.CancellationToken);
+		SourceText sourceText = context.Tree.GetText(context.CancellationToken);
 
 		ForEachDocComment(
 			context,
@@ -255,7 +249,7 @@ internal static class DocCommentAnalysis
 				if (DocCommentLines.FindCommentPrefix(sourceText, trivia) is not { } prefix)
 					return;
 
-				DocLayoutOptions layout = BuildDocLayout(options, sourceText.ToString(prefix), DocCommentSyntax.GetDelimiters(comment));
+				DocLayoutOptions layout = BuildDocLayout(pass.Options, sourceText.ToString(prefix), DocCommentSyntax.GetDelimiters(comment));
 
 				// A comment with no list has nothing to report, so the layout that would own it is never run for it.
 				if (
@@ -268,7 +262,7 @@ internal static class DocCommentAnalysis
 
 				// The layout rule, or the paragraph rule for a comment with a paragraph break, writes a list with its comment.
 				// This rule reports a list only where that rule does not lay the comment out.
-				if (!LayoutDeclines(sourceText, trivia) && CommentRulesOwnTheComment(scope, options, rule, trivia, comment, layout))
+				if (!LayoutDeclines(sourceText, trivia) && CommentRulesOwnTheComment(pass, trivia, comment, layout))
 					return;
 
 				ReportEach(
@@ -392,14 +386,12 @@ internal static class DocCommentAnalysis
 	private static DocLayoutOptions BuildDocLayout(StanzaOptions options, string indentation, DocCommentDelimiters delimiters)
 	{
 		// The caller has already refused a file whose width key turned the layout off.
-		return options.DocLayout!.Value.NarrowBy(MarkupColumns.GetColumns(indentation, options.TabColumns) + delimiters.MarkerWidth);
+		return options.DocLayout!.Value.NarrowBy(TextColumns.GetColumns(indentation, options.TabColumns) + delimiters.MarkerWidth);
 	}
 
 	/// <summary>Whether the layout rule or the paragraph rule writes the comment.</summary>
 	private static bool CommentRulesOwnTheComment(
-		RuleScope scope,
-		StanzaOptions options,
-		StanzaRule rule,
+		RulePass pass,
 		SyntaxTrivia trivia,
 		DocumentationCommentTriviaSyntax comment,
 		DocLayoutOptions layout
@@ -415,7 +407,26 @@ internal static class DocCommentAnalysis
 			? DiagnosticDescriptors.MarkDocumentationParagraphs
 			: DiagnosticDescriptors.LayOutDocumentationComment;
 
-		return !StanzaRuleState.IsOffAt(scope, options, rule: rule.GetDeferral(owner), position)
+		return StanzaRuleState.IsRequiredDeferralOnAt(scope: pass.Scope, options: pass.Options, rule: pass.Rule, target: owner, position)
 			&& DocCommentEdits.WriteLines(comment, layout, markParagraphs) is not null;
+	}
+
+	/// <summary>The options, scope and rule one pass reads at each comment, held in a struct.</summary>
+	private readonly struct RulePass(SyntaxTreeAnalysisContext context, CompilationOptions compilationOptions, DiagnosticDescriptor descriptor)
+	{
+		public StanzaOptions Options { get; } = StanzaOptions.From(context.Options, context.Tree);
+		public RuleScope Scope { get; } = new(compilationOptions, context.Tree, context.CancellationToken);
+		public StanzaRule Rule { get; } = StanzaRules.Get(descriptor);
+
+		/// <summary>Whether the half that keeps the slash tight owns the tag gap at the comment.</summary>
+		public bool OwnsTightSlash(SyntaxTrivia trivia)
+		{
+			return StanzaRuleState.IsTheOwningHalf(
+				scope: Scope,
+				options: Options,
+				rule: Rule.GetDeferral(DiagnosticDescriptors.KeepSlashOfSelfClosingTagTight),
+				position: trivia.FullSpan.Start
+			);
+		}
 	}
 }

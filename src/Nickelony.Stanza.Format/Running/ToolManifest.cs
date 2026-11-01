@@ -13,9 +13,10 @@ internal sealed record ToolManifest(string? CSharpierVersion, bool HasMarkup, bo
 {
 	public bool HasCSharpier => CSharpierVersion is not null;
 
-	/// <summary>A CSharpier this old lacks the <c>format</c> and <c>check</c> commands a run calls.</summary>
+	/// <summary>A CSharpier older than the floor lacks the commands or the MsBuild report shape a run reads.</summary>
 	/// <seealso href="https://github.com/Nickelony/Stanza/wiki/Format-command-reference#layout"/>
-	public bool PinsOldCSharpier => CSharpierVersion?.StartsWith("0.", StringComparison.Ordinal) == true;
+	public bool PinsOldCSharpier =>
+		CSharpierVersion is { } version && Version.TryParse(StripSuffix(version), out Version? parsed) && parsed < s_oldestCSharpier;
 
 	/// <summary>Reads the manifests of the directory and its parents, each tool from the nearest listing.</summary>
 	/// <remarks>
@@ -73,6 +74,11 @@ internal sealed record ToolManifest(string? CSharpierVersion, bool HasMarkup, bo
 
 		return new ToolManifest(CSharpierVersion: csharpierVersion, HasMarkup: hasMarkup, IsRoot: isRoot);
 	}
+
+	private static readonly Version s_oldestCSharpier = new(1, 1);
+
+	/// <summary>Drops the pre-release and build parts, which <see cref="Version"/> does not read.</summary>
+	private static string StripSuffix(string version) => version.Split('-', '+')[0];
 
 	/// <summary>Finds the manifests a directory holds, the one in <c>.config</c> first, as dotnet reads them.</summary>
 	private static string[] FindManifests(string directory)

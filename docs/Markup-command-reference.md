@@ -1,6 +1,7 @@
 # Markup command reference
 
 `stanza-markup` runs one command over the paths it is given. The block below is the output of `stanza-markup --help`.
+The [Markup](https://github.com/Nickelony/Stanza/wiki/Markup) page opens the rest of the tool's pages.
 
 ```text
 stanza-markup - keep the multi-line sibling elements of a markup document apart
@@ -49,9 +50,11 @@ Keys:            https://github.com/Nickelony/Stanza/wiki/Markup-configuration
 - A glob without a separator matches the file name in every directory.
 - `--exclude` takes the same globs, and a directory path or a glob ending in `/**` skips the whole subtree.
 - A command-line glob that the dialect refuses, or that matches no file, is an error, as a path that does not exist is.
+- An `--exclude` that the dialect refuses is an error too, and the run ends before it reads a file,
+  so a typo never lets `format` rewrite the files the exclude was meant to protect.
 - A glob whose matches are all excluded, disabled or claimed by no profile is a warning.
-- A directory scan or a glob skips every subdirectory named `.git`, `.hg`, `.svn`, `.vs`, `.idea`, `bin`, `obj` or `node_modules`,
-  whatever its case. A directory named on the command line is still scanned.
+- A directory scan or a glob skips every subdirectory named `.git`, `.hg`, `.svn`, `.vs`, `.idea`, `bin`, `obj`, `node_modules`,
+  `.venv`, `venv`, `__pycache__` or `dist`, whatever its case. A directory named on the command line is still scanned.
 - [Markup behavior](https://github.com/Nickelony/Stanza/wiki/Markup-behavior#what-it-leaves-alone) says how a scan treats a link.
 - [Markup globs](https://github.com/Nickelony/Stanza/wiki/Markup-globs) lists the refused forms and limits, escaping, how a root and `./` read, and what a plain name excludes.
 
@@ -64,6 +67,7 @@ Keys:            https://github.com/Nickelony/Stanza/wiki/Markup-configuration
   a second use of either is a command-line error, whichever way it is written.
 - No other option takes a value with an equals sign.
 - `--format msbuild` applies only to `check`, and an unknown format is a command-line error.
+- An unknown `--profile` name is a command-line error that lists the known profiles.
 - `--reprint` leaves a member body the layout cannot read as written.
 - `--strict` makes an error of each [warning](https://github.com/Nickelony/Stanza/wiki/Markup-behavior#failures-and-warnings),
   and never of a note.
@@ -89,6 +93,7 @@ Keys:            https://github.com/Nickelony/Stanza/wiki/Markup-configuration
 
 - `format` prints `formatted <path>` for each file it writes, then `N file(s) formatted.`
 - `check` prints `needs formatting: <path>` for each file, then `N file(s) need formatting.`
+- A run that finds no file to change prints no count line.
 - Paths are relative to the working directory, with forward slashes; a file outside it shows its full path.
   A control, format or separator character in a name, such as a line break or U+2028, is written as its code, `\x0A` or `\x2028`,
   so each report stays on one line.
@@ -96,7 +101,7 @@ Keys:            https://github.com/Nickelony/Stanza/wiki/Markup-configuration
   so text it quotes from a file cannot send an escape sequence to the terminal.
 - Notes, warnings and errors go to standard error, as `note: <message>`, `warning: <message>` or `error: <message>` lines.
   A problem on a line of an `.editorconfig` reads `warning: <path>(<line>): <message>`.
-- Under `--format msbuild` they go to standard output with the diagnostics, `ZA0100` included.
+- Under `--format msbuild` they go to standard output with the diagnostics, `ZA2901` included.
   A warning reads `stanza-markup : warning : <message>`,
   or `<path> : warning : <message>` when it is about a file or a directory,
   and `<path>(<line>,1): warning : <message>` for a line of an `.editorconfig`.
@@ -110,13 +115,13 @@ Keys:            https://github.com/Nickelony/Stanza/wiki/Markup-configuration
 line and column. The output has this shape, for example:
 
 ```text
-src/Parts/Layout.xml(12,1): warning ZA0101: Add a blank line before this element
+src/Parts/Layout.xml(12,1): warning ZA2001: Add a blank line before this element
 ```
 
-The ID is that of the [markup rule](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Analyzers/README.md#markup-in-raw-strings) that owns the finding,
+The ID is that of the [markup rule](https://github.com/Nickelony/Stanza/wiki/Markup-behavior#what-it-changes) that owns the finding,
 and every finding is a `warning` whatever severity the file sets for that rule.
-A file that could not be read or parsed is reported as [`ZA0100`](https://github.com/Nickelony/Stanza/wiki/ZA0100-Report-a-file-that-could-not-be-read-or-parsed),
-which is reported even when the spacing rules are disabled. The [reprint](https://github.com/Nickelony/Stanza/wiki/Terms) of a member body is [`ZA0106`](https://github.com/Nickelony/Stanza/wiki/ZA0106-Reprint-the-body-of-a-documentation-member).
+A file that could not be read or parsed is reported as [`ZA2901`](https://github.com/Nickelony/Stanza/wiki/ZA2901-Report-a-file-that-could-not-be-read-or-parsed),
+which is reported even when the spacing rules are disabled. The [reprint](https://github.com/Nickelony/Stanza/wiki/Terms) of a member body is [`ZA2902`](https://github.com/Nickelony/Stanza/wiki/ZA2902-Reprint-the-body-of-a-documentation-member).
 
 ## Running it in a build
 

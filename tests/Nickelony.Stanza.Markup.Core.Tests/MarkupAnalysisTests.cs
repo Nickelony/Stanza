@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nickelony.Stanza.Markup.Core.Options;
 using Nickelony.Stanza.Markup.Core.Xml;
 
 namespace Nickelony.Stanza.Markup.Core.Tests;
@@ -53,6 +54,129 @@ public sealed class MarkupAnalysisTests
 
 		Assert.AreEqual(MarkupDiagnostics.KeepSingleLineMarkupElementsTogetherId, removal.Id);
 		Assert.AreEqual(0, removal.KeptBlankLines);
+	}
+
+	[TestMethod]
+	public void ACommentAboveASingleLineNeighborGetsACommentedGapAtTheFirstLineOfTheComment()
+	{
+		MarkupFindings findings = Measure(
+			"<root>\n  <a>1</a>\n  <!-- one -->\n  <!-- two -->\n  <b>2</b>\n</root>"
+		);
+
+		Assert.AreEqual(
+			new MarkupGap(PreviousEndLineIndex: 1, NextStartLineIndex: 2),
+			Assert.ContainsSingle(findings.CommentedGaps)
+		);
+
+		Assert.IsEmpty(findings.Gaps);
+		Assert.IsEmpty(findings.Removals);
+	}
+
+	[TestMethod]
+	public void ACommentedGapStaysWithTheMultiLineRuleBesideAMultiLineNeighbor()
+	{
+		MarkupFindings findings = Measure(
+			"<root>\n  <a>1</a>\n  <!-- one -->\n  <b>\n    2\n  </b>\n</root>"
+		);
+
+		Assert.IsEmpty(findings.CommentedGaps);
+		Assert.AreEqual(new MarkupGap(1, 2), Assert.ContainsSingle(findings.Gaps));
+	}
+
+	[TestMethod]
+	[DataRow("<root>\n  <!-- one -->\n  <a>1</a>\n</root>", "the first child")]
+	[DataRow("<root>\n  <a>1</a>\n\n  <!-- one -->\n  <b>2</b>\n</root>", "a blank line")]
+	[DataRow("<root>\n  <a>1</a> <!-- one -->\n  <b>2</b>\n</root>", "a trailing comment")]
+	[DataRow("<root>\n  <a>1</a>\n  <!-- one -->\n\n  <b>2</b>\n</root>", "a detached comment")]
+	[DataRow("<root>\n  <a>1</a>\n  <!-- one --> <b>2</b>\n</root>", "a comment on the line")]
+	[DataRow("<root>\n  <a>1</a>\n  <b>2</b>\n</root>", "no comment")]
+	public void NoCommentedGapStandsWhereTheBlankLineIsNotMissing(string markup, string name) =>
+		Assert.IsEmpty(Measure(markup).CommentedGaps, name);
+
+	[TestMethod]
+	public void ACommentOnItsOwnLineBelowATrailingCommentGetsACommentedGap()
+	{
+		MarkupFindings findings = Measure(
+			"<root>\n  <a>1</a> <!-- one -->\n  <!-- two -->\n  <b>2</b>\n</root>"
+		);
+
+		Assert.AreEqual(
+			new MarkupGap(PreviousEndLineIndex: 1, NextStartLineIndex: 2),
+			Assert.ContainsSingle(findings.CommentedGaps)
+		);
+	}
+
+	[TestMethod]
+	public void AWrappedLeafGetsNoCommentedGapUnderEitherScope()
+	{
+		const string markup = "<root>\n  <a>1</a>\n  <!-- one -->\n  <b\n    x=\"1\" />\n</root>";
+
+		MarkupOptions containers = s_defaults with
+		{
+			Policy = new MarkupPolicy(ContainersOnly: true),
+		};
+
+		Assert.IsEmpty(Measure(markup).CommentedGaps);
+		Assert.IsEmpty(Measure(markup, containers).CommentedGaps);
+	}
+
+	[TestMethod]
+	public void AMemberTheReprintOwnsGetsNoCommentedGap()
+	{
+		const string markup =
+			"<doc>\n  <member name=\"M\">\n    <a>1</a>\n    <!-- one -->\n    <b>2</b>\n  </member>\n</doc>";
+
+		Assert.IsNotEmpty(Measure(markup).CommentedGaps);
+		Assert.IsEmpty(Measure(markup, s_defaults, skipsMembers: true).CommentedGaps);
+	}
+
+	[TestMethod]
+	public void ABlankLineAboveACommentGoesToTheSingleLineTightRuleWhereTheCommentedRuleIsEnabled()
+	{
+		const string markup = "<root>\n  <a>1</a>\n\n  <!-- one -->\n  <b>2</b>\n</root>";
+
+		MarkupOptions both = s_defaults with
+		{
+			Rules = MarkupRuleSet.From([
+				MarkupDiagnostics.KeepSingleLineMarkupElementsTogetherId,
+				MarkupDiagnostics.SeparateCommentedMarkupElementId,
+			]),
+		};
+
+		MarkupRemoval removal = Assert.ContainsSingle(Measure(markup, both).Removals);
+
+		Assert.AreEqual(MarkupDiagnostics.KeepSingleLineMarkupElementsTogetherId, removal.Id);
+		Assert.AreEqual(0, removal.KeptBlankLines);
+	}
+
+	[TestMethod]
+	public void ACommentedGapStandsNoLongerWhereTheSingleLineTightRuleIsEnabled()
+	{
+		const string markup = "<root>\n  <a>1</a>\n  <!-- one -->\n  <b>2</b>\n</root>";
+
+		MarkupOptions tight = s_defaults with
+		{
+			Rules = MarkupRuleSet.From([MarkupDiagnostics.KeepSingleLineMarkupElementsTogetherId]),
+		};
+
+		Assert.IsNotEmpty(Measure(markup).CommentedGaps);
+		Assert.IsEmpty(Measure(markup, tight).CommentedGaps);
+	}
+
+	[TestMethod]
+	public void ARunAboveACommentIsCutBackToTheCapWhereOnlyTheCommentedRuleIsEnabled()
+	{
+		const string markup = "<root>\n  <a>1</a>\n\n\n\n  <!-- one -->\n  <b>2</b>\n</root>";
+
+		MarkupOptions commented = s_defaults with
+		{
+			Rules = MarkupRuleSet.From([MarkupDiagnostics.SeparateCommentedMarkupElementId]),
+		};
+
+		MarkupRemoval cut = Assert.ContainsSingle(Measure(markup, commented).Removals);
+
+		Assert.AreEqual(MarkupDiagnostics.CollapseExtraBlankLinesBetweenMarkupElementsId, cut.Id);
+		Assert.AreEqual(1, cut.KeptBlankLines);
 	}
 
 	[TestMethod]

@@ -6,19 +6,20 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
+using Nickelony.Stanza.Markup.Core.Options;
 
 namespace Nickelony.Stanza.Analyzers.Bodies;
 
 /// <summary>Converts a member body between block and expression forms, and reports a multi-line one.</summary>
 internal static class BodyConversion
 {
-	private static bool MatchesTrigger(MultiLineTrigger trigger, bool signature, bool body)
+	private static bool MatchesMemberPart(MultiLineMemberPart part, bool signature, bool body)
 	{
-		return trigger switch
+		return part switch
 		{
-			MultiLineTrigger.Body => body,
-			MultiLineTrigger.Signature => signature,
-			MultiLineTrigger.Both => signature && body,
+			MultiLineMemberPart.Body => body,
+			MultiLineMemberPart.Signature => signature,
+			MultiLineMemberPart.Both => signature && body,
 			_ => signature || body,
 		};
 	}
@@ -55,7 +56,7 @@ internal static class BodyConversion
 			}
 		}
 
-		return StanzaText.IsWhitespaceOnly(sourceText, TextSpan.FromBounds(line.Start, lineStart));
+		return StanzaText.StartsItsLine(sourceText, lineStart);
 	}
 
 	private static bool HasReadableBodyIndentation(SourceText sourceText, ExpressionBodyTarget target, int indentStepColumns)
@@ -64,16 +65,16 @@ internal static class BodyConversion
 		return TryFindBodyIndentation(sourceText, target, memberIndentation, indentStepColumns, bodyIndentation: out _);
 	}
 
-	private static ImmutableArray<Location> GetCulpritLocations(ExpressionBodyTarget target, MultiLineTrigger trigger, bool bodyMultiLine)
+	private static ImmutableArray<Location> GetCulpritLocations(ExpressionBodyTarget target, MultiLineMemberPart part, bool bodyMultiLine)
 	{
 		var signatureLocation = Location.Create(target.Expression.SyntaxTree, target.SignatureSpan);
 		Location bodyLocation = target.Expression.GetLocation();
 
-		return trigger switch
+		return part switch
 		{
-			MultiLineTrigger.Body => [bodyLocation],
-			MultiLineTrigger.Signature => [signatureLocation],
-			MultiLineTrigger.Both => [signatureLocation, bodyLocation],
+			MultiLineMemberPart.Body => [bodyLocation],
+			MultiLineMemberPart.Signature => [signatureLocation],
+			MultiLineMemberPart.Both => [signatureLocation, bodyLocation],
 			_ => [bodyMultiLine ? bodyLocation : signatureLocation],
 		};
 	}
@@ -97,7 +98,7 @@ internal static class BodyConversion
 		bool signature = BodyTargets.IsSignatureMultiLine(target);
 		bool body = BodyTargets.IsBodyMultiLine(target);
 
-		if (!MatchesTrigger(options.MultiLineTrigger, signature, body))
+		if (!MatchesMemberPart(options.MultiLineMemberPart, signature, body))
 			return;
 
 		SourceText sourceText = context.Node.SyntaxTree.GetText(context.CancellationToken);
@@ -110,7 +111,7 @@ internal static class BodyConversion
 			Diagnostic.Create(
 				descriptor,
 				location: target.Arrow.GetLocation(),
-				additionalLocations: GetCulpritLocations(target, options.MultiLineTrigger, body),
+				additionalLocations: GetCulpritLocations(target, options.MultiLineMemberPart, body),
 				properties: new FixOptions(IndentStepColumns: options.IndentStepColumns).ToProperties()
 			)
 		);
@@ -195,32 +196,46 @@ internal static class BodyConversion
 		SyntaxToken semicolon = target.Statement.GetLastToken();
 
 		bool signatureIsClean = target.AccessorList is { } accessorList
-			? IsWhitespaceBetween(sourceText, target.SignatureSpan.End, accessorList.OpenBraceToken.SpanStart)
-				&& IsWhitespaceBetween(sourceText, accessorList.OpenBraceToken.Span.End, accessorList.Accessors[0].Keyword.SpanStart)
-				&& IsWhitespaceBetween(sourceText, accessorList.Accessors[0].Keyword.Span.End, target.Block.OpenBraceToken.SpanStart)
-			: IsWhitespaceBetween(sourceText, target.SignatureSpan.End, target.Block.OpenBraceToken.SpanStart);
+			? StanzaText.IsWhitespaceOnly(sourceText, target.SignatureSpan.End, accessorList.OpenBraceToken.SpanStart)
+				&& StanzaText.IsWhitespaceOnly(sourceText, accessorList.OpenBraceToken.Span.End, accessorList.Accessors[0].Keyword.SpanStart)
+				&& StanzaText.IsWhitespaceOnly(sourceText, accessorList.Accessors[0].Keyword.Span.End, target.Block.OpenBraceToken.SpanStart)
+			: StanzaText.IsWhitespaceOnly(sourceText, target.SignatureSpan.End, target.Block.OpenBraceToken.SpanStart);
 
 		bool closeIsClean =
-			target.AccessorList is null || IsWhitespaceBetween(sourceText, target.Block.CloseBraceToken.Span.End, target.CloseBrace.SpanStart);
+			target.AccessorList is null
+			|| StanzaText.IsWhitespaceOnly(sourceText, target.Block.CloseBraceToken.Span.End, target.CloseBrace.SpanStart);
 
 		// Source that does not compile can place the semicolon before the expression it ends,
 		// which leaves no gap to measure; the comparison tells that shape apart from a clean statement.
-		return semicolon.SpanStart >= target.Expression.Span.End
-			&& signatureIsClean
-			&& IsWhitespaceBetween(sourceText, target.Block.OpenBraceToken.Span.End, target.Statement.SpanStart)
-			&& IsWhitespaceBetween(sourceText, target.Expression.Span.End, semicolon.SpanStart)
-			&& IsWhitespaceBetween(sourceText, semicolon.Span.End, target.Block.CloseBraceToken.SpanStart)
-			&& closeIsClean
-			&& (target.Keyword is not { } keyword || IsWhitespaceBetween(sourceText, keyword.Span.End, target.Expression.Span.Start));
+		if (semicolon.SpanStart < target.Expression.Span.End)
+			return false;
+
+		if (target.Expression is AssignmentExpressionSyntax { Left: var deconstructed } && DeclaresInDeconstruction(deconstructed))
+			return false;
+
+		bool statementIsClean =
+			StanzaText.IsWhitespaceOnly(sourceText, target.Block.OpenBraceToken.Span.End, target.Statement.SpanStart)
+			&& StanzaText.IsWhitespaceOnly(sourceText, target.Expression.Span.End, semicolon.SpanStart)
+			&& StanzaText.IsWhitespaceOnly(sourceText, semicolon.Span.End, target.Block.CloseBraceToken.SpanStart);
+
+		bool keywordIsClean =
+			target.Keyword is not { } keyword || StanzaText.IsWhitespaceOnly(sourceText, keyword.Span.End, target.Expression.Span.Start);
+
+		return signatureIsClean && statementIsClean && closeIsClean && keywordIsClean;
 	}
 
-	private static bool IsWhitespaceBetween(SourceText sourceText, int start, int end) => StanzaText.SkipWhitespace(sourceText, start, end) == end;
+	/// <summary>Whether a deconstruction declares a variable, which an arrow body cannot hold.</summary>
+	private static bool DeclaresInDeconstruction(ExpressionSyntax target)
+	{
+		return target is DeclarationExpressionSyntax
+			|| (target is TupleExpressionSyntax tuple && tuple.Arguments.Any(static argument => DeclaresInDeconstruction(argument.Expression)));
+	}
 
 	public static void ReportSingleLineBody(SyntaxNodeAnalysisContext context, StanzaOptions options, StanzaRule rule, bool valueShaped)
 	{
 		// A max line length below one gives these rules no width to measure against,
 		// so a member whose shape only the width decides keeps the shape the file wrote.
-		if (options.MaxLineLength <= 0)
+		if (!options.HasLineLimit)
 			return;
 
 		if (context.Node is not BlockSyntax block || BodyTargets.FindBlockTarget(block) is not { } target)
@@ -245,12 +260,12 @@ internal static class BodyConversion
 			return;
 
 		// After a broken arrow, CSharpier puts a `with` initializer and each clause of a query on lines of their own,
-		// so where the trigger counts the body, the block-body rule would ask for the block back.
+		// so where the member part setting counts the body, the block-body rule would ask for the block back.
 		// CanCollapse leaves only a signature that stands on one line.
 		if (
 			openOwnLine
 			&& target.Expression is WithExpressionSyntax or QueryExpressionSyntax
-			&& MatchesTrigger(options.MultiLineTrigger, signature: false, body: true)
+			&& MatchesMemberPart(options.MultiLineMemberPart, signature: false, body: true)
 		)
 		{
 			return;
@@ -264,30 +279,65 @@ internal static class BodyConversion
 				properties: new FixOptions(
 					IndentStepColumns: options.IndentStepColumns,
 					Placement: placement,
-					OpensOwnLine: openOwnLine
+					OpensOwnLine: openOwnLine,
+					SeparatesNeighbors: IsSeparatingNeighbors(scope: context, options, rule, target),
+					JoinsNeighbors: IsJoiningNeighbors(scope: context, options, rule, target)
 				).ToProperties()
 			)
 		);
 	}
 
-	public static ImmutableArray<TextChange> CreateExpressionBody(
-		SourceText sourceText,
-		BlockBodyTarget target,
-		ArrowPlacement placement,
-		bool openOwnLine,
-		int indentStepColumns
-	)
+	/// <summary>Whether the rule keeping multi-line accessors together judges the accessor.</summary>
+	/// <remarks>
+	/// That rule removes the blank lines beside it while it spans lines, and no rule would once it stops.
+	/// </remarks>
+	private static bool IsJoiningNeighbors(RuleScope scope, StanzaOptions options, StanzaRule rule, BlockBodyTarget target)
+	{
+		if (target.Owner is not AccessorDeclarationSyntax accessor || !StanzaSyntax.IsMultiLine(accessor))
+			return false;
+
+		StanzaRule joining = rule.GetDeferral(DiagnosticDescriptors.KeepMultiLineAccessorsTogether);
+		return SiblingGaps.IsSeparatingNeighbors(scope, options, separating: joining, unit: accessor);
+	}
+
+	/// <summary>Whether a rule for multi-line units judges the unit a collapse makes shorter.</summary>
+	private static bool IsSeparatingNeighbors(RuleScope scope, StanzaOptions options, StanzaRule rule, BlockBodyTarget target)
+	{
+		StanzaRule? separating = target.Owner switch
+		{
+			AccessorDeclarationSyntax => rule.GetDeferral(DiagnosticDescriptors.SeparateMultiLineAccessors),
+			MemberDeclarationSyntax or LocalFunctionStatementSyntax => rule.GetDeferral(DiagnosticDescriptors.SeparateMultiLineConstructs),
+			_ => null,
+		};
+
+		return SiblingGaps.IsSeparatingNeighbors(scope, options, separating, unit: target.Owner);
+	}
+
+	/// <summary>Creates the arrow body, and writes or removes the blank lines beside the member where asked.</summary>
+	/// <remarks>
+	/// The rule for multi-line units would write or remove them, so the fix order writes one text.
+	/// </remarks>
+	public static ImmutableArray<TextChange> CreateExpressionBody(SourceText sourceText, BlockBodyTarget target, FixOptions options)
 	{
 		if (!CanCollapse(sourceText, target))
 			return [];
 
-		return
-		[
-			new TextChange(
-				TextSpan.FromBounds(target.SignatureSpan.End, target.CloseBrace.Span.End),
-				BuildExpressionText(sourceText, target, placement, openOwnLine, indentStepColumns)
-			),
-		];
+		var collapse = new TextChange(
+			TextSpan.FromBounds(target.SignatureSpan.End, target.CloseBrace.Span.End),
+
+			BuildExpressionText(
+				sourceText,
+				target,
+				placement: options.Placement,
+				openOwnLine: options.OpensOwnLine,
+				indentStepColumns: options.IndentStepColumns
+			)
+		);
+
+		if (options.SeparatesNeighbors)
+			return SiblingGaps.WithSeparations(sourceText, units: [target.Owner], changes: [collapse], indentStepColumns: options.IndentStepColumns);
+
+		return options.JoinsNeighbors ? SiblingGaps.WithJoins(sourceText, target.Owner, [collapse]) : [collapse];
 	}
 
 	/// <summary>

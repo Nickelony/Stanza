@@ -1,12 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<TargetFramework>net8.0</TargetFramework>
-		<IsPackable>false</IsPackable>
-		<IsTestProject>true</IsTestProject>
-		<MSTestParallelizeScope>MethodLevel</MSTestParallelizeScope>
-
-		<!-- The settings stop a test that never ends, which the cooperative token of a harness run cannot. -->
-		<RunSettingsFilePath>$(MSBuildProjectDirectory)/../test.runsettings</RunSettingsFilePath>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -19,8 +13,10 @@
 
 	<ItemGroup>
 		<Compile Include="..\Shared\RepositoryPaths.cs" Link="RepositoryPaths.cs" />
+		<Compile Include="..\Shared\ChildBuild.cs" Link="ChildBuild.cs" />
 		<Compile Include="..\Shared\ChildProcess.cs" Link="ChildProcess.cs" />
 		<Compile Include="..\Shared\DotnetHost.cs" Link="DotnetHost.cs" />
 		<Compile Include="..\Shared\TempDirectory.cs" Link="TempDirectory.cs" />
+		<Compile Include="..\Shared\TestGit.cs" Link="TestGit.cs" />
 	</ItemGroup>
 </Project>

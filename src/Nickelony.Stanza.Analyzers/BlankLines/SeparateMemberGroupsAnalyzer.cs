@@ -9,29 +9,23 @@ internal sealed class SeparateMemberGroupsAnalyzer() : StanzaRuleAnalyzer(Stanza
 {
 	protected override void Analyze(SyntaxNodeAnalysisContext context)
 	{
-		ImmutableArray<SyntaxNode> siblings = StanzaSyntax.ReadSiblings(context.Node);
-
-		if (siblings.Length < 2)
+		if (!RequiredBlankLineAnalysis.TryReadContainer(context, rule: Rule, out ContainerContext container, out GapOwners gapOwners))
 			return;
 
-		var options = StanzaOptions.From(context.Options, context.Node.SyntaxTree);
-		GapOwners gapOwners = BlankLineOwnership.ReadGapOwners(context, options, Rule);
-
-		ImmutableHashSet<int> ownedBoundaries = BlankLineOwnership.ReadOwnedDeclarationRunBoundaries(
-			context,
-			options,
-			siblings,
-			rule: Rule,
-			gapOwners
+		ImmutableArray<int> boundaries = BlankLineGrouping.ReadBorderBoundaries(
+			BlankLineGrouping.ReadMemberGroupBorders(
+				siblings: container.Siblings,
+				gapOwners,
+				gathered: null,
+				cancellationToken: context.CancellationToken
+			)
 		);
 
-		BlankLineAnalysis.ReportGroupingBoundaries(
-			context,
-			options,
-			siblings,
-			boundaries: BlankLineGrouping.ReadMemberGroupBoundaries(siblings, gapOwners, cancellationToken: context.CancellationToken),
+		RequiredBlankLineAnalysis.ReportOwnedRunBoundaries(
+			container,
+			boundaries,
 			rule: Rule,
-			excludedBoundaries: ownedBoundaries
+			reader: new BlankLineOwnership.FamilyReader(container, rule: Rule, gapOwners, gathered: null)
 		);
 	}
 }

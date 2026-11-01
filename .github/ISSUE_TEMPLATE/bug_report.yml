@@ -22,7 +22,7 @@ body:
       label: Version
       description: >-
         The package version, or the output of the tool's `--version` (`dotnet <tool> --version` when the tool is installed locally).
-      placeholder: 1.0.0
+      placeholder: 0.9.0
     validations:
       required: true
 

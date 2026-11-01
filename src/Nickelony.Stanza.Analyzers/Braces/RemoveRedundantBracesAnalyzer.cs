@@ -26,8 +26,9 @@ internal sealed class RemoveRedundantBracesAnalyzer()
 
 		// One multi-line branch pins the whole chain to the braced shape, and so does an else that holds only an if,
 		// so the chain keeps one shape and the braced rule has nothing to restore.
+		// Where the option asks for no braces, that rule is off and nothing restores the braces, so only the else that holds an if pins.
 		if (
-			BraceTargets.HasMultiLineTarget(targets)
+			(options.PreferBraces is null && BraceTargets.HasMultiLineTarget(targets))
 			|| targets.Any(static target => target.Block is { } block && BraceTargets.IsElseHoldingAnIf(block))
 		)
 		{
@@ -37,18 +38,24 @@ internal sealed class RemoveRedundantBracesAnalyzer()
 		SourceText sourceText = context.Node.SyntaxTree.GetText(context.CancellationToken);
 		int tabColumns = options.TabColumns;
 
-		ImmutableArray<BlockSyntax> blocks = [.. targets.Select(static target => target.Block).OfType<BlockSyntax>()];
-		ImmutableArray<BlockSyntax> removable = [.. blocks.Where(block => !BraceEdits.CreateSafeBraceRemoval(sourceText, block, tabColumns).IsEmpty)];
+		ImmutableArray<BraceTarget> blocked = [.. targets.Where(static target => target.Block is not null)];
+
+		ImmutableArray<BraceTarget> removable =
+		[
+			.. blocked.Where(target => !BraceEdits.CreateSafeBraceRemoval(sourceText, target, tabColumns).IsEmpty),
+		];
 
 		// IDE0011 braces a chain with one braced branch, so a block that keeps its braces keeps those of the chain,
-		// and ZA0038 braces the view with a multi-line branch, so a chain whose branches a directive can change keeps them too.
+		// and ZA0205 braces the view with a multi-line branch, so a chain whose branches a directive can change keeps them too.
 		// Where the option asks for no braces, each block that can lose them does.
-		if (options.PreferBraces is null && (removable.Length < blocks.Length || BraceTargets.HoldsAConditionalBranch(context.Node)))
+		if (options.PreferBraces is null && (removable.Length < blocked.Length || BraceTargets.HoldsAConditionalBranch(context.Node)))
 			return;
 
-		foreach (BlockSyntax block in removable)
+		foreach (BraceTarget target in removable)
 		{
 			context.CancellationToken.ThrowIfCancellationRequested();
+
+			BlockSyntax block = target.Block!;
 
 			// The report points at the opening brace and adds the closing one as a second location:
 			// a span over both braces would make the editor fade the body too.

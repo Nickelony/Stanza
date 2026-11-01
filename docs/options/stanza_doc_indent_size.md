@@ -3,7 +3,7 @@
 Controls the columns one level of nesting takes inside a documentation comment,
 or `tab` for one tab per level.
 Default: `0`, which writes every line flush after its `///` marker.
-Read by the documentation layout rules, such as [`ZA0201`](https://github.com/Nickelony/Stanza/wiki/ZA0201-Lay-out-a-documentation-comment),
+Read by the documentation layout rules, such as [`ZA0901`](https://github.com/Nickelony/Stanza/wiki/ZA0901-Lay-out-a-documentation-comment),
 and by the stanza-markup [reprint](https://github.com/Nickelony/Stanza/wiki/Terms).
 
 | Value                                         | Effect                                                                                           |
@@ -13,7 +13,7 @@ and by the stanza-markup [reprint](https://github.com/Nickelony/Stanza/wiki/Term
 | `tab`                                         | each level moves one tab in                                                                      |
 | below zero, above 64, absent, or not a number | every line is flush after the marker; the tool also reports a warning for a value it cannot read |
 
-The example assumes [`stanza_doc_expand`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_expand) is `all`,
+The example assumes [`stanza_doc_block_elements`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_block_elements) is `all`,
 so each tag stands on its own line at either value of `stanza_doc_indent_size`:
 
 ```csharp
@@ -49,5 +49,5 @@ and its text sits one tab in:
 
 - `tab` writes a tab where a number writes blank space,
   so a file indented with tabs keeps them inside the comment.
-- `tab` measures a level as one tab at the tab width that [`stanza_tab_width`](https://github.com/Nickelony/Stanza/wiki/stanza_tab_width) resolves.
-- [`stanza_doc_indent_style`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_indent_style) sets where the text of an element stands among those levels.
+- `tab` measures a level as one tab, counted as [`stanza_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_max_line_length) counts a tab.
+- [`stanza_doc_text_indent`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_text_indent) sets where the text of an element stands among those levels.

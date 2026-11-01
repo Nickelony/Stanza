@@ -3,5 +3,19 @@
 	"useTabs": true,
 	"singleQuote": true,
 	"trailingComma": "all",
-	"endOfLine": "lf"
+	"endOfLine": "lf",
+	"plugins": ["@ianvs/prettier-plugin-sort-imports"],
+	"importOrder": [
+		"<BUILTIN_MODULES>",
+		"",
+		"<THIRD_PARTY_MODULES>",
+		"",
+		"^[.][.]/",
+		"",
+		"^[.]/[^/]+[.]tsx?$",
+		"",
+		"^[.]/[^/]+/",
+		"",
+		"^[.]/.+[.](png|css)$"
+	]
 }

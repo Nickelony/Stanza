@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Nickelony.Stanza.Markup.Core.Xml;
+using Nickelony.Stanza.Markup.Core.Options;
 
 namespace Nickelony.Stanza.Markup.Configuration;
 

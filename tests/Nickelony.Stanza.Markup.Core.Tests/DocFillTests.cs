@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Core.DocComments;
+using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Markup.Core.Tests;
 
@@ -81,7 +82,7 @@ public sealed class DocFillTests
 
 		Assert.AreEqual(
 			"Returns the value|of the option|and the other value|when the section|is missing",
-			Fill(text, width: 20, weak: new DocNameSet("the", "of", "and"))
+			Fill(text, width: 20, weak: new MarkupNameSet("the", "of", "and"))
 		);
 
 		Assert.AreEqual(
@@ -96,24 +97,20 @@ public sealed class DocFillTests
 		int minTailWords = 2,
 		int minLineWords = 2,
 		int maxOverflowColumns = 4,
-		DocNameSet? weak = null
+		MarkupNameSet? weak = null
 	)
 	{
 		List<DocAtom> atoms = [];
 
 		DocFill.AddWords(atoms, text, attached: false);
 
-		var layout = new DocLayoutOptions(
-			ContentWidth: width,
-			TabColumns: 4,
-			MinTailWords: minTailWords,
-			MinLineWords: minLineWords,
-			MaxOverflowColumns: maxOverflowColumns,
-			IndentSize: 0,
-			IndentText: true,
-			Expansion: DocExpansion.None,
-			WeakTailWords: weak
-		);
+		DocLayoutOptions layout = MarkupFormatFixtures.ReprintLayout(contentWidth: width) with
+		{
+			MinTailWords = minTailWords,
+			MinLineWords = minLineWords,
+			MaxOverflowColumns = maxOverflowColumns,
+			WeakLineEndWords = weak,
+		};
 
 		return string.Join("|", DocFill.LayOut(atoms, layout));
 	}

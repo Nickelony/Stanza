@@ -124,9 +124,13 @@ internal static class ArgumentSpeculation
 		// and each speculation costs the length of the path, however many calls a lambda holds.
 		// A call that binds alone has no statements in its scope.
 		SyntaxNode outermost = outers.Count > 0 ? outers[outers.Count - 1] : call;
-		HashSet<SyntaxNode> cut = scope == call ? [] : FindCutNodes(scope, call, outermost, path);
+		HashSet<SyntaxNode> cut = [];
+		Dictionary<BlockSyntax, List<StatementSyntax>> retained = [];
 
-		SyntaxNode edited = new SpeculationRewriter(marks, path, cut, names, namesThem).Visit(scope)!;
+		if (scope != call)
+			CollectCuts(scope, call, outermost, path, cut, retained);
+
+		SyntaxNode edited = new SpeculationRewriter(marks, path, cut, retained, names, namesThem).Visit(scope)!;
 
 		return new Speculation(Scope: scope, Edited: edited, CallMark: callMark, Outers: markedOuters);
 	}
@@ -163,19 +167,13 @@ internal static class ArgumentSpeculation
 				if (node is StatementSyntax)
 					return call;
 
-				if (node is AnonymousFunctionExpressionSyntax function)
-				{
-					// A lambda's body binds with the types its parameters were given, so a call in it binds alone, in an expression body as in a block.
-					if (function.ExpressionBody == child)
-						return call;
+				// A lambda's body binds with the types its parameters were given, so a call in it binds alone, in an expression body as in a block.
+				if (node is AnonymousFunctionExpressionSyntax { ExpressionBody: { } expressionBody } && expressionBody == child)
+					return call;
 
+				// A query gives its range variables their types from the clauses around it, and a call after `?.` binds only with its access.
+				if (node is AnonymousFunctionExpressionSyntax or QueryExpressionSyntax or ConditionalAccessExpressionSyntax)
 					bindsAlone = false;
-				}
-				else if (node is QueryExpressionSyntax or ConditionalAccessExpressionSyntax)
-				{
-					// A query gives its range variables their types from the clauses around it, and a call after `?.` binds only with its access.
-					bindsAlone = false;
-				}
 
 				// The stop was reached below the point where the call stopped binding alone, so it is the scope.
 				if (!bindsAlone && stop is not null)
@@ -239,9 +237,15 @@ internal static class ArgumentSpeculation
 	/// <remarks>
 	/// Declarations, local functions and expression variables stay, as later statements see them.
 	/// </remarks>
-	private static HashSet<SyntaxNode> FindCutNodes(SyntaxNode scope, SyntaxNode call, SyntaxNode outermost, HashSet<SyntaxNode> path)
+	private static void CollectCuts(
+		SyntaxNode scope,
+		SyntaxNode call,
+		SyntaxNode outermost,
+		HashSet<SyntaxNode> path,
+		HashSet<SyntaxNode> cut,
+		Dictionary<BlockSyntax, List<StatementSyntax>> retained
+	)
 	{
-		HashSet<SyntaxNode> cut = [];
 		SyntaxNode child = call;
 
 		// Below the outermost call checked, a statement that exits its lambda stays, as that call's binding reads it.
@@ -255,67 +259,20 @@ internal static class ArgumentSpeculation
 			switch (node)
 			{
 				case IfStatementSyntax ifStatement:
-					if (ifStatement.Statement != child && !(keepsExits && HoldsAnExit(ifStatement.Statement)))
+					if (ifStatement.Statement != child && !(keepsExits && BlockCuts.HoldsAnExit(ifStatement.Statement)))
 						cut.Add(ifStatement.Statement);
 
-					if (ifStatement.Else is { } elseClause && elseClause != child && !(keepsExits && HoldsAnExit(elseClause)))
+					if (ifStatement.Else is { } elseClause && elseClause != child && !(keepsExits && BlockCuts.HoldsAnExit(elseClause)))
 						cut.Add(elseClause);
 
 					break;
 
 				case BlockSyntax block:
-					foreach (StatementSyntax statement in block.Statements)
-					{
-						if (statement != child && !(keepsExits && HoldsAnExit(statement)))
-							CollectCutNodes(statement, cut, path);
-					}
-
+					// The facts of a block are read once, so each call in it costs the statements it keeps and not all of them.
+					retained[block] = BlockCuts.For(block).CollectRetained(child: (StatementSyntax)child, keepsExits, cut, path);
 					break;
 			}
 		}
-
-		return cut;
-	}
-
-	/// <summary>Whether the node returns or throws out of the lambda or method it stands in.</summary>
-	private static bool HoldsAnExit(SyntaxNode node)
-	{
-		return node.DescendantNodesAndSelf(static inner => inner is not (AnonymousFunctionExpressionSyntax or LocalFunctionStatementSyntax))
-			.Any(static inner => inner is ReturnStatementSyntax or ThrowStatementSyntax);
-	}
-
-	/// <summary>Cuts a statement beside the path, but a guard keeps its condition.</summary>
-	private static void CollectCutNodes(StatementSyntax statement, HashSet<SyntaxNode> cut, HashSet<SyntaxNode> path)
-	{
-		if (statement is LocalDeclarationStatementSyntax or LocalFunctionStatementSyntax)
-			return;
-
-		if (statement is not IfStatementSyntax ifStatement)
-		{
-			if (!DeclaresAVariable(statement))
-				cut.Add(statement);
-
-			return;
-		}
-
-		if (!DeclaresAVariable(ifStatement.Condition))
-		{
-			cut.Add(statement);
-			return;
-		}
-
-		// The walk goes into the `if` to reach its branches.
-		path.Add(ifStatement);
-		cut.Add(ifStatement.Statement);
-
-		if (ifStatement.Else is { } elseClause)
-			cut.Add(elseClause);
-	}
-
-	private static bool DeclaresAVariable(SyntaxNode node)
-	{
-		return node.DescendantNodesAndSelf()
-			.Any(static descendant => descendant is SingleVariableDesignationSyntax or ParenthesizedVariableDesignationSyntax);
 	}
 
 	/// <summary>Whether the statement sits in a lambda of an initializer that no statement holds.</summary>
@@ -379,6 +336,7 @@ internal static class ArgumentSpeculation
 		Dictionary<SyntaxNode, SyntaxAnnotation> marks,
 		HashSet<SyntaxNode> path,
 		HashSet<SyntaxNode> cut,
+		Dictionary<BlockSyntax, List<StatementSyntax>> retained,
 		Dictionary<SyntaxNode, string> names,
 		bool namesThem
 	) : CSharpSyntaxRewriter
@@ -389,7 +347,7 @@ internal static class ArgumentSpeculation
 				return null;
 
 			if (cut.Contains(node))
-				return node is ElseClauseSyntax || node.Parent is BlockSyntax ? null : SyntaxFactory.EmptyStatement();
+				return node is ElseClauseSyntax ? null : SyntaxFactory.EmptyStatement();
 
 			if (!path.Contains(node))
 				return node;
@@ -402,6 +360,20 @@ internal static class ArgumentSpeculation
 			return names.TryGetValue(node, out string? name)
 				? ((ArgumentSyntax)rewritten).WithNameColon(namesThem ? BuildNameColon(name) : null)
 				: rewritten;
+		}
+
+		/// <summary>Rebuilds a block from the statements it keeps, without visiting the ones it cuts.</summary>
+		public override SyntaxNode? VisitBlock(BlockSyntax node)
+		{
+			if (!retained.TryGetValue(node, out List<StatementSyntax>? statements))
+				return base.VisitBlock(node);
+
+			List<StatementSyntax> visited = new(statements.Count);
+
+			foreach (StatementSyntax statement in statements)
+				visited.Add((StatementSyntax)Visit(statement)!);
+
+			return node.WithStatements(SyntaxFactory.List(visited));
 		}
 	}
 }

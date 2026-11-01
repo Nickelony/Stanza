@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Nickelony.Stanza.Analyzers.Regions;
 
+/// <summary>Reports the region and conditional directive edits of a tree.</summary>
 internal static class RegionAnalysis
 {
 	/// <summary>Reports each region edit, with the change it makes riding the diagnostic.</summary>

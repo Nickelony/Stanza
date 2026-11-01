@@ -94,16 +94,17 @@ internal static class BodyArrows
 			MatchesPlacement(sourceText, target, placement, tabColumns: options.TabColumns)
 			&& !(placement == ArrowPlacement.Leading && !IsExpressionOnArrowLine(target));
 
-		if (IsOneLineBody(sourceText, target) || settled || !CanMoveArrow(sourceText, target))
+		if (IsSingleLineBody(sourceText, target) || settled || !CanMoveArrow(sourceText, target))
 			return;
 
 		// A trailing arrow leaves the expression on its own line wherever the expression line break rule is on.
 		bool openOwnLine =
 			placement == ArrowPlacement.Trailing
-			&& !StanzaRuleState.IsOffAt(
+			&& StanzaRuleState.IsRequiredDeferralOnAt(
 				scope: context,
 				options,
-				rule: rule.GetDeferral(DiagnosticDescriptors.BreakExpressionOffSignatureLine),
+				rule,
+				target: DiagnosticDescriptors.BreakExpressionOffSignatureLine,
 				position: clause.SpanStart
 			);
 
@@ -123,7 +124,7 @@ internal static class BodyArrows
 			&& !StanzaSyntax.IsMultiLine(syntaxTree, TextSpan.FromBounds(target.Arrow.Span.End, target.Expression.SpanStart));
 	}
 
-	private static bool IsOneLineBody(SourceText sourceText, ExpressionBodyTarget target) =>
+	private static bool IsSingleLineBody(SourceText sourceText, ExpressionBodyTarget target) =>
 		!BodyTargets.IsMultiLine(target) && !IsArrowOnOwnLine(sourceText, target) && IsExpressionOnArrowLine(target);
 
 	private static bool CanBreakExpression(SourceText sourceText, ExpressionBodyTarget target)
@@ -167,7 +168,7 @@ internal static class BodyArrows
 
 		SourceText sourceText = context.Node.SyntaxTree.GetText(context.CancellationToken);
 
-		if (!IsOneLineBody(sourceText, target))
+		if (!IsSingleLineBody(sourceText, target))
 			return;
 
 		ArrowPlacement placement = GetPlacement(scope: context, options, rule, position: clause.SpanStart);
@@ -230,6 +231,6 @@ internal static class BodyArrows
 	public static ArrowPlacement GetPlacement(RuleScope scope, StanzaOptions options, StanzaRule rule, int position)
 	{
 		StanzaRule leadingRule = rule.GetDeferral(DiagnosticDescriptors.PutArrowOnLineAfterSignature);
-		return StanzaRuleState.ReportsTheSharedGap(scope, options, rule: leadingRule, position) ? ArrowPlacement.Leading : ArrowPlacement.Trailing;
+		return StanzaRuleState.IsTheReportingHalf(scope, options, rule: leadingRule, position) ? ArrowPlacement.Leading : ArrowPlacement.Trailing;
 	}
 }

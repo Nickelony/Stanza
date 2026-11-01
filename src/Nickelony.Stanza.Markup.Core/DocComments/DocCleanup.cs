@@ -11,15 +11,22 @@ internal static class DocCleanup
 	public static List<DocNode> Apply(IReadOnlyList<DocNode> body, in DocCleanupOptions cleanup) => Apply(body, cleanup, changes: null);
 
 	/// <summary>Finds the changes of one clean-up, each against the body as written.</summary>
-	public static List<MarkupChange> FindChanges(IReadOnlyList<DocNode> body, DocCleanupKind kind, bool spacedSlash = false)
+	public static List<MarkupChange> FindChanges(
+		IReadOnlyList<DocNode> body,
+		DocCleanupKind kind,
+		bool spacedSlash = false,
+		MarkupNameSet? keywords = null
+	)
 	{
 		DocCleanupOptions cleanup = kind switch
 		{
 			DocCleanupKind.Padding => DocCleanupOptions.None with { Padding = true },
-			DocCleanupKind.NullKeyword => DocCleanupOptions.None with { NullKeyword = true, SpacedSlash = spacedSlash },
+			DocCleanupKind.Keyword => DocCleanupOptions.None with { Keywords = keywords ?? DocTextRules.DefaultKeywords, SpacedSlash = spacedSlash },
+			DocCleanupKind.Capital => DocCleanupOptions.None with { Capital = keywords ?? DocTextRules.DefaultKeywords },
 			DocCleanupKind.Period => DocCleanupOptions.None with { Period = true },
 			DocCleanupKind.EmptyElement => DocCleanupOptions.None with { EmptyElement = true, SpacedSlash = spacedSlash },
-			_ => DocCleanupOptions.None with { SlashShape = true, SpacedSlash = spacedSlash },
+			DocCleanupKind.SlashShape => DocCleanupOptions.None with { SlashShape = true, SpacedSlash = spacedSlash },
+			_ => throw new ArgumentOutOfRangeException(nameof(kind), kind, message: null),
 		};
 
 		List<MarkupChange> changes = [];
@@ -43,14 +50,10 @@ internal static class DocCleanup
 		if (cleanup.ElementOrder)
 			ordered = Reorder(ordered);
 
-		// An opaque element at the top level, such as a code sample, leaves every keyword of the body as written.
-		DocCleanupOptions transform = cleanup.NullKeyword && HoldsTopLevelOpaqueElement(ordered) ? cleanup with { NullKeyword = false } : cleanup;
+		CleanupPass pass = new(Cleanup: cleanup, Changes: changes, KeywordsAreProse: true, Prefix: string.Empty);
 
-		return Transform(body: ordered, cleanup: transform, changes, keywordsAreProse: true, depth: 0, prefix: string.Empty);
+		return Transform(body: ordered, pass, depth: 0);
 	}
-
-	private static bool HoldsTopLevelOpaqueElement(List<DocNode> body) =>
-		body.Exists(static node => node is DocElement element && DocElementNames.OpaqueElements.Contains(element.Name));
 
 	/// <summary>
 	/// An element whose content is not prose leaves the whole body as it is: the body yields no padding.
@@ -145,8 +148,15 @@ internal static class DocCleanup
 			if (node is not DocElement element)
 				continue;
 
-			if (DocElementNames.OpaqueElements.Contains(element.Name))
+			// An element the layout keeps as written holds a sample or a pointer, which the padding rule leaves alone too.
+			if (
+				DocElementNames.OpaqueElements.Contains(element.Name)
+				|| DocElementNames.TakesContentFromElsewhere(element.Name)
+				|| element.VerbatimLines is not null
+			)
+			{
 				return true;
+			}
 
 			if (depth + 1 < DocWalk.MaxElementDepth && HoldsOpaqueElement(element.Body, depth + 1))
 				return true;
@@ -232,37 +242,24 @@ internal static class DocCleanup
 		);
 	}
 
-	private static List<DocNode> Transform(
-		List<DocNode> body,
-		in DocCleanupOptions cleanup,
-		List<MarkupChange>? changes,
-		bool keywordsAreProse,
-		int depth,
-		string prefix
-	)
+	private static List<DocNode> Transform(List<DocNode> body, in CleanupPass pass, int depth)
 	{
 		List<DocNode> transformed = new(body.Count);
 
-		foreach (DocNode node in body)
+		for (int index = 0; index < body.Count; index++)
 		{
-			switch (node)
+			switch (body[index])
 			{
 				case DocText text:
-					AddText(body: transformed, text, cleanup, changes, keywordsAreProse, prefix);
+					AddText(body: transformed, text, pass, startsElement: index == 0);
 					break;
 
 				case DocElement element:
-					// Only the item order reaches inside a list, and it rewrites the items themselves.
-					transformed.Add(
-						DocElementNames.ListElements.Contains(element.Name)
-							? OrderList(element, cleanup, depth)
-							: TransformElement(element, cleanup, changes, keywordsAreProse, depth)
-					);
-
+					transformed.Add(TransformChild(element, pass, depth));
 					break;
 
 				default:
-					transformed.Add(node);
+					transformed.Add(body[index]);
 					break;
 			}
 		}
@@ -270,40 +267,98 @@ internal static class DocCleanup
 		return transformed;
 	}
 
-	private static void AddText(
-		List<DocNode> body,
-		DocText text,
-		in DocCleanupOptions cleanup,
-		List<MarkupChange>? changes,
-		bool keywordsAreProse,
-		string prefix
-	)
+	private static DocElement TransformChild(DocElement element, in CleanupPass pass, int depth)
 	{
-		if (!cleanup.NullKeyword || !keywordsAreProse)
+		// Only the item order reaches inside a list, and it rewrites the items themselves.
+		if (DocElementNames.ListElements.Contains(element.Name))
+			return OrderList(element, pass.Cleanup, depth);
+
+		// The layout keeps a top-level element that holds a sample or a pointer as written, and its keywords stay so too.
+		CleanupPass inner =
+			depth == 0 && pass.Cleanup.Keywords is not null && HoldsKeptElement(element, depth: 0)
+				? pass with
+				{
+					Cleanup = pass.Cleanup with { Keywords = null },
+				}
+				: pass;
+
+		return MarkCodeKeyword(element, inner) ?? TransformElement(element, inner, depth);
+	}
+
+	private static bool HoldsKeptElement(DocElement element, int depth)
+	{
+		if (DocElementNames.IsKeptAsWritten(element.Name))
+			return true;
+
+		if (depth >= DocWalk.MaxElementDepth)
+			return false;
+
+		foreach (DocNode node in element.Body)
+		{
+			if (node is DocElement child && HoldsKeptElement(child, depth + 1))
+				return true;
+		}
+
+		return false;
+	}
+
+	/// <summary>Writes a listed keyword that the author set as code as a keyword element.</summary>
+	private static DocElement? MarkCodeKeyword(DocElement element, in CleanupPass pass)
+	{
+		if (
+			pass.Cleanup.Keywords is not { } keywords
+			|| !pass.KeywordsAreProse
+			|| element.IsEmpty
+			|| element.Body.Count != 1
+			|| element.Body[0] is not DocText { Text: var word }
+		)
+		{
+			return null;
+		}
+
+		// The author has marked the word as code, so it needs no phrase; `null` stays as it is written.
+		if (word == "null" || !keywords.Contains(word) || element.Name != "c" || element.OpenTag != $"<{GetPrefix(element.OpenTag)}c>")
+			return null;
+
+		string markup = DocTextRules.GetKeywordMarkup(word, pass.Cleanup.SpacedSlash, pass.Prefix);
+
+		Record(changes: pass.Changes, start: element.Source?.Start, end: element.Source?.End, newText: markup);
+
+		return BuildSelfClosingElement("see", markup);
+	}
+
+	private static void AddText(List<DocNode> body, DocText text, in CleanupPass pass, bool startsElement)
+	{
+		if (pass.Cleanup.Keywords is not { } keywords || !pass.KeywordsAreProse)
 		{
 			body.Add(text);
 			return;
 		}
 
-		List<int> offsets = DocTextRules.FindNullKeywords(text.Text);
+		List<DocKeyword> found = DocTextRules.FindKeywords(text.Text, keywords, startsElement);
 
-		if (offsets.Count == 0)
+		if (found.Count == 0)
 		{
 			body.Add(text);
 			return;
 		}
 
-		string markup = DocTextRules.GetNullMarkup(cleanup.SpacedSlash, prefix);
 		int copied = 0;
 
-		foreach (int offset in offsets)
+		foreach (DocKeyword keyword in found)
 		{
-			int end = offset + DocTextRules.NullKeywordText.Length;
+			int end = keyword.Offset + keyword.Word.Length;
+			string markup = DocTextRules.GetKeywordMarkup(keyword.Word, pass.Cleanup.SpacedSlash, pass.Prefix);
 
-			Record(changes, start: text.FindFileOffset(offset, startsSpan: true), end: text.FindFileOffset(end, startsSpan: false), newText: markup);
+			Record(
+				changes: pass.Changes,
+				start: text.FindFileOffset(keyword.Offset, startsSpan: true),
+				end: text.FindFileOffset(end, startsSpan: false),
+				newText: markup
+			);
 
-			if (offset > copied)
-				body.Add(new DocText(text.Text.Substring(copied, offset - copied)));
+			if (keyword.Offset > copied)
+				body.Add(new DocText(text.Text.Substring(copied, keyword.Offset - copied)));
 
 			body.Add(BuildSelfClosingElement("see", markup));
 			copied = end;
@@ -313,47 +368,26 @@ internal static class DocCleanup
 			body.Add(new DocText(text.Text.Substring(copied)));
 	}
 
-	private static DocElement TransformElement(
-		DocElement element,
-		in DocCleanupOptions cleanup,
-		List<MarkupChange>? changes,
-		bool keywordsAreProse,
-		int depth
-	)
+	private static DocElement TransformElement(DocElement element, in CleanupPass pass, int depth)
 	{
 		// The recursion stops at the cap the callers share, so a nest deeper than any caller admits is left as it is.
-		if (depth >= DocWalk.MaxElementDepth)
+		// An element kept as written holds no body to clean up.
+		if (depth >= DocWalk.MaxElementDepth || element.VerbatimLines is not null)
 			return element;
+
+		if (element.IsEmpty)
+			return ShapeEmptyElement(element, pass);
 
 		bool inline = DocElementNames.InlineElements.Contains(element.Name);
 		bool opaque = DocElementNames.OpaqueElements.Contains(element.Name);
-
-		if (element.IsEmpty)
-		{
-			if (!cleanup.SlashShape)
-				return element;
-
-			// A reader that kept the gap as written lets the clean-up change the gap alone, where the collapsed tag cannot say where it stood.
-			if (element.SlashGap is { } gap && element.Source is { } source)
-			{
-				if (DocTextRules.ResolveSlashGap(gap, cleanup.SpacedSlash) is { } wanted)
-					Record(changes, start: source.End - 2 - gap.Length, end: source.End - 2, newText: wanted);
-
-				return element;
-			}
-
-			string shaped = DocTextRules.ShapeSlash(element.OpenTag, cleanup.SpacedSlash);
-			return string.Equals(shaped, element.OpenTag, StringComparison.Ordinal) ? element : BuildSelfClosingElement(element.Name, shaped);
-		}
 
 		// Content that is not prose, or that keeps its whitespace, stays as written, and only the element's own shape may change.
 		bool untouched = opaque || element.IsSpacePreserved;
 
 		// An inline element wraps the text around it and an opaque one carries data rather than prose,
-		// so neither takes the period or the null keyword clean-up.
+		// so neither takes the capital, the period or the keyword clean-up.
 		bool carriesProse = !inline && !opaque;
-
-		bool keywordsInside = carriesProse && (keywordsAreProse || DocElementNames.IsParagraphMarker(element.Name));
+		bool keywordsInside = carriesProse && (pass.KeywordsAreProse || DocElementNames.IsParagraphMarker(element.Name));
 
 		// The period is added before the keyword pass,
 		// so a sentence ending in `null` still closes after the element that replaces it.
@@ -361,18 +395,26 @@ internal static class DocCleanup
 
 		if (!untouched)
 		{
-			if (cleanup.Period && carriesProse)
-				AddPeriod(body, changes);
+			// The reprint reads a top-level element that holds a sample or a pointer as lines,
+			// so it takes no capital or period either way.
+			bool judged =
+				carriesProse && (pass.Cleanup.Period || pass.Cleanup.Capital is not null) && !(depth == 0 && HoldsKeptElement(element, depth: 0));
 
-			body = Transform(body, cleanup, changes, keywordsAreProse: keywordsInside, depth: depth + 1, prefix: GetPrefix(element.OpenTag));
+			if (judged && pass.Cleanup.Period)
+				AddPeriod(body, pass.Changes);
+
+			if (judged && pass.Cleanup.Capital is { } keywords)
+				AddCapital(body, keywords, pass.Changes);
+
+			body = Transform(body, pass with { KeywordsAreProse = keywordsInside, Prefix = GetPrefix(element.OpenTag) }, depth: depth + 1);
 		}
 
 		// The whitespace of an element that keeps it is content, so only an element with no text at all shortens.
-		if (cleanup.EmptyElement && (untouched ? HoldsNoText(body) : HoldsNothing(body)))
+		if (pass.Cleanup.EmptyElement && (untouched ? HoldsNoText(body) : HoldsNothing(body)))
 		{
-			string tag = DocTextRules.BuildSelfClosingTag(element.OpenTag, cleanup.SpacedSlash);
+			string tag = DocTextRules.BuildSelfClosingTag(element.OpenTag, pass.Cleanup.SpacedSlash);
 
-			Record(changes, start: element.Source?.Start, end: element.Source?.End, newText: tag);
+			Record(changes: pass.Changes, start: element.Source?.Start, end: element.Source?.End, newText: tag);
 
 			return BuildSelfClosingElement(element.Name, tag);
 		}
@@ -389,6 +431,27 @@ internal static class DocCleanup
 			phrase: BuildPhrase(element.OpenTag, body, element.CloseTag),
 			isSpacePreserved: element.IsSpacePreserved
 		);
+	}
+
+	/// <summary>Shapes the slash of an empty element, the one clean-up that reaches it.</summary>
+	private static DocElement ShapeEmptyElement(DocElement element, in CleanupPass pass)
+	{
+		DocCleanupOptions cleanup = pass.Cleanup;
+
+		if (!cleanup.SlashShape)
+			return element;
+
+		// A reader that kept the gap as written lets the clean-up change the gap alone, where the collapsed tag cannot say where it stood.
+		if (element.SlashGap is { } gap && element.Source is { } source)
+		{
+			if (DocTextRules.ResolveSlashGap(gap, cleanup.SpacedSlash) is { } wanted)
+				Record(changes: pass.Changes, start: source.End - 2 - gap.Length, end: source.End - 2, newText: wanted);
+
+			return element;
+		}
+
+		string shaped = DocTextRules.ShapeSlash(element.OpenTag, cleanup.SpacedSlash);
+		return string.Equals(shaped, element.OpenTag, StringComparison.Ordinal) ? element : BuildSelfClosingElement(element.Name, shaped);
 	}
 
 	/// <summary>The namespace prefix of a tag, with its colon, or nothing for a tag without one.</summary>
@@ -447,8 +510,8 @@ internal static class DocCleanup
 					body[index] = new DocText(DocTextRules.WritePeriod(text.Text, end), text.Breaks);
 					return;
 
-				// A keyword element stands for the last word, so the period follows it.
-				case DocElement { IsEmpty: true } element when DocTextRules.FindPeriodEnd(element.Phrase) is not null:
+				// A keyword element stands for the last word, so the period follows it, and so does one the short-tag clean-up would close.
+				case DocElement element when DocTextRules.FindPeriodEnd(ReadClosedPhrase(element)) is not null:
 					Record(changes, start: element.Source?.End, end: element.Source?.End, newText: ".");
 
 					body.Insert(index + 1, new DocText("."));
@@ -460,6 +523,35 @@ internal static class DocCleanup
 		}
 	}
 
+	private static void AddCapital(List<DocNode> body, MarkupNameSet keywords, List<MarkupChange>? changes)
+	{
+		for (int index = 0; index < body.Count; index++)
+		{
+			switch (body[index])
+			{
+				case DocText text when MarkupWhitespace.IsBlank(text.Text):
+					continue;
+
+				// The capital replaces one letter, so the text keeps its length and the file spans it was read from.
+				case DocText text when DocTextRules.FindCapital(text.Text, keywords) is { } offset:
+					int? fileOffset = text.FindFileOffset(offset, startsSpan: true);
+
+					Record(changes, start: fileOffset, end: fileOffset + 1, newText: DocTextRules.ToCapital(text.Text[offset]));
+
+					body[index] = new DocText(DocTextRules.WriteCapital(text.Text, offset), text.Breaks) { Pieces = text.Pieces };
+					return;
+
+				// A text that opens on an element keeps its start, since the first word belongs to that element.
+				default:
+					return;
+			}
+		}
+	}
+
+	/// <summary>The phrase of an element as the short-tag clean-up would leave it.</summary>
+	private static string ReadClosedPhrase(DocElement element) =>
+		!element.IsEmpty && HoldsNothing(element.Body) ? DocTextRules.BuildSelfClosingTag(element.OpenTag, spaced: false) : element.Phrase;
+
 	private static void Record(List<MarkupChange>? changes, int? start, int? end, string newText)
 	{
 		if (changes is not null && start is { } from && end is { } to && to >= from)
@@ -468,7 +560,7 @@ internal static class DocCleanup
 
 	private static string BuildPhrase(string openTag, IReadOnlyList<DocNode> body, string? closeTag)
 	{
-		DocCollapser collapser = new();
+		MarkupCollapser collapser = new();
 
 		collapser.Append(openTag);
 
@@ -486,4 +578,7 @@ internal static class DocCleanup
 	}
 
 	private static IReadOnlyList<DocNode> NoChildren => [];
+
+	/// <summary>What a pass carries down a body: the clean-ups, the recorded changes and how it reads text.</summary>
+	private readonly record struct CleanupPass(DocCleanupOptions Cleanup, List<MarkupChange>? Changes, bool KeywordsAreProse, string Prefix);
 }

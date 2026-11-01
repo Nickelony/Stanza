@@ -14,6 +14,9 @@ internal static class StanzaTrivia
 			|| trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia);
 	}
 
+	/// <summary>Whether the trivia is whitespace or a line break.</summary>
+	public static bool IsLayout(SyntaxTrivia trivia) => trivia.IsKind(SyntaxKind.WhitespaceTrivia) || trivia.IsKind(SyntaxKind.EndOfLineTrivia);
+
 	public static bool IsDocumentationComment(SyntaxTrivia trivia)
 	{
 		if (trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) || trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia))

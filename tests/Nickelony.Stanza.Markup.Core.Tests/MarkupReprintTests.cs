@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Core.DocComments;
@@ -76,7 +77,7 @@ public sealed class MarkupReprintTests
 	}
 
 	[TestMethod]
-	public void TheDocumentationBodyOfTheZA0106ExampleIsReprinted()
+	public void TheDocumentationBodyOfTheZA2902ExampleIsReprinted()
 	{
 		string before =
 			"<doc>\n  <members>\n    <member name=\"M:Sample.Type.Example\">\n      <summary>\n"
@@ -170,6 +171,19 @@ public sealed class MarkupReprintTests
 		Assert.AreEqual(expected, FormatReprint(source, contentWidth: 400).Text);
 	}
 
+	// A scan back to the start of the line for each element makes this input take tens of seconds.
+	[TestMethod]
+	[DoNotParallelize]
+	public void ManyKeptElementsOnOneLineAreReadInLinearTime()
+	{
+		string body = string.Concat(Enumerable.Repeat("<code>a</code> ", 80_000));
+		var clock = Stopwatch.StartNew();
+
+		FormatReprint(Member(body));
+
+		Assert.IsLessThan(10, clock.Elapsed.TotalSeconds, "the read took too long.");
+	}
+
 	// Each tag stands on its own line and the text sits flush, so a rewrite can only come from the layout.
 	private static string Nested(int levels)
 	{
@@ -209,9 +223,9 @@ public sealed class MarkupReprintTests
 				),
 			],
 
-			["an include", Member($"<summary>{words}</summary>\n  <include file=\"a.xml\"/>")],
-			["an inheritdoc", Member($"<summary>{words}</summary>\n  <inheritdoc/>")],
 			["an opaque element", Member($"<remarks>\n    <code>{words}</code>\n  </remarks>")],
+			["an include", Member("<include file=\"a.xml\"/>")],
+			["an inheritdoc", Member("<inheritdoc cref=\"Y\"/>")],
 			["a processing instruction", Member($"<summary>{words}<?pi data?></summary>")],
 
 			[
@@ -250,6 +264,70 @@ public sealed class MarkupReprintTests
 
 			["an empty body", "<member name=\"X\">\n</member>"],
 		];
+	}
+
+	// A pointer to content elsewhere stands as written, and the elements beside it are laid out.
+	[TestMethod]
+	public void AnIncludeAndAnInheritdocStayAsWrittenBesideALaidOutElement()
+	{
+		const string words =
+			"alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho";
+
+		const string pointers =
+			"<include   file=\"a.xml\"   path=\"x\"/>\n  <inheritdoc  cref=\"Y\"/>";
+
+		const string laidOut =
+			"<summary>\n  alpha beta gamma delta epsilon zeta eta theta iota kappa\n  lambda mu nu xi omicron pi rho\n  </summary>";
+
+		MarkupFormatResult result = FormatReprint(
+			Member($"<summary>{words}</summary>\n  {pointers}"),
+			contentWidth: 60
+		);
+
+		Assert.AreEqual(
+			LineFeed($"<member name=\"X\">\n  {laidOut}\n  {pointers}\n</member>"),
+			result.Text
+		);
+	}
+
+	// The element that holds a sample stands as written to its last line, and the elements beside it are laid out.
+	[TestMethod]
+	public void AnElementThatHoldsACodeBlockStaysAsWrittenBesideALaidOutElement()
+	{
+		const string words =
+			"alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho";
+
+		const string remarks =
+			"<remarks>Binds   the  options.\n    <code>\n      var a = 1;\n        var   b = 2;\n    </code>\n  </remarks>";
+
+		const string laidOut =
+			"<summary>\n  alpha beta gamma delta epsilon zeta eta theta iota kappa\n  lambda mu nu xi omicron pi rho\n  </summary>";
+
+		MarkupFormatResult result = FormatReprint(
+			Member($"<summary>{words}</summary>\n  {remarks}"),
+			contentWidth: 60
+		);
+
+		Assert.AreEqual(
+			LineFeed($"<member name=\"X\">\n  {laidOut}\n  {remarks}\n</member>"),
+			result.Text
+		);
+
+		Assert.IsFalse(
+			FormatReprint(result.Text, contentWidth: 60).HasEdits,
+			"the written body is not stable."
+		);
+	}
+
+	// A line of the element that stands left of the member's own indentation cannot be written back, so the body stays.
+	[TestMethod]
+	public void AnElementWhoseLineStandsLeftOfTheBodyIndentationLeavesTheBody()
+	{
+		string source = Member(
+			"<summary>alpha beta gamma</summary>\n  <remarks>\n<code>\nvar a = 1;\n</code>\n  </remarks>"
+		);
+
+		Assert.AreEqual(LineFeed(source), FormatReprint(source, contentWidth: 60).Text);
 	}
 
 	[TestMethod]
@@ -364,6 +442,33 @@ public sealed class MarkupReprintTests
 		).Text;
 
 		Assert.DoesNotContain("don`t beta gamma delta", text);
+	}
+
+	// A lone mark joins the word before it as a comma does, so only a code element or a span keeps it apart.
+	[TestMethod]
+	public void ALoneQuestionMarkOrColonJoinsTheWordBeforeItOutsideCode()
+	{
+		string text = FormatReprint(
+			Member("<summary>Is a ? b : c, or <c>a ? b : c</c> or `a ? b : c`.</summary>"),
+			contentWidth: 80
+		).Text;
+
+		Assert.AreEqual(
+			Member("<summary>Is a? b: c, or <c>a ? b : c</c> or `a ? b : c`.</summary>"),
+			text
+		);
+	}
+
+	// The words of a code element are filled as text, so their spaces collapse, and a backtick span keeps its own.
+	[TestMethod]
+	public void TheSpacesInsideACodeElementCollapseToOneAndThoseOfASpanAreKept()
+	{
+		string text = FormatReprint(
+			Member("<summary>Pads <c>x  =  1</c> as `x  =  1` does.</summary>"),
+			contentWidth: 80
+		).Text;
+
+		Assert.AreEqual(Member("<summary>Pads <c>x = 1</c> as `x  =  1` does.</summary>"), text);
 	}
 
 	// An item too long to fold reads its text as a paragraph, so an element keeps the words and marks it touches,
@@ -579,6 +684,4 @@ public sealed class MarkupReprintTests
 			result.Text
 		);
 	}
-
-	private static string Member(string body) => $"<member name=\"X\">\n  {body}\n</member>";
 }

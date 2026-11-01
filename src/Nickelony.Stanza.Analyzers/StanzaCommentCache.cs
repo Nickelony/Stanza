@@ -6,14 +6,11 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Nickelony.Stanza.Analyzers;
 
-/// <summary>Caches the comments, documentation comments and region markers of a tree, from one trivia walk.</summary>
+/// <summary>Caches a tree's comments, documentation comments and directive markers, from one trivia walk.</summary>
 internal static class StanzaCommentCache
 {
 	public static bool HasDocumentationComment(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
 		ReadTriviaMarkers(syntaxTree, cancellationToken).HasDocumentationComment;
-
-	public static bool HasComment(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
-		ReadTriviaMarkers(syntaxTree, cancellationToken).HasComment;
 
 	/// <summary>Scans the file's text on each call, so a rule can skip a file before the trivia walk.</summary>
 	/// <remarks>
@@ -61,6 +58,10 @@ internal static class StanzaCommentCache
 	public static ImmutableArray<SyntaxTrivia> GetRegionMarkers(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
 		GetTriviaSnapshot(syntaxTree, cancellationToken).RegionMarkers;
 
+	/// <summary>The <c>#if</c> and <c>#endif</c> directives of a tree, in active and inactive code.</summary>
+	public static ImmutableArray<SyntaxTrivia> GetConditionalBlockMarkers(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
+		GetTriviaSnapshot(syntaxTree, cancellationToken).ConditionalBlockMarkers;
+
 	private static TriviaSnapshot GetTriviaSnapshot(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
 		s_triviaCache.GetOrCompute(syntaxTree, state: cancellationToken, static (tree, token) => ReadTriviaSnapshot(tree, token));
 
@@ -70,12 +71,13 @@ internal static class StanzaCommentCache
 
 		// Whether a file has a comment is read from its text without a walk, and Roslyn keeps a flag for directives,
 		// so a file that carries neither is answered with no walk at all.
-		if (!root.ContainsDirectives && !HasComment(syntaxTree, cancellationToken))
-			return new TriviaSnapshot([], [], []);
+		if (!root.ContainsDirectives && !ReadTriviaMarkers(syntaxTree, cancellationToken).HasComment)
+			return new TriviaSnapshot(Comments: [], DocumentationComments: [], RegionMarkers: [], ConditionalBlockMarkers: []);
 
 		ImmutableArray<SyntaxTrivia>.Builder comments = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 		ImmutableArray<SyntaxTrivia>.Builder documentationComments = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 		ImmutableArray<SyntaxTrivia>.Builder regionMarkers = ImmutableArray.CreateBuilder<SyntaxTrivia>();
+		ImmutableArray<SyntaxTrivia>.Builder conditionalBlockMarkers = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 
 		foreach (SyntaxTrivia trivia in root.DescendantTrivia())
 		{
@@ -96,11 +98,19 @@ internal static class StanzaCommentCache
 			if (structure is RegionDirectiveTriviaSyntax or EndRegionDirectiveTriviaSyntax)
 				regionMarkers.Add(trivia);
 
+			if (structure is IfDirectiveTriviaSyntax or EndIfDirectiveTriviaSyntax)
+				conditionalBlockMarkers.Add(trivia);
+
 			if (structure is DirectiveTriviaSyntax directive && !CarriesAMessage(directive))
 				CollectDirectiveComments(directive, comments);
 		}
 
-		return new TriviaSnapshot(comments.ToImmutable(), documentationComments.ToImmutable(), regionMarkers.ToImmutable());
+		return new TriviaSnapshot(
+			Comments: comments.ToImmutable(),
+			DocumentationComments: documentationComments.ToImmutable(),
+			RegionMarkers: regionMarkers.ToImmutable(),
+			ConditionalBlockMarkers: conditionalBlockMarkers.ToImmutable()
+		);
 	}
 
 	/// <summary>Collects the comments on a directive line, which the trivia walk of the tree does not enter.</summary>
@@ -117,7 +127,7 @@ internal static class StanzaCommentCache
 	private static bool CarriesAMessage(DirectiveTriviaSyntax directive) =>
 		directive is RegionDirectiveTriviaSyntax or EndRegionDirectiveTriviaSyntax or ErrorDirectiveTriviaSyntax or WarningDirectiveTriviaSyntax;
 
-	/// <summary>One trivia walk per tree serves the comment rules, taking Tomb-Editor from 5.6 s to 4.6 s.</summary>
+	/// <summary>One trivia walk per tree serves every comment rule, instead of one walk for each.</summary>
 	private static readonly WeakCache<SyntaxTree, TriviaSnapshot> s_triviaCache = new();
 
 	private readonly record struct TriviaMarkers(bool HasDocumentationComment, bool HasComment);
@@ -125,6 +135,7 @@ internal static class StanzaCommentCache
 	private sealed record TriviaSnapshot(
 		ImmutableArray<SyntaxTrivia> Comments,
 		ImmutableArray<SyntaxTrivia> DocumentationComments,
-		ImmutableArray<SyntaxTrivia> RegionMarkers
+		ImmutableArray<SyntaxTrivia> RegionMarkers,
+		ImmutableArray<SyntaxTrivia> ConditionalBlockMarkers
 	);
 }

@@ -4,7 +4,7 @@ using System.Threading;
 using System.Xml;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Core.Formatting;
-using Nickelony.Stanza.Markup.Core.Xml;
+using Nickelony.Stanza.Markup.Core.Options;
 
 using static Nickelony.Stanza.Tests.Shared.MarkupFormatFixtures;
 
@@ -392,7 +392,7 @@ public sealed class MarkupFormatterLayoutTests
 		);
 
 		Assert.IsNull(result.Failure);
-		Assert.AreEqual("ZA0104", result.Edits.Single().Id, result.Text);
+		Assert.AreEqual("ZA2006", result.Edits.Single().Id, result.Text);
 	}
 
 	[TestMethod]
@@ -603,7 +603,6 @@ public sealed class MarkupFormatterLayoutTests
 	public void AClosingTagWrittenAcrossLinesEndsOnItsTerminatorLine()
 	{
 		const string source = "<root>\n  <a>\n    one</a\n  >\n  <b/>\n</root>\n";
-
 		const string expected = "<root>\n  <a>\n    one</a\n  >\n\n  <b/>\n</root>\n";
 
 		AssertFormatsTo(expected, source);

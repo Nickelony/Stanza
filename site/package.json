@@ -1,9 +1,9 @@
 {
 	"name": "stanza-configurator",
 	"private": true,
-	"version": "0.0.0",
+	"version": "0.9.0",
 	"type": "module",
-	"description": "The rule configurator of the Stanza analyzers, built from the pages under docs/.",
+	"description": "The rule configurator of the Stanza analyzers, built from their documentation pages.",
 	"engines": {
 		"node": "^22.12.0 || ^24.0.0 || >=26.0.0"
 	},
@@ -14,16 +14,31 @@
 		"typecheck": "tsc --noEmit",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"lint": "oxlint .",
+		"lint": "oxlint . && npm run lint:css",
+		"lint:css": "stylelint \"src/**/*.{css,ts,tsx}\"",
+		"lint:fix": "oxlint --fix .",
 		"test": "vitest run"
 	},
 	"devDependencies": {
+		"@ianvs/prettier-plugin-sort-imports": "^4.7.1",
+		"@testing-library/preact": "^3.2.6",
 		"@types/node": "^24.19.2",
+		"eslint-plugin-stanza": "file:../js",
+		"happy-dom": "^21.0.4",
 		"oxlint": "^1.90.0",
+		"postcss-styled-syntax": "^0.7.4",
 		"prettier": "^3.9.10",
 		"shiki": "^4.5.0",
+		"stylelint": "^17.16.0",
+		"stylelint-config-property-sort-order-smacss": "^11.2.0",
+		"stylelint-order": "^8.1.3",
 		"typescript": "^7.0.2",
 		"vite": "^8.3.5",
 		"vitest": "^5.0.5"
+	},
+	"dependencies": {
+		"@emotion/react": "^11.14.0",
+		"@emotion/styled": "^11.14.1",
+		"preact": "^11.2.0"
 	}
 }

@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nickelony.Stanza.Analyzers.BlankLines;
 using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
@@ -23,6 +25,27 @@ public sealed class RuleSpanTests
 		{
 			["stanza_max_line_length"] = "60",
 		},
+
+		[DiagnosticDescriptors.ShortenLongMember.Id] = new Dictionary<string, string>
+		{
+			["stanza_max_member_statements"] = "3",
+		},
+
+		[DiagnosticDescriptors.NameClosingConditionalDirective.Id] = new Dictionary<string, string>
+		{
+			["stanza_min_lines_to_name_endif"] = "0",
+		},
+	};
+
+	// A rule that ships on and owns the gap of a row, keyed by rule ID; the row runs with it off.
+	private static readonly Dictionary<string, DiagnosticDescriptor[]> s_ownersOff = new(
+		StringComparer.Ordinal
+	)
+	{
+		[DiagnosticDescriptors.SeparateCommentedSibling.Id] =
+		[
+			DiagnosticDescriptors.KeepSingleLineInitializerMembersTogether,
+		],
 	};
 
 	// Each location reads as the first line of its text, then its line and column.
@@ -30,7 +53,26 @@ public sealed class RuleSpanTests
 	public static IEnumerable<object[]> Rows { get; } =
 	[
 		[
-			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns.Id,
+			DiagnosticDescriptors.SeparateDeclarationRuns.Id,
+
+			"""
+				class C
+				{
+					void M()
+					{
+						var first = 1;
+						var second = 2;
+						int third = 3;
+						return;
+					}
+				}
+				""",
+
+			"int@7:3+var second = 2;@6:3",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateInvocationRuns.Id,
 
 			"""
 				class C
@@ -50,6 +92,89 @@ public sealed class RuleSpanTests
 				""",
 
 			"DoThing@6:3+var value = 1;@5:3|return@8:3+DoThing();@7:3",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateAssertionRuns.Id,
+
+			"""
+				class C
+				{
+					void M()
+					{
+						var value = 1;
+						Assert.That(value);
+						Assert.That(value);
+						return;
+					}
+				}
+				""",
+
+			"Assert@6:3+var value = 1;@5:3|return@8:3+Assert.That(value);@7:3",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateAssignmentRuns.Id,
+
+			"""
+				class C
+				{
+					void M(int first, int second)
+					{
+						var value = 1;
+						first = value;
+						second = value;
+						return;
+					}
+				}
+				""",
+
+			"first@6:3+var value = 1;@5:3|return@8:3+second = value;@7:3",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateEventSubscriptionRuns.Id,
+
+			"""
+				class C
+				{
+					event System.Action Changed;
+					event System.Action Closed;
+
+					void Handler()
+					{
+					}
+
+					void M()
+					{
+						var value = 1;
+						Changed += Handler;
+						Closed += Handler;
+						return;
+					}
+				}
+				""",
+
+			"Changed@13:3+var value = 1;@12:3|return@15:3+Closed += Handler;@14:3",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateAwaitRuns.Id,
+
+			"""
+				class C
+				{
+					async System.Threading.Tasks.Task M()
+					{
+						var value = 1;
+						await Load(value);
+						_ = await Save();
+						return;
+					}
+				}
+				""",
+
+			"await@6:3+var value = 1;@5:3|return@8:3+_ = await Save();@7:3",
 		],
 
 		[
@@ -83,7 +208,7 @@ public sealed class RuleSpanTests
 		],
 
 		[
-			DiagnosticDescriptors.SeparateSameTypeDeclarationGroups.Id,
+			DiagnosticDescriptors.SeparateSameTypeDeclarationRuns.Id,
 
 			"""
 				class C
@@ -156,6 +281,55 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.GatherRunOfLooseMembers.Id,
+
+			"""
+				class C
+				{
+					int a;
+
+					int b;
+
+					int c;
+
+					int d;
+				}
+				""",
+
+			"int@5:2+int a;@3:2|int@7:2+int b;@5:2|int@9:2+int c;@7:2",
+		],
+
+		[
+			DiagnosticDescriptors.KeepRunOfStatementsTogether.Id,
+
+			"""
+				void M()
+				{
+					int first = 1;
+
+					int second = 2;
+				}
+				""",
+
+			"int@5:2+int first = 1;@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.KeepRunOfMembersTogether.Id,
+
+			"""
+				class C
+				{
+					int a;
+
+					int b;
+				}
+				""",
+
+			"int@5:2+int a;@3:2",
+		],
+
+		[
 			DiagnosticDescriptors.SeparateCommentedSibling.Id,
 
 			"""
@@ -168,6 +342,72 @@ public sealed class RuleSpanTests
 				""",
 
 			"Count@5:2+Name = \"a\"@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateJumpStatement.Id,
+
+			"""
+				void M()
+				{
+					a = 1;
+					b = 2;
+					return;
+				}
+				""",
+
+			"return@5:2+b = 2;@4:2",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateBaseCall.Id,
+
+			"""
+				class C : Stage
+				{
+					public override void OnStart()
+					{
+						base.OnStart();
+						a = 1;
+						b = 2;
+						base.OnStop();
+					}
+				}
+				""",
+
+			"a@6:3+base.OnStart();@5:3|base@8:3+b = 2;@7:3",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateGuardClauses.Id,
+
+			"""
+				void M(int x)
+				{
+					if (x == 0) return;
+					a = 1;
+					b = 2;
+				}
+				""",
+
+			"a@4:2+if (x == 0) return;@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.CollapseExtraBlankLines.Id,
+
+			"""
+				class C
+				{
+					private int _total;
+
+
+
+					private int _count;
+				}
+				""",
+
+			"@4:1",
 		],
 
 		[
@@ -814,6 +1054,46 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.NameClosingConditionalDirective.Id,
+
+			"""
+				#if DEBUG
+				private int _count;
+				#endif
+				""",
+
+			"#endif@3:1+#if DEBUG@1:1",
+		],
+
+		[
+			DiagnosticDescriptors.AddTrailingComma.Id,
+
+			"""
+				enum Level
+				{
+					Low,
+					High
+				}
+				""",
+
+			"High@4:2",
+		],
+
+		[
+			DiagnosticDescriptors.RemoveTrailingComma.Id,
+
+			"""
+				enum Level
+				{
+					Low,
+					High,
+				}
+				""",
+
+			",@4:6",
+		],
+
+		[
 			DiagnosticDescriptors.RemoveEmptyRegions.Id,
 
 			"""
@@ -829,6 +1109,23 @@ public sealed class RuleSpanTests
 				""",
 
 			"	#region Fields@5:1",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors.Id,
+
+			"""
+				class C
+				{
+					private int _total;
+					#if TRACE
+					private int _trace;
+					#endif
+					private int _sum;
+				}
+				""",
+
+			"	#if TRACE@4:1+;@3:20|	private int _sum;@7:1+#endif@6:2",
 		],
 
 		[
@@ -883,6 +1180,24 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.NameLiteralArgumentsOfCall.Id,
+
+			"""
+				class C
+				{
+					static void Save(string path, bool overwrite, object backup) { }
+
+					void M(string path)
+					{
+						Save(path, true, null);
+					}
+				}
+				""",
+
+			"(path, true, null)@7:7",
+		],
+
+		[
 			DiagnosticDescriptors.RemoveRedundantArgumentName.Id,
 
 			"""
@@ -902,6 +1217,192 @@ public sealed class RuleSpanTests
 				""",
 
 			"width:@11:8|height:@11:22|path:@11:52",
+		],
+
+		[
+			DiagnosticDescriptors.BreakUpLongTernaryChain.Id,
+
+			"""
+				class C
+				{
+					int M(int value) =>
+						value > 2 ? 3 : value > 1 ? 2 : value > 0 ? 1 : 0;
+				}
+				""",
+
+			"value > 2 ? 3 : value > 1 ? 2 : value > 0 ? 1 : 0@4:3",
+		],
+
+		[
+			DiagnosticDescriptors.ShortenLongCondition.Id,
+
+			"""
+				class C
+				{
+					bool M(bool a, bool b, bool c) =>
+						a && b && c && a && b && c;
+				}
+				""",
+
+			"a && b && c && a && b && c@4:3",
+		],
+
+		[
+			DiagnosticDescriptors.FlattenDeeplyNestedCode.Id,
+
+			"""
+				class C
+				{
+					void M(bool a)
+					{
+						if (a)
+						{
+							if (a)
+							{
+								if (a)
+								{
+									if (a)
+									{
+									}
+								}
+							}
+						}
+					}
+				}
+				""",
+
+			"if@11:6",
+		],
+
+		[
+			DiagnosticDescriptors.ShortenLongMember.Id,
+
+			"""
+				class C
+				{
+					void Run()
+					{
+						F();
+						F();
+						F();
+						F();
+					}
+
+					void F() { }
+				}
+				""",
+
+			"Run@3:7",
+		],
+
+		[
+			DiagnosticDescriptors.ShortenLongParameterList.Id,
+
+			"""
+				class C
+				{
+					void M(int a, int b, int c, int d, int e, int f, int g, int h) { }
+				}
+				""",
+
+			"(int a, int b, int c, int d, int e, int f, int g, int h)@3:8",
+		],
+
+		[
+			DiagnosticDescriptors.ShortenLongLine.Id,
+			"class C\n{\n    int " + new string('a', 91) + " = 1;\n}\n",
+			"= 1;@3:101",
+		],
+
+		[
+			DiagnosticDescriptors.BreakUpLongElseIfChain.Id,
+
+			"""
+				class C
+				{
+					void M(int n)
+					{
+						if (n == 1) { }
+						else if (n == 2) { }
+						else if (n == 3) { }
+						else if (n == 4) { }
+						else if (n == 5) { }
+					}
+				}
+				""",
+
+			"if@5:3",
+		],
+
+		[
+			DiagnosticDescriptors.RemoveElseAfterJump.Id,
+
+			"""
+				class C
+				{
+					void M(bool flag)
+					{
+						if (flag)
+						{
+							return;
+						}
+						else
+						{
+							DoThing();
+						}
+					}
+				}
+				""",
+
+			"else@9:3",
+		],
+
+		[
+			DiagnosticDescriptors.MergeNestedIfStatements.Id,
+
+			"""
+				class C
+				{
+					void M(bool a, bool b)
+					{
+						if (a)
+						{
+							if (b)
+							{
+								DoThing();
+							}
+						}
+					}
+				}
+				""",
+
+			"if@5:3",
+		],
+
+		[
+			DiagnosticDescriptors.UsePatternForNullCheck.Id,
+
+			"""
+				class C
+				{
+					bool M(object value) => null != value;
+				}
+				""",
+
+			"null != value@3:26",
+		],
+
+		[
+			DiagnosticDescriptors.UseEqualityOperatorForNullCheck.Id,
+
+			"""
+				class C
+				{
+					bool M(object value) => value is not { };
+				}
+				""",
+
+			"value is not { }@3:26",
 		],
 
 		[
@@ -996,6 +1497,79 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.SeparateCommentedMarkupElement.Id,
+
+			""""
+				const string Project = """
+					<Project>
+					  <PackageReference Include="a" />
+					  <!-- The second package. -->
+					  <PackageReference Include="b" />
+					</Project>
+					""";
+				"""",
+
+			"	  <!-- The second package. -->@4:1+	  <PackageReference Include=\"a\" />@3:1",
+		],
+
+		[
+			DiagnosticDescriptors.RemoveMarkupElementPadding.Id,
+
+			""""
+				const string Project = """
+					<Project>
+
+					  <PackageReference Include="a" />
+					</Project>
+					""";
+				"""",
+
+			"	  <PackageReference Include=\"a\" />@4:1+	<Project>@2:1",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateSlashOfSelfClosingMarkupElement.Id,
+
+			""""
+				const string Project = """
+					<Project>
+					  <PackageReference Include="a"/>
+					</Project>
+					""";
+				"""",
+
+			"/>@3:33",
+		],
+
+		[
+			DiagnosticDescriptors.KeepSlashOfSelfClosingMarkupElementTight.Id,
+
+			""""
+				const string Project = """
+					<Project>
+					  <PackageReference Include="a" />
+					</Project>
+					""";
+				"""",
+
+			"/>@3:34",
+		],
+
+		[
+			DiagnosticDescriptors.WriteEmptyMarkupElementAsSelfClosingTag.Id,
+
+			""""
+				const string Project = """
+					<Project>
+					  <PackageReference Include="a"></PackageReference>
+					</Project>
+					""";
+				"""",
+
+			"></PackageReference>@3:33",
+		],
+
+		[
 			DiagnosticDescriptors.LayOutDocumentationComment.Id,
 
 			"""
@@ -1068,6 +1642,16 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.CapitalizeDocumentationText.Id,
+
+			"""
+				/// <summary>binds the options from the configuration section.</summary>
+				""",
+
+			"b@1:14+/// <summary>binds the options from the configuration section.</summary>@1:1",
+		],
+
+		[
 			DiagnosticDescriptors.EndDocumentationTextWithPeriod.Id,
 
 			"""
@@ -1078,7 +1662,7 @@ public sealed class RuleSpanTests
 		],
 
 		[
-			DiagnosticDescriptors.MarkNullKeyword.Id,
+			DiagnosticDescriptors.MarkLanguageKeywords.Id,
 
 			"""
 				/// <summary>Returns null when the section is missing.</summary>
@@ -1204,7 +1788,12 @@ public sealed class RuleSpanTests
 			new RunOptions([analyzer])
 			{
 				AnalyzerConfigOptions = s_options.GetValueOrDefault(ruleId),
-				DiagnosticOptions = TestRuleSets.Only(analyzer.SupportedDiagnostics.Single()),
+
+				DiagnosticOptions = TestRuleSets.OnSuppressingOthersOf(
+					[analyzer.SupportedDiagnostics.Single()],
+					s_ownersOff.GetValueOrDefault(ruleId, [])
+				),
+
 				RequireCompiles = false,
 			}
 		);
@@ -1246,6 +1835,35 @@ public sealed class RuleSpanTests
 		];
 
 		Assert.IsEmpty(missing, $"No row pins where {string.Join(", ", missing)} reports.");
+	}
+
+	[TestMethod]
+	[CrossCutting]
+	public async Task TheUnitAfterTheGapIsTheWholeMemberAndNotItsFirstTokenNode()
+	{
+		const string source = """
+			class C
+			{
+				int a;
+				int b;
+				void M()
+				{
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.ReportAsync<SeparateMultiLineConstructsAnalyzer>(source);
+
+		Diagnostic diagnostic = result.Diagnostics.Single();
+
+		StanzaDiagnosticLookup.NeighborUnits? units = StanzaDiagnosticLookup.FindNeighborUnits(
+			diagnostic.Location.SourceTree!.GetRoot(),
+			diagnostic
+		);
+
+		Assert.IsInstanceOfType<FieldDeclarationSyntax>(units!.Value.Previous);
+		Assert.IsInstanceOfType<MethodDeclarationSyntax>(units.Value.Next);
 	}
 
 	private static string Describe(Location location)

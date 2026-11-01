@@ -2,7 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Configuration;
 using Nickelony.Stanza.Markup.Core.DocComments;
 using Nickelony.Stanza.Markup.Core.Formatting;
-using Nickelony.Stanza.Markup.Core.Xml;
+using Nickelony.Stanza.Markup.Core.Options;
 using Nickelony.Stanza.Markup.Notices;
 using Nickelony.Stanza.Tests.Shared;
 
@@ -54,7 +54,7 @@ public sealed class MarkupConfigurationSeverityTests
 				".editorconfig",
 
 				MarkupFixtures.EditorConfig(
-					$"[*.xml]\ndotnet_diagnostic.ZA0211.severity = {severity}\n"
+					$"[*.xml]\ndotnet_diagnostic.ZA0912.severity = {severity}\n"
 				)
 			);
 		}
@@ -66,16 +66,16 @@ public sealed class MarkupConfigurationSeverityTests
 
 		Assert.AreEqual(
 			isOn,
-			configuration.GetOptions(path, MarkupProfiles.Xml).Rules.Contains("ZA0211")
+			configuration.GetOptions(path, MarkupProfiles.Xml).Rules.Contains("ZA0912")
 		);
 
 		Assert.IsEmpty(notices.Items);
 	}
 
 	[TestMethod]
-	[DataRow("ZA0101", "<root>\n  <a>\n    1\n  </a>\n  <b>\n    2\n  </b>\n</root>\n")]
-	[DataRow("ZA0104", "<root>\n  <a>1</a>\n\n\n  <b>2</b>\n</root>\n")]
-	[DataRow("ZA0105", "<root>\n  <!--note-->\n  <a>1</a>\n</root>\n")]
+	[DataRow("ZA2001", "<root>\n  <a>\n    1\n  </a>\n  <b>\n    2\n  </b>\n</root>\n")]
+	[DataRow("ZA2006", "<root>\n  <a>1</a>\n\n\n  <b>2</b>\n</root>\n")]
+	[DataRow("ZA2007", "<root>\n  <!--note-->\n  <a>1</a>\n</root>\n")]
 	public void ANoneSeverityDisablesTheRulesThatAlwaysRan(string id, string source)
 	{
 		using TempDirectory directory = new();
@@ -126,7 +126,7 @@ public sealed class MarkupConfigurationSeverityTests
 		MarkupOptions options = configuration.GetOptions(path, MarkupProfiles.Xml);
 
 		Assert.IsFalse(options.Rules.Contains("CA1000"));
-		Assert.IsFalse(options.Rules.Contains("ZA0211"));
+		Assert.IsFalse(options.Rules.Contains("ZA0912"));
 		Assert.IsEmpty(notices.Items);
 	}
 
@@ -140,7 +140,7 @@ public sealed class MarkupConfigurationSeverityTests
 
 		_ = directory.Write(
 			".editorconfig",
-			MarkupFixtures.EditorConfig("[*.xml]\ndotnet_diagnostic.ZA0211.severity = warning\n")
+			MarkupFixtures.EditorConfig("[*.xml]\ndotnet_diagnostic.ZA0912.severity = warning\n")
 		);
 
 		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
@@ -149,11 +149,11 @@ public sealed class MarkupConfigurationSeverityTests
 		);
 
 		Assert.IsTrue(
-			configuration.GetOptions(markup, MarkupProfiles.Xml).Rules.Contains("ZA0211")
+			configuration.GetOptions(markup, MarkupProfiles.Xml).Rules.Contains("ZA0912")
 		);
 
 		Assert.IsFalse(
-			configuration.GetOptions(project, MarkupProfiles.MsBuild).Rules.Contains("ZA0211")
+			configuration.GetOptions(project, MarkupProfiles.MsBuild).Rules.Contains("ZA0912")
 		);
 	}
 
@@ -168,8 +168,8 @@ public sealed class MarkupConfigurationSeverityTests
 
 			MarkupFixtures.EditorConfig(
 				"[*.xml]\nstanza_markup_doc_reprint = members\n"
-					+ "dotnet_diagnostic.ZA0101.severity = warning\n"
-					+ "dotnet_diagnostic.ZA0102.severity = warning\n"
+					+ "dotnet_diagnostic.ZA2001.severity = warning\n"
+					+ "dotnet_diagnostic.ZA2002.severity = warning\n"
 			)
 		);
 

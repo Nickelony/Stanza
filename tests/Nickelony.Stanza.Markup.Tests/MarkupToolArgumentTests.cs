@@ -170,6 +170,7 @@ public sealed class MarkupToolArgumentTests
 	public void AnInlineValueReachesTheRun()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("sample.txt", LineFeed(Source));
 		_ = directory.Write("excluded.txt", LineFeed(Source));
 

@@ -5,4 +5,4 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class KeepSingleLineInitializerMembersTogetherAnalyzer()
-	: KeepSingleLineSiblingsTogetherAnalyzer(StanzaRules.KeepSingleLineInitializerMembersTogether);
+	: RemovableSingleLineGapAnalyzer(StanzaRules.KeepSingleLineInitializerMembersTogether);

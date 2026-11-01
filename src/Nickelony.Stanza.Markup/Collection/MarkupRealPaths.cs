@@ -8,7 +8,7 @@ namespace Nickelony.Stanza.Markup.Collection;
 /// <summary>Resolves the directory links in a path, so two spellings of one file give the same path.</summary>
 internal sealed class MarkupRealPaths
 {
-	/// <summary>Each directory resolves once for all its files, taking a Tomb-Editor run from 3.0 s to 2.6 s.</summary>
+	/// <summary>Each directory resolves once for all its files, not once for each file.</summary>
 	private readonly Dictionary<string, string> _directories = new(PathComparison.Comparer);
 
 	public string GetRealPath(string filePath)
@@ -39,7 +39,7 @@ internal sealed class MarkupRealPaths
 		{
 			return new DirectoryInfo(directory).ResolveLinkTarget(returnFinalTarget: true)?.FullName;
 		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+		catch (Exception exception) when (FileFailures.IsFileFailure(exception))
 		{
 			// A directory whose link cannot be read keeps its own spelling.
 			return null;

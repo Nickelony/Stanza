@@ -59,14 +59,20 @@ Elements that each fit on one line stay tight:
 ## Commands
 
 - `check` reports the files that are not formatted, and exits with `1` when there are any.
-- `format` adds the missing blank lines, caps the gaps that are too long, and writes the files back.
+- `format` adds the missing blank lines, caps the gaps that are too long, spaces a comment marker from its text, and writes the files back.
 
 The [command reference](https://github.com/Nickelony/Stanza/wiki/Markup-command-reference) lists the options, the exit codes and the build output.
 
+## Rules
+
+The tool applies the markup rules that the [C# analyzers](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Analyzers/README.md) share.
+[Markup behavior](https://github.com/Nickelony/Stanza/wiki/Markup-behavior#what-it-changes) says which apply by default and how a file enables or disables one.
+
 ## More
 
+- [Markup](https://github.com/Nickelony/Stanza/wiki/Markup) opens the pages of the tool.
 - [Markup behavior](https://github.com/Nickelony/Stanza/wiki/Markup-behavior) covers the profiles, what the tool changes and what it leaves alone.
 - [Markup encoding](https://github.com/Nickelony/Stanza/wiki/Markup-encoding) covers how the tool reads and writes each file's encoding.
 - [Markup configuration](https://github.com/Nickelony/Stanza/wiki/Markup-configuration) covers the `.editorconfig` keys and how a file resolves them.
 - [Troubleshooting](https://github.com/Nickelony/Stanza/wiki/Troubleshooting) maps a symptom, such as a skipped file or exit code `2`, to the setting or page that decides it.
-- [Analyzer readme](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Analyzers/README.md) covers the same layout rules for C# source.
+- [Analyzer readme](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Analyzers/README.md) covers the C# analyzers.

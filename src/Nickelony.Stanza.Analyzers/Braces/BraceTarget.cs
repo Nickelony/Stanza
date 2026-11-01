@@ -8,6 +8,5 @@ internal readonly struct BraceTarget(TextSpan headerSpan, StatementSyntax body, 
 	public TextSpan HeaderSpan { get; } = headerSpan;
 	public StatementSyntax Body { get; } = body;
 	public bool IsMultiLine { get; } = isMultiLine;
-
 	public BlockSyntax? Block => Body as BlockSyntax;
 }

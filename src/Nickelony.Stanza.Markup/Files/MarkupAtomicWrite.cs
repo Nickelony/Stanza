@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using Nickelony.Stanza.Shared;
 
 namespace Nickelony.Stanza.Markup.Files;
 
@@ -78,7 +79,7 @@ internal static class MarkupAtomicWrite
 
 			return TrySwap(steps, temporary, path, out error);
 		}
-		catch (Exception exception) when (MarkupSource.IsAccessFailure(exception))
+		catch (Exception exception) when (FileFailures.IsFileOperationFailure(exception))
 		{
 			// The temp file is deleted only while the original exists, so a failure never deletes the only copy.
 			if (ownsTemporary && File.Exists(path))
@@ -112,14 +113,14 @@ internal static class MarkupAtomicWrite
 		{
 			steps.Swap(temporary, path);
 		}
-		catch (Exception exception) when (MarkupSource.IsAccessFailure(exception) && !File.Exists(path))
+		catch (Exception exception) when (FileFailures.IsFileOperationFailure(exception) && !File.Exists(path))
 		{
 			// A replace can fail after it moved the original away, so the temp file is the only copy and goes into its place.
 			try
 			{
 				File.Move(temporary, path);
 			}
-			catch (Exception moveFailure) when (MarkupSource.IsAccessFailure(moveFailure))
+			catch (Exception moveFailure) when (FileFailures.IsFileOperationFailure(moveFailure))
 			{
 				error = $"{Describe(moveFailure)}; the new text is left in '{Path.GetFileName(temporary)}'.";
 				return false;
@@ -167,8 +168,8 @@ internal static class MarkupAtomicWrite
 		using var writer = new StreamWriter(stream, encoding);
 
 		writer.Write(text);
-		writer.Flush();
 
+		writer.Flush();
 		stream.Flush(flushToDisk: true);
 	}
 
@@ -181,7 +182,7 @@ internal static class MarkupAtomicWrite
 		{
 			return File.GetUnixFileMode(path);
 		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+		catch (Exception exception) when (FileFailures.IsFileOrUnsupportedFailure(exception))
 		{
 			return null;
 		}
@@ -196,7 +197,7 @@ internal static class MarkupAtomicWrite
 		{
 			File.SetUnixFileMode(destination, File.GetUnixFileMode(source));
 		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
+		catch (Exception exception) when (FileFailures.IsFileOrUnsupportedFailure(exception))
 		{
 			// A mode that cannot be copied does not fail the write.
 		}
@@ -208,7 +209,7 @@ internal static class MarkupAtomicWrite
 		{
 			File.Delete(path);
 		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException)
+		catch (Exception exception) when (FileFailures.IsFileOrUnsupportedFailure(exception))
 		{
 			// The write's own error is the one reported, so a failed delete stays silent and the temp file is left behind.
 		}

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using Nickelony.Stanza.Markup.Core.Options;
 using Nickelony.Stanza.Markup.Notices;
@@ -37,9 +36,6 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 	private readonly Dictionary<string, ParsedFile?> _files = new(PathComparison.Comparer);
 
 	/// <summary>The problems kept for the file being read, the first in line order.</summary>
-	/// <remarks>
-	/// A refused glob arrives after the lines, so it can displace a problem of a later line.
-	/// </remarks>
 	private readonly List<Problem> _problems = [];
 
 	/// <summary>The warnings that say the file's settings were dropped, which the cap never hides.</summary>
@@ -48,45 +44,16 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 	/// <summary>The problems the file being read has had, whether or not they are kept.</summary>
 	private int _problemCount;
 
-	/// <summary>The index of the kept problem reported last once the list is full, or -1 while it is not.</summary>
-	private int _last = -1;
-
-	private void AddProblem(string path, int? line, string message)
+	private void AddProblem(string path, int line, string message)
 	{
-		Problem problem = new(Path: path, Line: line, Message: message, Sequence: ++_problemCount);
+		_problemCount++;
 
 		if (_problems.Count < MaxProblems)
-		{
-			_problems.Add(problem);
-			return;
-		}
-
-		if (_last < 0)
-			_last = FindLastProblem();
-
-		if (!problem.Precedes(_problems[_last]))
-			return;
-
-		_problems[_last] = problem;
-		_last = FindLastProblem();
-	}
-
-	private int FindLastProblem()
-	{
-		int last = 0;
-
-		for (int index = 1; index < _problems.Count; index++)
-		{
-			if (_problems[last].Precedes(_problems[index]))
-				last = index;
-		}
-
-		return last;
+			_problems.Add(new Problem(Path: path, Line: line, Message: message));
 	}
 
 	/// <summary>Adds a warning that says settings were dropped, which comes first and is not capped.</summary>
-	private void AddDropped(string path, int? line, string message) =>
-		_dropped.Add(new Problem(Path: path, Line: line, Message: message, Sequence: 0));
+	private void AddDropped(string path, int? line, string message) => _dropped.Add(new Problem(Path: path, Line: line, Message: message));
 
 	/// <summary>Reports what the file dropped, then its problems by line, then a count of those left out.</summary>
 	private void ReportProblems()
@@ -94,16 +61,14 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		foreach (Problem dropped in _dropped)
 			notices.AddWarning(dropped.Message, paths.GetDisplayPath(dropped.Path), dropped.Line);
 
-		List<Problem> ordered = [.. _problems.OrderBy(static problem => problem.Line ?? int.MaxValue).ThenBy(static problem => problem.Sequence)];
-
-		foreach (Problem problem in ordered)
+		foreach (Problem problem in _problems)
 			notices.AddWarning(problem.Message, paths.GetDisplayPath(problem.Path), problem.Line);
 
-		int left = _problemCount - ordered.Count;
+		int left = _problemCount - _problems.Count;
 
 		if (left > 0)
 		{
-			string displayPath = paths.GetDisplayPath(ordered[0].Path);
+			string displayPath = paths.GetDisplayPath(_problems[0].Path);
 			string count = left == 1 ? "1 more problem, which is" : $"{left} more problems, which are";
 
 			notices.AddWarning($"'{displayPath}' has {count} not reported.", displayPath);
@@ -113,7 +78,6 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		_problems.Clear();
 
 		_problemCount = 0;
-		_last = -1;
 	}
 
 	/// <summary>Cuts text a warning quotes to a fixed length, so a hostile file cannot flood the report.</summary>
@@ -128,11 +92,11 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		return $"{text[..length]}...";
 	}
 
-	private void CheckKey(string path, int line, string key, string value)
+	private void CheckKey(string path, int line, string key, string value, string rawValue)
 	{
 		// `unset` removes what an outer file set rather than naming a value to judge,
 		// and a key the check finds no problem with is not reported.
-		if (EditorConfigChain.IsUnset(value) || MarkupKeyCheck.FindProblem(key, value) is not { } problem)
+		if (EditorConfigChain.IsUnset(value) || MarkupKeyCheck.FindProblem(key, value, rawValue) is not { } problem)
 			return;
 
 		AddProblem(path, line, $"'{paths.GetDisplayPath(path)}' sets {ToQuoted(key)} to '{ToQuoted(value)}': {problem}.");
@@ -194,13 +158,9 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 	{
 		try
 		{
-			ParsedFile file = ReadSections(path, directory);
-
-			ValidateGlobs(path, file);
-
-			return file;
+			return ReadSections(path, directory);
 		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+		catch (Exception exception) when (FileFailures.IsFileOrPathFailure(exception))
 		{
 			AddDropped(path, line: null, $"'{paths.GetDisplayPath(path)}' could not be read ({exception.Message}); its settings were ignored.");
 			return null;
@@ -211,30 +171,28 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		}
 	}
 
-	private void ValidateGlobs(string path, ParsedFile file)
+	/// <summary>Reports a section glob the dialect refuses, or that holds a backslash before a wildcard.</summary>
+	private void ValidateGlob(string path, int headerLine, string glob)
 	{
-		foreach (EditorConfigSection section in file.Sections)
+		if (!GlobMatcher.TryValidate(glob, out string? refusal))
 		{
-			if (!GlobMatcher.TryValidate(section.Glob, out string? refusal))
-			{
-				AddProblem(
-					path,
-					line: section.HeaderLine,
-					$"'{paths.GetDisplayPath(path)}' has a section '[{ToQuoted(section.Glob)}]' whose pattern is refused ({ToQuoted(refusal)}); it matches nothing."
-				);
-			}
+			AddProblem(
+				path,
+				line: headerLine,
+				$"'{paths.GetDisplayPath(path)}' has a section '[{ToQuoted(glob)}]' whose pattern is refused ({ToQuoted(refusal)}); it matches nothing."
+			);
+		}
 
-			// A backslash is the escape of the dialect, so `src\*.xml` names a file whose own name holds a star.
-			int escaped = GlobMatcher.FindEscapedWildcard(section.Glob);
+		// A backslash is the escape of the dialect, so `src\*.xml` names a file whose own name holds a star.
+		int escaped = GlobMatcher.FindEscapedWildcard(glob);
 
-			if (escaped >= 0)
-			{
-				AddProblem(
-					path,
-					line: section.HeaderLine,
-					$"'{paths.GetDisplayPath(path)}' has a section '[{ToQuoted(section.Glob)}]' where a backslash escapes '{section.Glob[escaped]}', so it names that character itself; write a slash to separate directories."
-				);
-			}
+		if (escaped >= 0)
+		{
+			AddProblem(
+				path,
+				line: headerLine,
+				$"'{paths.GetDisplayPath(path)}' has a section '[{ToQuoted(glob)}]' where a backslash escapes '{glob[escaped]}', so it names that character itself; write a slash to separate directories."
+			);
 		}
 	}
 
@@ -340,7 +298,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 				$"'{paths.GetDisplayPath(path)}' has the line '{ToQuoted(line)}', which is not a section header; it was ignored."
 			);
 
-			builder.StartSection(glob: null, headerLine: null);
+			builder.StartSection(glob: null);
 
 			return true;
 		}
@@ -357,7 +315,11 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		}
 
 		// The header check guarantees the last character is the closing bracket.
-		builder.StartSection(glob: header[1..^1], headerLine: lineNumber);
+		string glob = header[1..^1];
+
+		// The glob is judged as its header is read, so the problems stay in line order.
+		ValidateGlob(path, lineNumber, glob);
+		builder.StartSection(glob);
 
 		return true;
 	}
@@ -384,25 +346,26 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 			return;
 
 		string key = line[..separator].Trim().ToLowerInvariant();
-		string value = MarkupOptionReader.StripCommentAndSeverity(key, line[(separator + 1)..]);
+		string rawValue = line[(separator + 1)..];
+		string value = MarkupOptionReader.StripCommentAndSeverity(key, rawValue);
 
 		if (builder.Glob is null && key == "root")
 		{
-			if (MarkupKeyCheck.FromBooleanName(value) is null && !EditorConfigChain.IsUnset(value))
+			if (OptionValues.Boolean.Find(value) is null && !EditorConfigChain.IsUnset(value))
 			{
 				AddProblem(
 					path,
 					lineNumber,
-					$"'{paths.GetDisplayPath(path)}' sets root to '{ToQuoted(value)}': neither 'true' nor 'false', so the search for a parent .editorconfig continues."
+					$"'{paths.GetDisplayPath(path)}' sets root to '{ToQuoted(value)}': {OptionValues.Boolean.DescribeNeither()}, so the search for a parent .editorconfig continues."
 				);
 			}
 
-			builder.IsRoot = MarkupKeyCheck.FromBooleanName(value) is true;
+			builder.IsRoot = OptionValues.Boolean.Find(value) is true;
 			return;
 		}
 
 		builder.Add(key, value);
-		CheckKey(path, line: lineNumber, key, value);
+		CheckKey(path, line: lineNumber, key, value, rawValue);
 	}
 
 	/// <summary>This reader accepts <c>=</c> and <c>:</c>, and the key ends at whichever comes first.</summary>
@@ -421,17 +384,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 
 	private sealed record ParsedFile(bool IsRoot, List<EditorConfigSection> Sections);
 
-	private readonly record struct Problem(string Path, int? Line, string Message, int Sequence)
-	{
-		/// <summary>Whether this one is reported first: by line, those with no line last, then by arrival.</summary>
-		public bool Precedes(Problem other)
-		{
-			int line = Line ?? int.MaxValue;
-			int otherLine = other.Line ?? int.MaxValue;
-
-			return line != otherLine ? line < otherLine : Sequence < other.Sequence;
-		}
-	}
+	private readonly record struct Problem(string Path, int? Line, string Message);
 
 	/// <summary>Gathers the sections of one file as its lines are read.</summary>
 	private sealed class SectionBuilder(string directory)
@@ -440,24 +393,21 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		private readonly Dictionary<string, string> _global = new(StringComparer.OrdinalIgnoreCase);
 
 		private Dictionary<string, string> _pending = new(StringComparer.OrdinalIgnoreCase);
-		private int? _headerLine;
 
 		public string? Glob { get; private set; }
 
 		/// <summary>The headers read so far that name a section, whether or not a key follows.</summary>
 		public int SectionCount { get; private set; }
-
 		public bool IsRoot { get; set; }
 
 		/// <summary>Whether an unreadable header is in force, so its keys belong to no section.</summary>
 		public bool InUnreadableSection { get; private set; }
 
-		public void StartSection(string? glob, int? headerLine)
+		public void StartSection(string? glob)
 		{
 			AddPendingSection();
 
 			_pending = new(StringComparer.OrdinalIgnoreCase);
-			_headerLine = headerLine;
 			Glob = glob;
 
 			if (glob is not null)
@@ -490,7 +440,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		private void AddPendingSection()
 		{
 			if (Glob is not null && _pending.Count > 0)
-				_sections.Add(new(Directory: directory, Glob, Values: _pending, HeaderLine: _headerLine));
+				_sections.Add(new(Directory: directory, Glob, Values: _pending));
 		}
 	}
 }

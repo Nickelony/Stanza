@@ -2,6 +2,7 @@ name: Pages
 
 # The configurator is built from the files that site/README.md lists, which the paths below name,
 # so a change to one of them rebuilds it, and a page the site cannot parse fails the pull request.
+# Its lint loads JS Stanza, which is built from js/src, so those files and the packages of js/ are named too.
 on:
   push:
     branches: [main]
@@ -10,9 +11,35 @@ on:
       - 'docs/rules/**'
       - 'docs/options/**'
       - 'docs/Markup-behavior.md'
+      - 'docs/Which-rule-owns-which-gap.md'
+      - 'docs/Working-with-formatters.md'
       - 'src/Nickelony.Stanza.Analyzers/README.md'
+      - 'src/Nickelony.Stanza.Analyzers.Package/levels.txt'
       - 'src/Nickelony.Stanza.Markup.Core/MarkupDiagnostics.cs'
+      - 'js/docs/rules/**'
+      - 'js/README.md'
+      - 'js/docs/Rule-map.md'
+      - 'js/src/**'
+      - 'js/package.json'
+      - 'js/package-lock.json'
+      - 'js/tsconfig.json'
+      - 'js/tsconfig.build.json'
+      - 'py/docs/rules/**'
+      - 'py/src/nickelony_stanza/rules/**'
+      - 'py/README.md'
+      - 'py/docs/Configuration.md'
+      - 'py/docs/Rule-map.md'
+      - 'py/src/nickelony_stanza/options.py'
+      - 'py/src/nickelony_stanza/config.py'
+      - 'py/src/nickelony_stanza/formatter.py'
       - 'icon/Stanza.png'
+      - 'icon/Stanza-Mu.png'
+      - 'icon/Stanza-JS.png'
+      - 'icon/Stanza-Py.png'
+      - 'icon/Stanza.svg'
+      - 'icon/Stanza-Mu.svg'
+      - 'icon/Stanza-JS.svg'
+      - 'icon/Stanza-Py.svg'
       - '.github/workflows/pages.yml'
   pull_request:
     paths:
@@ -20,9 +47,35 @@ on:
       - 'docs/rules/**'
       - 'docs/options/**'
       - 'docs/Markup-behavior.md'
+      - 'docs/Which-rule-owns-which-gap.md'
+      - 'docs/Working-with-formatters.md'
       - 'src/Nickelony.Stanza.Analyzers/README.md'
+      - 'src/Nickelony.Stanza.Analyzers.Package/levels.txt'
       - 'src/Nickelony.Stanza.Markup.Core/MarkupDiagnostics.cs'
+      - 'js/docs/rules/**'
+      - 'js/README.md'
+      - 'js/docs/Rule-map.md'
+      - 'js/src/**'
+      - 'js/package.json'
+      - 'js/package-lock.json'
+      - 'js/tsconfig.json'
+      - 'js/tsconfig.build.json'
+      - 'py/docs/rules/**'
+      - 'py/src/nickelony_stanza/rules/**'
+      - 'py/README.md'
+      - 'py/docs/Configuration.md'
+      - 'py/docs/Rule-map.md'
+      - 'py/src/nickelony_stanza/options.py'
+      - 'py/src/nickelony_stanza/config.py'
+      - 'py/src/nickelony_stanza/formatter.py'
       - 'icon/Stanza.png'
+      - 'icon/Stanza-Mu.png'
+      - 'icon/Stanza-JS.png'
+      - 'icon/Stanza-Py.png'
+      - 'icon/Stanza.svg'
+      - 'icon/Stanza-Mu.svg'
+      - 'icon/Stanza-JS.svg'
+      - 'icon/Stanza-Py.svg'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -55,9 +108,20 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version-file: site/.node-version
           cache: npm
-          cache-dependency-path: site/package-lock.json
+          cache-dependency-path: |
+            site/package-lock.json
+            js/package-lock.json
+
+      # The lint loads JS Stanza from its build, and the site links the package from js/.
+      - name: Install the packages of JS Stanza
+        working-directory: js
+        run: npm ci
+
+      - name: Build JS Stanza
+        working-directory: js
+        run: npm run build
 
       - name: Install the packages
         run: npm ci
@@ -85,8 +149,9 @@ jobs:
         with:
           path: site/dist
 
+  # A manual run on another branch builds and tests, and publishes nothing.
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10

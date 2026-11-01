@@ -13,4 +13,8 @@ internal sealed record FormatStep(
 	ImmutableArray<string> Watched,
 	ImmutableArray<int> ChangeExitCodes,
 	string WorkingDirectory
-);
+)
+{
+	/// <summary>The files a check reports, or every file when unset.</summary>
+	public ImmutableArray<string> Scope { get; init; }
+}

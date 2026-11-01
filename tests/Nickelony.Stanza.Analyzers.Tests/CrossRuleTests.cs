@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
 
@@ -130,6 +129,19 @@ public sealed class CrossRuleTests
 				#endregion
 			}
 
+			class G
+			{
+				void M(int value)
+				{
+					var first = 1;
+					var second = 2;
+					const int third = 3;
+					Assert.That(value);
+					Assert.That(first);
+					return;
+				}
+			}
+
 			class F
 			{
 				int Pick()
@@ -139,11 +151,10 @@ public sealed class CrossRuleTests
 			}
 			""";
 
-		AnalyzerRunResult result = await RoslynTestHarness.ReportAllAsync(source);
-
-		string reportedIds = string.Join(
-			",",
-			result.Diagnostics.Select(diagnostic => diagnostic.Id).Distinct().OrderBy(id => id)
+		// The rules that ship on, and the same-type rule, which shares the run gaps.
+		AnalyzerRunResult result = await RoslynTestHarness.ReportAllAsync(
+			source,
+			TestRuleSets.Only(DiagnosticDescriptors.SeparateSameTypeDeclarationRuns)
 		);
 
 		ImmutableArray<TextSpan> locations =
@@ -153,12 +164,12 @@ public sealed class CrossRuleTests
 				.Select(diagnostic => diagnostic.Location.SourceSpan),
 		];
 
-		Assert.AreEqual(TestRuleSets.JoinSortedIds(TestRuleSets.DefaultRules), reportedIds);
-
 		Dictionary<string, int> expectedCounts = new(StringComparer.Ordinal)
 		{
-			[DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns.Id] = 2,
-			[DiagnosticDescriptors.SeparateSameTypeDeclarationGroups.Id] = 2,
+			[DiagnosticDescriptors.SeparateDeclarationRuns.Id] = 1,
+			[DiagnosticDescriptors.SeparateInvocationRuns.Id] = 2,
+			[DiagnosticDescriptors.SeparateAssertionRuns.Id] = 2,
+			[DiagnosticDescriptors.SeparateSameTypeDeclarationRuns.Id] = 2,
 			[DiagnosticDescriptors.SeparateMemberGroups.Id] = 1,
 			[DiagnosticDescriptors.SeparateImportSection.Id] = 1,
 			[DiagnosticDescriptors.SeparateFileScopedNamespaceDeclarationFromFirstMember.Id] = 1,
@@ -338,7 +349,7 @@ public sealed class CrossRuleTests
 		);
 
 		Assert.Contains(
-			DiagnosticDescriptors.MarkNullKeyword.Id,
+			DiagnosticDescriptors.MarkLanguageKeywords.Id,
 			result.Diagnostics.Select(diagnostic => diagnostic.Id),
 			"the optional family did not report, so the run proves nothing."
 		);
@@ -467,8 +478,7 @@ public sealed class CrossRuleTests
 	}
 
 	// A blank line that one fix writes beside a unit stays when another fix changes the unit,
-	// because no rule removes a blank line between single-line members,
-	// or the one before an else that follows no brace.
+	// because no rule removes a blank line between single-line members.
 	[TestMethod]
 	public async Task ABlankLineBesideAMemberThatTheBodyRuleCollapsedStaysUnowned()
 	{
@@ -495,86 +505,6 @@ public sealed class CrossRuleTests
 		Assert.IsEmpty(result.Diagnostics);
 	}
 
-	[TestMethod]
-	public async Task ABlankLineBeforeAnElseWhoseBracesWereDroppedStaysUnowned()
-	{
-		const string source = """
-			class C
-			{
-				void M(bool flag)
-				{
-					if (flag)
-						Call();
-
-					else
-						Other();
-				}
-
-				void Call() { }
-
-				void Other() { }
-			}
-			""";
-
-		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
-			source,
-
-			TestRuleSets.Only(
-				DiagnosticDescriptors.RemoveRedundantBraces,
-				DiagnosticDescriptors.KeepClauseKeywordsAdjacent
-			)
-		);
-
-		Assert.IsEmpty(result.Diagnostics);
-	}
-
-	[TestMethod]
-	[DynamicData(
-		nameof(BraceFamilyFixtures.HeldBlocks),
-		typeof(BraceFamilyFixtures),
-		DynamicDataDisplayName = nameof(RowNames.GetRowName),
-		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
-	)]
-	public async Task TheBraceRulesAgreeOnAChainWhoseBlockHoldsALineBesidesItsStatement(
-		string shape,
-		string block
-	)
-	{
-		string braced = BraceFamilyFixtures.Chain(block, bracedFirst: true);
-
-		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
-			DiagnosticDescriptors.UseBracesConsistently,
-			DiagnosticDescriptors.RemoveRedundantBraces
-		);
-
-		// The half braced chain gets its braces, and the braced chain keeps them: neither undoes the other.
-		AnalyzerRunResult fromHalfBraced = await RoslynTestHarness.RunAllAsync(
-			BraceFamilyFixtures.Chain(block, bracedFirst: false),
-			rules
-		);
-
-		AnalyzerRunResult fromBraced = await RoslynTestHarness.RunAllAsync(braced, rules);
-
-		RoslynTestHarness.AssertFixedText(braced, fromHalfBraced);
-		Assert.IsEmpty(fromBraced.Diagnostics, shape);
-	}
-
-	[TestMethod]
-	public async Task TheBraceRulesAgreeOnAChainWhoseBlockHoldsOnlyACommentOnTheStatementsLine()
-	{
-		string braced = BraceFamilyFixtures.Chain("{|\tDoThing(); // Done.|}", bracedFirst: true);
-		string unbraced = BraceFamilyFixtures.Chain("\tDoThing(); // Done.", bracedFirst: false);
-
-		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
-			DiagnosticDescriptors.UseBracesConsistently,
-			DiagnosticDescriptors.RemoveRedundantBraces
-		);
-
-		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(braced, rules);
-
-		RoslynTestHarness.AssertFixedText(unbraced, result);
-	}
-
 	private static string RenderCounts(Dictionary<string, int> counts)
 	{
 		return string.Join(
@@ -587,84 +517,16 @@ public sealed class CrossRuleTests
 	}
 
 	[TestMethod]
-	public async Task TheBraceFamilyOnlyClaimsEachGapOnce()
-	{
-		const string source = """
-			class C
-			{
-				void M(int value)
-				{
-
-					if (value > 0)
-						return;
-					else if (value < 0)
-					{
-						DoThing();
-						DoThing();
-					}
-
-					else
-
-					{
-
-						DoThing();
-					}
-				}
-			}
-			""";
-
-		AnalyzerRunResult result = await RoslynTestHarness.ReportAllAsync(
-			source,
-			TestRuleSets.StandaloneRulesEnabled
-		);
-
-		string reportedIds = string.Join(
-			",",
-			result.Diagnostics.Select(diagnostic => diagnostic.Id).Distinct().OrderBy(id => id)
-		);
-
-		// Padding, the multi-line chain and the clause keyword all fire;
-		// the redundant brace rule stays out of a chain a multi-line branch pins.
-		// Every gap is claimed once: padding takes the gaps next to a brace,
-		// the clause keyword takes the gap before the else, and brace consistency takes the braceless branch of the chain.
-		Assert.AreEqual(
-			$"{DiagnosticDescriptors.KeepClauseKeywordsAdjacent.Id},{DiagnosticDescriptors.RemoveBracePadding.Id},{DiagnosticDescriptors.UseBracesConsistently.Id}",
-			reportedIds
-		);
-
-		Assert.HasCount(5, result.Diagnostics);
-		RoslynTestHarness.AssertEachGapIsClaimedOnce(result);
-	}
-
-	[TestMethod]
-	public async Task TheEmptyBlockRuleOwnsABodyWithNothingButBlankLines()
+	public async Task ALabelWithAGotoIsLeftAlone()
 	{
 		const string source = """
 			class C
 			{
 				void M()
 				{
+					goto end;
 
-				}
-
-				void N()
-				{
-
-					DoThing();
-					DoThing();
-				}
-			}
-			""";
-
-		const string fixedSource = """
-			class C
-			{
-				void M()
-				{ }
-
-				void N()
-				{
-					DoThing();
+					end:
 					DoThing();
 				}
 			}
@@ -672,20 +534,9 @@ public sealed class CrossRuleTests
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
 			source,
-			TestRuleSets.StandaloneRulesEnabled
+			TestRuleSets.AllRulesEnabled
 		);
 
-		string reportedIds = string.Join(
-			",",
-			result.Diagnostics.Select(diagnostic => diagnostic.Id).Distinct().OrderBy(id => id)
-		);
-
-		Assert.AreEqual(
-			$"{DiagnosticDescriptors.RemoveBracePadding.Id},{DiagnosticDescriptors.CollapseEmptyBlocks.Id}",
-			reportedIds
-		);
-
-		Assert.HasCount(2, result.Diagnostics);
-		RoslynTestHarness.AssertFixedText(fixedSource, result);
+		Assert.IsEmpty(result.Diagnostics);
 	}
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nickelony.Stanza.Analyzers.Tests.Convergence;
 using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
@@ -83,6 +84,109 @@ public sealed class ConfigurationMatrixTests
 				x = 5;
 			}
 
+			int Jumps(int x)
+			{
+				x = 1;
+
+				x = 2;
+
+				x = 3;
+
+				x = 4;
+
+				if (x > 0)
+				{
+					Helpers.DoThing();
+				}
+				x = 5;
+				x = 6;
+				return x;
+			}
+
+			int CommentedJump(int x)
+			{
+				x = 1;
+				// The next step.
+				x = 2;
+				return x;
+			}
+
+			int SectionJumps(int x)
+			{
+				switch (x)
+				{
+					case 1:
+						x = 1;
+						x = 2;
+						return x;
+					default:
+						x = 3;
+						x = 4;
+						break;
+				}
+
+				return x;
+			}
+
+			void Resources(int x)
+			{
+				using var first = Helpers.Open();
+				using var second = Helpers.Open();
+				var third = x;
+				var fourth = x;
+				Assert.That(third);
+				Assert.That(fourth);
+				Helpers.DoThing();
+			}
+
+			void Alone(int x)
+			{
+				Helpers.DoThing();
+				var lone = x;
+				Assert.That(lone);
+				Assert.That(x);
+				Helpers.DoThing();
+				Helpers.DoThing();
+			}
+
+			int Assigned(int x)
+			{
+				Helpers.DoThing();
+				var lone = x;
+				x = lone;
+				x += 1;
+				x++;
+				Assert.That(x);
+				Assert.That(lone);
+				(x, lone) = Helpers.Read();
+				x = 5;
+				return x;
+			}
+
+			event Action Changed;
+			event Action Closed;
+
+			void Subscribed(int x)
+			{
+				Helpers.DoThing();
+				var handler = Helpers.DoThing;
+				Changed += handler;
+				Closed -= handler;
+				x += 1;
+				x = 2;
+				Changed += handler;
+				Assert.That(x);
+				Changed += handler;
+				Closed += handler;
+
+				Helpers.DoThing();
+
+				Changed -= handler;
+
+				Closed -= handler;
+				return;
+			}
+
 			/// <summary>
 			///
 			/// Binds the options.
@@ -96,11 +200,141 @@ public sealed class ConfigurationMatrixTests
 
 		""";
 
+	// The corpus calls Guard, which only the key makes a throw helper.
+	private static readonly Dictionary<string, string> s_options = new(StringComparer.Ordinal)
+	{
+		["stanza_guard_roots"] = "Guard",
+	};
+
+	// Methods that open with guards beside the statements the guard rule shares its gaps with.
+	private const string GuardRepros = """
+		internal sealed class GuardRepros : Stage
+		{
+			public override void OnStart()
+			{
+				if (Value == 0) return;
+				base.OnStart();
+				Helpers.DoThing();
+				Helpers.DoThing();
+				return;
+			}
+
+			public override void OnStop()
+			{
+				Helpers.DoThing();
+
+				Value = 1;
+
+				Value = 2;
+				base.OnStop();
+			}
+
+			public override void Clear()
+			{
+				if (Value == 0) return;
+				if (Value == 1) return;
+				base.Clear();
+			}
+
+			public override int Fetch()
+			{
+				base.DoThing();
+				DoThing();
+				return base.Fetch();
+			}
+
+			void Guarded(int x, string text)
+			{
+				ArgumentNullException.ThrowIfNull(text);
+				if (x == 0) return;
+				if (x == 1) throw new ArgumentException("x");
+				x = 1;
+
+				x = 2;
+
+				x = 3;
+				return;
+			}
+
+			int GuardedJumps(int x)
+			{
+				if (x == 0) return 0;
+				if (x == 1) return 1;
+				return x;
+			}
+
+			void GuardedLoop(int x)
+			{
+				while (x > 0)
+				{
+					if (x == 1) continue;
+					x--;
+					x--;
+				}
+			}
+
+			void GuardedByRoots(object text)
+			{
+				Guard.NotNull(text);
+				Guard.Positive(1);
+				Helpers.DoThing();
+			}
+
+			void GuardedAboveRuns(int x, string text)
+			{
+				ArgumentNullException.ThrowIfNull(text);
+				var first = x;
+				var second = x;
+				Helpers.DoThing();
+				Helpers.DoThing();
+				Assert.That(first);
+				Assert.That(second);
+				x = 1;
+				x = 2;
+				return;
+			}
+
+			void GuardedMultiLine(int x)
+			{
+				if (x == 0)
+				{
+					return;
+				}
+				// Next.
+				x = 1;
+			}
+
+			void GuardedPair(int x)
+			{
+				if (x == 0) return;
+				x = 1;
+			}
+		}
+
+		""";
+
 	private static readonly string s_corpus =
-		ConvergenceTests.CreateLayoutSource(new Random(1)) + Repros;
+		SourceGenerators.CreateLayoutSource(new Random(1)) + Repros;
 
 	private static Dictionary<string, ReportDiagnostic> AllEnabled() =>
 		new(TestRuleSets.AllRulesEnabled, StringComparer.Ordinal);
+
+	// All the rules on, less the candidates whose bit is set in the mask.
+	private static Dictionary<string, ReportDiagnostic> AllEnabledLeavingOut(
+		DiagnosticDescriptor[] candidates,
+		int off
+	)
+	{
+		Dictionary<string, ReportDiagnostic> rules = AllEnabled();
+
+		for (int bit = 0; bit < candidates.Length; bit++)
+		{
+			if ((off & (1 << bit)) != 0)
+				rules[candidates[bit].Id] = ReportDiagnostic.Suppress;
+		}
+
+		return rules;
+	}
 
 	public static IEnumerable<object[]> DisabledRules { get; } =
 	[
@@ -109,6 +343,22 @@ public sealed class ConfigurationMatrixTests
 			.Order(StringComparer.Ordinal)
 			.Select(id => new object[] { id }),
 	];
+
+	// Each of the run rules off or on, so a project that switches one kind of run off is a state of its own.
+	public static IEnumerable<object[]> RunRuleStates { get; } =
+	[.. Enumerable.Range(0, 1 << TestRuleSets.RunRules.Length).Select(off => new object[] { off })];
+
+	// The guard rule, the jump rule, the loose run rules and the two-unit rule share the gaps around the guards.
+	private static readonly DiagnosticDescriptor[] s_guardNeighbors =
+	[
+		DiagnosticDescriptors.SeparateGuardClauses,
+		DiagnosticDescriptors.SeparateJumpStatement,
+		DiagnosticDescriptors.GatherRunOfLooseStatements,
+		DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
+	];
+
+	public static IEnumerable<object[]> GuardNeighborStates { get; } =
+	[.. Enumerable.Range(0, 1 << s_guardNeighbors.Length).Select(off => new object[] { off })];
 
 	public static IEnumerable<object[]> Seeds { get; } =
 	[.. Enumerable.Range(1, RandomMapCount).Select(seed => new object[] { seed })];
@@ -195,6 +445,50 @@ public sealed class ConfigurationMatrixTests
 
 	[TestMethod]
 	[DynamicData(
+		nameof(RunRuleStates),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task TheCorpusSettlesWithAnySetOfRunRulesDisabled(int off)
+	{
+		Dictionary<string, ReportDiagnostic> rules = AllEnabledLeavingOut(
+			TestRuleSets.RunRules,
+			off
+		);
+
+		_ = await SettleAsync(new Configuration(Rules: rules));
+	}
+
+	[TestMethod]
+	[DynamicData(
+		nameof(GuardNeighborStates),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task TheCorpusSettlesWithAnySetOfTheGuardNeighborsDisabled(int off)
+	{
+		Dictionary<string, ReportDiagnostic> rules = AllEnabledLeavingOut(s_guardNeighbors, off);
+		_ = await SettleAsync(new Configuration(Rules: rules, Source: GuardRepros));
+	}
+
+	[TestMethod]
+	[DynamicData(
+		nameof(RunRuleStates),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task TheGuardCorpusSettlesWithAnySetOfRunRulesDisabled(int off)
+	{
+		Dictionary<string, ReportDiagnostic> rules = AllEnabledLeavingOut(
+			TestRuleSets.RunRules,
+			off
+		);
+
+		_ = await SettleAsync(new Configuration(Rules: rules, Source: GuardRepros));
+	}
+
+	[TestMethod]
+	[DynamicData(
 		nameof(Seeds),
 		DynamicDataDisplayName = nameof(RowNames.GetRowName),
 		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
@@ -216,7 +510,7 @@ public sealed class ConfigurationMatrixTests
 	public async Task TheCorpusSettlesWhenAGlobalConfigEnablesEveryRule() =>
 		_ = await SettleAsync(new Configuration(GlobalOptions: AllEnabled()));
 
-	// Each other rule sets its own key, so the bulk key reaches ZA0005 alone, and both Roslyn and the deferring rules read it off.
+	// Each other rule sets its own key, so the bulk key reaches ZA0001 alone, and both Roslyn and the deferring rules read it off.
 	[TestMethod]
 	public async Task ABulkSeverityKeyTurnsARuleOffAsItsOwnKeyDoes()
 	{
@@ -270,13 +564,13 @@ public sealed class ConfigurationMatrixTests
 		AssertSameText(noWarn, noWarnAndSeverity, nameof(ANoWarnEntryBeatsAnEditorConfigSeverity));
 	}
 
-	// The rules that defer to ZA0005 cannot see the attribute, so the gaps they defer go unreported, but the corpus settles.
+	// The rules that defer to ZA0001 cannot see the attribute, so the gaps they defer go unreported, but the corpus settles.
 	[TestMethod]
 	public async Task TheCorpusSettlesWhenAnAttributeSuppressesARuleOthersDeferTo()
 	{
 		string source = s_corpus.Replace(
 			"internal sealed class Sample",
-			"[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage(\"Formatting\", \"ZA0005\")]\n\ninternal sealed class Sample",
+			"[assembly: System.Diagnostics.CodeAnalysis.SuppressMessage(\"Formatting\", \"ZA0001\")]\n\ninternal sealed class Sample",
 			StringComparison.Ordinal
 		);
 
@@ -304,6 +598,9 @@ public sealed class ConfigurationMatrixTests
 		AssertSameText(unset, set, nameof(ASeverityOfDefaultFixesAsNoSeverityLineDoes));
 	}
 
+	// The corpus has so many runs that, with the rules on, one fix a round needs more rounds than the default allows.
+	private const int CorpusFixRounds = 100;
+
 	// Fixes the corpus one diagnostic at a time and with a Fix All per ID in both orders, and returns the settled text.
 	private static async Task<string> SettleAsync(Configuration configuration)
 	{
@@ -315,8 +612,10 @@ public sealed class ConfigurationMatrixTests
 			new RunOptions(RoslynTestHarness.AllAnalyzers)
 			{
 				DiagnosticOptions = configuration.Rules,
+				AnalyzerConfigOptions = s_options,
 				GlobalOptions = configuration.GlobalOptions,
 				TreeOptions = configuration.TreeOptions,
+				MaxFixRounds = CorpusFixRounds,
 			}
 		);
 
@@ -333,8 +632,10 @@ public sealed class ConfigurationMatrixTests
 			new RunOptions(RoslynTestHarness.AllAnalyzers)
 			{
 				DiagnosticOptions = configuration.Rules,
+				AnalyzerConfigOptions = s_options,
 				GlobalOptions = configuration.GlobalOptions,
 				TreeOptions = configuration.TreeOptions,
+				MaxFixRounds = CorpusFixRounds,
 			}
 		);
 

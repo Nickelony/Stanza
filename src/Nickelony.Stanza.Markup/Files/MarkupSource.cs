@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
 using Nickelony.Stanza.Markup.Core;
+using Nickelony.Stanza.Shared;
 
 namespace Nickelony.Stanza.Markup.Files;
 
@@ -24,7 +25,6 @@ internal sealed class MarkupSource
 
 	/// <summary>Carries the byte order mark the file had, or its absence, so a write reproduces it.</summary>
 	public Encoding Encoding { get; }
-
 	public string? WriteBackRefusal { get; }
 
 	/// <summary>
@@ -60,9 +60,10 @@ internal sealed class MarkupSource
 			}
 			else
 			{
-				using var stream = new FileStream(path, mode: FileMode.Open, access: FileAccess.Read, share: FileShare.Read);
+				// A file another program holds open for writing is still read, as the share mode lets a write land during the read.
+				using var stream = new FileStream(path, mode: FileMode.Open, access: FileAccess.Read, share: FileShare.ReadWrite);
 
-				// The stamp is taken before the read, so a write that lands during it is caught: Unix does not enforce the share mode.
+				// The stamp is taken before the read, so a write that lands during it is caught before the file is replaced.
 				stamp = new MarkupFileStamp(stream.Length, File.GetLastWriteTimeUtc(stream.SafeFileHandle));
 				bytes = ReadBounded(stream, maxDocumentCharacters, out string? sizeRefusal);
 
@@ -73,15 +74,15 @@ internal sealed class MarkupSource
 				}
 			}
 		}
-		catch (Exception exception) when (IsAccessFailure(exception))
+		catch (Exception exception) when (FileFailures.IsFileOperationFailure(exception))
 		{
 			error = $"could not be read: {exception.GetType().Name}: {exception.Message}";
 			return false;
 		}
 
-		MarkupEncodingChoice choice = MarkupEncodings.Resolve(bytes);
+		MarkupSourceEncoding detected = MarkupEncodings.Resolve(bytes);
 
-		if (choice.Refusal is { } refusal)
+		if (detected.Refusal is { } refusal)
 		{
 			error = refusal;
 			return false;
@@ -92,9 +93,9 @@ internal sealed class MarkupSource
 			error = null;
 
 			source = new(
-				text: choice.Encoding.GetString(bytes, choice.PreambleLength, bytes.Length - choice.PreambleLength),
-				encoding: choice.Encoding,
-				writeBackRefusal: choice.WriteBackRefusal,
+				text: detected.Encoding.GetString(bytes, detected.PreambleLength, bytes.Length - detected.PreambleLength),
+				encoding: detected.Encoding,
+				writeBackRefusal: detected.WriteBackRefusal,
 				stamp
 			);
 
@@ -105,7 +106,7 @@ internal sealed class MarkupSource
 			// Every encoding used here except Latin-1 throws on a byte it cannot decode,
 			// so a bad file is refused.
 			// Latin-1 maps every byte, so a file read as Latin-1 never reaches this catch.
-			error = $"could not be read: the bytes could not be decoded as {choice.Encoding.WebName}, so it was left alone.";
+			error = $"could not be read: the bytes could not be decoded as {detected.Encoding.WebName}, so it was left alone.";
 			return false;
 		}
 	}
@@ -160,7 +161,4 @@ internal sealed class MarkupSource
 	/// </summary>
 	public bool TryWrite(string path, string text, [NotNullWhen(false)] out string? error) =>
 		MarkupAtomicWrite.TryReplace(path, text, encoding: Encoding, stamp: _stamp, out error);
-
-	internal static bool IsAccessFailure(Exception exception) =>
-		exception is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException;
 }
