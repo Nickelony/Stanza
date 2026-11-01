@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
 
-/// <summary>Chains whose second branch holds one single-line statement among other text.</summary>
+/// <summary>Chains whose second branch holds text besides at most one statement.</summary>
 internal static class BraceFamilyFixtures
 {
 	// A block is written as its lines joined by a bar, and a tab inside a line indents it.

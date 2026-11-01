@@ -26,7 +26,7 @@ internal static class BraceTargets
 	public static bool IsElseHoldingAnIf(BlockSyntax block) =>
 		block.Parent is ElseClauseSyntax && block.Statements.Count == 1 && block.Statements[0] is IfStatementSyntax;
 
-	/// <summary>Whether a conditional directive or a disabled <c>else</c> can change the branches.</summary>
+	/// <summary>Whether a conditional or a disabled <see langword="else"/> can change the branches.</summary>
 	public static bool HoldsAConditionalBranch(SyntaxNode statement)
 	{
 		// A directive above the statement is its first token's trivia, outside the span, so it is not judged here.

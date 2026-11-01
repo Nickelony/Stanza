@@ -732,7 +732,7 @@ public sealed class KeepTwoUnitsOfContainerTogetherTests
 	}
 
 	[TestMethod]
-	public void ADirectiveInsideAUnitMovesNoUnitInOrOut()
+	public void OnlyADirectiveBetweenTheUnitsCanChangeTheirCount()
 	{
 		const string source = """
 			class C
