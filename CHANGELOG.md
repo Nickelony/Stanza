@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so a chain around such a block is braced throughout, not left half braced.
 - `ZA0039` leaves a chain as written while any of its blocks must keep its braces, unless `csharp_prefer_braces` is `false`,
   because `IDE0011` braces a chain with one braced branch, so `stanza-format` reported the chain on every check.
-- `ZA0039` leaves a chain as written while a directive stands among its branches, unless `csharp_prefer_braces` is `false`,
+- `ZA0039` leaves a chain as written while a conditional directive stands among its branches, unless `csharp_prefer_braces` is `false`,
   because its branches can differ between views and `ZA0038` braces the view with a multi-line branch.
 - `ZA0006` and `ZA0052` skip a container with a conditional directive among its units or around them,
   because its count of units and its runs can differ between views, and no layout cleared both.

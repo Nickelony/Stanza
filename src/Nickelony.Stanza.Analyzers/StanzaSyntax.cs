@@ -46,6 +46,16 @@ internal static class StanzaSyntax
 		};
 	}
 
+	/// <summary>Whether the trivia is an <c>#if</c>, <c>#elif</c>, <c>#else</c> or <c>#endif</c>.</summary>
+	public static bool IsConditionalDirective(SyntaxTrivia trivia)
+	{
+		return trivia.Kind()
+			is SyntaxKind.IfDirectiveTrivia
+				or SyntaxKind.ElifDirectiveTrivia
+				or SyntaxKind.ElseDirectiveTrivia
+				or SyntaxKind.EndIfDirectiveTrivia;
+	}
+
 	public static bool IsMultiLine(SyntaxNodeOrToken unit) => unit.SyntaxTree is { } syntaxTree && IsMultiLine(syntaxTree, unit.Span);
 
 	public static bool IsMultiLine(SourceText sourceText, TextSpan span)

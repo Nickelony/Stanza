@@ -150,24 +150,7 @@ internal static class BlankLineOwnership
 		return HasConditionalDirective(nextStart.LeadingTrivia);
 	}
 
-	private static bool HasConditionalDirective(SyntaxTriviaList trivia)
-	{
-		foreach (SyntaxTrivia item in trivia)
-		{
-			if (
-				item.Kind()
-				is SyntaxKind.IfDirectiveTrivia
-					or SyntaxKind.ElifDirectiveTrivia
-					or SyntaxKind.ElseDirectiveTrivia
-					or SyntaxKind.EndIfDirectiveTrivia
-			)
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
+	private static bool HasConditionalDirective(SyntaxTriviaList trivia) => trivia.Any(StanzaSyntax.IsConditionalDirective);
 
 	/// <summary>The borders the grouping rules would own once the gathered gaps are tight.</summary>
 	/// <remarks>

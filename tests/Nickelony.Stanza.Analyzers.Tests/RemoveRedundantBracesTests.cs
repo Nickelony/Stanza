@@ -910,25 +910,27 @@ public sealed class RemoveRedundantBracesTests
 	[DataRow("#define B\n")]
 	public async Task AChainKeepsItsBracesWhenAViewCanAddABranch(string view)
 	{
-		string source = view + """
-			class C
-			{
-				void M(bool first)
+		string source =
+			view
+			+ """
+				class C
 				{
-					if (first)
+					void M(bool first)
 					{
-						DoThing();
+						if (first)
+						{
+							DoThing();
+						}
+				#if B
+						else
+						{
+							DoThing();
+							DoThing();
+						}
+				#endif
 					}
-			#if B
-					else
-					{
-						DoThing();
-						DoThing();
-					}
-			#endif
 				}
-			}
-			""";
+				""";
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
 			source,
@@ -943,29 +945,31 @@ public sealed class RemoveRedundantBracesTests
 	[DataRow("#define B\n")]
 	public async Task AChainKeepsItsBracesWhenAViewPicksTheBlockOfABranch(string view)
 	{
-		string source = view + """
-			class C
-			{
-				void M(bool first)
+		string source =
+			view
+			+ """
+				class C
 				{
-					if (first)
+					void M(bool first)
 					{
-						DoThing();
+						if (first)
+						{
+							DoThing();
+						}
+						else
+				#if B
+						{
+							DoThing();
+							DoThing();
+						}
+				#else
+						{
+							DoThing();
+						}
+				#endif
 					}
-					else
-			#if B
-					{
-						DoThing();
-						DoThing();
-					}
-			#else
-					{
-						DoThing();
-					}
-			#endif
 				}
-			}
-			""";
+				""";
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
 			source,
@@ -980,21 +984,23 @@ public sealed class RemoveRedundantBracesTests
 	[DataRow("#define B\n")]
 	public async Task AChainAtTheEndOfTheFileKeepsItsBracesWhenAViewCanAddABranch(string view)
 	{
-		string source = view + """
-			var items = new[] { 1 };
+		string source =
+			view
+			+ """
+				var items = new[] { 1 };
 
-			if (items.Length > 0)
-			{
-				Call(items.Length, 1);
-			}
-			#if B
-			else
-			{
-				Call(items.Length, 1);
-				Call(items.Length, 1);
-			}
-			#endif
-			""";
+				if (items.Length > 0)
+				{
+					Call(items.Length, 1);
+				}
+				#if B
+				else
+				{
+					Call(items.Length, 1);
+					Call(items.Length, 1);
+				}
+				#endif
+				""";
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
 			source,
@@ -1010,24 +1016,26 @@ public sealed class RemoveRedundantBracesTests
 	[DataRow("#define B\n")]
 	public async Task AChainKeepsItsBracesWhenAViewCanDropABranch(string view)
 	{
-		string source = view + """
-			class C
-			{
-				void M(bool first)
+		string source =
+			view
+			+ """
+				class C
 				{
-					if (first)
+					void M(bool first)
 					{
-						DoThing();
+						if (first)
+						{
+							DoThing();
+						}
+				#if B
+						else
+						{
+							DoThing();
+						}
+				#endif
 					}
-			#if B
-					else
-					{
-						DoThing();
-					}
-			#endif
 				}
-			}
-			""";
+				""";
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
 			source,
@@ -1124,6 +1132,50 @@ public sealed class RemoveRedundantBracesTests
 		);
 
 		Assert.HasCount(1, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task ANonConditionalDirectiveAmongTheBranchesLeavesTheBracesToTheRule()
+	{
+		const string source = """
+			class C
+			{
+				void M(bool first)
+				{
+					if (first)
+					{
+						DoThing();
+					}
+			#pragma warning disable CS0618
+					else
+					{
+						DoThing();
+					}
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M(bool first)
+				{
+					if (first)
+						DoThing();
+			#pragma warning disable CS0618
+					else
+						DoThing();
+				}
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		Assert.HasCount(2, result.Diagnostics);
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
@@ -1234,41 +1286,45 @@ public sealed class RemoveRedundantBracesTests
 	[DataRow("#define B\n")]
 	public async Task AConditionalStatementBesideAChainLeavesItsBracesToTheRule(string view)
 	{
-		string source = view + """
-			class C
-			{
-				void M(bool first)
+		string source =
+			view
+			+ """
+				class C
 				{
-			#if B
-					DoThing();
-			#endif
-					if (first)
+					void M(bool first)
 					{
+				#if B
 						DoThing();
+				#endif
+						if (first)
+						{
+							DoThing();
+						}
+				#if B
+						DoThing();
+				#endif
 					}
-			#if B
-					DoThing();
-			#endif
 				}
-			}
-			""";
+				""";
 
-		string fixedSource = view + """
-			class C
-			{
-				void M(bool first)
+		string fixedSource =
+			view
+			+ """
+				class C
 				{
-			#if B
-					DoThing();
-			#endif
-					if (first)
+					void M(bool first)
+					{
+				#if B
 						DoThing();
-			#if B
-					DoThing();
-			#endif
+				#endif
+						if (first)
+							DoThing();
+				#if B
+						DoThing();
+				#endif
+					}
 				}
-			}
-			""";
+				""";
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveRedundantBracesAnalyzer>(
 			source,

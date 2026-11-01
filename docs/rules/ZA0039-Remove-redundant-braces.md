@@ -35,7 +35,7 @@ else
   so its chain keeps every brace, as [`ZA0038`](https://github.com/Nickelony/Stanza/wiki/ZA0038-Use-braces-consistently) lists.
   A comment wholly on the statement's own line does not count, and the braces come off around it.
 - A chain keeps every brace while any of its blocks must keep its own, because `IDE0011` braces a chain with one braced branch.
-- A chain keeps every brace while a directive stands among its branches, or an `else` in an inactive `#if` follows it.
+- A chain keeps every brace while a conditional directive stands among its branches, or an `else` in an inactive `#if` follows it.
   Its branches can then differ by [view](https://github.com/Nickelony/Stanza/wiki/Terms), and `ZA0038` braces the view with a multi-line branch.
 - A conditional statement that stands alone above or below the chain changes no branch.
 - Under `csharp_prefer_braces` `false`, a chain with no multi-line branch loses each brace it can.

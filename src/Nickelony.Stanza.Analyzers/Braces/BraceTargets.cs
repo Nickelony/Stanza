@@ -26,11 +26,11 @@ internal static class BraceTargets
 	public static bool IsElseHoldingAnIf(BlockSyntax block) =>
 		block.Parent is ElseClauseSyntax && block.Statements.Count == 1 && block.Statements[0] is IfStatementSyntax;
 
-	/// <summary>Whether a directive stands among the branches, or a disabled <c>else</c> follows.</summary>
+	/// <summary>Whether a conditional directive or a disabled <c>else</c> can change the branches.</summary>
 	public static bool HoldsAConditionalBranch(SyntaxNode statement)
 	{
 		// A directive above the statement is its first token's trivia, outside the span, so it is not judged here.
-		if (statement.ContainsDirectives && statement.DescendantTrivia(statement.Span).Any(static trivia => trivia.IsDirective))
+		if (statement.ContainsDirectives && statement.DescendantTrivia(statement.Span).Any(StanzaSyntax.IsConditionalDirective))
 			return true;
 
 		if (!CanTakeAnElse(statement))
@@ -196,9 +196,15 @@ internal static class BraceTargets
 		SyntaxTree syntaxTree = block.SyntaxTree;
 
 		// A comment on the statement's own line stays there when the braces go, so only the other lines count.
-		return (HasNonLayoutTrivia(open.TrailingTrivia) && StanzaSyntax.IsMultiLine(syntaxTree, TextSpan.FromBounds(open.SpanStart, statement.SpanStart)))
+		return (
+				HasNonLayoutTrivia(open.TrailingTrivia)
+				&& StanzaSyntax.IsMultiLine(syntaxTree, TextSpan.FromBounds(open.SpanStart, statement.SpanStart))
+			)
 			|| HasNonLayoutTrivia(close.LeadingTrivia)
-			|| (HasNonLayoutTrivia(close.TrailingTrivia) && StanzaSyntax.IsMultiLine(syntaxTree, TextSpan.FromBounds(statement.Span.End, close.SpanStart)))
+			|| (
+				HasNonLayoutTrivia(close.TrailingTrivia)
+				&& StanzaSyntax.IsMultiLine(syntaxTree, TextSpan.FromBounds(statement.Span.End, close.SpanStart))
+			)
 			|| HoldsALineAbove(statement.GetFirstToken().LeadingTrivia);
 	}
 
