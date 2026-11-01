@@ -25,3 +25,7 @@ private static string Describe(object data)
 - A container is a block, a switch section, a type, an enum, a namespace or a file.
 - A comment or a directive between the two units keeps the blank line.
 - The rule skips a container that holds a local function or an import directive, because it judges only two statements or members.
+- The rule skips a container with a conditional directive (`#if`, `#elif`, `#else` or `#endif`) between or around its units,
+  because the count then depends on the [view](https://github.com/Nickelony/Stanza/wiki/Terms).
+- The grouping rules own the gap of that container in every view.
+- A directive inside a unit, a `#region` and a directive outside the container's braces change no count, so the container stays judged.

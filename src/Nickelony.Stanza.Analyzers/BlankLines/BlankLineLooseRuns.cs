@@ -35,7 +35,8 @@ internal static class BlankLineLooseRuns
 
 		ImmutableHashSet<int> loose = ReadLooseBoundaries(context, siblings);
 
-		if (loose.Count < limit)
+		// A conditional statement gives each view runs of its own, so no gap of the container can be judged for all of them.
+		if (loose.Count < limit || BlankLineOwnership.HoldsConditionalDirective(siblings))
 			return [];
 
 		ImmutableHashSet<int> removable = ReadRemovableBoundaries(context, options, siblings, rule, loose);
@@ -104,7 +105,7 @@ internal static class BlankLineLooseRuns
 		ImmutableHashSet<int> candidates = ReadRunBoundaries(siblings, loose, asked);
 		ImmutableHashSet<int> removable = candidates;
 
-		ImmutableHashSet<int> ReadStaying(ImmutableHashSet<int> gathered)
+		ImmutableHashSet<int> ReadStaying(BlankLineGrouping.GatheredStretch gathered)
 		{
 			ImmutableArray<BlankLineGrouping.RunBorder> borders = BlankLineOwnership.ReadGatheredGroupingBorders(
 				context,
@@ -115,16 +116,30 @@ internal static class BlankLineLooseRuns
 				gathered
 			);
 
-			return ReadStayingBlankBoundaries(siblings, borders, asked, removable: gathered);
+			return ReadStayingBlankBoundaries(siblings, borders, asked, removable: gathered.Gaps);
 		}
 
-		// A container that needs more rounds than this is left as it is, so the work stays linear.
+		ImmutableHashSet<int> ReadStayingAround(int boundary, ImmutableHashSet<int> gathered)
+		{
+			BlankLineGrouping.GatheredStretch stretch = BlankLineGrouping.ReadStretchAround(
+				siblings,
+				options,
+				gapOwners,
+				gathered,
+				boundaryIndex: boundary,
+				cancellationToken: context.CancellationToken
+			);
+
+			return ReadStaying(stretch);
+		}
+
+		// A container that needs more rounds than this is left as it is, so the rounds stay bounded.
 		for (int round = 0; round < MaxRounds; round++)
 		{
-			ImmutableHashSet<int> staying = ReadStaying(removable);
+			ImmutableHashSet<int> staying = ReadStaying(new BlankLineGrouping.GatheredStretch(removable, Start: 0, End: siblings.Length));
 
 			if (staying.IsEmpty)
-				return ReadRegatheredBoundaries(candidates, removable, ReadStaying);
+				return ReadRegatheredBoundaries(candidates, removable, ReadStayingAround);
 
 			removable = removable.Except(staying);
 		}
@@ -139,15 +154,16 @@ internal static class BlankLineLooseRuns
 	private static ImmutableHashSet<int> ReadRegatheredBoundaries(
 		ImmutableHashSet<int> candidates,
 		ImmutableHashSet<int> removable,
-		Func<ImmutableHashSet<int>, ImmutableHashSet<int>> readStaying
+		Func<int, ImmutableHashSet<int>, ImmutableHashSet<int>> readStayingAround
 	)
 	{
-		// Each retry reads the whole container again, so only the first few are tried and the work stays linear.
-		foreach (int boundary in candidates.Except(removable).OrderBy(held => held).Take(MaxRounds))
+		// Nothing stays among the removable gaps, so a retry can only lose the runs beside the gap it adds, and it reads only those.
+		// A first gathered gap changes how each lone declaration reads, but a border that far off touches no gathered gap, so it holds none back.
+		foreach (int boundary in candidates.Except(removable).OrderBy(held => held))
 		{
 			ImmutableHashSet<int> trial = removable.Add(boundary);
 
-			if (readStaying(trial).IsEmpty)
+			if (readStayingAround(boundary, trial).IsEmpty)
 				removable = trial;
 		}
 
@@ -202,7 +218,7 @@ internal static class BlankLineLooseRuns
 			siblings,
 			rule,
 			gapOwners,
-			gathered: []
+			gathered: null
 		);
 
 		ImmutableHashSet<int>.Builder asked = ImmutableHashSet.CreateBuilder<int>();

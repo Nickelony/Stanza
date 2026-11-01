@@ -101,13 +101,56 @@ internal static class BlankLineOwnership
 
 	/// <summary>Whether the container holds two units that the two-unit rule judges.</summary>
 	/// <remarks>
-	/// The rule skips a local function and an import.
+	/// The rule skips a local function, an import and a container where a conditional directive can change the count.
 	/// </remarks>
 	public static bool HoldsTwoKeptUnits(ImmutableArray<SyntaxNode> siblings) =>
-		siblings.Length == 2 && IsKeptTogetherUnit(siblings[0]) && IsKeptTogetherUnit(siblings[1]);
+		siblings.Length == 2 && IsKeptTogetherUnit(siblings[0]) && IsKeptTogetherUnit(siblings[1]) && !HoldsConditionalDirective(siblings);
 
 	private static bool IsKeptTogetherUnit(SyntaxNode unit) =>
 		unit is not (ExternAliasDirectiveSyntax or UsingDirectiveSyntax or LocalFunctionStatementSyntax);
+
+	/// <summary>Whether a conditional directive stands among the units or around them inside the container.</summary>
+	public static bool HoldsConditionalDirective(ImmutableArray<SyntaxNode> siblings)
+	{
+		// A directive is leading trivia of the token after it, so the tokens from the first unit to the end of the container carry every one.
+		// A directive inside a unit moves no unit in or out of the container, and one outside the container's braces cannot either.
+		if (HasConditionalDirective(siblings[0].GetLeadingTrivia()))
+			return true;
+
+		for (int index = 1; index < siblings.Length; index++)
+		{
+			if (HasConditionalDirectiveBetween(siblings[index - 1], siblings[index]))
+				return true;
+		}
+
+		// The token after the last unit is the closing brace, the next switch section or the end of the file,
+		// except in an enum, where a comma can come first and the closing brace holds the directive.
+		SyntaxToken after = siblings[siblings.Length - 1].GetLastToken().GetNextToken(includeZeroWidth: true);
+
+		if (HasConditionalDirective(after.LeadingTrivia))
+			return true;
+
+		return after.IsKind(SyntaxKind.CommaToken) && HasConditionalDirective(after.GetNextToken(includeZeroWidth: true).LeadingTrivia);
+	}
+
+	private static bool HasConditionalDirectiveBetween(SyntaxNode previous, SyntaxNode next)
+	{
+		SyntaxToken nextStart = next.GetFirstToken();
+		SyntaxToken between = previous.GetLastToken().GetNextToken(includeZeroWidth: true);
+
+		// A unit of broken code can hold no token, and the walk then has no token to stand on.
+		while (!between.IsKind(SyntaxKind.None) && between.FullSpan.Start < nextStart.FullSpan.Start)
+		{
+			if (HasConditionalDirective(between.LeadingTrivia))
+				return true;
+
+			between = between.GetNextToken(includeZeroWidth: true);
+		}
+
+		return HasConditionalDirective(nextStart.LeadingTrivia);
+	}
+
+	private static bool HasConditionalDirective(SyntaxTriviaList trivia) => trivia.Any(StanzaSyntax.IsConditionalDirective);
 
 	/// <summary>The borders the grouping rules would own once the gathered gaps are tight.</summary>
 	/// <remarks>
@@ -119,7 +162,7 @@ internal static class BlankLineOwnership
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaRule rule,
 		GapOwners gapOwners,
-		ImmutableHashSet<int> gathered
+		BlankLineGrouping.GatheredStretch? gathered
 	)
 	{
 		ImmutableArray<BlankLineGrouping.RunBorder> declarationBorders = CollectOwnedDeclarationRunBorders(
@@ -244,7 +287,7 @@ internal static class BlankLineOwnership
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaRule rule,
 		GapOwners gapOwners,
-		ImmutableHashSet<int>? gathered
+		BlankLineGrouping.GatheredStretch? gathered
 	)
 	{
 		StanzaRule declarationRuns = rule.GetDeferral(DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns);

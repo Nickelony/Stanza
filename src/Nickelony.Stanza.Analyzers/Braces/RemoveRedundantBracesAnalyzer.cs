@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
@@ -19,6 +20,10 @@ internal sealed class RemoveRedundantBracesAnalyzer()
 
 		ImmutableArray<BraceTarget> targets = BraceTargets.GetTargets(context.Node);
 
+		// A chain is judged at its head, so a long chain is walked once.
+		if (targets.IsEmpty)
+			return;
+
 		// One multi-line branch pins the whole chain to the braced shape, and so does an else that holds only an if,
 		// so the chain keeps one shape and the braced rule has nothing to restore.
 		if (
@@ -32,15 +37,18 @@ internal sealed class RemoveRedundantBracesAnalyzer()
 		SourceText sourceText = context.Node.SyntaxTree.GetText(context.CancellationToken);
 		int tabColumns = options.TabColumns;
 
-		foreach (BraceTarget target in targets)
+		ImmutableArray<BlockSyntax> blocks = [.. targets.Select(static target => target.Block).OfType<BlockSyntax>()];
+		ImmutableArray<BlockSyntax> removable = [.. blocks.Where(block => !BraceEdits.CreateSafeBraceRemoval(sourceText, block, tabColumns).IsEmpty)];
+
+		// IDE0011 braces a chain with one braced branch, so a block that keeps its braces keeps those of the chain,
+		// and ZA0038 braces the view with a multi-line branch, so a chain whose branches a directive can change keeps them too.
+		// Where the option asks for no braces, each block that can lose them does.
+		if (options.PreferBraces is null && (removable.Length < blocks.Length || BraceTargets.HoldsAConditionalBranch(context.Node)))
+			return;
+
+		foreach (BlockSyntax block in removable)
 		{
 			context.CancellationToken.ThrowIfCancellationRequested();
-
-			if (target.Block is not { } block)
-				continue;
-
-			if (BraceEdits.CreateSafeBraceRemoval(sourceText, block, tabColumns).IsEmpty)
-				continue;
 
 			// The report points at the opening brace and adds the closing one as a second location:
 			// a span over both braces would make the editor fade the body too.

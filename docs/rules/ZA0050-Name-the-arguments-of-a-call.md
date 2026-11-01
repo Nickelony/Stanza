@@ -16,6 +16,9 @@ Draw(width: 640, height: 480, smooth: true, path: "image.png");
   the base call of a primary constructor, or an indexer access.
 - The rule reports once per call, at its argument list, and its fix names every argument the rule asks for.
 - An argument that already has a name is left as it is.
+- An argument list that holds a directive of any kind, even inside a lambda argument, is left alone.
+  A directive can shift the positions after it in another [view](https://github.com/Nickelony/Stanza/wiki/Terms),
+  so a name written from one view could bind to the wrong parameter in the other.
 - Below C# 7.2 a named argument cannot precede a positional one, so only the leading arguments that carry their parameter's name stay unnamed,
   and every argument after the first one named is named too.
 - A call that the names would bind to another overload, or make ambiguous, is left alone,

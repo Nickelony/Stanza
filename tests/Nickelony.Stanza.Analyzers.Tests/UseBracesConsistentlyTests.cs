@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.Braces;
+using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
 
@@ -567,5 +568,129 @@ public sealed class UseBracesConsistentlyTests
 
 		RoslynTestHarness.AssertFixedText(fixedSource, iterative);
 		RoslynTestHarness.AssertFixedText(fixedSource, fixAll);
+	}
+
+	[TestMethod]
+	public async Task ACommentedBlockBracesEveryBranchOfItsChain()
+	{
+		const string source = """
+			class C
+			{
+				void M(bool isIssue, bool isEdit)
+				{
+					if (isIssue)
+						DoThing();
+					else if (isEdit)
+					{
+						// An empty edit changes nothing,
+						// so it is skipped.
+						Call(1, 2);
+					}
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M(bool isIssue, bool isEdit)
+				{
+					if (isIssue)
+					{
+						DoThing();
+					}
+					else if (isEdit)
+					{
+						// An empty edit changes nothing,
+						// so it is skipped.
+						Call(1, 2);
+					}
+				}
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<UseBracesConsistentlyAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		Assert.HasCount(1, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+
+		AnalyzerRunResult fixAll = await RoslynTestHarness.RunFixAllAsync(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, fixAll);
+	}
+
+	[TestMethod]
+	[DynamicData(
+		nameof(BraceFamilyFixtures.HeldBlocks),
+		typeof(BraceFamilyFixtures),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task ABlockHoldingALineBesidesItsStatementBracesTheOtherBranch(
+		string shape,
+		string block
+	)
+	{
+		string source = BraceFamilyFixtures.Chain(block, bracedFirst: false);
+		string fixedSource = BraceFamilyFixtures.Chain(block, bracedFirst: true);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<UseBracesConsistentlyAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		Assert.HasCount(1, result.Diagnostics, shape);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	[DynamicData(
+		nameof(BraceFamilyFixtures.PlainBlocks),
+		typeof(BraceFamilyFixtures),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task ACommentOnTheStatementsLineLeavesTheChainAlone(string shape, string block)
+	{
+		string source = BraceFamilyFixtures.Chain(block, bracedFirst: false);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<UseBracesConsistentlyAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		Assert.IsEmpty(result.Diagnostics, shape);
+	}
+
+	[TestMethod]
+	public async Task ACommentAboveAnUnbracedStatementDoesNotMakeItMultiLine()
+	{
+		const string source = """
+			class C
+			{
+				void M(bool first, bool second)
+				{
+					if (first)
+						// Skip it.
+						DoThing();
+					else if (second)
+						DoThing();
+				}
+			}
+			""";
+
+		// IDE0011 judges the statement alone, so a comment above it adds no braces there either.
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<UseBracesConsistentlyAnalyzer>(
+			source,
+			TestRuleSets.StandaloneRulesEnabled
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
 	}
 }

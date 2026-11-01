@@ -33,4 +33,6 @@ size = 2;
 
 - The count covers the statements of one run, not of the whole block, so a comment or a multi-line statement starts the count again.
 - With a limit of `1`, a block of two statements belongs to [`ZA0006`](https://github.com/Nickelony/Stanza/wiki/ZA0006-Keep-the-two-units-of-a-container-together) where it judges the container.
-  `ZA0052` judges the pair where `ZA0006` is off or skips the container, as it skips one that holds a local function.
+  `ZA0052` judges the pair where `ZA0006` is off, or where it skips a container that holds a local function.
+- Neither rule judges a container with a conditional directive among its statements or around them,
+  as [`ZA0052`](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) says.

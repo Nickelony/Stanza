@@ -14,6 +14,18 @@ internal static class BlankLineGrouping
 	/// <summary>A boundary a repeated run asks for, with the run's start and its end, one past the last.</summary>
 	public readonly record struct RunBorder(int Boundary, int RunStart, int RunEnd);
 
+	/// <summary>The gaps a read gathers and its siblings from <c>Start</c> to one before <c>End</c>.</summary>
+	/// <remarks>
+	/// A stretch short of the whole container ends where no run crosses, so its runs are the container's.
+	/// </remarks>
+	public readonly record struct GatheredStretch(ImmutableHashSet<int> Gaps, int Start, int End);
+
+	/// <summary>The keys of a stretch of siblings, read by a sibling's index in the container.</summary>
+	private readonly record struct RunKeys((RunKind Kind, string? Name)[] Keys, int Start)
+	{
+		public (RunKind Kind, string? Name) this[int index] => Keys[index - Start];
+	}
+
 	public static ImmutableArray<int> ReadDeclarationRunBoundaries(
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaOptions options,
@@ -26,7 +38,7 @@ internal static class BlankLineGrouping
 		ImmutableArray<SyntaxNode> siblings,
 		StanzaOptions options,
 		GapOwners gapOwners,
-		ImmutableHashSet<int>? gathered,
+		GatheredStretch? gathered,
 		CancellationToken cancellationToken
 	)
 	{
@@ -76,17 +88,24 @@ internal static class BlankLineGrouping
 		Func<SyntaxNode, (RunKind Kind, string? Name)> getKey,
 		bool includesLoneVariableBoundary,
 		GapOwners gapOwners,
-		ImmutableHashSet<int>? gathered,
+		GatheredStretch? gathered,
 		CancellationToken cancellationToken
 	)
 	{
-		(RunKind Kind, string? Name)[] keys = new (RunKind, string?)[siblings.Length];
+		int stretchStart = gathered?.Start ?? 0;
+		int stretchEnd = gathered?.End ?? siblings.Length;
 
-		for (int index = 0; index < siblings.Length; index++)
+		// The keys start two siblings above the stretch, which is what the run that ends at its start needs to be judged repeated.
+		int keysStart = Math.Max(0, stretchStart - 2);
+		(RunKind Kind, string? Name)[] readKeys = new (RunKind, string?)[stretchEnd - keysStart];
+
+		for (int index = keysStart; index < stretchEnd; index++)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			keys[index] = getKey(siblings[index]);
+			readKeys[index - keysStart] = getKey(siblings[index]);
 		}
+
+		var keys = new RunKeys(readKeys, keysStart);
 
 		ImmutableArray<Run> runs = WalkRuns(keys, siblings, gapOwners, gathered, cancellationToken);
 		ImmutableArray<RunBorder>.Builder borders = ImmutableArray.CreateBuilder<RunBorder>();
@@ -106,8 +125,12 @@ internal static class BlankLineGrouping
 				includesLoneVariableBoundary
 				&& run.Start >= 2
 				&& IsVariableLikeDeclaration(siblings[run.Start - 1])
-				&& !runs[index - 1].IsRepeated
-				&& (gathered is { IsEmpty: false } || !HasBlankLineBefore(siblings, run.Start, gathered: null))
+				&& !(
+					index > 0
+						? runs[index - 1].IsRepeated
+						: IsRepeatedRunBefore(keys, siblings, index: run.Start, gapOwners, gathered, cancellationToken)
+				)
+				&& (gathered is { Gaps.IsEmpty: false } || !HasBlankLineBefore(siblings, run.Start, gathered: null))
 				&& !IsCommentedSiblingGap(
 					siblings,
 					boundaryIndex: run.Start,
@@ -247,17 +270,19 @@ internal static class BlankLineGrouping
 	}
 
 	private static ImmutableArray<Run> WalkRuns(
-		(RunKind Kind, string? Name)[] keys,
+		RunKeys keys,
 		ImmutableArray<SyntaxNode> siblings,
 		GapOwners gapOwners,
-		ImmutableHashSet<int>? gathered,
+		GatheredStretch? gathered,
 		CancellationToken cancellationToken
 	)
 	{
 		ImmutableArray<Run>.Builder runs = ImmutableArray.CreateBuilder<Run>();
-		int start = 0;
 
-		while (start < siblings.Length)
+		int stretchEnd = gathered?.End ?? siblings.Length;
+		int start = gathered?.Start ?? 0;
+
+		while (start < stretchEnd)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
@@ -265,11 +290,7 @@ internal static class BlankLineGrouping
 			int end = start + 1;
 
 			while (
-				runKey.Kind != RunKind.None
-				&& end < siblings.Length
-				&& keys[end] == runKey
-				&& !HasBlankLineBefore(siblings, end, gathered)
-				&& !IsGapKeptBlank(siblings, boundaryIndex: end, gapOwners, cancellationToken)
+				end < stretchEnd && ContinuesRun(keys[end - 1], keys[end]) && IsOpenGap(siblings, index: end, gapOwners, gathered, cancellationToken)
 			)
 			{
 				end++;
@@ -282,6 +303,29 @@ internal static class BlankLineGrouping
 		return runs.ToImmutable();
 	}
 
+	/// <summary>Whether a sibling of this key can join the run of the sibling above it.</summary>
+	private static bool ContinuesRun((RunKind Kind, string? Name) previousKey, (RunKind Kind, string? Name) key) =>
+		previousKey.Kind != RunKind.None && key == previousKey;
+
+	/// <summary>Whether no blank line stands above the sibling at the index and no rule keeps one there.</summary>
+	private static bool IsOpenGap(
+		ImmutableArray<SyntaxNode> siblings,
+		int index,
+		GapOwners gapOwners,
+		GatheredStretch? gathered,
+		CancellationToken cancellationToken
+	) => !HasBlankLineBefore(siblings, index, gathered) && !IsGapKeptBlank(siblings, boundaryIndex: index, gapOwners, cancellationToken);
+
+	/// <summary>Whether the run that ends where the one at the index starts holds more than one sibling.</summary>
+	private static bool IsRepeatedRunBefore(
+		RunKeys keys,
+		ImmutableArray<SyntaxNode> siblings,
+		int index,
+		GapOwners gapOwners,
+		GatheredStretch? gathered,
+		CancellationToken cancellationToken
+	) => ContinuesRun(keys[index - 2], keys[index - 1]) && IsOpenGap(siblings, index: index - 1, gapOwners, gathered, cancellationToken);
+
 	public static ImmutableArray<int> ReadSameTypeDeclarationBoundaries(
 		ImmutableArray<SyntaxNode> siblings,
 		GapOwners gapOwners,
@@ -292,7 +336,7 @@ internal static class BlankLineGrouping
 	public static ImmutableArray<RunBorder> ReadSameTypeDeclarationBorders(
 		ImmutableArray<SyntaxNode> siblings,
 		GapOwners gapOwners,
-		ImmutableHashSet<int>? gathered,
+		GatheredStretch? gathered,
 		CancellationToken cancellationToken
 	)
 	{
@@ -302,9 +346,53 @@ internal static class BlankLineGrouping
 		return ReadRunBorders(siblings, getKey: GetTypeKey, includesLoneVariableBoundary: false, gapOwners, gathered, cancellationToken);
 	}
 
+	/// <summary>Reads the stretch of siblings around a gathered gap whose runs the gap can change.</summary>
+	/// <remarks>
+	/// It spans the runs beside the gap and the one after, and ends where neither kind of run crosses.
+	/// </remarks>
+	public static GatheredStretch ReadStretchAround(
+		ImmutableArray<SyntaxNode> siblings,
+		StanzaOptions options,
+		GapOwners gapOwners,
+		ImmutableHashSet<int> gathered,
+		int boundaryIndex,
+		CancellationToken cancellationToken
+	)
+	{
+		GatheredStretch read = new(gathered, Start: 0, End: siblings.Length);
+
+		bool IsCrossed(int index)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			return IsOpenGap(siblings, index, gapOwners, gathered: read, cancellationToken)
+				&& (
+					ContinuesRun(GetDeclarationRunKey(siblings[index - 1], options), GetDeclarationRunKey(siblings[index], options))
+					|| ContinuesRun(GetTypeKey(siblings[index - 1]), GetTypeKey(siblings[index]))
+				);
+		}
+
+		int start = boundaryIndex - 1;
+
+		while (start > 0 && IsCrossed(start))
+			start--;
+
+		// The sibling below the gap's own can start the run that a lone declaration at the gap's own sets apart, so the stretch takes it in.
+		int end = Math.Min(boundaryIndex + 2, siblings.Length);
+
+		while (end < siblings.Length && IsCrossed(end))
+			end++;
+
+		return read with
+		{
+			Start = start,
+			End = end,
+		};
+	}
+
 	/// <summary>Whether a blank line stands above a sibling, unless the caller reads the gap as gathered.</summary>
-	private static bool HasBlankLineBefore(ImmutableArray<SyntaxNode> siblings, int index, ImmutableHashSet<int>? gathered) =>
-		(gathered is null || !gathered.Contains(index)) && BlankLineGaps.HasBlankLineBetween(siblings[index - 1], siblings[index]);
+	private static bool HasBlankLineBefore(ImmutableArray<SyntaxNode> siblings, int index, GatheredStretch? gathered) =>
+		(gathered is null || !gathered.Value.Gaps.Contains(index)) && BlankLineGaps.HasBlankLineBetween(siblings[index - 1], siblings[index]);
 
 	private static (RunKind Kind, string? Name) GetDeclarationRunKey(SyntaxNode node, StanzaOptions options)
 	{

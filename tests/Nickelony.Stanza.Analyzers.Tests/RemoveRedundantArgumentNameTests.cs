@@ -59,6 +59,136 @@ public sealed class RemoveRedundantArgumentNameTests
 		TestRuleSets.Only(DiagnosticDescriptors.RemoveRedundantArgumentName);
 
 	[TestMethod]
+	[DataRow("")]
+	[DataRow("#define B\n")]
+	public async Task AnArgumentListWithADirectiveKeepsEveryNameInEachView(string view)
+	{
+		// Without B the second name sits at its parameter, and with B it does not,
+		// so a name removed in the first view would bind `c` to `b` in the second.
+		string source =
+			view
+			+ """
+				internal static class Sample
+				{
+					internal static void M(int a, int b = 0, int c = 0)
+					{
+					}
+
+					internal static void Call(int a, int b, int c) =>
+						M(
+							a: a,
+				#if !B
+							b: b,
+				#endif
+							c: c
+						);
+				}
+				""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<RemoveRedundantArgumentNameAnalyzer>(source, Rule);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task AnArgumentListWithAnyKindOfDirectiveKeepsEveryName()
+	{
+		const string source = """
+			internal static class Sample
+			{
+				internal static void M(int a, int b)
+				{
+				}
+
+				internal static void Call(int a, int b) =>
+					M(
+						a: a,
+			#pragma warning disable CS0618
+						b: b
+					);
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<RemoveRedundantArgumentNameAnalyzer>(source, Rule);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task ADirectiveInsideALambdaArgumentKeepsEveryName()
+	{
+		const string source = """
+			internal static class Sample
+			{
+				internal static void M(System.Action a, int b)
+				{
+				}
+
+				internal static void Call(int b) =>
+					M(
+						a: () =>
+						{
+			#pragma warning disable CS0618
+						},
+						b: b
+					);
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<RemoveRedundantArgumentNameAnalyzer>(source, Rule);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task ADirectiveOutsideTheArgumentListLeavesItsNamesRedundant()
+	{
+		const string source = """
+			internal static class Sample
+			{
+				internal static void M(int a, int b)
+				{
+				}
+
+				internal static void Call(int a, int b)
+				{
+			#if DEBUG
+					M(a: a, b: b);
+			#endif
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			internal static class Sample
+			{
+				internal static void M(int a, int b)
+				{
+				}
+
+				internal static void Call(int a, int b)
+				{
+			#if DEBUG
+					M(a, b);
+			#endif
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<RemoveRedundantArgumentNameAnalyzer>(
+				"#define DEBUG\n" + source,
+				Rule
+			);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText("#define DEBUG\n" + fixedSource, result);
+	}
+
+	[TestMethod]
 	public async Task APositionalArgumentHasNoNameToRemoveBesideANamedOne()
 	{
 		const string source = """
