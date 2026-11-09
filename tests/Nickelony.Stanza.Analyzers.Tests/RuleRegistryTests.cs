@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
@@ -12,8 +11,10 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.CodeFixes;
+using Nickelony.Stanza.Markup.Core;
 using Nickelony.Stanza.Markup.Core.DocComments;
 using Nickelony.Stanza.Markup.Core.Options;
+using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
 
@@ -21,6 +22,9 @@ namespace Nickelony.Stanza.Analyzers.Tests;
 [TestClass]
 public sealed partial class RuleRegistryTests
 {
+	// The codes only the tool reports, so no descriptor of the analyzer backs them.
+	private static readonly string[] s_toolOnlyIds = ["ZA2901", "ZA2902"];
+
 	[TestMethod]
 	public async Task TheSharedSupportDocumentHasNoAnalyzerDiagnostics()
 	{
@@ -35,7 +39,7 @@ public sealed partial class RuleRegistryTests
 	}
 
 	[TestMethod]
-	public void EveryRuleIsFixedByExactlyOneProvider()
+	public void EveryRuleButTheReportOnlyOnesIsFixedByExactlyOneProvider()
 	{
 		ImmutableArray<ImmutableArray<string>> providers =
 		[
@@ -75,7 +79,26 @@ public sealed partial class RuleRegistryTests
 
 			int owners = providers.Count(provider => provider.Contains(id));
 
-			Assert.AreEqual(1, owners, $"{id} is not fixed by exactly one provider.");
+			// A report-only rule is listed by name, so a rule that loses its fix by mistake still fails here.
+			Assert.AreEqual(
+				TestRuleSets.ReportOnly.Contains(id) ? 0 : 1,
+				owners,
+				$"{id} is not fixed by exactly one provider, and is not a report-only rule."
+			);
+		}
+
+		foreach (string id in TestRuleSets.ReportOnly)
+		{
+			Assert.Contains(
+				id,
+				ruleIds,
+				$"{id} is listed as report-only but is the id of no rule."
+			);
+
+			Assert.IsTrue(
+				StanzaRules.Find(id) is null or { Fix: GapFix.None },
+				$"{id} is listed as report-only but the registry gives it a gap fix."
+			);
 		}
 	}
 
@@ -140,6 +163,8 @@ public sealed partial class RuleRegistryTests
 			typeof(StanzaCompilationTreeAnalyzer),
 		];
 
+		HashSet<string> hasEntry = [.. StanzaRules.All.Select(static rule => rule.Descriptor.Id)];
+
 		HashSet<string> namesKinds =
 		[
 			.. StanzaRules
@@ -156,10 +181,18 @@ public sealed partial class RuleRegistryTests
 			if (!bases.Any(baseType => baseType.IsAssignableFrom(type)))
 				offenders.Add($"{type.Name} derives from none of the analyzer bases");
 
-			bool needsRuleBase = namesKinds.Contains(analyzer.SupportedDiagnostics[0].Id);
+			string id = analyzer.SupportedDiagnostics[0].Id;
+
+			bool needsRuleBase =
+				namesKinds.Contains(id)
+				|| (hasEntry.Contains(id) && typeof(StanzaNodeAnalyzer).IsAssignableFrom(type));
 
 			if (needsRuleBase && !typeof(StanzaRuleAnalyzer).IsAssignableFrom(type))
-				offenders.Add($"{type.Name} names node kinds, so it is a rule analyzer");
+			{
+				offenders.Add(
+					$"{type.Name} judges node kinds of a StanzaRules entry, so it is a rule analyzer"
+				);
+			}
 		}
 
 		GuardAssert.None(
@@ -207,7 +240,8 @@ public sealed partial class RuleRegistryTests
 						or GapFix.RunRemoval
 						or GapFix.DeclarationGapRemoval
 						or GapFix.MarkupCapRemoval
-						or GapFix.MarkupExtraRemoval;
+						or GapFix.MarkupSurplusRemoval
+						or GapFix.TriviaRunRemoval;
 
 				Assert.StartsWith(
 					removes ? "Remove" : "Add",
@@ -215,13 +249,6 @@ public sealed partial class RuleRegistryTests
 					$"{descriptor.Id} words its message against the direction of its fix."
 				);
 			}
-
-			// The wiki page is the rule's ID, then its title with the spaces written as hyphens.
-			Assert.Contains(
-				$"/{descriptor.Id}-",
-				descriptor.HelpLinkUri,
-				$"{descriptor.Id} does not link to its own page."
-			);
 
 			Assert.IsFalse(
 				descriptor.Title.ToString(CultureInfo.InvariantCulture).EndsWith('.'),
@@ -255,14 +282,14 @@ public sealed partial class RuleRegistryTests
 			{
 				["stanza_max_line_length"] = "88",
 				["stanza_doc_max_line_length"] = "120",
-				["stanza_tab_width"] = "2",
-				["stanza_doc_expand"] = "sections",
+				["tab_width"] = "2",
+				["stanza_doc_block_elements"] = "sections",
 				["stanza_doc_min_tail_words"] = "3",
 				["stanza_doc_min_line_words"] = "1",
-				["stanza_doc_weak_tail_words"] = "the, and",
+				["stanza_doc_weak_line_end_words"] = "the, and",
 				["stanza_doc_max_overflow_columns"] = "6",
 				["stanza_doc_indent_size"] = "4",
-				["stanza_doc_indent_style"] = "hanging",
+				["stanza_doc_text_indent"] = "aligned",
 			},
 
 			new(StringComparer.Ordinal),
@@ -287,7 +314,7 @@ public sealed partial class RuleRegistryTests
 			);
 
 			DocLayoutOptions? analyzer = StanzaOptions
-				.From(new DictionaryOptions(values))
+				.From(new FixedConfigOptions(values))
 				.DocLayout;
 
 			Assert.AreEqual(
@@ -310,7 +337,7 @@ public sealed partial class RuleRegistryTests
 
 		foreach (StanzaRule rule in paired)
 		{
-			GapPair pair = rule.Pair!;
+			RulePair pair = rule.Pair!;
 			StanzaRule? partner = StanzaRules.Find(pair.GetOtherHalf(rule.Descriptor.Id).Id);
 
 			Assert.IsNotNull(
@@ -436,17 +463,42 @@ public sealed partial class RuleRegistryTests
 		}
 	}
 
+	[TestMethod]
+	public void TheSharedMarkupDeclaresNoIdOfItsOwn()
+	{
+		HashSet<string> descriptors = [.. TestRuleSets.Declared.Select(rule => rule.Descriptor.Id)];
+
+		List<string> orphans =
+		[
+			.. ReadMarkupIds()
+				.Where(id => !descriptors.Contains(id) && !s_toolOnlyIds.Contains(id)),
+		];
+
+		Assert.IsEmpty(
+			orphans,
+
+			"The IDs below are declared by the shared markup diagnostics but name no rule of the analyzer and no code "
+				+ "of the tool, so the products would report under different texts:"
+				+ Environment.NewLine
+				+ string.Join(Environment.NewLine, orphans)
+		);
+	}
+
 	private static string Describe(
 		DiagnosticDescriptor separate,
 		DiagnosticDescriptor keepMultiLine,
 		DiagnosticDescriptor keepSingleLine
 	) => $"{separate.Id} {keepMultiLine.Id} {keepSingleLine.Id}";
 
-	private sealed class DictionaryOptions(IReadOnlyDictionary<string, string> values)
-		: AnalyzerConfigOptions
+	private static IEnumerable<string> ReadMarkupIds()
 	{
-		public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value) =>
-			values.TryGetValue(key, out value);
+		return typeof(MarkupDiagnostics)
+			.GetFields(BindingFlags.Public | BindingFlags.Static)
+			.Where(field =>
+				field.FieldType == typeof(string)
+				&& field.Name.EndsWith("Id", StringComparison.Ordinal)
+			)
+			.Select(field => (string)field.GetValue(null)!);
 	}
 
 	[GeneratedRegex(@"\bthe\b")]

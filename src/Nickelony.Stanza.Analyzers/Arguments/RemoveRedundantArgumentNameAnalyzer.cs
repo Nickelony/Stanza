@@ -5,7 +5,7 @@ namespace Nickelony.Stanza.Analyzers.Arguments;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class RemoveRedundantArgumentNameAnalyzer()
-	: StanzaNodeAnalyzer(DiagnosticDescriptors.RemoveRedundantArgumentName, ArgumentAnalysis.CallKinds)
+	: StanzaNodeAnalyzer(DiagnosticDescriptors.RemoveRedundantArgumentName, StanzaKinds.CallKinds)
 {
 	protected override void Analyze(SyntaxNodeAnalysisContext context)
 	{

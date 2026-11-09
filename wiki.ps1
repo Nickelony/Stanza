@@ -36,6 +36,21 @@ $repoRoot = $PSScriptRoot
 $readme = Join-Path $repoRoot 'src/Nickelony.Stanza.Analyzers/README.md'
 $docsRoot = Join-Path $repoRoot 'docs'
 
+# A rule ID such as ZA0001 opens the name of its page, and a short revision is the first seven characters of a hash.
+$ruleIdLength = 6
+$shortRevisionLength = 7
+
+# Runs git in a directory and returns its output lines, or throws the message when git fails.
+function Invoke-Git([string]$Directory, [string]$Failure, [string[]]$Arguments) {
+	$output = @(& git -C $Directory @Arguments)
+
+	if ($LASTEXITCODE -ne 0) {
+		throw $Failure
+	}
+
+	return $output
+}
+
 function Get-RepositoryUrl {
 	$properties = Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props') -Raw
 
@@ -73,11 +88,7 @@ $homePage = [System.IO.File]::ReadAllText($readme).TrimEnd()
 Add-Page 'Home' 'Home' "$homePage`n`n---`n`n*Generated from the analyzer readme of [the repository]($repositoryUrl).*"
 
 # Only tracked pages are published: the clean check cannot see a page git ignores.
-$trackedPages = @(git -C $repoRoot ls-files -- 'docs/*.md')
-
-if ($LASTEXITCODE -ne 0) {
-	throw 'git could not list the tracked pages under docs/.'
-}
+$trackedPages = @(Invoke-Git $repoRoot 'git could not list the tracked pages under docs/.' 'ls-files', '--', 'docs/*.md')
 
 foreach ($file in $trackedPages | ForEach-Object { Get-Item -LiteralPath (Join-Path $repoRoot $_) } | Sort-Object FullName) {
 	# Group each page by its directory name; a directory with no mapping falls under Guides.
@@ -149,7 +160,7 @@ foreach ($group in @('Guides', 'Rules', 'Tool codes', 'Configuration')) {
 		$sectionPages = @(
 			$pages |
 				Where-Object {
-					$_.Group -eq $group -and ($section.Length -eq 0 -or $groupOfRule[$_.Name.Substring(0, 6)] -eq $section)
+					$_.Group -eq $group -and ($section.Length -eq 0 -or $groupOfRule[$_.Name.Substring(0, $ruleIdLength)] -eq $section)
 				} |
 				Sort-Object Name
 		)
@@ -170,47 +181,27 @@ foreach ($group in @('Guides', 'Rules', 'Tool codes', 'Configuration')) {
 	}
 }
 
-$revision = @(git -C $repoRoot rev-parse HEAD)[0]
-
-if ($LASTEXITCODE -ne 0) {
-	throw 'HEAD could not be read, so the wiki commit could not name the revision it mirrors.'
-}
+$revision = @(Invoke-Git $repoRoot 'HEAD could not be read, so the wiki commit could not name the revision it mirrors.' 'rev-parse', 'HEAD')[0]
 
 # The rule help links open these pages, so only a pushed commit of main may reach them.
 if (-not $Check) {
 	# An untracked file is never published, so it cannot make the wiki commit differ from HEAD.
-	$dirty = @(git -C $repoRoot status --porcelain --untracked-files=no)
-
-	if ($LASTEXITCODE -ne 0) {
-		throw 'The repository status could not be read, so the wiki cannot tell whether HEAD holds the pages.'
-	}
+	$dirty = @(Invoke-Git $repoRoot 'The repository status could not be read, so the wiki cannot tell whether HEAD holds the pages.' 'status', '--porcelain', '--untracked-files=no')
 
 	if ($dirty.Count -gt 0) {
 		throw "The working tree has uncommitted changes, so the wiki commit would not match HEAD: $($dirty -join '; ')"
 	}
 
-	$branch = @(git -C $repoRoot rev-parse --abbrev-ref HEAD)[0]
-
-	if ($LASTEXITCODE -ne 0) {
-		throw 'The current branch could not be read.'
-	}
+	$branch = @(Invoke-Git $repoRoot 'The current branch could not be read.' 'rev-parse', '--abbrev-ref', 'HEAD')[0]
 
 	if ($branch -ne 'main') {
 		throw "The wiki is published from main, but HEAD is on '$branch'."
 	}
 
-	git -C $repoRoot fetch --quiet origin main
-
-	if ($LASTEXITCODE -ne 0) {
-		throw 'origin/main could not be fetched, so the wiki cannot tell whether HEAD has been pushed.'
-	}
+	$null = Invoke-Git $repoRoot 'origin/main could not be fetched, so the wiki cannot tell whether HEAD has been pushed.' 'fetch', '--quiet', 'origin', 'main'
 
 	# An older HEAD would publish older pages and delete the newer ones, so HEAD must be the tip itself.
-	$tip = @(git -C $repoRoot rev-parse origin/main)[0]
-
-	if ($LASTEXITCODE -ne 0) {
-		throw 'origin/main could not be read, so the wiki cannot tell whether HEAD is its tip.'
-	}
+	$tip = @(Invoke-Git $repoRoot 'origin/main could not be read, so the wiki cannot tell whether HEAD is its tip.' 'rev-parse', 'origin/main')[0]
 
 	if ($tip -ne $revision) {
 		throw "HEAD is not the tip of origin/main ($tip); pull or push before publishing the wiki."
@@ -260,11 +251,7 @@ try {
 
 	[System.IO.File]::WriteAllText((Join-Path $work '_Sidebar.md'), (($sidebar -join "`n").TrimEnd() + "`n"), $encoding)
 
-	$changed = @(git -C $work status --porcelain)
-
-	if ($LASTEXITCODE -ne 0) {
-		throw 'The wiki status could not be read.'
-	}
+	$changed = @(Invoke-Git $work 'The wiki status could not be read.' 'status', '--porcelain')
 
 	if ($changed.Count -eq 0) {
 		Write-Host "==> The wiki already holds this tree ($($pages.Count) pages)."
@@ -290,26 +277,12 @@ try {
 	Write-Host '==> Committing and pushing'
 
 	if (-not $Message) {
-		$Message = "Mirror the documentation at $($revision.Substring(0, 7))"
+		$Message = "Mirror the documentation at $($revision.Substring(0, $shortRevisionLength))"
 	}
 
-	git -C $work add --all
-
-	if ($LASTEXITCODE -ne 0) {
-		throw 'The wiki pages could not be staged.'
-	}
-
-	git -C $work commit --quiet --message $Message --message "Mirrors $revision."
-
-	if ($LASTEXITCODE -ne 0) {
-		throw 'The wiki commit failed.'
-	}
-
-	git -C $work push --quiet
-
-	if ($LASTEXITCODE -ne 0) {
-		throw 'The wiki push failed.'
-	}
+	$null = Invoke-Git $work 'The wiki pages could not be staged.' 'add', '--all'
+	$null = Invoke-Git $work 'The wiki commit failed.' 'commit', '--quiet', '--message', $Message, '--message', "Mirrors $revision."
+	$null = Invoke-Git $work 'The wiki push failed.' 'push', '--quiet'
 
 	Write-Host "==> Published $($pages.Count) pages to $repositoryUrl/wiki"
 }

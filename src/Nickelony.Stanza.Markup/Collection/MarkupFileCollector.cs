@@ -72,7 +72,7 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 			return [];
 		}
 
-		// A disabled file and a file of another type get a note, and the link policy is never read for them,
+		// A disabled file and a file of another type get a note, and the link check is never read for them,
 		// so neither is a link warning that --strict escalates; a hook names every changed file, links included.
 		if (FindInput(new FileInfo(fullPath), out MarkupSkipReason? skipped) is { } input)
 			return TryAddCollected(input) ? [input] : [];
@@ -84,7 +84,7 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 		else if (skipped is MarkupSkipReason.Unclaimed)
 		{
 			context.Notices.AddNote(
-				$"'{displayPath}' is not a file type any profile claims, so it was skipped. Name one with --profile or with a '{MarkupKeys.Profile}' entry."
+				$"'{displayPath}' is not a file type any profile claims, so it was skipped. Name one with --profile or with a '{OptionKeys.MarkupProfile}' entry."
 			);
 		}
 
@@ -93,28 +93,23 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 
 	private List<MarkupInput> CollectGlob(string argument)
 	{
-		string searchRoot;
-		GlobTarget target;
-
-		try
-		{
-			searchRoot = GlobPath.GetSearchRoot(argument, context.Paths.WorkingDirectory);
-			target = GlobPath.Resolve(argument, context.Paths.WorkingDirectory);
-		}
-		catch (Exception exception) when (MarkupPaths.IsUnresolvable(exception))
-		{
-			context.Notices.AddError($"'{argument}' could not be resolved to a path: {exception.Message}");
-			return [];
-		}
+		bool valid = GlobPath.TryResolveValid(
+			argument,
+			workingDirectory: context.Paths.WorkingDirectory,
+			out GlobTarget target,
+			out GlobProblem problem
+		);
 
 		// A pattern the dialect refuses matches nothing, so it is reported as refused rather than as a miss.
 		// Like a path that does not exist, it fails the run, because a script that names it expects files.
-		// The target's directory is compared as text, so only the pattern below it is validated.
-		if (!GlobMatcher.TryValidate(target.Pattern, out string? refusal))
+		if (!valid)
 		{
-			context.Notices.AddError($"the pattern '{argument}' is refused ({refusal}); it matches nothing.");
+			context.Notices.AddError(problem.Describe(unresolvedName: $"'{argument}'", refusedName: $"the pattern '{argument}'"));
 			return [];
 		}
+
+		// The directory part resolved above, so the search root of the same argument resolves too.
+		string searchRoot = GlobPath.GetSearchRoot(argument, context.Paths.WorkingDirectory);
 
 		// A missing directory part cannot match anything, and is reported like any empty glob.
 		if (!Directory.Exists(searchRoot))
@@ -128,20 +123,20 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 		int found = 0;
 
 		// The target and the path are both resolved, so any spelling of the glob selects the same files.
-		foreach (FileSystemInfo entry in MarkupDirectoryWalker.EnumerateEntries(directory: searchRoot, context, target.MaxDepth))
+		foreach (FileSystemInfo file in MarkupDirectoryWalker.EnumerateFiles(directory: searchRoot, context, target.MaxDepth))
 		{
-			if (!target.IsMatch(entry.FullName))
+			if (!target.IsMatch(file.FullName))
 				continue;
 
 			tally.Matched++;
 
-			if (context.Excludes.IsExcluded(entry.FullName, context.Paths))
+			if (context.Excludes.IsExcluded(file.FullName, context.Paths))
 			{
 				tally.Excluded++;
 				continue;
 			}
 
-			if (FindInput(entry, out MarkupSkipReason? skipped) is { } input)
+			if (FindInput(file, out MarkupSkipReason? skipped) is { } input)
 			{
 				found++;
 
@@ -168,17 +163,17 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 		List<MarkupInput> inputs = [];
 		int found = 0;
 
-		foreach (FileSystemInfo entry in MarkupDirectoryWalker.EnumerateEntries(directory, context))
+		foreach (FileSystemInfo file in MarkupDirectoryWalker.EnumerateFiles(directory, context))
 		{
 			// An excluded file is left out before the no-file check, so a scan that excludes everything reports it.
-			if (context.Excludes.IsExcluded(entry.FullName, context.Paths))
+			if (context.Excludes.IsExcluded(file.FullName, context.Paths))
 				continue;
 
 			// A forced profile narrows a scan to the extensions it claims.
-			if (context.Forced is not null && !context.Forced.ClaimsExtension(entry.Extension))
+			if (context.Forced is not null && !context.Forced.ClaimsExtension(file.Extension))
 				continue;
 
-			if (FindInput(entry, out _) is { } input)
+			if (FindInput(file, out _) is { } input)
 			{
 				found++;
 
@@ -203,7 +198,7 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 		{
 			return (entry as FileInfo)?.Length;
 		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+		catch (Exception exception) when (FileFailures.IsFileFailure(exception))
 		{
 			// A file that vanished since the listing is read, and refused, by the reader.
 			return null;
@@ -236,7 +231,7 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 			return null;
 		}
 
-		if (MarkupLinkPolicy.TryReportLink(entry, context))
+		if (MarkupLinks.TryReportLink(entry, context))
 			return null;
 
 		return new(

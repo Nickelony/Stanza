@@ -23,7 +23,8 @@ internal sealed class RemoveBracePaddingAnalyzer() : StanzaRuleAnalyzer(StanzaRu
 		{
 			SyntaxToken headerEnd = openBrace.GetPreviousToken();
 
-			if (!headerEnd.IsKind(SyntaxKind.None))
+			// An initializer that follows a comma is an element of its list, and the list's own rules own the gap above it.
+			if (!headerEnd.IsKind(SyntaxKind.None) && !headerEnd.IsKind(SyntaxKind.CommaToken))
 				Report(context, openBrace, headerEnd);
 		}
 
@@ -33,11 +34,12 @@ internal sealed class RemoveBracePaddingAnalyzer() : StanzaRuleAnalyzer(StanzaRu
 		if (units.Length == 0)
 			return;
 
+		// The token before the closing brace is the last unit's, or the trailing comma a list may end with.
 		Report(context, openBrace, units[0].GetFirstToken());
-		Report(context, closeBrace, units[units.Length - 1].GetLastToken());
+		Report(context, closeBrace, closeBrace.GetPreviousToken());
 	}
 
-	private static bool IsStatementBlock(SyntaxNode container)
+	public static bool IsStatementBlock(SyntaxNode container)
 	{
 		if (container is not BlockSyntax block)
 			return false;
@@ -46,15 +48,19 @@ internal sealed class RemoveBracePaddingAnalyzer() : StanzaRuleAnalyzer(StanzaRu
 
 		return parent switch
 		{
-			BlockSyntax blockParent => blockParent.Statements.IndexOf(block) > 0,
-			SwitchSectionSyntax section => section.Statements.IndexOf(block) > 0,
-			GlobalStatementSyntax => HasPrecedingUnit(block),
+			// The block is among its parent's statements, so a statement before it is any first statement that is not the block.
+			BlockSyntax blockParent => blockParent.Statements[0] != block,
+			SwitchSectionSyntax section => section.Statements[0] != block,
+			GlobalStatementSyntax globalStatement => HasPrecedingUnit(globalStatement),
 			_ => false,
 		};
 	}
 
-	private static bool HasPrecedingUnit(SyntaxNode block) =>
-		block.Parent is GlobalStatementSyntax { Parent: { } container } && StanzaSyntax.ReadSiblings(container).IndexOf(block) > 0;
+	private static bool HasPrecedingUnit(GlobalStatementSyntax globalStatement)
+	{
+		return globalStatement.Parent is CompilationUnitSyntax unit
+			&& (unit.Externs.Count > 0 || unit.Usings.Count > 0 || unit.Members[0] != globalStatement);
+	}
 
 	private void Report(SyntaxNodeAnalysisContext context, SyntaxToken brace, SyntaxToken neighbor)
 	{
@@ -64,6 +70,6 @@ internal sealed class RemoveBracePaddingAnalyzer() : StanzaRuleAnalyzer(StanzaRu
 		if (isOpenBracePair || isCloseBracePair)
 			return;
 
-		BlankLineRemoval.ReportRemovableBlankLine(context, anchor: brace, neighbor, rule: Rule);
+		RemovableBlankLineAnalysis.ReportRemovableBlankLine(context, anchor: brace, neighbor, rule: Rule);
 	}
 }

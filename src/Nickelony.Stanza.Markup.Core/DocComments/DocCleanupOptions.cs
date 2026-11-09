@@ -5,8 +5,9 @@ namespace Nickelony.Stanza.Markup.Core.DocComments;
 /// The constructor takes one parameter for each clean-up, since the one job is to hold them together.
 /// </remarks>
 internal readonly record struct DocCleanupOptions(
+	MarkupNameSet? Capital,
 	bool Period,
-	bool NullKeyword,
+	MarkupNameSet? Keywords,
 	bool EmptyElement,
 	bool SlashShape,
 	bool SpacedSlash,
@@ -17,14 +18,22 @@ internal readonly record struct DocCleanupOptions(
 {
 	public static DocCleanupOptions None => default;
 
-	public bool IsNone => !Period && !NullKeyword && !EmptyElement && !SlashShape && !ElementOrder && !ListOrder && !Padding;
+	public bool IsNone => !RewritesContent && !RewritesLayout;
 
-	public static DocCleanupOptions From(MarkupRuleSet rules)
+	private bool RewritesContent => Capital is not null || Period || Keywords is not null || EmptyElement;
+	private bool RewritesLayout => SlashShape || ElementOrder || ListOrder || Padding;
+
+	/// <summary>Reads the clean-ups the rules enable; no list of keywords marks <c>null</c> alone.</summary>
+	/// <remarks>
+	/// <see cref="Capital"/> holds the listed keywords too, since a keyword at the start of a text keeps its case.
+	/// </remarks>
+	public static DocCleanupOptions From(MarkupRuleSet rules, MarkupNameSet? keywords = null)
 	{
 		// A clean-up is off unless the file enables a rule it serves.
 		return new(
+			Capital: rules.Contains(MarkupDiagnostics.CapitalizeDocumentationTextId) ? keywords ?? DocTextRules.DefaultKeywords : null,
 			Period: rules.Contains(MarkupDiagnostics.EndDocumentationTextWithPeriodId),
-			NullKeyword: rules.Contains(MarkupDiagnostics.MarkNullKeywordId),
+			Keywords: rules.Contains(MarkupDiagnostics.MarkLanguageKeywordsId) ? keywords ?? DocTextRules.DefaultKeywords : null,
 			EmptyElement: rules.Contains(MarkupDiagnostics.WriteEmptyElementAsSelfClosingTagId),
 
 			SlashShape: rules.Contains(MarkupDiagnostics.SeparateSlashOfSelfClosingTagId)

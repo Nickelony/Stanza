@@ -35,10 +35,16 @@ public sealed class ToolManifestTests
 	}
 
 	[TestMethod]
-	public void OnlyACSharpierBeforeOnePointZeroIsOld()
+	public void OnlyACSharpierBeforeOnePointOneIsOld()
 	{
 		Assert.IsTrue(PinsOldCSharpier("0.30.6"));
-		Assert.IsFalse(PinsOldCSharpier("1.0.0"));
+		Assert.IsTrue(PinsOldCSharpier("1.0.0"));
+		Assert.IsTrue(PinsOldCSharpier("1.0.9-beta.1"));
+		Assert.IsFalse(PinsOldCSharpier("1.1"));
+		Assert.IsFalse(PinsOldCSharpier("2.0.0+build"));
+		Assert.IsFalse(PinsOldCSharpier(string.Empty));
+		Assert.IsFalse(PinsOldCSharpier("1.1.0"));
+		Assert.IsFalse(PinsOldCSharpier("1.2.0-beta.1"));
 		Assert.IsFalse(PinsOldCSharpier("10.0.0"));
 		Assert.IsFalse(PinsOldCSharpier(null));
 	}

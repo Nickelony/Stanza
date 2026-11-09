@@ -7,7 +7,7 @@ namespace Nickelony.Stanza.Analyzers;
 /// <summary>Finds the brace pair of a container, and where an inserted closing brace goes.</summary>
 internal static class StanzaBraces
 {
-	public static StanzaDiagnosticLookup.TokenPair? FindBracePair(SyntaxNode container)
+	public static TokenPair? FindBracePair(SyntaxNode container)
 	{
 		(SyntaxToken openBrace, SyntaxToken closeBrace) = container switch
 		{
@@ -17,19 +17,22 @@ internal static class StanzaBraces
 			InitializerExpressionSyntax initializer => (initializer.OpenBraceToken, initializer.CloseBraceToken),
 			TypeDeclarationSyntax typeDeclaration => (typeDeclaration.OpenBraceToken, typeDeclaration.CloseBraceToken),
 			EnumDeclarationSyntax enumDeclaration => (enumDeclaration.OpenBraceToken, enumDeclaration.CloseBraceToken),
+			NamespaceDeclarationSyntax namespaceDeclaration => (namespaceDeclaration.OpenBraceToken, namespaceDeclaration.CloseBraceToken),
+			SwitchStatementSyntax switchStatement => (switchStatement.OpenBraceToken, switchStatement.CloseBraceToken),
+			SwitchExpressionSyntax switchExpression => (switchExpression.OpenBraceToken, switchExpression.CloseBraceToken),
 			_ => (default, default),
 		};
 
 		// A parser-invented token is never measured:
 		// a missing token sits at the position it would be inserted at rather than where the author wrote it.
 		return !openBrace.IsKind(SyntaxKind.None) && !openBrace.IsMissing && !closeBrace.IsKind(SyntaxKind.None) && !closeBrace.IsMissing
-			? new StanzaDiagnosticLookup.TokenPair(openBrace, closeBrace)
+			? new TokenPair(openBrace, closeBrace)
 			: null;
 	}
 
-	public static StanzaDiagnosticLookup.TokenPair? FindBracePair(SyntaxNode root, Diagnostic diagnostic)
+	public static TokenPair? FindBracePair(SyntaxNode root, Diagnostic diagnostic)
 	{
-		StanzaDiagnosticLookup.TokenPair? pair = StanzaDiagnosticLookup.FindTokenPair(root, diagnostic);
+		TokenPair? pair = StanzaDiagnosticLookup.FindTokenPair(root, diagnostic);
 
 		if (pair is null && root.FindToken(diagnostic.Location.SourceSpan.Start).Parent is { } container)
 			pair = FindBracePair(container);

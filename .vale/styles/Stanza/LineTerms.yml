@@ -1,0 +1,9 @@
+# The rules and the docs spell the two kinds of unit "single-line" and "multi-line", in all three languages.
+extends: existence
+message: "Write 'single-line' or 'multi-line' in place of '%s'."
+level: error
+ignorecase: true
+tokens:
+  - 'multiline'
+  - 'one-line(?:r|rs)?'
+  - 'one-liners?'

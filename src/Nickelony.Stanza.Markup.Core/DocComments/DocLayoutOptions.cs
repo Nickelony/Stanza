@@ -15,8 +15,8 @@ internal readonly record struct DocLayoutOptions(
 	int MaxOverflowColumns,
 	int IndentSize,
 	bool IndentText,
-	DocExpansion Expansion,
-	DocNameSet? WeakTailWords = null,
+	DocBlockElements BlockElements,
+	MarkupNameSet? WeakLineEndWords = null,
 	bool IndentWithTabs = false
 )
 {
@@ -25,9 +25,9 @@ internal readonly record struct DocLayoutOptions(
 	public const int DefaultMaxOverflowColumns = 4;
 	public const int DefaultIndentSize = 0;
 
-	public int GetColumns(string text) => MarkupColumns.GetColumns(text, TabColumns);
+	public int GetColumns(string text) => TextColumns.GetColumns(text, TabColumns);
 
-	private static readonly HashSet<string> s_blockElements = new(StringComparer.Ordinal) { "remarks", "example", "para" };
+	private static readonly HashSet<string> s_alwaysBlockElements = new(StringComparer.Ordinal) { "remarks", "example", "para" };
 
 	private static readonly HashSet<string> s_sectionElements = new(StringComparer.Ordinal)
 	{
@@ -41,11 +41,11 @@ internal readonly record struct DocLayoutOptions(
 		"permission",
 	};
 
-	public bool IsExpanded(string name)
+	public bool IsBlockElement(string name)
 	{
-		return s_blockElements.Contains(name)
-			|| Expansion == DocExpansion.All
-			|| (Expansion == DocExpansion.Sections && s_sectionElements.Contains(name));
+		return s_alwaysBlockElements.Contains(name)
+			|| BlockElements == DocBlockElements.All
+			|| (BlockElements == DocBlockElements.Sections && s_sectionElements.Contains(name));
 	}
 
 	public int GetIndentationColumns(int depth, bool text) => IndentSize <= 0 ? 0 : checked(GetIndentationLevels(depth, text) * IndentSize);

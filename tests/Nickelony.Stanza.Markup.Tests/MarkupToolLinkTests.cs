@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.Versioning;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Collection;
+using Nickelony.Stanza.Markup.Notices;
 using Nickelony.Stanza.Tests.Shared;
 
 using static Nickelony.Stanza.Markup.Tests.MarkupFixtures;
@@ -70,7 +71,7 @@ public sealed class MarkupToolLinkTests
 		);
 	}
 
-	// The .editorconfig is read before the link policy, so a disabled named link gets the note --strict never escalates.
+	// The .editorconfig is read before the link check, so a disabled named link gets the note --strict never escalates.
 	[TestMethod]
 	public void ANamedLinkThatTheEditorConfigDisablesIsANote()
 	{
@@ -123,7 +124,7 @@ public sealed class MarkupToolLinkTests
 		Assert.DoesNotContain("is a link", named.Error);
 	}
 
-	// A scan reads the .editorconfig before the link policy too, so a link in a disabled directory fails no --strict run.
+	// A scan reads the .editorconfig before the link check too, so a link in a disabled directory fails no --strict run.
 	[TestMethod]
 	public void ALinkTheEditorConfigDisablesIsNotReportedByAScan()
 	{
@@ -150,6 +151,7 @@ public sealed class MarkupToolLinkTests
 	public void ASubdirectoryTheScanCannotReadIsAWarningAndAnErrorUnderStrict()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("sample.xml", LineFeed(Formatted));
 		_ = directory.Write("locked/sample.xml", LineFeed(Source));
 
@@ -175,6 +177,7 @@ public sealed class MarkupToolLinkTests
 	public void SubdirectoriesTheScanCannotReadAreOneWarningThatCountsThem()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("sample.xml", LineFeed(Formatted));
 		_ = directory.Write("first/sample.xml", LineFeed(Source));
 		_ = directory.Write("second/sample.xml", LineFeed(Source));
@@ -209,13 +212,13 @@ public sealed class MarkupToolLinkTests
 		using TempDirectory directory = new();
 		string path = directory.Write("sample.xml", LineFeed(Source));
 
-		bool io = MarkupLinkPolicy.IsLinkOrUnreadable(
+		bool io = MarkupLinks.IsLinkOrUnreadable(
 			new FileInfo(path),
 			static _ => throw new IOException("The target is not readable"),
 			out string? ioError
 		);
 
-		bool denied = MarkupLinkPolicy.IsLinkOrUnreadable(
+		bool denied = MarkupLinks.IsLinkOrUnreadable(
 			new FileInfo(path),
 			static _ => throw new UnauthorizedAccessException("The target is denied"),
 			out string? deniedError
@@ -228,13 +231,13 @@ public sealed class MarkupToolLinkTests
 
 		Assert.AreEqual(
 			"'sample.xml' could not be inspected: The target is denied.",
-			MarkupLinkPolicy.Describe("sample.xml", deniedError)
+			MarkupLinks.Describe("sample.xml", deniedError)
 		);
 
 		// A system message that ends its own sentence keeps one period.
 		Assert.AreEqual(
 			"'sample.xml' could not be inspected: Access is denied.",
-			MarkupLinkPolicy.Describe("sample.xml", "Access is denied.")
+			MarkupLinks.Describe("sample.xml", "Access is denied.")
 		);
 	}
 
@@ -245,7 +248,7 @@ public sealed class MarkupToolLinkTests
 		string path = directory.Write("sample.xml", LineFeed(Source));
 
 		_ = Assert.ThrowsExactly<InvalidOperationException>(() =>
-			MarkupLinkPolicy.IsLinkOrUnreadable(
+			MarkupLinks.IsLinkOrUnreadable(
 				new FileInfo(path),
 				static _ => throw new InvalidOperationException("A defect."),
 				out _
@@ -260,7 +263,7 @@ public sealed class MarkupToolLinkTests
 		string path = directory.Write("sample.xml", LineFeed(Source));
 
 		Assert.IsTrue(
-			MarkupLinkPolicy.IsLinkOrUnreadable(
+			MarkupLinks.IsLinkOrUnreadable(
 				new FileInfo(path),
 				static _ => "elsewhere.xml",
 				out string? linkError
@@ -270,7 +273,7 @@ public sealed class MarkupToolLinkTests
 		Assert.IsNull(linkError);
 
 		Assert.IsFalse(
-			MarkupLinkPolicy.IsLinkOrUnreadable(
+			MarkupLinks.IsLinkOrUnreadable(
 				new FileInfo(path),
 				static _ => null,
 				out string? plainError
@@ -278,6 +281,49 @@ public sealed class MarkupToolLinkTests
 		);
 
 		Assert.IsNull(plainError);
+	}
+
+	// No directory of Windows or Unix makes its attribute read fail on demand, so the report is called with the error itself.
+	[TestMethod]
+	public void ADirectoryTheWalkCannotInspectIsWarnedAboutByItsName()
+	{
+		using TempDirectory directory = new();
+		_ = directory.Write("locked/sample.xml", LineFeed(Source));
+
+		MarkupNotices notices = new(strict: false);
+
+		MarkupDirectoryWalker.ReportUninspected(
+			new DirectoryInfo(Path.Combine(directory.Root, "locked")),
+			"Access is denied.",
+			CreateCollectionContext(directory.Root, notices)
+		);
+
+		Assert.HasCount(1, notices.Items);
+
+		Assert.AreEqual(
+			"'locked' could not be inspected: Access is denied.",
+			notices.Items[0].Message
+		);
+
+		Assert.AreEqual("locked", notices.Items[0].DisplayPath);
+		Assert.AreEqual(MarkupNoticeLevel.Warning, notices.Items[0].Level);
+	}
+
+	[TestMethod]
+	public void ADirectoryWithNoInspectionErrorIsNotWarnedAbout()
+	{
+		using TempDirectory directory = new();
+		_ = directory.Write("real/sample.xml", LineFeed(Source));
+
+		MarkupNotices notices = new(strict: false);
+
+		MarkupDirectoryWalker.ReportUninspected(
+			new DirectoryInfo(Path.Combine(directory.Root, "real")),
+			inspectionError: null,
+			CreateCollectionContext(directory.Root, notices)
+		);
+
+		Assert.IsEmpty(notices.Items);
 	}
 
 	// Unix returns no link target where it cannot read one, so a real entry never reaches the inspection catch there:
@@ -293,10 +339,7 @@ public sealed class MarkupToolLinkTests
 		string locked = Path.Combine(directory.Root, "locked");
 		using var denied = DeniedDirectory.DenyOrSkip(locked);
 
-		bool isLink = MarkupLinkPolicy.IsLinkOrUnreadable(
-			new DirectoryInfo(locked),
-			out string? error
-		);
+		bool isLink = MarkupLinks.IsLinkOrUnreadable(new DirectoryInfo(locked), out string? error);
 
 		Assert.IsFalse(isLink);
 		Assert.IsNull(error);

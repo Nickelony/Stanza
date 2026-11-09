@@ -27,7 +27,7 @@ public sealed class MarkupReporterTests
 		new MarkupMsBuildReporter(output, error).ReportChanged("sample.xml", [edit], write: false);
 
 		Assert.AreEqual(
-			$"sample.xml(3,1): warning ZA0101: first second{System.Environment.NewLine}",
+			$"sample.xml(3,1): warning ZA2001: first second{System.Environment.NewLine}",
 			output.ToString()
 		);
 	}

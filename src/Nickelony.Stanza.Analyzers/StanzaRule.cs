@@ -13,7 +13,7 @@ internal sealed record StanzaRule(
 	DiagnosticDescriptor Descriptor,
 	GapFix Fix = GapFix.None,
 	ImmutableArray<SyntaxKind> Kinds = default,
-	GapPair? Pair = null,
+	RulePair? Pair = null,
 	bool AnchoredOnPrevious = false,
 	ImmutableArray<DiagnosticDescriptor> DefersTo = default
 )

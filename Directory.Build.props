@@ -10,8 +10,8 @@
 		FileVersion is the version without its suffix, so a prerelease carries the file version of its release.
 	-->
 	<PropertyGroup>
-		<Version>1.0.0</Version>
-		<AssemblyVersion>1.0.0.0</AssemblyVersion>
+		<Version>0.9.0</Version>
+		<AssemblyVersion>0.9.0.0</AssemblyVersion>
 		<FileVersion>$([System.Text.RegularExpressions.Regex]::Match('$(Version)', '^\d+\.\d+\.\d+').Value).0</FileVersion>
 	</PropertyGroup>
 

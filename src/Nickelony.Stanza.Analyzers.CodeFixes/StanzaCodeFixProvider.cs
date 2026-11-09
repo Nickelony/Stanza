@@ -24,6 +24,25 @@ internal abstract class StanzaCodeFixProvider : CodeFixProvider
 	protected static FixChanges FromSync(Func<FixDocument, Diagnostic, CancellationToken, ImmutableArray<TextChange>> create) =>
 		(document, diagnostic, cancellationToken) => Task.FromResult(create(document, diagnostic, cancellationToken));
 
+	/// <summary>Wraps a builder with no <see langword="await"/> or token as the asynchronous one a row holds.</summary>
+	protected static FixChanges FromSync(Func<FixDocument, Diagnostic, ImmutableArray<TextChange>> create) =>
+		(document, diagnostic, _) => Task.FromResult(create(document, diagnostic));
+
+	/// <summary>Applies the change a diagnostic carries, else finds its edit by the span it reports.</summary>
+	/// <remarks>
+	/// A Fix All then need not find the file's edits once per diagnostic, and the edit's whole anchor span is the key.
+	/// </remarks>
+	protected static FixChanges FromCarriedChange<TEdit>(Func<FixDocument, CancellationToken, List<TEdit>> create)
+		where TEdit : IAnchoredEdit
+	{
+		return FromSync(
+			(document, diagnostic, cancellationToken) =>
+				FixOptions.Parse(diagnostic).Change is { } change && change.Span.End <= document.Text.Length
+					? [change]
+					: StanzaFixes.FindChangeAt(create(document, cancellationToken), diagnostic.Location.SourceSpan)
+		);
+	}
+
 	public sealed override ImmutableArray<string> FixableDiagnosticIds => Fixes.Ids;
 
 	/// <summary>Merges the text changes itself rather than through the batch fixer.</summary>
@@ -95,7 +114,9 @@ internal abstract class StanzaCodeFixProvider : CodeFixProvider
 			if (!StanzaDiagnosticLookup.IsDiagnosticInDocument(diagnostic, sourceText) || !Fixes.TryGet(diagnostic.Id, out FixRow row))
 				continue;
 
-			ImmutableArray<TextChange> changes = await row.Create(document: view, diagnostic, cancellationToken: context.CancellationToken)
+			FixChanges create = row.CreateSingle ?? row.Create;
+
+			ImmutableArray<TextChange> changes = await create(document: view, diagnostic, cancellationToken: context.CancellationToken)
 				.ConfigureAwait(false);
 
 			// A change the fix cannot make must not be offered: it would silently do nothing.

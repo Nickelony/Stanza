@@ -1,0 +1,8 @@
+# The build output and the lock file are written by tools, and the docs follow the repository's prose rules.
+dist/
+package-lock.json
+*.md
+# The corpus is the input of the convergence tests, which format it themselves.
+test/corpus/
+# The stylelint config is a package of its own, which formats itself with its own configuration.
+stylelint-config/

@@ -8,7 +8,7 @@ on:
     inputs:
       seeds:
         description: >-
-          The number of seeds each convergence test runs; the truncation test cuts every fixture at every offset whatever it is.
+          The number of seeds each convergence and fuzz test runs; the truncation test cuts every fixture at every offset whatever it is.
         required: false
         type: string
         default: '200'
@@ -40,6 +40,16 @@ jobs:
           persist-credentials: false
 
       - uses: ./.github/actions/setup-dotnet
+
+      # A scheduled run starts its seeds one window of STANZA_SOAK_SEEDS past the last, so each week meets seeds no earlier week did.
+      # A manual run keeps the base seeds, and a failure names its seed, so an offset of seed minus the base reproduces it with one seed.
+      - name: Move the seeds on
+        if: github.event_name == 'schedule'
+        shell: pwsh
+        run: |
+          $offset = [long]$env:GITHUB_RUN_NUMBER * [long]$env:STANZA_SOAK_SEEDS
+          Add-Content -Path $env:GITHUB_ENV -Value "STANZA_SOAK_SEED_OFFSET=$offset"
+          Write-Host "Seeds start at the base seed plus $offset."
 
       - name: Build
         run: dotnet build Nickelony.Stanza.slnx -c Release

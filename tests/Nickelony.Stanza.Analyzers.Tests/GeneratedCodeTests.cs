@@ -122,16 +122,12 @@ public sealed class GeneratedCodeTests
 			""";
 
 		Assert.IsEmpty(
-			await RoslynTestHarness.RunNamedAsync<SeparateDeclarationAndInvocationRunsAnalyzer>(
-				source,
-				fileName
-			),
-
+			await RoslynTestHarness.RunNamedAsync<SeparateInvocationRunsAnalyzer>(source, fileName),
 			$"'{fileName}' is a generated file name."
 		);
 
 		Assert.IsNotEmpty(
-			await RoslynTestHarness.RunNamedAsync<SeparateDeclarationAndInvocationRunsAnalyzer>(
+			await RoslynTestHarness.RunNamedAsync<SeparateInvocationRunsAnalyzer>(
 				source,
 				"Test.cs"
 			),
@@ -236,7 +232,7 @@ public sealed class GeneratedCodeTests
 		);
 
 		Assert.Contains(
-			DiagnosticDescriptors.SeparateDeclarationAndInvocationRuns.Id,
+			DiagnosticDescriptors.SeparateInvocationRuns.Id,
 			result.Diagnostics.Select(diagnostic => diagnostic.Id),
 			"The body reports even without the marker, so the silence above proves nothing."
 		);

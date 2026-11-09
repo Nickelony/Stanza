@@ -57,7 +57,11 @@ public sealed class MarkupToolProcessTests
 		_ = directory.Write("café.xml", LineFeed(Source));
 
 		string tool = Path.Combine(AppContext.BaseDirectory, "Nickelony.Stanza.Markup.dll");
-		RunResult run = DetachedProcess.Run($"dotnet \"{tool}\" check café.xml", directory.Root);
+
+		RunResult run = DetachedProcess.Run(
+			$"\"{DotnetHost.Executable}\" \"{tool}\" check café.xml",
+			directory.Root
+		);
 
 		Assert.AreEqual(1, run.ExitCode, run.Error);
 		Assert.AreEqual(string.Empty, run.Error);

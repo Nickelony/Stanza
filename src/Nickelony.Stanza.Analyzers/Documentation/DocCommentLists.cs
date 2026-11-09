@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -28,7 +29,9 @@ internal static class DocCommentLists
 			return [];
 
 		List<XmlElementSyntax> lists = [];
-		CollectLists(comment.Content, lists);
+
+		// The layout keeps a top-level element that holds a sample or a pointer as written, and so does the list layout.
+		CollectLists(comment.Content.Where(static node => !DocCommentSyntax.HoldsKeptElement(node)), lists);
 
 		if (lists.Count == 0)
 			return [];
@@ -55,7 +58,7 @@ internal static class DocCommentLists
 		return edits;
 	}
 
-	private static void CollectLists(SyntaxList<XmlNodeSyntax> nodes, List<XmlElementSyntax> lists)
+	private static void CollectLists(IEnumerable<XmlNodeSyntax> nodes, List<XmlElementSyntax> lists)
 	{
 		foreach (XmlNodeSyntax node in nodes)
 		{

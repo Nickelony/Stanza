@@ -213,7 +213,7 @@ public sealed class SiblingRuleSetContractTests
 		DynamicDataDisplayName = nameof(RowNames.GetRowName),
 		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
 	)]
-	public async Task TheTightRuleLeavesTheBlankLineAboveACommentWhereTheCommentedSiblingRuleIsOn(
+	public async Task TheTightRuleRemovesTheBlankLineAboveACommentWhereTheCommentedSiblingRuleIsOn(
 		SiblingRuleSet siblings
 	)
 	{
@@ -226,12 +226,11 @@ public sealed class SiblingRuleSetContractTests
 			)
 		);
 
-		Assert.IsEmpty(
-			OfRules(result, siblings.KeepSingleLine, DiagnosticDescriptors.SeparateCommentedSibling)
-		);
+		Assert.HasCount(1, OfRules(result, siblings.KeepSingleLine));
+		Assert.IsEmpty(OfRules(result, DiagnosticDescriptors.SeparateCommentedSibling));
 
 		RoslynTestHarness.AssertFixedText(
-			siblings.Build((siblings.SingleLine, SiblingRuleSet.CommentTravels)),
+			siblings.Build((siblings.SingleLine, SiblingRuleSet.CommentTravelsFixed)),
 			result
 		);
 	}
@@ -242,7 +241,7 @@ public sealed class SiblingRuleSetContractTests
 		DynamicDataDisplayName = nameof(RowNames.GetRowName),
 		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
 	)]
-	public async Task TheCommentedSiblingRuleWritesTheBlankLineTheTightRuleLeaves(
+	public async Task TheCommentedSiblingRuleWritesNoBlankLineWhereTheTightRuleIsOn(
 		SiblingRuleSet siblings
 	)
 	{
@@ -255,11 +254,12 @@ public sealed class SiblingRuleSetContractTests
 			)
 		);
 
-		Assert.HasCount(1, OfRules(result, DiagnosticDescriptors.SeparateCommentedSibling));
-		Assert.IsEmpty(OfRules(result, siblings.KeepSingleLine));
+		Assert.IsEmpty(
+			OfRules(result, siblings.KeepSingleLine, DiagnosticDescriptors.SeparateCommentedSibling)
+		);
 
 		RoslynTestHarness.AssertFixedText(
-			siblings.Build((siblings.SingleLine, SiblingRuleSet.CommentTravels)),
+			siblings.Build((siblings.SingleLine, SiblingRuleSet.CommentTravelsFixed)),
 			result
 		);
 	}

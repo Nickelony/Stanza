@@ -111,6 +111,7 @@ public sealed class MarkupToolFormatTests
 	public void ARunThatFailsOnOneFileStillCountsTheOthers()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("broken.xml", "<root>\n");
 		_ = directory.Write("sample.xml", LineFeed(Source));
 
@@ -121,7 +122,7 @@ public sealed class MarkupToolFormatTests
 	}
 
 	[TestMethod]
-	public void TheCheckCommandCanReportEveryGapAsAnMSBuildDiagnostic()
+	public void TheCheckCommandCanReportAGapAsAnMSBuildDiagnostic()
 	{
 		using TempDirectory directory = new();
 		_ = directory.Write("sample.xml", LineFeed(Source));
@@ -131,7 +132,7 @@ public sealed class MarkupToolFormatTests
 		Assert.AreEqual(1, result.ExitCode);
 
 		Assert.Contains(
-			"sample.xml(5,1): warning ZA0101: Add a blank line before this element",
+			"sample.xml(5,1): warning ZA2001: Add a blank line before this element",
 			result.Output
 		);
 
@@ -152,11 +153,11 @@ public sealed class MarkupToolFormatTests
 		Assert.AreEqual(1, result.ExitCode);
 
 		Assert.Contains(
-			"sample.xml(8,1): warning ZA0104: Remove the extra blank lines before this element",
+			"sample.xml(8,1): warning ZA2006: Remove the extra blank lines before this element",
 			result.Output
 		);
 
-		Assert.DoesNotContain("ZA0101", result.Output);
+		Assert.DoesNotContain("ZA2001", result.Output);
 	}
 
 	[TestMethod]
@@ -171,11 +172,11 @@ public sealed class MarkupToolFormatTests
 		Assert.AreEqual(1, result.ExitCode);
 
 		Assert.Contains(
-			"sample.xml(2,3): warning ZA0105: Add one space between this comment marker and the text",
+			"sample.xml(2,3): warning ZA2007: Add one space between this comment marker and the text",
 			result.Output
 		);
 
-		Assert.Contains("sample.xml(2,13): warning ZA0105:", result.Output);
+		Assert.Contains("sample.xml(2,13): warning ZA2007:", result.Output);
 	}
 
 	[TestMethod]
@@ -187,14 +188,14 @@ public sealed class MarkupToolFormatTests
 
 		_ = directory.Write(
 			".editorconfig",
-			MarkupFixtures.EditorConfig("[*.xml]\ndotnet_diagnostic.ZA0105.severity = error\n")
+			MarkupFixtures.EditorConfig("[*.xml]\ndotnet_diagnostic.ZA2007.severity = error\n")
 		);
 
 		RunResult result = Run(directory, "check", "--format", "msbuild", "--strict", "sample.xml");
 
 		Assert.AreEqual(1, result.ExitCode);
-		Assert.Contains("sample.xml(2,3): warning ZA0105:", result.Output);
-		Assert.DoesNotContain("error ZA0105", result.Output);
+		Assert.Contains("sample.xml(2,3): warning ZA2007:", result.Output);
+		Assert.DoesNotContain("error ZA2007", result.Output);
 	}
 
 	[TestMethod]
@@ -210,7 +211,7 @@ public sealed class MarkupToolFormatTests
 
 		_ = directory.Write(
 			".editorconfig",
-			MarkupFixtures.EditorConfig("[*.xml]\ndotnet_diagnostic.ZA0210.severity = warning\n")
+			MarkupFixtures.EditorConfig("[*.xml]\ndotnet_diagnostic.ZA0911.severity = warning\n")
 		);
 
 		RunResult result = Run(directory, "check", "--format", "msbuild", "sample.xml");
@@ -313,7 +314,7 @@ public sealed class MarkupToolFormatTests
 		RunResult result = Run(directory, "check", "--format", "msbuild", "broken.xml");
 
 		Assert.Contains(
-			"broken.xml(5,1): warning ZA0100: could not be laid out: Unexpected end of file has occurred. "
+			"broken.xml(5,1): warning ZA2901: could not be laid out: Unexpected end of file has occurred. "
 				+ "The following elements are not closed: member, members, doc.",
 
 			result.Output
@@ -346,7 +347,7 @@ public sealed class MarkupToolFormatTests
 		);
 
 		Assert.Contains(
-			"member.xml(3,1): warning ZA0106: Reprint the body of this member",
+			"member.xml(3,1): warning ZA2902: Reprint the body of this member",
 			result.Output
 		);
 	}
@@ -392,16 +393,7 @@ public sealed class MarkupToolFormatTests
 			MarkupFixtures.EditorConfig("[*.xml]\nstanza_markup_max_blank_lines = many\n")
 		);
 
-		string[] arguments =
-		[
-			"check",
-			"--format",
-			"msbuild",
-			"--exclude",
-			"file[z-a].xml",
-			"sample.xml",
-			"missing/*.xml",
-		];
+		string[] arguments = ["check", "--format", "msbuild", "sample.xml", "missing/*.xml"];
 
 		RunResult result = Run(directory, arguments);
 
@@ -411,16 +403,29 @@ public sealed class MarkupToolFormatTests
 		);
 
 		Assert.Contains(
-			"stanza-markup : warning : the exclude pattern 'file[z-a].xml' is refused",
-			result.Output
-		);
-
-		Assert.Contains(
 			"stanza-markup : error : 'missing/*.xml' does not match any file.",
 			result.Output
 		);
 
 		Assert.DoesNotContain("warning", result.Error);
+
+		// A refused exclude ends the run before the scan, so it is the only notice of its run.
+		RunResult refused = Run(
+			directory,
+			"check",
+			"--format",
+			"msbuild",
+			"--exclude",
+			"file[z-a].xml",
+			"sample.xml"
+		);
+
+		Assert.AreEqual(2, refused.ExitCode, refused.Error);
+
+		Assert.Contains(
+			"stanza-markup : error : the exclude pattern 'file[z-a].xml' is refused",
+			refused.Output
+		);
 
 		// A warning about a directory names it as its origin; one about a glob has none to name.
 		Directory.CreateDirectory(Path.Combine(directory.Root, "empty"));
@@ -629,7 +634,7 @@ public sealed class MarkupToolFormatTests
 
 			MarkupFixtures.EditorConfig(
 				"[*.xml]\nstanza_markup_max_blank_lines = 0\n"
-					+ "dotnet_diagnostic.ZA0102.severity = warning\n"
+					+ "dotnet_diagnostic.ZA2002.severity = warning\n"
 			)
 		);
 
@@ -720,18 +725,18 @@ public sealed class MarkupToolFormatTests
 		Assert.AreEqual(0, relaxed.ExitCode);
 
 		Assert.Contains(
-			"legacy.xml(1,1): warning ZA0100: could not be read: "
+			"legacy.xml(1,1): warning ZA2901: could not be read: "
 				+ "the bytes could not be decoded as utf-8, so it was left alone.",
 
 			relaxed.Output
 		);
 
-		Assert.DoesNotContain("ZA0101", relaxed.Output);
+		Assert.DoesNotContain("ZA2001", relaxed.Output);
 
 		RunResult strict = Run(directory, "check", "--format", "msbuild", "--strict", "legacy.xml");
 
 		Assert.AreEqual(2, strict.ExitCode);
-		Assert.Contains("legacy.xml(1,1): error ZA0100:", strict.Output);
+		Assert.Contains("legacy.xml(1,1): error ZA2901:", strict.Output);
 	}
 
 	[TestMethod]
@@ -751,7 +756,6 @@ public sealed class MarkupToolFormatTests
 		);
 
 		Assert.AreEqual(0, Run(directory, "check", "sample.xml").ExitCode);
-
 		Assert.AreEqual(1, Run(directory, "check", "--profile", "xml", "sample.xml").ExitCode);
 	}
 
@@ -766,10 +770,8 @@ public sealed class MarkupToolFormatTests
 	[DataRow(nameof(MarkupFileOutcome.Unchanged), true, false)]
 	public void OnlyAPlainFailureIsSoftenedByTheMode(string outcome, bool strict, bool fails)
 	{
-		Assert.AreEqual(
-			fails,
-			MarkupTool.FailsTheRun(Enum.Parse<MarkupFileOutcome>(outcome), strict)
-		);
+		MarkupFileResult result = new(Enum.Parse<MarkupFileOutcome>(outcome), "a.xml", []);
+		Assert.AreEqual(fails, result.FailsTheRun(strict));
 	}
 
 	// Only the overlap guard of the formatter yields a defect, so the report is checked on the failure it would give.
@@ -790,21 +792,20 @@ public sealed class MarkupToolFormatTests
 
 		var failure = new MarkupFailure("boom", Line: 2, Column: 3);
 
-		MarkupTool.ReportFailure(
+		new MarkupHumanReporter(output, error).ReportFailure(
 			displayPath: "a.xml",
 			failure,
 			isDefect,
-			strict,
-			reporter: new MarkupHumanReporter(output, error)
+			strict
 		);
 
-		MarkupFileOutcome result = MarkupTool.GetFailureOutcome(
+		var result = MarkupFileResult.ForFailure(
+			displayPath: "a.xml",
 			new MarkupFormatResult("x", [], failure) { IsDefect = isDefect }
 		);
 
-		Assert.AreEqual(outcome, result.ToString());
+		Assert.AreEqual(outcome, result.Outcome.ToString());
 		Assert.AreEqual(report + Environment.NewLine, error.ToString());
-		Assert.AreEqual(isDefect || strict, MarkupTool.FailsTheRun(result, strict));
 	}
 
 	[TestMethod]
@@ -835,6 +836,7 @@ public sealed class MarkupToolFormatTests
 	public void AFileWhoseReportThrowsFailsTheRunAndTheNextFileIsStillJudged()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("a-broken.xml", "<root>\n  <a>\n</root>\n");
 		_ = directory.Write("b-sample.xml", LineFeed(Source));
 

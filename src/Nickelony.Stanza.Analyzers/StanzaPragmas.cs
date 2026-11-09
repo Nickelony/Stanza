@@ -102,7 +102,7 @@ internal static class StanzaPragmas
 		return false;
 	}
 
-	/// <summary>Reads a tree's directives once for all pragma checks, taking Tomb-Editor from 5.9 s to 4.6 s.</summary>
+	/// <summary>Reads a tree's directives once for all pragma checks, instead of a walk for each check.</summary>
 	private static readonly WeakCache<SyntaxTree, ImmutableArray<PragmaDirective>> s_pragmaCache = new();
 
 	private readonly struct PragmaDirective(TextSpan span, bool isDisabling, ImmutableArray<string> codes)

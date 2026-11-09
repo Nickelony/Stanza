@@ -4,5 +4,4 @@ using Microsoft.CodeAnalysis.Diagnostics;
 namespace Nickelony.Stanza.Analyzers.BlankLines;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-internal sealed class KeepMultiLineDeclaratorsTogetherAnalyzer()
-	: KeepMultiLineSiblingsTogetherAnalyzer(StanzaRules.KeepMultiLineDeclaratorsTogether);
+internal sealed class KeepMultiLineDeclaratorsTogetherAnalyzer() : RemovableMultiLineGapAnalyzer(StanzaRules.KeepMultiLineDeclaratorsTogether);

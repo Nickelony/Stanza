@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 
 namespace Nickelony.Stanza.Markup.Paths;
@@ -12,6 +13,32 @@ internal static class GlobPath
 		string directoryPart = FindDirectoryPart(normalized, GlobMatcher.FindWildcard(normalized)) ?? ".";
 
 		return ResolveDirectory(directoryPart, workingDirectory);
+	}
+
+	/// <summary>Resolves a glob and validates its pattern, and gives the problem when it cannot select files.</summary>
+	public static bool TryResolveValid(string argument, string workingDirectory, out GlobTarget target, out GlobProblem problem)
+	{
+		try
+		{
+			target = Resolve(argument, workingDirectory);
+		}
+		catch (Exception exception) when (MarkupPaths.IsUnresolvable(exception))
+		{
+			target = default;
+			problem = new GlobProblem(IsRefusal: false, exception.Message);
+
+			return false;
+		}
+
+		// The target's directory is compared as text, so only the pattern below it is validated.
+		if (!GlobMatcher.TryValidate(target.Pattern, out string? refusal))
+		{
+			problem = new GlobProblem(IsRefusal: true, refusal);
+			return false;
+		}
+
+		problem = default;
+		return true;
 	}
 
 	public static GlobTarget Resolve(string argument, string workingDirectory)

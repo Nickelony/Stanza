@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Nickelony.Stanza.Markup.Core.DocComments;
+using Nickelony.Stanza.Markup.Core.Options;
 using Nickelony.Stanza.Markup.Core.Xml;
 
 namespace Nickelony.Stanza.Markup.Core.Formatting;
@@ -38,9 +39,12 @@ internal static class MarkupFormatter
 		List<MarkupEdit> edits = [];
 
 		AddSpacingEdits(sourceText, findings, options, edits);
+		AddCommentedSpacingEdits(sourceText, findings, options, edits);
 		AddRemovalEdits(sourceText, findings, options, edits);
+		AddSlashEdits(sourceText, findings, options, edits);
+		AddEmptyElementEdits(sourceText, findings, options, edits);
 
-		// The comment-marker space applies whatever a file enables unless it sets ZA0105 to none.
+		// The comment-marker space applies whatever a file enables unless it sets ZA2007 to none.
 		if (!options.DisabledRules.Contains(MarkupDiagnostics.SeparateMarkupCommentMarkerFromTextId))
 		{
 			foreach (MarkupCommentMarker marker in findings.CommentMarkers)
@@ -49,7 +53,7 @@ internal static class MarkupFormatter
 
 		if (reprintLayout is { } layout && findings.Root is { } root)
 		{
-			var cleanup = DocCleanupOptions.From(options.Rules);
+			var cleanup = DocCleanupOptions.From(options.Rules, options.Langwords);
 
 			foreach (MarkupReprintedBody body in MarkupReprint.Collect(root, sourceText, reprintLayout: layout, cleanup, cancellationToken))
 				AddReprintEdit(sourceText, body, edits);
@@ -80,7 +84,7 @@ internal static class MarkupFormatter
 
 	private static void AddSpacingEdits(MarkupSourceText sourceText, MarkupFindings findings, MarkupOptions options, List<MarkupEdit> edits)
 	{
-		// The tool adds the ZA0101 blank line unless the file enables ZA0102 or sets ZA0101 to none.
+		// The tool adds the ZA2001 blank line unless the file enables ZA2002 or sets ZA2001 to none.
 		if (
 			options.Rules.Contains(MarkupDiagnostics.KeepMultiLineMarkupElementsTogetherId)
 			|| options.DisabledRules.Contains(MarkupDiagnostics.SeparateMultiLineMarkupElementsId)
@@ -102,11 +106,30 @@ internal static class MarkupFormatter
 		}
 	}
 
+	private static void AddCommentedSpacingEdits(MarkupSourceText sourceText, MarkupFindings findings, MarkupOptions options, List<MarkupEdit> edits)
+	{
+		// The tool adds the ZA2004 blank line only where the file enables it, since it is off unless asked for.
+		if (!options.Rules.Contains(MarkupDiagnostics.SeparateCommentedMarkupElementId))
+			return;
+
+		foreach (MarkupGap gap in findings.CommentedGaps)
+		{
+			edits.Add(
+				new MarkupEdit(
+					Change: CreateInsertion(sourceText, gap.NextStartLineIndex),
+					Line: gap.NextStartLineIndex + 1,
+					Message: MarkupDiagnostics.AddBlankLineAboveCommentMessage,
+					Id: MarkupDiagnostics.SeparateCommentedMarkupElementId
+				)
+			);
+		}
+	}
+
 	private static void AddRemovalEdits(MarkupSourceText sourceText, MarkupFindings findings, MarkupOptions options, List<MarkupEdit> edits)
 	{
 		foreach (MarkupRemoval removal in findings.Removals)
 		{
-			// The cap applies whatever a file enables unless it sets ZA0104 to none; every other removal waits for its rule.
+			// The cap applies whatever a file enables unless it sets ZA2006 to none; every other removal waits for its rule.
 			bool isCap = removal.Id == MarkupDiagnostics.CollapseExtraBlankLinesBetweenMarkupElementsId;
 
 			if (isCap ? options.DisabledRules.Contains(removal.Id) : !options.Rules.Contains(removal.Id))
@@ -124,8 +147,76 @@ internal static class MarkupFormatter
 					),
 
 					Line: gap.NextStartLineIndex + 1,
-					Message: isCap ? MarkupDiagnostics.RemoveBlankLinesMessage : MarkupDiagnostics.RemoveBlankLineMessage,
+					Message: GetRemovalMessage(removal.Id),
 					Id: removal.Id
+				)
+			);
+		}
+	}
+
+	private static string GetRemovalMessage(string id)
+	{
+		return id switch
+		{
+			MarkupDiagnostics.CollapseExtraBlankLinesBetweenMarkupElementsId => MarkupDiagnostics.RemoveBlankLinesMessage,
+			MarkupDiagnostics.RemoveMarkupElementPaddingId => MarkupDiagnostics.RemovePaddingMessage,
+			_ => MarkupDiagnostics.RemoveBlankLineMessage,
+		};
+	}
+
+	private static void AddSlashEdits(MarkupSourceText sourceText, MarkupFindings findings, MarkupOptions options, List<MarkupEdit> edits)
+	{
+		// The separating half is the default half, so it owns the slash when a file enables both.
+		bool spaced = options.Rules.Contains(MarkupDiagnostics.SeparateSlashOfSelfClosingMarkupElementId);
+
+		if (!spaced && !options.Rules.Contains(MarkupDiagnostics.KeepSlashOfSelfClosingMarkupElementTightId))
+			return;
+
+		foreach (MarkupSlashGap gap in findings.SlashGaps)
+		{
+			if (!gap.NeedsChange(spaced))
+				continue;
+
+			int slashStart = sourceText.GetLine(gap.LineIndex).Start + gap.SlashOffset;
+
+			edits.Add(
+				new MarkupEdit(
+					Change: new MarkupChange(MarkupSpan.FromBounds(slashStart - gap.GapLength, slashStart), spaced ? " " : string.Empty),
+					Line: gap.LineIndex + 1,
+					Message: spaced ? MarkupDiagnostics.AddSlashSpaceMessage : MarkupDiagnostics.RemoveSlashSpaceMessage,
+
+					Id: spaced
+						? MarkupDiagnostics.SeparateSlashOfSelfClosingMarkupElementId
+						: MarkupDiagnostics.KeepSlashOfSelfClosingMarkupElementTightId,
+
+					Column: gap.SlashOffset + 1
+				)
+			);
+		}
+	}
+
+	private static void AddEmptyElementEdits(MarkupSourceText sourceText, MarkupFindings findings, MarkupOptions options, List<MarkupEdit> edits)
+	{
+		// The tag follows the slash pair, so the rules settle in one pass: the tight half decides only when it is the one enabled.
+		bool spaced =
+			options.Rules.Contains(MarkupDiagnostics.SeparateSlashOfSelfClosingMarkupElementId)
+			|| !options.Rules.Contains(MarkupDiagnostics.KeepSlashOfSelfClosingMarkupElementTightId);
+
+		foreach (MarkupEmptyElement element in findings.EmptyElements)
+		{
+			int bracketStart = sourceText.GetLine(element.LineIndex).Start + element.BracketOffset;
+
+			edits.Add(
+				new MarkupEdit(
+					Change: new MarkupChange(
+						MarkupSpan.FromBounds(bracketStart - element.GapLength, bracketStart + element.Length),
+						element.BuildTail(spaced)
+					),
+
+					Line: element.LineIndex + 1,
+					Message: MarkupDiagnostics.WriteSelfClosingTagMessage,
+					Id: MarkupDiagnostics.WriteEmptyMarkupElementAsSelfClosingTagId,
+					Column: element.BracketOffset + 1
 				)
 			);
 		}

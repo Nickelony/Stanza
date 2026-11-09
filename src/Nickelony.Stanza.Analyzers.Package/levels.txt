@@ -1,0 +1,106 @@
+# The level of each rule of Nickelony.Stanza.Analyzers, which the files under build/presets are written from.
+# The levels run minimal, moderate, strong, and each holds the rules of the level before it.
+# An opt-in rule is in no level, so it reports only where its own line enables it.
+# A markup rule has no row, because only its own severity line enables it, the line stanza-markup reads too.
+# A third column says what the csharpier formatter does to the rule at the strong level: csharpier-off or csharpier-on.
+# PresetGuardTests fails when a file under build/presets differs from what this table writes;
+# run it with STANZA_WRITE_PRESETS=1 to write them.
+
+ZA0001 moderate
+ZA0002 moderate
+ZA0003 strong
+ZA0004 moderate
+ZA0005 moderate
+ZA0006 strong
+ZA0007 strong
+ZA0008 strong
+ZA0009 strong
+ZA0010 strong
+ZA0011 strong
+ZA0012 strong   csharpier-off
+ZA0013 moderate
+ZA0014 strong
+ZA0015 minimal
+ZA0016 strong
+ZA0017 minimal
+ZA0051 strong
+ZA0052 strong
+ZA0053 strong
+ZA0054 opt-in
+ZA0055 opt-in
+ZA0056 minimal
+ZA0101 opt-in
+ZA0102 minimal
+ZA0103 minimal
+ZA0111 moderate
+ZA0112 opt-in
+ZA0113 minimal
+ZA0121 moderate
+ZA0122 opt-in
+ZA0123 minimal
+ZA0131 strong
+ZA0132 opt-in
+ZA0133 minimal
+ZA0141 strong   csharpier-off
+ZA0142 opt-in   csharpier-on
+ZA0143 minimal
+ZA0151 strong   csharpier-off
+ZA0152 opt-in   csharpier-on
+ZA0153 minimal
+ZA0161 strong   csharpier-off
+ZA0162 opt-in   csharpier-on
+ZA0163 minimal
+ZA0171 strong   csharpier-off
+ZA0172 opt-in   csharpier-on
+ZA0173 minimal
+ZA0198 strong
+ZA0199 opt-in
+ZA0201 opt-in
+ZA0202 minimal
+ZA0203 minimal
+ZA0204 minimal
+ZA0205 moderate
+ZA0206 strong
+ZA0301 moderate
+ZA0302 strong
+ZA0303 strong
+ZA0304 strong
+ZA0305 moderate
+ZA0306 strong
+ZA0307 opt-in
+ZA0401 minimal
+ZA0402 moderate
+ZA0403 strong
+ZA0404 strong
+ZA0405 moderate
+ZA0501 strong
+ZA0502 strong
+ZA0503 strong
+ZA0601 strong
+ZA0602 strong
+ZA0651 moderate
+ZA0652 opt-in
+ZA0901 strong
+ZA0902 strong
+ZA0903 strong
+ZA0904 strong
+ZA0905 minimal
+ZA0906 minimal
+ZA0907 opt-in
+ZA0908 strong
+ZA0909 moderate
+ZA0910 strong
+ZA0911 strong
+ZA0912 strong
+ZA0913 strong
+ZA0914 strong
+ZA0951 moderate
+ZA0952 moderate
+ZA0953 moderate
+ZA1001 opt-in
+ZA1002 strong
+ZA1003 strong
+ZA1004 strong
+ZA1005 strong
+ZA1006 strong
+ZA1007 strong

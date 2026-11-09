@@ -17,7 +17,6 @@ internal sealed class MarkupSourceText
 	}
 
 	public string Text { get; }
-
 	public int Length => Text.Length;
 	public int LineCount => _lineStarts.Length;
 

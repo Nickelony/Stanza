@@ -66,8 +66,10 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
+          . ./.github/scripts/Get-TrackingHeadingPattern.ps1
+
           $path = 'src/Nickelony.Stanza.Analyzers/AnalyzerReleases.Shipped.md'
-          $section = "^## Release $([regex]::Escape($env:VERSION))\s*$"
+          $section = Get-TrackingHeadingPattern -Version $env:VERSION
 
           if (-not (Select-String -LiteralPath $path -Pattern $section -Quiet)) {
             throw "AnalyzerReleases.Shipped.md carries no '## Release $env:VERSION' section, so the rules of this version were never moved out of AnalyzerReleases.Unshipped.md."
@@ -79,40 +81,8 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Extracts the changelog notes that become the GitHub release body.
-          $heading = "## [$env:VERSION]"
-          $lines = @(Get-Content -LiteralPath CHANGELOG.md)
-          $start = -1
-
-          for ($index = 0; $index -lt $lines.Count; $index++) {
-            if ($lines[$index].StartsWith($heading)) {
-              $start = $index
-              break
-            }
-          }
-
-          if ($start -lt 0) {
-            throw "CHANGELOG.md carries no '$heading' section, so the release would be published with no notes."
-          }
-
-          $end = $lines.Count
-
-          for ($index = $start + 1; $index -lt $lines.Count; $index++) {
-            if ($lines[$index].StartsWith('## ')) {
-              $end = $index
-              break
-            }
-          }
-
-          # Avoid a descending index range when the section has no body.
-          $body = if ($end -gt $start + 1) { @($lines[($start + 1)..($end - 1)]) } else { @() }
-
-          # Drop the reference definitions only; the blank lines stay, so a paragraph after a list keeps its break.
-          $notes = (@($body | Where-Object { $_ -notmatch '^\[[^\]]+\]:' }) -join "`n").Trim()
-
-          if ($notes.Length -eq 0) {
-            throw "CHANGELOG.md's '$heading' section is empty, so the release would be published with no notes."
-          }
+          # The notes become the GitHub release body.
+          $notes = ./.github/scripts/Get-ChangelogNotes.ps1 -Version $env:VERSION
 
           $delimiter = [guid]::NewGuid().ToString('N')
 
@@ -120,24 +90,11 @@ jobs:
           $notes | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           $delimiter | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: The changelog links this version
+      - name: The changelog opens the next section and links this version
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          # A version links a compare range, or the release tag for the first release.
-          $version = [regex]::Escape($env:VERSION)
-          $lines = @(Get-Content -LiteralPath CHANGELOG.md)
-          $links = @{
-            "[$env:VERSION]" = "^\[$version\]: https://github\.com/[^/]+/[^/]+/(compare/v\S+\.\.\.v$version|releases/tag/v$version)\s*$"
-            '[Unreleased]'   = "^\[Unreleased\]: https://github\.com/[^/]+/[^/]+/compare/v$version\.\.\.HEAD\s*$"
-          }
-
-          foreach ($label in $links.Keys) {
-            if (-not ($lines | Where-Object { $_ -match $links[$label] })) {
-              throw "CHANGELOG.md carries no '$label' link as a compare range or the first release tag, so the release notes would point at the wrong range."
-            }
-          }
+        run: ./.github/scripts/Assert-ChangelogReleased.ps1 -Version $env:VERSION
 
   verify:
     needs: prepare
@@ -166,10 +123,12 @@ jobs:
       id-token: write
 
     steps:
-      # Only the scripts are needed, and the checkout comes first so it cannot clean the downloaded packages away.
+      # Only the scripts and the SDK pin are needed, and the checkout comes first so it cannot clean the downloaded packages away.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          sparse-checkout: .github/scripts
+          sparse-checkout: |
+            .github/scripts
+            /global.json
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
@@ -182,9 +141,9 @@ jobs:
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: 10.0.x
+          global-json-file: global.json
 
-      # PackageLayoutTests packs the IDs of the same file, so the push below sends the packages the tests checked.
+      # PackageLayoutGuardTests packs the IDs of the same file, so the push below sends the packages the tests checked.
       - name: The artifacts hold exactly the packages that ship
         shell: pwsh
         run: ./.github/scripts/Assert-PackageSet.ps1

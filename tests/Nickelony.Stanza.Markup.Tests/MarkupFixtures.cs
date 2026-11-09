@@ -5,7 +5,7 @@ using Nickelony.Stanza.Markup.Cli;
 using Nickelony.Stanza.Markup.Collection;
 using Nickelony.Stanza.Markup.Configuration;
 using Nickelony.Stanza.Markup.Core.Formatting;
-using Nickelony.Stanza.Markup.Core.Xml;
+using Nickelony.Stanza.Markup.Core.Options;
 using Nickelony.Stanza.Markup.Files;
 using Nickelony.Stanza.Markup.Notices;
 using Nickelony.Stanza.Markup.Paths;

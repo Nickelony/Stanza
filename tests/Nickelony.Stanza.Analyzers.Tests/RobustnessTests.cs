@@ -25,6 +25,25 @@ public sealed class RobustnessTests
 		["nothing at all", ""],
 
 		[
+			"a tuple literal of empty elements",
+			"class C { void M() { var pair = (,\n\n); var other = (1,\n\n,\n\n2); } }",
+		],
+
+		["a tuple literal cut off after a comma", "class C { void M() { var pair = (1,\n\n"],
+
+		[
+			"a tuple type of empty elements",
+			"class C { (,\n\n) Field; (int,\n\n,\n\nint) Other; List<(,\n\n)> Items; }",
+		],
+
+		["a tuple type cut off after a comma", "class C { (int First,\n\n"],
+
+		[
+			"a tuple deconstruction of empty elements",
+			"class C { void M() { (,\n\n) = (,\n\n); (var a,\n\n,\n\nvar b) = pair; } }",
+		],
+
+		[
 			"a directive that renames the file",
 			"#line 9999 \"SomewhereElse.cs\"\nclass C\n{\n\tvoid M()\n\t{\n\t\tDoThing();\n\t}\n}\n",
 		],

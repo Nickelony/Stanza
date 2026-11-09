@@ -1,7 +1,7 @@
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Configuration;
-using Nickelony.Stanza.Markup.Core.Xml;
+using Nickelony.Stanza.Markup.Core.Options;
 using Nickelony.Stanza.Markup.Notices;
 using Nickelony.Stanza.Tests.Shared;
 
@@ -152,7 +152,6 @@ public sealed class EditorConfigReaderTests
 		);
 
 		Assert.AreEqual(3, configuration.GetOptions(project, MarkupProfiles.MsBuild).MaxBlankLines);
-
 		Assert.AreEqual(1, configuration.GetOptions(plain, MarkupProfiles.Xml).MaxBlankLines);
 	}
 
@@ -573,6 +572,24 @@ public sealed class EditorConfigReaderTests
 		MarkupConfiguration upperCase = MarkupFixtures.CreateConfiguration(directory.Root, out _);
 
 		Assert.AreEqual(5, upperCase.GetOptions(path, MarkupProfiles.Xml).MaxBlankLines);
+	}
+
+	[TestMethod]
+	public void ARefusedSectionGlobIsReportedWhetherOrNotTheSectionSetsAKey()
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", string.Empty);
+
+		_ = directory.Write(".editorconfig", MarkupFixtures.EditorConfig("[file[^abc].xml]\n"));
+
+		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices notices
+		);
+
+		Assert.AreEqual(1, configuration.GetOptions(path, MarkupProfiles.Xml).MaxBlankLines);
+		Assert.HasCount(1, notices.Items);
+		Assert.Contains("whose pattern is refused", notices.Items[0].Message);
 	}
 
 	[TestMethod]

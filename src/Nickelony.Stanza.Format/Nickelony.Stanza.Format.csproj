@@ -12,7 +12,7 @@
 		<None Include="README.md" Pack="true" PackagePath="" />
 	</ItemGroup>
 
-	<!-- The tools compile in the console host, the argument reader and the path helpers of src/Shared, kept out of Markup.Core because the analyzer compiles it. -->
+	<!-- The tools compile in the code they share from src/Shared, kept out of Markup.Core because the analyzer compiles it. -->
 	<ItemGroup>
 		<Compile Include="..\Shared\*.cs" LinkBase="Shared" />
 	</ItemGroup>

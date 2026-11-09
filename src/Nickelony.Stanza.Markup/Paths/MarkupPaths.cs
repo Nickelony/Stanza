@@ -16,7 +16,7 @@ internal sealed class MarkupPaths(string workingDirectory)
 	/// <seealso href="https://github.com/Nickelony/Stanza/wiki/Markup-command-reference#output"/>
 	public string GetDisplayPath(string path)
 	{
-		string relativePath = RepositoryPath.ToRelative(WorkingDirectory, path);
+		string relativePath = SlashPath.ToRelative(WorkingDirectory, path);
 		string shown = RelativePathScope.LeavesDirectory(relativePath) ? GlobMatcher.Normalize(path) : relativePath;
 
 		return ToolHost.EscapeNonPrintingCharacters(shown);

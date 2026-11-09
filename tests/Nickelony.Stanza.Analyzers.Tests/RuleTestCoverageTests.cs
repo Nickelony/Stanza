@@ -20,27 +20,9 @@ namespace Nickelony.Stanza.Analyzers.Tests;
 [TestClass]
 public sealed class RuleTestCoverageTests
 {
-	[GlobalTestInitialize]
-	public static void RecordTheRunningTest(TestContext context)
-	{
-		string className = context.FullyQualifiedTestClassName ?? string.Empty;
-
-		HarnessRecord.Begin(
-			new RecordedTest(
-				Class: className[(className.LastIndexOf('.') + 1)..],
-				Method: context.TestName ?? string.Empty
-			)
-		);
-
-		HarnessBudget.Begin(context.CancellationToken);
-	}
-
-	[GlobalTestCleanup]
-	public static void EndTheRunningTest(TestContext _) => HarnessBudget.End();
-
-	// A filtered run leaves tests out, so its record could miss a fixture that exists.
-	// A test of its own could not see the whole run, since the tests run in parallel and in no set order,
-	// so the guard stays an assembly cleanup, which MSTest reports under the test that ended last; its message says so.
+	// A filtered run leaves tests out, and a failed or timed-out test cuts its runs short,
+	// so the guard judges only a run of which every test passed or was skipped.
+	// It stays an assembly cleanup, since a test could not see the whole parallel run; MSTest reports it under the test that ended last.
 	// A condition attribute would keep a test from starting and the guard from running, so T6 bans one in this project.
 	[AssemblyCleanup]
 	public static void EachRuleHasAFixtureOfItsOwn()
@@ -301,16 +283,26 @@ public sealed class RuleTestCoverageTests
 	}
 
 	[TestMethod]
+	public void ARunInWhichATestFailedOrNeverEndedIsLeftToThatTestsOwnRow()
+	{
+		RecordedTest[] declared = [new("SomeTests", "Passes"), new("SomeTests", "TimesOut")];
+
+		Assert.IsTrue(RanEveryTest(declared, declared));
+		Assert.IsFalse(RanEveryTest(declared, [declared[0]]));
+		Assert.IsFalse(RanEveryTest(declared, []));
+	}
+
+	[TestMethod]
 	public void ASingleRuleTestOutsideItsRulesHomeIsFound()
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0002"),
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0002"),
-			Run(className: "BraceFamilyTests", method: "Drives", rule: "ZA0002", reported: []),
+			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0013"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
+			Run(className: "BraceFamilyTests", method: "Drives", rule: "ZA0013", reported: []),
 		];
 
-		List<string> problems = FindProblems(runs, Homes(("ZA0002", "SeparateMemberGroupsTests")));
+		List<string> problems = FindProblems(runs, Homes(("ZA0013", "SeparateMemberGroupsTests")));
 
 		Assert.HasCount(1, problems);
 		Assert.Contains("BraceFamilyTests.Drives", problems[0]);
@@ -321,15 +313,15 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0002"),
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0002"),
-			Run(className: "BraceFamilyTests", method: "Vehicle", rule: "ZA0002", reported: []),
-			Run(className: "BraceFamilyTests", method: "Drives", rule: "ZA0002", reported: []),
+			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0013"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
+			Run(className: "BraceFamilyTests", method: "Vehicle", rule: "ZA0013", reported: []),
+			Run(className: "BraceFamilyTests", method: "Drives", rule: "ZA0013", reported: []),
 		];
 
 		List<string> problems = FindProblems(
 			runs,
-			Homes(("ZA0002", "SeparateMemberGroupsTests")),
+			Homes(("ZA0013", "SeparateMemberGroupsTests")),
 			crossCutting: ImmutableHashSet.Create(new RecordedTest("BraceFamilyTests", "Vehicle"))
 		);
 
@@ -342,13 +334,13 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0002"),
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0002"),
+			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0013"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
 
 			Run(
 				className: "SeparateMemberGroupsTests",
 				method: "Counts",
-				rule: "ZA0002",
+				rule: "ZA0013",
 				read: false,
 				fixedTheSource: true
 			),
@@ -356,12 +348,12 @@ public sealed class RuleTestCoverageTests
 			Run(
 				className: "SeparateMemberGroupsTests",
 				method: "Pins",
-				rule: "ZA0002",
+				rule: "ZA0013",
 				fixedTheSource: true
 			),
 		];
 
-		List<string> problems = FindProblems(runs, Homes(("ZA0002", "SeparateMemberGroupsTests")));
+		List<string> problems = FindProblems(runs, Homes(("ZA0013", "SeparateMemberGroupsTests")));
 
 		Assert.HasCount(1, problems);
 		Assert.Contains("SeparateMemberGroupsTests.Counts", problems[0]);
@@ -372,22 +364,22 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SeparateMemberGroupsTests", method: "Reports", rule: "ZA0002"),
-			Run(className: "SeparateMultiLineConstructsTests", method: "Reports", rule: "ZA0005"),
-			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0005"),
+			Run(className: "SeparateMemberGroupsTests", method: "Reports", rule: "ZA0013"),
+			Run(className: "SeparateMultiLineConstructsTests", method: "Reports", rule: "ZA0001"),
+			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0001"),
 		];
 
 		List<string> problems = FindProblems(
 			runs,
 
 			Homes(
-				("ZA0002", "SeparateMemberGroupsTests"),
-				("ZA0005", "SeparateMultiLineConstructsTests")
+				("ZA0013", "SeparateMemberGroupsTests"),
+				("ZA0001", "SeparateMultiLineConstructsTests")
 			)
 		);
 
 		Assert.HasCount(1, problems);
-		Assert.Contains("ZA0002", problems[0]);
+		Assert.Contains("ZA0013", problems[0]);
 		Assert.Contains("quiet", problems[0]);
 	}
 
@@ -399,38 +391,38 @@ public sealed class RuleTestCoverageTests
 			Run(
 				className: "SeparateMemberGroupsTests",
 				method: "Unread",
-				rule: "ZA0002",
+				rule: "ZA0013",
 				read: false
 			),
 
 			Run(
 				className: "SeparateMemberGroupsTests",
 				method: "Mixed",
-				rule: "ZA0002",
-				reported: ["ZA0002", "ZA0005"]
+				rule: "ZA0013",
+				reported: ["ZA0013", "ZA0001"]
 			),
 
 			Run(
 				className: "SeparateMultiLineConstructsTests",
 				method: "Reproduces",
-				rule: "ZA0005"
+				rule: "ZA0001"
 			),
 
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0002"),
-			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0005"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
+			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0001"),
 		];
 
 		List<string> problems = FindProblems(
 			runs,
 
 			Homes(
-				("ZA0002", "SeparateMemberGroupsTests"),
-				("ZA0005", "SeparateMultiLineConstructsTests")
+				("ZA0013", "SeparateMemberGroupsTests"),
+				("ZA0001", "SeparateMultiLineConstructsTests")
 			)
 		);
 
 		Assert.HasCount(1, problems);
-		Assert.Contains("ZA0002", problems[0]);
+		Assert.Contains("ZA0013", problems[0]);
 	}
 
 	[TestMethod]
@@ -438,23 +430,23 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0011"),
-			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0014"),
-			Run(className: "KeepMultiLineAccessorsTogetherTests", method: "Joins", rule: "ZA0011"),
+			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0102"),
+			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0112"),
+			Run(className: "KeepMultiLineAccessorsTogetherTests", method: "Joins", rule: "ZA0102"),
 
 			Run(
 				className: "KeepMultiLineSwitchSectionsTogetherTests",
 				method: "Joins",
-				rule: "ZA0014"
+				rule: "ZA0112"
 			),
 
-			Quiet(className: "KeepMultiLineAccessorsTogetherTests", rule: "ZA0011"),
-			Quiet(className: "KeepMultiLineSwitchSectionsTogetherTests", rule: "ZA0014"),
+			Quiet(className: "KeepMultiLineAccessorsTogetherTests", rule: "ZA0102"),
+			Quiet(className: "KeepMultiLineSwitchSectionsTogetherTests", rule: "ZA0112"),
 		];
 
 		ImmutableDictionary<string, string> homes = Homes(
-			("ZA0011", "KeepMultiLineAccessorsTogetherTests"),
-			("ZA0014", "KeepMultiLineSwitchSectionsTogetherTests")
+			("ZA0102", "KeepMultiLineAccessorsTogetherTests"),
+			("ZA0112", "KeepMultiLineSwitchSectionsTogetherTests")
 		);
 
 		Assert.IsEmpty(FindProblems(runs, homes));
@@ -465,20 +457,20 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: nameof(RuleSpanTests), method: "Reports", rule: "ZA0002"),
-			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0002"),
-			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0005"),
-			Run(className: "SeparateMultiLineConstructsTests", method: "Separates", rule: "ZA0005"),
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0002"),
-			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0005"),
+			Run(className: nameof(RuleSpanTests), method: "Reports", rule: "ZA0013"),
+			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0013"),
+			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0001"),
+			Run(className: "SeparateMultiLineConstructsTests", method: "Separates", rule: "ZA0001"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
+			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0001"),
 		];
 
 		List<string> problems = FindProblems(
 			runs,
 
 			Homes(
-				("ZA0002", "SeparateMemberGroupsTests"),
-				("ZA0005", "SeparateMultiLineConstructsTests")
+				("ZA0013", "SeparateMemberGroupsTests"),
+				("ZA0001", "SeparateMultiLineConstructsTests")
 			),
 
 			crossCutting: ImmutableHashSet.Create(
@@ -487,7 +479,7 @@ public sealed class RuleTestCoverageTests
 		);
 
 		Assert.HasCount(1, problems);
-		Assert.Contains("ZA0002", problems[0]);
+		Assert.Contains("ZA0013", problems[0]);
 		Assert.Contains("reproduced", problems[0]);
 	}
 
@@ -580,17 +572,10 @@ public sealed class RuleTestCoverageTests
 		return problems;
 	}
 
-	// A data row's name follows its method's, so the marked method covers each of its rows.
-	private static bool IsCrossCutting(RecordedTest test, IReadOnlySet<RecordedTest> crossCutting)
-	{
-		return crossCutting.Any(marked =>
-			marked.Class == test.Class
-			&& (
-				marked.Method == test.Method
-				|| test.Method.StartsWith($"{marked.Method} ", StringComparison.Ordinal)
-			)
-		);
-	}
+	private static bool IsCrossCutting(
+		RecordedTest test,
+		IReadOnlySet<RecordedTest> crossCutting
+	) => crossCutting.Any(marked => marked.Class == test.Class && marked.Method == test.Method);
 
 	private static ImmutableHashSet<RecordedTest> GetCrossCutting()
 	{
@@ -616,9 +601,17 @@ public sealed class RuleTestCoverageTests
 		);
 	}
 
-	private static bool RanEveryTest()
+	// A test that failed or timed out ends its runs early, so the guard would report the fixtures it cut short.
+	private static bool RanEveryTest() => RanEveryTest(GetDeclaredTests(), HarnessRecord.Finished);
+
+	private static bool RanEveryTest(
+		IEnumerable<RecordedTest> declared,
+		ICollection<RecordedTest> finished
+	) => declared.All(finished.Contains);
+
+	private static IEnumerable<RecordedTest> GetDeclaredTests()
 	{
-		IEnumerable<RecordedTest> declared = typeof(RuleTestCoverageTests)
+		return typeof(RuleTestCoverageTests)
 			.Assembly.GetTypes()
 			.Where(type =>
 				type.GetCustomAttribute<TestClassAttribute>() is not null
@@ -632,8 +625,6 @@ public sealed class RuleTestCoverageTests
 					)
 					.Select(method => new RecordedTest(type.Name, method.Name))
 			);
-
-		return declared.All(HarnessRecord.Started.Contains);
 	}
 
 	private static RecordedRun Run(

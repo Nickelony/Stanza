@@ -8,12 +8,12 @@ and the *declaration* is the `encoding` attribute of its XML declaration.
 - A mark or declaration naming a supported encoding (see [Declaration names](#declaration-names)) sets the encoding.
   When both are present and agree, the file is written back in that encoding with its mark as it was;
   a disagreeing declaration is refused, as the next bullet says.
-- A mark whose declaration names a different encoding is refused in every mode, as a [failure](https://github.com/Nickelony/Stanza/wiki/Terms).
+- A mark whose declaration names a different encoding is refused by every command, as a [failure](https://github.com/Nickelony/Stanza/wiki/Terms).
   A declaration naming an encoding outside the supported set also counts as different.
 - With no mark, a declaration naming an encoding outside the supported set is read as `iso-8859-1` by `check`.
   `format` refuses to write such a file, as the same failure, but only when the file needs a change.
 - A UTF-32 or UTF-16 file with no mark that opens with `<` is sniffed from its bytes,
-  and a declaration naming another encoding in it is refused in every mode.
+  and a declaration naming another encoding in it is refused by every command.
 - A U+FEFF character after the mark is not a mark, so the file is reported as one that could not be laid out, with a reason that names it.
 - A file with no mark whose bytes hold no such opening, but whose declaration names UTF-16 or UTF-32, is refused the same way.
 - With neither a mark nor a declaration, the file is read as UTF-8, and refused rather than mangled when its bytes do not decode.

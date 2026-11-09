@@ -77,6 +77,110 @@ internal static class DocCommentSyntax
 	private static DocContent? ReadContent(XmlElementSyntax element) =>
 		!IsWithinDepth(element) || BuildElement(element, depth: 0) is not { } built ? null : DocWalk.ReadParagraphs(built, depth: 0);
 
+	/// <summary>Whether the node is, or holds, an element that the layout keeps as written.</summary>
+	public static bool HoldsKeptElement(XmlNodeSyntax node)
+	{
+		foreach (SyntaxNode descendant in node.DescendantNodesAndSelf())
+		{
+			string? name = descendant switch
+			{
+				XmlElementSyntax element => element.StartTag.Name.LocalName.ValueText,
+				XmlEmptyElementSyntax empty => empty.Name.LocalName.ValueText,
+				_ => null,
+			};
+
+			if (name is not null && DocElementNames.IsKeptAsWritten(name))
+				return true;
+		}
+
+		return false;
+	}
+
+	/// <summary>Reads the comment into a layout body, or <see langword="null"/> when a node is unreadable.</summary>
+	/// <remarks>
+	/// A top-level element that holds a sample or a pointer is read as the lines it stands on, so the layout keeps it.
+	/// </remarks>
+	public static List<DocNode>? BuildLayoutBody(DocumentationCommentTriviaSyntax comment)
+	{
+		SourceText sourceText = comment.SyntaxTree.GetText();
+		DocCommentDelimiters delimiters = GetDelimiters(comment);
+
+		List<DocNode> body = [];
+
+		foreach (XmlNodeSyntax node in comment.Content)
+		{
+			bool kept = node is XmlElementSyntax or XmlEmptyElementSyntax && HoldsKeptElement(node);
+
+			DocNode? built = kept
+				? BuildKeptElement(node, sourceText, delimiters)
+				: BuildNode(node, depth: 0, keepsOpaque: false, skipsMarkup: false);
+
+			if (built is null)
+				return null;
+
+			body.Add(built);
+		}
+
+		return body;
+	}
+
+	/// <summary>Reads an element as the lines it stands on, or <see langword="null"/> when one has no marker.</summary>
+	private static DocElement? BuildKeptElement(XmlNodeSyntax node, SourceText sourceText, DocCommentDelimiters delimiters)
+	{
+		TextSpan span = node.Span;
+
+		int firstLine = sourceText.Lines.GetLineFromPosition(span.Start).LineNumber;
+		int lastLine = sourceText.Lines.GetLineFromPosition(span.End - 1).LineNumber;
+
+		List<string> lines = [];
+
+		for (int index = firstLine; index <= lastLine; index++)
+		{
+			TextLine line = sourceText.Lines[index];
+
+			if (DocCommentLines.FindTextStart(sourceText, line, delimiters) is not { } textStart)
+			{
+				// The element may begin after other text on its line, which keeps no marker of its own to read.
+				if (index != firstLine)
+					return null;
+
+				textStart = span.Start;
+			}
+
+			// The first line keeps the indentation before the element, unless other text stands there too.
+			int start = textStart;
+
+			if (
+				index == firstLine
+				&& (textStart > span.Start || !StanzaText.IsWhitespaceOnly(sourceText, TextSpan.FromBounds(textStart, span.Start)))
+			)
+			{
+				start = span.Start;
+			}
+
+			int end = index == lastLine ? span.End : line.End;
+
+			lines.Add(sourceText.ToString(TextSpan.FromBounds(start, end)));
+		}
+
+		string name = node is XmlElementSyntax element
+			? element.StartTag.Name.LocalName.ValueText
+			: ((XmlEmptyElementSyntax)node).Name.LocalName.ValueText;
+
+		return new DocElement(
+			name,
+			openTag: string.Empty,
+			closeTag: null,
+			isEmpty: node is XmlEmptyElementSyntax,
+			body: [],
+			phrase: ReadCollapsed(node)
+		)
+		{
+			Source = new MarkupSpan(span.Start, span.Length),
+			VerbatimLines = lines,
+		};
+	}
+
 	/// <summary>Reads the nodes into a body, or <see langword="null"/> when one is unreadable.</summary>
 	public static List<DocNode>? BuildBody(SyntaxList<XmlNodeSyntax> nodes, int depth, bool keepsOpaque = false, bool skipsMarkup = false)
 	{
@@ -257,7 +361,7 @@ internal static class DocCommentSyntax
 		return depth;
 	}
 
-	private static string ReadCollapsed(SyntaxNode node) => DocCollapser.Collapse(StripMarkers(node));
+	private static string ReadCollapsed(SyntaxNode node) => MarkupCollapser.Collapse(StripMarkers(node));
 
 	private static string StripMarkers(SyntaxNode node)
 	{
@@ -307,7 +411,13 @@ internal static class DocCommentSyntax
 
 		// Roslyn also ends a line at U+0085, U+2028 and U+2029, but the rewrites read only carriage returns and line feeds,
 		// so they would join the line after such a break into the comment.
-		return comment.ToFullString().IndexOfAny(s_otherLineBreaks) >= 0;
+		foreach (char character in comment.ToFullString())
+		{
+			if (StanzaText.IsExtraLineBreak(character))
+				return true;
+		}
+
+		return false;
 	}
 
 	/// <summary>Whether the token names an end tag that the parser let close an element of another name.</summary>
@@ -329,6 +439,4 @@ internal static class DocCommentSyntax
 			&& trimmed.IndexOf('<', 1) < 0
 			&& trimmed.IndexOf(' ') < 0;
 	}
-
-	private static readonly char[] s_otherLineBreaks = [(char)0x85, (char)0x2028, (char)0x2029];
 }

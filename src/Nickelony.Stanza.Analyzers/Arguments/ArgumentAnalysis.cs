@@ -12,17 +12,6 @@ namespace Nickelony.Stanza.Analyzers.Arguments;
 /// <summary>Reports the call arguments that lack a name and the argument names a call does not need.</summary>
 internal static class ArgumentAnalysis
 {
-	public static readonly ImmutableArray<SyntaxKind> CallKinds =
-	[
-		SyntaxKind.BaseConstructorInitializer,
-		SyntaxKind.ElementAccessExpression,
-		SyntaxKind.ImplicitObjectCreationExpression,
-		SyntaxKind.InvocationExpression,
-		SyntaxKind.ObjectCreationExpression,
-		SyntaxKind.PrimaryConstructorBaseType,
-		SyntaxKind.ThisConstructorInitializer,
-	];
-
 	public static void ReportUnnamedArguments(
 		SyntaxNodeAnalysisContext context,
 		BaseArgumentListSyntax argumentList,
@@ -30,42 +19,72 @@ internal static class ArgumentAnalysis
 		DiagnosticDescriptor descriptor
 	)
 	{
+		if (FindUnnamedArguments(context, argumentList, options) is { } naming)
+			ReportNaming(context, argumentList, descriptor, naming);
+	}
+
+	public static void ReportUnnamedLiterals(
+		SyntaxNodeAnalysisContext context,
+		BaseArgumentListSyntax argumentList,
+		StanzaOptions options,
+		StanzaRule rule
+	)
+	{
+		// A lone argument stays, and so does a call with no literal to name, before the call is bound.
+		if (argumentList.Arguments.Count < 2 || !HasAnUnnamedLiteral(argumentList, options))
+			return;
+
+		if (ArgumentBinding.HasConditionalDirectiveAmongArguments(argumentList))
+			return;
+
+		if (FindPairing(context, argumentList) is not { } pairing)
+			return;
+
+		if (FindLiteralsToName(context, argumentList, options, pairing) is not { } naming)
+			return;
+
+		// The rule that names every argument covers the literals, so it owns a call it reports.
+		StanzaRule namesEveryArgument = rule.GetDeferral(DiagnosticDescriptors.NameArgumentsOfCall);
+
+		if (
+			!StanzaRuleState.IsOffAt(scope: context, options, rule: namesEveryArgument, position: argumentList.SpanStart)
+			&& FindUnnamedArguments(context, argumentList, options) is not null
+		)
+		{
+			return;
+		}
+
+		ReportNaming(context, argumentList, descriptor: rule.Descriptor, naming);
+	}
+
+	/// <summary>Finds the arguments the naming rule asks to name, or nothing when it reports no call.</summary>
+	private static Naming? FindUnnamedArguments(SyntaxNodeAnalysisContext context, BaseArgumentListSyntax argumentList, StanzaOptions options)
+	{
 		// A count of zero makes the rule report nothing before the call is bound.
-		if (options.NamedArgumentCount == 0)
-			return;
+		if (options.NamedArgumentMinArguments == 0)
+			return null;
 
-		// A directive can shift which parameter an argument binds to in another view, so a name written from this view could be wrong there.
-		if (argumentList.ContainsDirectives)
-			return;
+		// A conditional directive among the arguments can shift which parameter an argument binds to in another view,
+		// so a name written from this view could be wrong there.
+		if (ArgumentBinding.HasConditionalDirectiveAmongArguments(argumentList))
+			return null;
 
-		if (argumentList.Arguments.Count < options.NamedArgumentCount)
-			return;
+		if (argumentList.Arguments.Count < options.NamedArgumentMinArguments)
+			return null;
 
 		// A call whose arguments all carry a name has nothing to name, so no lambda around it is bound.
 		if (!HasAnUnnamedArgument(argumentList))
-			return;
+			return null;
 
-		// An expression tree may not contain a named argument (CS0853).
-		if (ArgumentBinding.IsInsideExpressionTree(context.SemanticModel, context.Node, context.CancellationToken))
-			return;
-
-		ImmutableArray<IArgumentOperation> bound = ArgumentBinding.FindBoundArguments(context.SemanticModel, context.Node, context.CancellationToken);
-
-		if (bound.IsDefaultOrEmpty)
-			return;
-
-		IArgumentOperation?[] pairing = ArgumentBinding.PairArgumentsWithBindings(argumentList, bound);
-
-		if (!CanNameEveryArgument(pairing))
-			return;
+		if (FindPairing(context, argumentList) is not { } pairing || !CanNameEveryArgument(pairing))
+			return null;
 
 		// Before C# 7.2 a named argument cannot precede a positional one,
 		// so only the leading run of arguments that carry their names keeps the shorthand, as RemoveRedundantArgumentName reads it.
 		bool namesMayPrecedePositions = ArgumentBinding.AllowsNamesBeforePositions(context.Node.SyntaxTree);
 		bool inLeadingRun = true;
 
-		var unnamed = new List<(ArgumentSyntax Argument, string Name)>();
-		ImmutableArray<(int Index, string Name)>.Builder names = ImmutableArray.CreateBuilder<(int Index, string Name)>();
+		var naming = new Naming();
 
 		for (int index = 0; index < pairing.Length; index++)
 		{
@@ -79,33 +98,121 @@ internal static class ArgumentAnalysis
 				&& CarriesTheName(argument.Expression, name, options.NamedArgumentComparison);
 
 			if (argument.NameColon is null && !keepsShorthand)
-			{
-				unnamed.Add((argument, name));
-				names.Add((index, name));
-			}
+				naming.Add(argument, index, name);
 
 			inLeadingRun &= argument.NameColon is null && keepsShorthand;
 		}
 
-		// Names can make another overload applicable, so the call has to bind as it does today.
-		if (
-			unnamed.Count == 0
-			|| !ArgumentSpeculation.KeepsTheBoundMethod(
-				semanticModel: context.SemanticModel,
-				call: context.Node,
-				arguments: unnamed,
-				namesThem: true,
-				cancellationToken: context.CancellationToken
-			)
-		)
+		return KeepsTheBoundMethod(context, naming) ? naming : null;
+	}
+
+	/// <summary>Finds the literals to name, with the run after the first one before C# 7.2, or nothing.</summary>
+	private static Naming? FindLiteralsToName(
+		SyntaxNodeAnalysisContext context,
+		BaseArgumentListSyntax argumentList,
+		StanzaOptions options,
+		IArgumentOperation?[] pairing
+	)
+	{
+		// Before C# 7.2 a named argument cannot precede a positional one, so the first literal starts a run named to the end of the call.
+		bool namesMayPrecedePositions = ArgumentBinding.AllowsNamesBeforePositions(context.Node.SyntaxTree);
+		bool inRun = false;
+
+		var naming = new Naming();
+
+		for (int index = 0; index < pairing.Length; index++)
 		{
-			return;
+			ArgumentSyntax argument = argumentList.Arguments[index];
+
+			if (argument.NameColon is not null)
+				continue;
+
+			// An argument that fills a `params` array has no name of its own, so it stays as it is.
+			string? name = pairing[index] is { Parameter: { IsParams: false } parameter } ? parameter.Name : null;
+			bool isLiteral = name is not null && IsLiteralToName(argument.Expression, options);
+
+			inRun |= isLiteral && !namesMayPrecedePositions;
+
+			if (!isLiteral && !inRun)
+				continue;
+
+			// A name cannot be written for an argument of the run, and no fix could finish the call without it.
+			if (name is null)
+				return null;
+
+			naming.Add(argument, index, name);
 		}
 
-		// One report covers the call, so one fix names every argument the speculation above checked together.
+		return KeepsTheBoundMethod(context, naming) ? naming : null;
+	}
+
+	/// <summary>Pairs the arguments with their parameters, or finds nothing for a call left as written.</summary>
+	private static IArgumentOperation?[]? FindPairing(SyntaxNodeAnalysisContext context, BaseArgumentListSyntax argumentList)
+	{
+		// An expression tree may not contain a named argument (CS0853).
+		if (ExpressionTrees.IsInside(context.SemanticModel, context.Node, context.CancellationToken))
+			return null;
+
+		return FindCallBoundInEveryView(context) is { } call ? ArgumentBinding.PairArgumentsWithBindings(argumentList, call.Arguments) : null;
+	}
+
+	/// <summary>Names can make another overload applicable, so the call has to bind as it does today.</summary>
+	private static bool KeepsTheBoundMethod(SyntaxNodeAnalysisContext context, Naming naming)
+	{
+		return naming.Arguments.Count > 0
+			&& ArgumentSpeculation.KeepsTheBoundMethod(
+				semanticModel: context.SemanticModel,
+				call: context.Node,
+				arguments: naming.Arguments,
+				namesThem: true,
+				cancellationToken: context.CancellationToken
+			);
+	}
+
+	private static void ReportNaming(
+		SyntaxNodeAnalysisContext context,
+		BaseArgumentListSyntax argumentList,
+		DiagnosticDescriptor descriptor,
+		Naming naming
+	)
+	{
+		// One report covers the call, so one fix names every argument the speculation checked together.
 		context.ReportDiagnostic(
-			Diagnostic.Create(descriptor, argumentList.GetLocation(), properties: new FixOptions(ArgumentNames: names.ToImmutable()).ToProperties())
+			Diagnostic.Create(
+				descriptor,
+				argumentList.GetLocation(),
+				properties: new FixOptions(ArgumentNames: naming.Names.ToImmutable()).ToProperties()
+			)
 		);
+	}
+
+	private static bool HasAnUnnamedLiteral(BaseArgumentListSyntax argumentList, StanzaOptions options)
+	{
+		foreach (ArgumentSyntax argument in argumentList.Arguments)
+		{
+			if (argument.NameColon is null && IsLiteralToName(argument.Expression, options))
+				return true;
+		}
+
+		return false;
+	}
+
+	/// <summary>Whether the expression is a literal the setting picks to name.</summary>
+	private static bool IsLiteralToName(ExpressionSyntax expression, StanzaOptions options)
+	{
+		// The `!` of `null!` and `default!` only quiets the nullable warning, so the argument says as little as the bare literal.
+		if (expression is PostfixUnaryExpressionSyntax suppression && suppression.IsKind(SyntaxKind.SuppressNullableWarningExpression))
+			expression = suppression.Operand;
+
+		return expression.Kind() switch
+		{
+			SyntaxKind.TrueLiteralExpression or SyntaxKind.FalseLiteralExpression => true,
+
+			SyntaxKind.NullLiteralExpression or SyntaxKind.DefaultLiteralExpression or SyntaxKind.DefaultExpression =>
+				options.NamesNullAndDefaultLiterals,
+
+			_ => false,
+		};
 	}
 
 	public static void ReportRedundantNames(
@@ -120,21 +227,20 @@ internal static class ArgumentAnalysis
 		if (!options.AllowsNamedArgumentShorthand)
 			return;
 
-		// A directive can shift which parameter an argument binds to in another view, so a name this view finds redundant could be needed there.
-		if (argumentList.ContainsDirectives)
+		// A conditional directive among the arguments can shift which parameter an argument binds to in another view,
+		// so a name this view finds redundant could be needed there.
+		if (ArgumentBinding.HasConditionalDirectiveAmongArguments(argumentList))
 			return;
 
 		// A call that writes no name colon has no name to take away, so it skips the binding.
 		if (!WritesAName(argumentList))
 			return;
 
-		ImmutableArray<IArgumentOperation> bound = ArgumentBinding.FindBoundArguments(context.SemanticModel, context.Node, context.CancellationToken);
-
-		if (bound.IsDefaultOrEmpty)
+		if (FindCallBoundInEveryView(context) is not { } call)
 			return;
 
-		int implicitArgumentCount = ArgumentBinding.CountLeadingImplicitArguments(bound, argumentList);
-		IArgumentOperation?[] pairing = ArgumentBinding.PairArgumentsWithBindings(argumentList, bound);
+		int implicitArgumentCount = ArgumentBinding.CountLeadingImplicitArguments(call.Arguments, argumentList);
+		IArgumentOperation?[] pairing = ArgumentBinding.PairArgumentsWithBindings(argumentList, call.Arguments);
 
 		int positional = CountPositionalPrefix(argumentList, pairing, implicitArgumentCount);
 		List<(ArgumentSyntax Argument, string Name)> redundant = CollectRedundantNames(context, options, argumentList, pairing, positional);
@@ -157,6 +263,13 @@ internal static class ArgumentAnalysis
 		// CollectRedundantNames keeps only arguments that write a name, so each has its name colon.
 		foreach ((ArgumentSyntax argument, _) in redundant)
 			context.ReportDiagnostic(Diagnostic.Create(descriptor, argument.NameColon!.GetLocation()));
+	}
+
+	/// <summary>Finds the call's binding, unless another view could declare its member differently.</summary>
+	private static ArgumentBinding.BoundCall? FindCallBoundInEveryView(SyntaxNodeAnalysisContext context)
+	{
+		ArgumentBinding.BoundCall? call = ArgumentBinding.FindBoundCall(context.SemanticModel, context.Node, context.CancellationToken);
+		return call is not null && !ArgumentDeclarations.IsUnderAConditional(call.Member, context.CancellationToken) ? call : null;
 	}
 
 	/// <summary>
@@ -276,5 +389,18 @@ internal static class ArgumentAnalysis
 		};
 
 		return carried is not null && string.Equals(carried, name, comparison);
+	}
+
+	/// <summary>The arguments a rule asks to name, each with its name, and with its place for the fix.</summary>
+	private sealed class Naming
+	{
+		public List<(ArgumentSyntax Argument, string Name)> Arguments { get; } = [];
+		public ImmutableArray<(int Index, string Name)>.Builder Names { get; } = ImmutableArray.CreateBuilder<(int Index, string Name)>();
+
+		public void Add(ArgumentSyntax argument, int index, string name)
+		{
+			Arguments.Add((argument, name));
+			Names.Add((index, name));
+		}
 	}
 }

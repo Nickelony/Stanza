@@ -98,7 +98,6 @@ public sealed class FixMergeTests
 		: IReadOnlyList<ImmutableArray<TextChange>>
 	{
 		public long Reads { get; private set; }
-
 		public int Count => sets.Length;
 
 		public ImmutableArray<TextChange> this[int index]

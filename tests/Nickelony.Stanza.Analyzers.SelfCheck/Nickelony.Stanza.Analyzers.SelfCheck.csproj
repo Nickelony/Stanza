@@ -27,7 +27,7 @@
 			LinkBase="SelfAnalyzedCodeFixes"
 		/>
 
-		<!-- The analyzer compiles the markup engine into itself, all but the formatter only the tools run, so the self-check does too. -->
+		<!-- The analyzer compiles the markup engine into itself, all but the formatter only `stanza-markup` runs, so the self-check does too. -->
 		<Compile
 			Include="..\..\src\Nickelony.Stanza.Markup.Core\**\*.cs"
 			Exclude="..\..\src\Nickelony.Stanza.Markup.Core\bin\**;..\..\src\Nickelony.Stanza.Markup.Core\obj\**;..\..\src\Nickelony.Stanza.Markup.Core\Formatting\**"

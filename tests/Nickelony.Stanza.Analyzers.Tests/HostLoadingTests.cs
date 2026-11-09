@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nickelony.Stanza.Analyzers.Documentation;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
 
@@ -15,7 +16,7 @@ namespace Nickelony.Stanza.Analyzers.Tests;
 public sealed class HostLoadingTests
 {
 	private static readonly Assembly s_analyzerAssembly =
-		typeof(Documentation.SeparateSlashOfSelfClosingTagAnalyzer).Assembly;
+		typeof(SeparateSlashOfSelfClosingTagAnalyzer).Assembly;
 
 	private static readonly Assembly s_fixAssembly =
 		typeof(CodeFixes.BraceCodeFixProvider).Assembly;

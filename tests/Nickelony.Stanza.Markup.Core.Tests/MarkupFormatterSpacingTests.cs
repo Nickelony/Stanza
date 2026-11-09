@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Core.Formatting;
-using Nickelony.Stanza.Markup.Core.Xml;
+using Nickelony.Stanza.Markup.Core.Options;
 
 using static Nickelony.Stanza.Tests.Shared.MarkupFormatFixtures;
 
@@ -227,7 +227,6 @@ public sealed class MarkupFormatterSpacingTests
 	public void AFileEnablingTheMultiLineTightRuleHasItsGapTakenTight()
 	{
 		const string source = "<root>\n  <a>\n    one\n  </a>\n\n  <b>\n    two\n  </b>\n</root>\n";
-
 		const string expected = "<root>\n  <a>\n    one\n  </a>\n  <b>\n    two\n  </b>\n</root>\n";
 
 		MarkupFormatResult result = Format(
@@ -265,7 +264,6 @@ public sealed class MarkupFormatterSpacingTests
 	public void TheSingleLineTightRuleIsWrittenOnlyWhereAFileEnablesIt()
 	{
 		const string source = "<root>\n  <a>1</a>\n\n  <b>2</b>\n</root>\n";
-
 		const string expected = "<root>\n  <a>1</a>\n  <b>2</b>\n</root>\n";
 
 		MarkupFormatResult enabled = Format(
@@ -281,6 +279,131 @@ public sealed class MarkupFormatterSpacingTests
 		Assert.AreEqual(LineFeed(expected), enabled.Text);
 
 		AssertChangesNothing(source);
+	}
+
+	[TestMethod]
+	public void TheCommentedRuleIsWrittenOnlyWhereAFileEnablesIt()
+	{
+		const string source = "<root>\n  <a>1</a>\n  <!-- two -->\n  <b>2</b>\n</root>\n";
+		const string expected = "<root>\n  <a>1</a>\n\n  <!-- two -->\n  <b>2</b>\n</root>\n";
+
+		AssertChangesNothing(source);
+
+		MarkupFormatResult enabled = Format(
+			LineFeed(source),
+
+			new MarkupOptions(
+				XmlPolicy,
+				Rules: Rules(MarkupDiagnostics.SeparateCommentedMarkupElementId)
+			)
+		);
+
+		Assert.IsNull(enabled.Failure);
+		Assert.AreEqual(LineFeed(expected), enabled.Text);
+
+		MarkupEdit edit = Assert.ContainsSingle(enabled.Edits);
+
+		Assert.AreEqual(3, edit.Line);
+		Assert.AreEqual(MarkupDiagnostics.SeparateCommentedMarkupElementId, edit.Id);
+		Assert.AreEqual(MarkupDiagnostics.AddBlankLineAboveCommentMessage, edit.Message);
+	}
+
+	[TestMethod]
+	public void TheCommentedRuleIsNotDisabledByTheSeparatingRuleBeingDisabled()
+	{
+		const string source = "<root>\n  <a>1</a>\n  <!-- two -->\n  <b>2</b>\n</root>\n";
+
+		MarkupFormatResult result = Format(
+			LineFeed(source),
+
+			new MarkupOptions(
+				XmlPolicy,
+				Rules: Rules(MarkupDiagnostics.SeparateCommentedMarkupElementId),
+				DisabledRules: Rules(MarkupDiagnostics.SeparateMultiLineMarkupElementsId)
+			)
+		);
+
+		Assert.IsNull(result.Failure);
+		Assert.HasCount(1, result.Edits);
+	}
+
+	[TestMethod]
+	public void TheTightRuleThatTheFileEnablesTooTakesTheGapsAroundTheComments()
+	{
+		const string source =
+			"<root>\n  <a>1</a>\n  <!-- two -->\n  <b>2</b>\n\n  <!-- three -->\n  <c>3</c>\n\n  <d>4</d>\n</root>\n";
+
+		const string expected =
+			"<root>\n  <a>1</a>\n  <!-- two -->\n  <b>2</b>\n  <!-- three -->\n  <c>3</c>\n  <d>4</d>\n</root>\n";
+
+		MarkupFormatResult result = Format(
+			LineFeed(source),
+
+			new MarkupOptions(
+				XmlPolicy,
+
+				Rules: Rules(
+					MarkupDiagnostics.SeparateCommentedMarkupElementId,
+					MarkupDiagnostics.KeepSingleLineMarkupElementsTogetherId
+				)
+			)
+		);
+
+		Assert.IsNull(result.Failure);
+		Assert.AreEqual(LineFeed(expected), result.Text);
+	}
+
+	[TestMethod]
+	public void TheBlankLineAboveACommentTakesTheLineEndingOfTheLineBelowIt()
+	{
+		const string source = "<root>\r\n  <a>1</a>\r\n  <!-- two -->\r\n  <b>2</b>\r\n</root>\r\n";
+
+		const string expected =
+			"<root>\r\n  <a>1</a>\r\n\r\n  <!-- two -->\r\n  <b>2</b>\r\n</root>\r\n";
+
+		MarkupFormatResult result = Format(
+			source,
+
+			new MarkupOptions(
+				XmlPolicy,
+				Rules: Rules(MarkupDiagnostics.SeparateCommentedMarkupElementId)
+			)
+		);
+
+		Assert.IsNull(result.Failure);
+		Assert.AreEqual(expected, result.Text);
+	}
+
+	[TestMethod]
+	public void TheCommentedRuleWritesNothingInsideAMemberWhileAReprintIsOn()
+	{
+		const string source =
+			"<doc>\n  <a>1</a>\n  <!-- two -->\n  <b>2</b>\n  <member name=\"X\">\n    <a>1</a>\n    <!-- two -->\n    <b>2</b>\n  </member>\n</doc>\n";
+
+		const string expected =
+			"<doc>\n  <a>1</a>\n\n  <!-- two -->\n  <b>2</b>\n\n  <member name=\"X\">\n    <a>1</a>\n    <!-- two -->\n    <b>2</b>\n  </member>\n</doc>\n";
+
+		MarkupFormatResult reprinted = FormatReprint(
+			LineFeed(source),
+			Rules(MarkupDiagnostics.SeparateCommentedMarkupElementId)
+		);
+
+		Assert.IsNull(reprinted.Failure);
+		Assert.AreEqual(LineFeed(expected), reprinted.Text);
+
+		MarkupFormatResult plain = Format(
+			LineFeed(source),
+
+			new MarkupOptions(
+				XmlPolicy,
+				Rules: Rules(MarkupDiagnostics.SeparateCommentedMarkupElementId)
+			)
+		);
+
+		Assert.AreEqual(
+			2,
+			plain.Edits.Count(edit => edit.Id == MarkupDiagnostics.SeparateCommentedMarkupElementId)
+		);
 	}
 
 	[TestMethod]

@@ -4,7 +4,7 @@ namespace Nickelony.Stanza.Markup.Core.DocComments;
 
 internal static class DocElementNames
 {
-	public static readonly DocNameSet InlineElements = new(
+	public static readonly MarkupNameSet InlineElements = new(
 		"a",
 		"b",
 		"br",
@@ -21,8 +21,8 @@ internal static class DocElementNames
 		"u"
 	);
 
-	public static readonly DocNameSet OpaqueElements = new("code", "list", "table");
-	public static readonly DocNameSet ListElements = new("list", "table");
+	public static readonly MarkupNameSet OpaqueElements = new("code", "list", "table");
+	public static readonly MarkupNameSet ListElements = new("list", "table");
 
 	/// <summary>Whether the element is opaque and no list, as a <c>code</c> sample is.</summary>
 	public static bool IsUnreadable(string name) => OpaqueElements.Contains(name) && !ListElements.Contains(name);
@@ -41,5 +41,7 @@ internal static class DocElementNames
 	public static bool TakesContentFromElsewhere(string name) =>
 		string.Equals(name, "include", StringComparison.Ordinal) || string.Equals(name, "inheritdoc", StringComparison.Ordinal);
 
+	/// <summary>Whether the layout leaves the element, and the top-level element that holds it, as written.</summary>
+	public static bool IsKeptAsWritten(string name) => IsUnreadable(name) || TakesContentFromElsewhere(name);
 	public static bool IsParagraphMarker(string name) => string.Equals(name, "para", StringComparison.Ordinal);
 }

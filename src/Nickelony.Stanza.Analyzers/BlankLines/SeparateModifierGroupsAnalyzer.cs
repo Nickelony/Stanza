@@ -9,23 +9,25 @@ internal sealed class SeparateModifierGroupsAnalyzer() : StanzaRuleAnalyzer(Stan
 {
 	protected override void Analyze(SyntaxNodeAnalysisContext context)
 	{
-		ImmutableArray<SyntaxNode> siblings = StanzaSyntax.ReadSiblings(context.Node);
-
-		if (siblings.Length < 2)
+		if (!RequiredBlankLineAnalysis.TryReadContainer(context, rule: Rule, out ContainerContext container, out GapOwners gapOwners))
 			return;
 
-		var options = StanzaOptions.From(context.Options, context.Node.SyntaxTree);
-		GapOwners gapOwners = BlankLineOwnership.ReadGapOwners(context, options, Rule);
-
-		ImmutableArray<int> boundaries = BlankLineGrouping.ReadModifierGroupBoundaries(siblings, gapOwners, context.CancellationToken);
+		ImmutableArray<int> boundaries = BlankLineGrouping.ReadBorderBoundaries(
+			borders: BlankLineGrouping.ReadModifierGroupBorders(
+				siblings: container.Siblings,
+				gapOwners,
+				gathered: null,
+				cancellationToken: context.CancellationToken
+			)
+		);
 
 		if (boundaries.IsEmpty)
 			return;
 
 		// Declaration and invocation runs and member groups own their boundaries;
 		// an owner that is off at a boundary, by its severity or a pragma, hands it over.
-		ImmutableHashSet<int> ownedBoundaries = BlankLineOwnership.ReadOwnedGroupingBoundaries(context, options, siblings, rule: Rule, gapOwners);
+		ImmutableHashSet<int> ownedBoundaries = BlankLineOwnership.ReadOwnedGroupingBoundaries(container, rule: Rule, gapOwners);
 
-		BlankLineAnalysis.ReportGroupingBoundaries(context, options, siblings, boundaries, rule: Rule, excludedBoundaries: ownedBoundaries);
+		RequiredBlankLineAnalysis.ReportGroupingBoundaries(container, boundaries, rule: Rule, excludedBoundaries: ownedBoundaries);
 	}
 }

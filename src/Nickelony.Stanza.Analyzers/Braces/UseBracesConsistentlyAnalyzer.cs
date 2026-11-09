@@ -6,30 +6,24 @@ using Microsoft.CodeAnalysis.Text;
 namespace Nickelony.Stanza.Analyzers.Braces;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-internal sealed class UseBracesConsistentlyAnalyzer()
-	: StanzaNodeAnalyzer(DiagnosticDescriptors.UseBracesConsistently, StanzaKinds.BraceStatementKinds)
+internal sealed class UseBracesConsistentlyAnalyzer() : StanzaRuleAnalyzer(StanzaRules.UseBracesConsistently)
 {
 	protected override void Analyze(SyntaxNodeAnalysisContext context)
 	{
-		if (StanzaOptions.From(context.Options, context.Node.SyntaxTree).PreferBraces is false)
-			return;
+		var options = StanzaOptions.From(context.Options, context.Node.SyntaxTree);
 
-		ImmutableArray<BraceTarget> targets = BraceTargets.GetTargets(context.Node);
-
-		if (!BraceTargets.HasMultiLineTarget(targets))
+		if (options.PreferBraces is false)
 			return;
 
 		SourceText sourceText = context.Node.SyntaxTree.GetText(context.CancellationToken);
+		ImmutableArray<BraceTarget> bodies = BraceEdits.FindBodiesToWrap(sourceText, BraceTargets.GetTargets(context.Node));
 
-		foreach (BraceTarget target in targets)
+		if (bodies.IsEmpty || BraceEdits.IsWaitingForCollapse(context, rule: Rule, options, sourceText))
+			return;
+
+		foreach (BraceTarget target in bodies)
 		{
 			context.CancellationToken.ThrowIfCancellationRequested();
-
-			if (target.Block is not null)
-				continue;
-
-			if (BraceEdits.CreateBraceInsertions(sourceText, target.HeaderSpan, target.Body).IsEmpty)
-				continue;
 
 			context.ReportDiagnostic(
 				Diagnostic.Create(Descriptor, target.Body.GetFirstToken().GetLocation(), additionalLocations: [target.Body.GetLocation()])

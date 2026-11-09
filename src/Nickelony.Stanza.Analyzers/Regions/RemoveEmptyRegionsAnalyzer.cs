@@ -11,12 +11,7 @@ internal sealed class RemoveEmptyRegionsAnalyzer() : StanzaTreeAnalyzer(Diagnost
 		RegionAnalysis.ReportEdits(
 			context,
 			Descriptor,
-
-			RegionEdits.CreateEmptyRegionEdits(
-				context.Tree.GetRoot(context.CancellationToken),
-				context.Tree.GetText(context.CancellationToken),
-				context.CancellationToken
-			)
+			RegionEdits.CreateEmptyRegionEdits(context.Tree, context.Tree.GetText(context.CancellationToken), context.CancellationToken)
 		);
 	}
 }

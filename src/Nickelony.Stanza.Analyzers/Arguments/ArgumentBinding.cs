@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.Operations;
 
 namespace Nickelony.Stanza.Analyzers.Arguments;
 
-/// <summary>Pairs call arguments with their parameters, and tells whether a node is in an expression tree.</summary>
+/// <summary>Reads a call's argument list and binding, and pairs its arguments with their parameters.</summary>
 internal static class ArgumentBinding
 {
 	/// <summary>Writes a parameter named after a keyword with <c>@</c>, so the name reads as an identifier.</summary>
@@ -15,76 +15,6 @@ internal static class ArgumentBinding
 
 	/// <summary>Whether a named argument may precede a positional one, which C# 7.2 first allows.</summary>
 	public static bool AllowsNamesBeforePositions(SyntaxTree syntaxTree) => StanzaSyntax.SupportsLanguage(syntaxTree, LanguageVersion.CSharp7_2);
-
-	/// <summary>
-	/// Whether an enclosing lambda or query clause at any depth makes the node part of an expression tree.
-	/// </summary>
-	public static bool IsInsideExpressionTree(SemanticModel semanticModel, SyntaxNode node, CancellationToken cancellationToken)
-	{
-		INamedTypeSymbol? expressionType = semanticModel.Compilation.GetTypeByMetadataName("System.Linq.Expressions.Expression");
-
-		if (expressionType is null)
-			return false;
-
-		SyntaxNode child = node;
-
-		for (SyntaxNode? ancestor = node.Parent; ancestor is not null; child = ancestor, ancestor = ancestor.Parent)
-		{
-			// A lambda is an expression tree when it converts to `Expression` or a type derived from it:
-			// `Expression<T>`, or `LambdaExpression` and `Expression` itself for a lambda with a natural type.
-			// A query clause is one when its method takes one, and an `orderby` clause binds no method of its own:
-			// each of its orderings binds one.
-			bool isTree = ancestor switch
-			{
-				// A join takes its inner sequence as an ordinary argument, and only its key selectors as expression trees.
-				JoinClauseSyntax join when join.InExpression == child => false,
-				LambdaExpressionSyntax lambda => IsExpressionType(semanticModel.GetTypeInfo(lambda, cancellationToken).ConvertedType, expressionType),
-
-				QueryClauseSyntax clause => TakesExpressionTree(
-					semanticModel.GetQueryClauseInfo(clause, cancellationToken).OperationInfo.Symbol,
-					expressionType
-				),
-
-				SelectOrGroupClauseSyntax clause => TakesExpressionTree(
-					semanticModel.GetSymbolInfo(clause, cancellationToken).Symbol,
-					expressionType
-				),
-
-				OrderingSyntax ordering => TakesExpressionTree(semanticModel.GetSymbolInfo(ordering, cancellationToken).Symbol, expressionType),
-				_ => false,
-			};
-
-			if (isTree)
-				return true;
-		}
-
-		return false;
-	}
-
-	private static bool TakesExpressionTree(ISymbol? symbol, INamedTypeSymbol expressionType)
-	{
-		if (symbol is not IMethodSymbol method)
-			return false;
-
-		foreach (IParameterSymbol parameter in method.Parameters)
-		{
-			if (IsExpressionType(parameter.Type, expressionType))
-				return true;
-		}
-
-		return false;
-	}
-
-	private static bool IsExpressionType(ITypeSymbol? type, INamedTypeSymbol expressionType)
-	{
-		for (ITypeSymbol? current = type; current is not null; current = current.BaseType)
-		{
-			if (SymbolEqualityComparer.Default.Equals(current, expressionType))
-				return true;
-		}
-
-		return false;
-	}
 
 	/// <summary>
 	/// Pairs by span containment, not position, as the bindings also hold entries the call writes no argument for.
@@ -157,6 +87,57 @@ internal static class ArgumentBinding
 	private static bool IsInside(ArgumentSyntax argument, SyntaxNode syntax) =>
 		syntax.Span.Start >= argument.SpanStart && syntax.Span.End <= argument.Span.End;
 
+	/// <summary>Whether a conditional directive stands among the arguments or between the tokens of one.</summary>
+	public static bool HasConditionalDirectiveAmongArguments(BaseArgumentListSyntax argumentList)
+	{
+		if (!argumentList.ContainsDirectives)
+			return false;
+
+		// A directive starts its line, so it sits in the leading trivia of the token after it.
+		// The tokens that can follow one among the arguments are the brackets and the commas.
+		foreach (SyntaxToken token in argumentList.ChildTokens())
+		{
+			if (StanzaSyntax.HasConditionalDirective(token.LeadingTrivia))
+				return true;
+		}
+
+		foreach (SyntaxToken separator in argumentList.Arguments.GetSeparators())
+		{
+			if (StanzaSyntax.HasConditionalDirective(separator.LeadingTrivia))
+				return true;
+		}
+
+		foreach (ArgumentSyntax argument in argumentList.Arguments)
+		{
+			if (argument.ContainsDirectives && HasConditionalDirectiveBesideTheArgumentsOwnTokens(argument))
+				return true;
+		}
+
+		return false;
+	}
+
+	/// <summary>Whether a conditional directive stands in an argument outside its brackets and braces.</summary>
+	/// <remarks>
+	/// A directive inside a bracket or a brace, as in a lambda body, leaves the arguments of the list as they are.
+	/// </remarks>
+	private static bool HasConditionalDirectiveBesideTheArgumentsOwnTokens(ArgumentSyntax argument)
+	{
+		int depth = 0;
+
+		foreach (SyntaxToken token in argument.DescendantTokens())
+		{
+			if (depth == 0 && StanzaSyntax.HasConditionalDirective(token.LeadingTrivia))
+				return true;
+
+			if (token.Kind() is SyntaxKind.OpenParenToken or SyntaxKind.OpenBracketToken or SyntaxKind.OpenBraceToken)
+				depth++;
+			else if (token.Kind() is SyntaxKind.CloseParenToken or SyntaxKind.CloseBracketToken or SyntaxKind.CloseBraceToken)
+				depth--;
+		}
+
+		return false;
+	}
+
 	public static BaseArgumentListSyntax? FindArgumentList(SyntaxNode node)
 	{
 		return node switch
@@ -170,20 +151,26 @@ internal static class ArgumentBinding
 		};
 	}
 
-	public static ImmutableArray<IArgumentOperation> FindBoundArguments(
-		SemanticModel semanticModel,
-		SyntaxNode node,
-		CancellationToken cancellationToken
-	)
+	/// <summary>Finds the member a call binds to and the arguments it binds, or nothing for a call with none.</summary>
+	public static BoundCall? FindBoundCall(SemanticModel semanticModel, SyntaxNode node, CancellationToken cancellationToken)
 	{
-		return semanticModel.GetOperation(node, cancellationToken) switch
+		BoundCall? call = semanticModel.GetOperation(node, cancellationToken) switch
 		{
-			IInvocationOperation invocation when HasAuthoredParameters(invocation.TargetMethod) => invocation.Arguments,
-			IObjectCreationOperation creation => creation.Arguments,
-			IPropertyReferenceOperation property when property.Property.IsIndexer => property.Arguments,
-			_ => default,
+			IInvocationOperation invocation when HasAuthoredParameters(invocation.TargetMethod) => new BoundCall(
+				invocation.TargetMethod,
+				invocation.Arguments
+			),
+
+			IObjectCreationOperation { Constructor: { } constructor } creation => new BoundCall(constructor, creation.Arguments),
+			IPropertyReferenceOperation property when property.Property.IsIndexer => new BoundCall(property.Property, property.Arguments),
+			_ => null,
 		};
+
+		return call is { Arguments.IsDefaultOrEmpty: false } ? call : null;
 	}
 
 	private static bool HasAuthoredParameters(IMethodSymbol method) => method.MethodKind != MethodKind.DelegateInvoke;
+
+	/// <summary>The method, constructor or indexer a call binds to, and the arguments it binds.</summary>
+	internal sealed record BoundCall(ISymbol Member, ImmutableArray<IArgumentOperation> Arguments);
 }

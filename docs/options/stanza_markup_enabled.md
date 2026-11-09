@@ -2,7 +2,7 @@
 
 Controls whether a markup file takes part in a run of [`stanza-markup`](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Markup/README.md).
 Default: `true`.
-Read by stanza-markup.
+Read by stanza-markup alone; the analyzer ignores it.
 
 | Value         | Effect                                                        |
 | ------------- | ------------------------------------------------------------- |

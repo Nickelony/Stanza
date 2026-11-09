@@ -1,12 +1,10 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Nickelony.Stanza.Markup.Core.DocComments;
 using Nickelony.Stanza.Markup.Core.Options;
-using Nickelony.Stanza.Markup.Core.Xml;
 
 namespace Nickelony.Stanza.Analyzers;
 
@@ -16,24 +14,48 @@ namespace Nickelony.Stanza.Analyzers;
 /// </remarks>
 internal sealed record StanzaOptions(
 	ImmutableHashSet<string> AssertionRoots,
+	ImmutableHashSet<string> GuardRoots,
 	MarkupOptions Markup,
+	MarkupLiteralReading MarkupLiterals,
 	bool? PreferBraces,
 	bool PreserveSingleLineBlocks,
 	int MaxLineLength,
 	int TabColumns,
 	int IndentStepColumns,
-	MultiLineTrigger MultiLineTrigger,
-	int NamedArgumentCount,
+	MultiLineMemberPart MultiLineMemberPart,
+	int NamedArgumentMinArguments,
 	bool AllowsNamedArgumentShorthand,
 	StringComparison NamedArgumentComparison,
-	int MaxLooseStatements,
+	bool NamesNullAndDefaultLiterals,
+	int MaxLooseRunSize,
+	int MaxTernaryOperators,
+	int MaxLogicalOperators,
+	int MaxNestingDepth,
+	int MaxMemberStatements,
+	int MaxParameters,
+	int MaxElseIfBranches,
 	DocLayoutOptions? DocLayout,
-	ImmutableHashSet<string> RulesOffUnlessEnabled
+	int MaxBlankLines,
+	int MinBannerRun,
+	int MinLinesToNameEndif,
+	bool SplitsAssignmentTargets,
+	ImmutableHashSet<string> RulesDisabledUnlessEnabled
 )
 {
-	private const int DefaultMaxLineLength = MarkupOptionReader.DefaultMaxLineLength;
-	private const int DefaultNamedArgumentCount = 4;
-	private const int DefaultMaxLooseStatements = 3;
+	private const int DefaultMinBannerRun = 3;
+	private const int DefaultMinLinesToNameEndif = 10;
+	private const int DefaultNamedArgumentMinArguments = 4;
+	private const int DefaultMaxLooseRunSize = 3;
+	private const int DefaultMaxBlankLines = 1;
+	private const int DefaultMaxTernaryOperators = 2;
+	private const int DefaultMaxLogicalOperators = 4;
+	private const int DefaultMaxNestingDepth = 3;
+	private const int DefaultMaxMemberStatements = 40;
+	private const int DefaultMaxParameters = 7;
+	private const int DefaultMaxElseIfBranches = 4;
+
+	/// <summary>Whether a width bounds the code, since a <c>stanza_max_line_length</c> of zero turns it off.</summary>
+	public bool HasLineLimit => MaxLineLength > 0;
 
 	/// <summary>Whether a bulk key's severity turns the rules it covers off, which only <c>none</c> does.</summary>
 	private static bool IsDisabledSeverity(string severity) => MarkupOptionReader.Names(severity, "none");
@@ -49,71 +71,62 @@ internal sealed record StanzaOptions(
 
 	public static StanzaOptions From(AnalyzerConfigOptions options)
 	{
-		var assertionRoots = new HashSet<string>(StringComparer.Ordinal) { "Assert", "Expect", "Should" };
-
-		if (ReadOptionValue(options, "stanza_assertion_roots") is { } configuredRoots)
-		{
-			// Only a value listing at least one root replaces the defaults,
-			// so a stray `stanza_assertion_roots =` cannot quietly disable the assertion grouping.
-			string[] roots =
-			[
-				.. configuredRoots.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(root => root.Trim()).Where(root => root.Length > 0),
-			];
-
-			if (roots.Length > 0)
-			{
-				assertionRoots.Clear();
-				assertionRoots.UnionWith(roots);
-			}
-		}
-
 		// One reader for the file's keys: it drops the severity suffix a style option may carry.
 		// The documentation layout reads through it too,
 		// so the rules and the layout resolve the same numbers from the same keys.
 		string? ReadKey(string key) => ReadOptionValue(options, key);
 
-		// A scope other than `containers` reads as `all`.
-		bool containersOnly = MarkupOptionReader.Names(ReadKey(MarkupKeys.Scope), "containers");
-
-		int maxBlankLines = MarkupOptionReader.ReadCount(ReadKey, MarkupKeys.MaxBlankLines, MarkupOptions.DefaultMaxBlankLines);
-
 		return new StanzaOptions(
-			AssertionRoots: assertionRoots.ToImmutableHashSet(StringComparer.Ordinal),
-			Markup: new MarkupOptions(new MarkupPolicy(containersOnly), maxBlankLines),
+			AssertionRoots: ReadRoots(options, OptionKeys.AssertionRoots, s_defaultAssertionRoots),
+			GuardRoots: ReadRoots(options, OptionKeys.GuardRoots, []),
+			// A scope other than `containers` reads as `all`.
+			Markup: MarkupOptionReader.ReadOptions(ReadKey, fallbackPolicy: new MarkupPolicy(ContainersOnly: false)),
+			MarkupLiterals: OptionValues.MarkupLiterals.Read(ReadKey(OptionKeys.MarkupLiterals), fallback: MarkupLiteralReading.Marked),
 			PreferBraces: ReadPreferBraces(options),
 			PreserveSingleLineBlocks: ReadPreserveSingleLineBlocks(options),
-			MaxLineLength: MarkupOptionReader.ReadCount(ReadKey, MarkupKeys.MaxLineLength, DefaultMaxLineLength),
+			MaxLineLength: MarkupOptionReader.ResolveMaxLineLength(ReadKey),
 			TabColumns: MarkupOptionReader.ResolveTabColumns(ReadKey),
 			IndentStepColumns: ReadIndentStepColumns(ReadKey),
-			MultiLineTrigger: ReadMultiLineBodyTrigger(options),
-			NamedArgumentCount: MarkupOptionReader.ReadCount(ReadKey, "stanza_named_argument_count", DefaultNamedArgumentCount),
-			AllowsNamedArgumentShorthand: ReadNamedArgumentShorthand(options),
-			NamedArgumentComparison: ReadNamedArgumentComparison(options),
-			MaxLooseStatements: MarkupOptionReader.ReadCount(ReadKey, "stanza_max_loose_statements", DefaultMaxLooseStatements),
+			MultiLineMemberPart: OptionValues.MultiLineMemberPart.Read(ReadKey(OptionKeys.MultiLineMemberPart), fallback: MultiLineMemberPart.Either),
+			NamedArgumentMinArguments: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.NamedArgumentMinArguments, DefaultNamedArgumentMinArguments),
+			AllowsNamedArgumentShorthand: OptionValues.NamedArgumentMatch.Read(ReadKey(OptionKeys.NamedArgumentMatch), fallback: true),
+			NamedArgumentComparison: OptionValues.NamedArgumentCase.Read(ReadKey(OptionKeys.NamedArgumentCase), fallback: StringComparison.Ordinal),
+			NamesNullAndDefaultLiterals: OptionValues.NamedArgumentLiterals.Read(ReadKey(OptionKeys.NamedArgumentLiterals), fallback: true),
+			MaxLooseRunSize: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MaxLooseRunSize, DefaultMaxLooseRunSize),
+			MaxTernaryOperators: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MaxTernaryOperators, DefaultMaxTernaryOperators),
+			MaxLogicalOperators: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MaxLogicalOperators, DefaultMaxLogicalOperators),
+			MaxNestingDepth: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MaxNestingDepth, DefaultMaxNestingDepth),
+			MaxMemberStatements: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MaxMemberStatements, DefaultMaxMemberStatements),
+			MaxParameters: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MaxParameters, DefaultMaxParameters),
+			MaxElseIfBranches: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MaxElseIfBranches, DefaultMaxElseIfBranches),
 			DocLayout: MarkupOptionReader.ResolveDocLayout(ReadKey),
-			RulesOffUnlessEnabled: ReadRulesOffUnlessEnabled(options)
+			MaxBlankLines: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MaxBlankLines, DefaultMaxBlankLines),
+			MinBannerRun: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.CommentBannerMinRun, DefaultMinBannerRun),
+			MinLinesToNameEndif: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MinLinesToNameEndif, DefaultMinLinesToNameEndif),
+			SplitsAssignmentTargets: OptionValues.AssignmentTargets.Read(ReadKey(OptionKeys.AssignmentTargets), fallback: false),
+			RulesDisabledUnlessEnabled: ReadRulesDisabledUnlessEnabled(options)
 		);
 	}
 
-	private static ImmutableHashSet<string> ReadRulesOffUnlessEnabled(AnalyzerConfigOptions options)
+	private static ImmutableHashSet<string> ReadRulesDisabledUnlessEnabled(AnalyzerConfigOptions options)
 	{
-		ImmutableHashSet<string>.Builder off = ImmutableHashSet.CreateBuilder(StringComparer.Ordinal);
+		ImmutableHashSet<string>.Builder disabled = ImmutableHashSet.CreateBuilder(StringComparer.Ordinal);
 
 		// Each rule whose state another rule reads has an entry, so the entries are the rules this set answers for.
 		foreach (StanzaRule rule in StanzaRules.All)
 		{
-			if (IsOffUnlessEnabled(options, rule.Descriptor))
-				off.Add(rule.Descriptor.Id);
+			if (IsDisabledUnlessEnabled(options, rule.Descriptor))
+				disabled.Add(rule.Descriptor.Id);
 		}
 
-		return off.ToImmutable();
+		return disabled.ToImmutable();
 	}
 
-	/// <summary>Whether the bulk keys leave the rule off unless its own key sets it.</summary>
+	/// <summary>Whether the bulk keys leave the rule disabled unless its own key sets it.</summary>
 	/// <remarks>
-	/// Roslyn applies them only to a rule that ships on, and <see cref="StanzaRuleState.IsRuleOff"/> reads its own key.
+	/// Roslyn applies them only to a rule shipped on; <see cref="StanzaRuleState.IsRuleDisabled"/> reads its own key.
 	/// </remarks>
-	private static bool IsOffUnlessEnabled(AnalyzerConfigOptions options, DiagnosticDescriptor descriptor) =>
+	private static bool IsDisabledUnlessEnabled(AnalyzerConfigOptions options, DiagnosticDescriptor descriptor) =>
 		!descriptor.IsEnabledByDefault || (ReadBulkSeverity(options, descriptor) is { } severity && IsDisabledSeverity(severity));
 
 	/// <summary>
@@ -133,62 +146,48 @@ internal sealed record StanzaOptions(
 	private static string? ReadOptionValue(AnalyzerConfigOptions options, string key) =>
 		options.TryGetValue(key, out string? value) ? MarkupOptionReader.StripCommentAndSeverity(key, value) : null;
 
-	private static bool? ReadPreferBraces(AnalyzerConfigOptions options)
+	/// <summary>Reads the names a comma separated key lists, the fallback when it lists none.</summary>
+	/// <remarks>
+	/// Only the lowercase <c>none</c> as the whole value lists no name; an empty value lists the fallback.
+	/// </remarks>
+	private static ImmutableHashSet<string> ReadRoots(AnalyzerConfigOptions options, string key, ImmutableHashSet<string> fallback)
 	{
-		string? value = ReadOptionValue(options, "csharp_prefer_braces");
+		if (ReadOptionValue(options, key) is not { } value)
+			return fallback;
 
-		if (MarkupOptionReader.Names(value, "true"))
-			return true;
+		if (value == "none")
+			return [];
 
-		if (MarkupOptionReader.Names(value, "false"))
-			return false;
+		ImmutableHashSet<string> roots =
+		[
+			.. value.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(static root => root.Trim()).Where(static root => root.Length > 0),
+		];
 
-		return null;
+		return roots.IsEmpty ? fallback : roots;
 	}
 
+	private static bool? ReadPreferBraces(AnalyzerConfigOptions options) =>
+		OptionValues.Boolean.Find(ReadOptionValue(options, "csharp_prefer_braces"));
+
 	private static bool ReadPreserveSingleLineBlocks(AnalyzerConfigOptions options) =>
-		!MarkupOptionReader.Names(ReadOptionValue(options, "csharp_preserve_single_line_blocks"), "false");
+		OptionValues.Boolean.Read(ReadOptionValue(options, "csharp_preserve_single_line_blocks"), fallback: true);
 
 	/// <summary>
 	/// Reads <c>indent_size</c> before <c>tab_width</c>, unlike <see cref="MarkupOptionReader.ResolveTabColumns"/>.
 	/// </summary>
 	private static int ReadIndentStepColumns(Func<string, string?> read)
 	{
-		int indentSize = MarkupOptionReader.ReadCount(read, MarkupKeys.IndentSize, 0);
+		int indentSize = MarkupOptionReader.ReadCount(read, OptionKeys.IndentSize, 0);
 
 		if (indentSize > 0)
 			return indentSize;
 
-		int tabWidth = MarkupOptionReader.ReadCount(read, MarkupKeys.TabWidth, 0);
+		int tabWidth = MarkupOptionReader.ReadCount(read, OptionKeys.TabWidth, 0);
 		return tabWidth > 0 ? tabWidth : StanzaText.DefaultIndentStepColumns;
 	}
 
-	private static MultiLineTrigger ReadMultiLineBodyTrigger(AnalyzerConfigOptions options)
-	{
-		string? value = ReadOptionValue(options, "stanza_multiline_body_trigger");
+	private static readonly ImmutableHashSet<string> s_defaultAssertionRoots = ["Assert", "Expect", "Should"];
 
-		if (MarkupOptionReader.Names(value, "body"))
-			return MultiLineTrigger.Body;
-
-		if (MarkupOptionReader.Names(value, "signature"))
-			return MultiLineTrigger.Signature;
-
-		if (MarkupOptionReader.Names(value, "both"))
-			return MultiLineTrigger.Both;
-
-		return MultiLineTrigger.Either;
-	}
-
-	private static bool ReadNamedArgumentShorthand(AnalyzerConfigOptions options) =>
-		!MarkupOptionReader.Names(ReadOptionValue(options, "stanza_named_argument_match"), "require");
-
-	private static StringComparison ReadNamedArgumentComparison(AnalyzerConfigOptions options)
-	{
-		return MarkupOptionReader.Names(ReadOptionValue(options, "stanza_named_argument_case"), "insensitive")
-			? StringComparison.OrdinalIgnoreCase
-			: StringComparison.Ordinal;
-	}
-
-	/// <summary>Parses the options once per tree, taking an unconfigured Tomb-Editor from 10.0 s to 4.5 s.</summary>
+	/// <summary>Parses the options once per tree, however many rules and nodes read them.</summary>
 	private static readonly WeakCache<AnalyzerConfigOptionsProvider, WeakCache<SyntaxTree, StanzaOptions>> s_cache = new();
 }

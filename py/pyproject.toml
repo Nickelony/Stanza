@@ -1,0 +1,69 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nickelony-stanza"
+version = "0.9.0"
+description = "Rules that lay out the blank lines of Python code and name the arguments of its calls, the sibling of the Stanza C# analyzers."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+keywords = ["formatting", "blank lines", "named arguments", "linter", "flake8"]
+classifiers = [
+    "Private :: Do Not Upload",
+    "Development Status :: 1 - Planning",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Quality Assurance",
+    "Typing :: Typed",
+]
+dependencies = ["tomli>=2.0; python_version < '3.11'"]
+
+[project.urls]
+Repository = "https://github.com/Nickelony/Stanza"
+
+[project.optional-dependencies]
+dev = ["black", "build", "flake8", "mypy", "pytest", "ruff"]
+
+[project.scripts]
+stanza-py = "nickelony_stanza.cli:main"
+
+[project.entry-points."flake8.extension"]
+ZA3 = "nickelony_stanza.flake8_plugin:StanzaChecker"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nickelony_stanza"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "docs", "README.md", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+norecursedirs = ["corpus", ".venv", "build", "dist"]
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
+exclude = ["tests/corpus/"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["tests/corpus", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "C4", "PIE", "PT"]
+
+[tool.stanza]
+level = "strong"
+enable = ["ZA3055"]
+exclude = ["tests/corpus/**"]
+# The code here passes its arguments by position, so the rules that name them stay off until it names them itself.
+disable = ["ZA3501", "ZA3502"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]

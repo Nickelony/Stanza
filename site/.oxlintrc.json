@@ -3,8 +3,37 @@
 	"categories": {
 		"correctness": "error"
 	},
+	"jsPlugins": [{ "name": "stanza", "specifier": "eslint-plugin-stanza" }],
 	"rules": {
-		"curly": ["error", "all"]
+		"curly": ["error", "all"],
+		"stanza/separate-directives": "error",
+		"stanza/separate-import-section": "error",
+		"stanza/keep-single-line-switch-cases-together": "error",
+		"stanza/separate-multi-line-constructs": "error",
+		"stanza/separate-multi-line-switch-cases": "error",
+		"stanza/separate-declaration-runs": "error",
+		"stanza/separate-invocation-runs": "error",
+		"stanza/separate-assertion-runs": "error",
+		"stanza/separate-member-groups": "error",
+		"stanza/separate-test-blocks": "error",
+		"stanza/keep-two-units-together": "error",
+		"stanza/separate-import-groups": "error",
+		"stanza/separate-await-runs": "error",
+		"stanza/separate-assignment-runs": "error",
+		"stanza/separate-guard-clauses": "error",
+		"stanza/separate-base-call": "error",
+		"stanza/separate-jump-statements": "error",
+		"stanza/separate-commented-siblings": "error",
+		"stanza/separate-commented-jsx-children": "error",
+		"stanza/separate-modifier-groups": "error",
+		"stanza/separate-multi-line-elements": "error",
+		"stanza/separate-multi-line-jsx-children": "error",
+		"stanza/keep-single-line-jsx-children-together": "error",
+		"stanza/keep-single-line-elements-together": "error",
+		"stanza/gather-loose-statements": "error",
+		"stanza/gather-loose-members": "error",
+		"stanza/keep-statement-runs-together": "error",
+		"stanza/keep-member-runs-together": "error"
 	},
 	"ignorePatterns": ["dist/**"]
 }

@@ -12,6 +12,6 @@ internal sealed class KeepTwoUnitsOfContainerTogetherAnalyzer() : StanzaRuleAnal
 		ImmutableArray<SyntaxNode> siblings = StanzaSyntax.ReadSiblings(context.Node);
 
 		if (BlankLineOwnership.HoldsTwoKeptUnits(siblings))
-			BlankLineRemoval.ReportWholeGapBoundaries(context, siblings, Rule);
+			RemovableBlankLineAnalysis.ReportWholeGapBoundaries(context, siblings, Rule);
 	}
 }

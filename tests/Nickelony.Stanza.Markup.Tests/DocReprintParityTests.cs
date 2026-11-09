@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,16 +15,16 @@ using Nickelony.Stanza.Markup.Core.Formatting;
 using Nickelony.Stanza.Markup.Core.Xml;
 using Nickelony.Stanza.Tests.Shared;
 
+using AnalyzerCore = stanza::Nickelony.Stanza.Markup.Core;
 using AnalyzerDocs = stanza::Nickelony.Stanza.Analyzers.Documentation;
 using AnalyzerEngine = stanza::Nickelony.Stanza.Markup.Core.DocComments;
 
 namespace Nickelony.Stanza.Markup.Tests;
 
 [TestClass]
-public sealed class DocReprintParityTests
+public sealed partial class DocReprintParityTests
 {
 	private const int TabColumns = 4;
-
 	private const int CommentWidth = 92;
 
 	public static IEnumerable<object[]> GetBodyRows()
@@ -91,6 +92,31 @@ public sealed class DocReprintParityTests
 			],
 
 			[
+				"a code block beside a summary that wraps",
+				"<summary>The margin invalidates itself when its text view, visual lines, or scroll offset change and after it toggles a bookmark.</summary>\n<remarks>\nBinds   the options.\n<code>\n  var   value = 1;\n    if (value  > 0)\n</code>\n</remarks>",
+			],
+
+			[
+				"a code block in the text of an element",
+				"<summary>The margin invalidates itself when its text view, visual lines, or scroll offset change and after it toggles a bookmark.</summary>\n<example>Binds   <code>var  x = 1;</code> here.</example>",
+			],
+
+			[
+				"an include and an inheritdoc beside a summary that wraps",
+				"<summary>The margin invalidates itself when its text view, visual lines, or scroll offset change and after it toggles a bookmark.</summary>\n<include   file=\"docs.xml\"   path=\"doc/members/member[@name='X']/*\"/>\n<inheritdoc  cref=\"Other.X\"/>",
+			],
+
+			[
+				"a list beside an element that holds a code block",
+				"<remarks>Binds the options.\n<list type=\"bullet\">\n<item><description>One.</description></item>\n</list>\n<code>var value = 1;</code>\n</remarks>",
+			],
+
+			[
+				"a pointer inside the text of an element",
+				"<summary>Binds the options from the configuration section, <inheritdoc cref=\"Other.X\"/> and more.</summary>\n<returns>The bound options, or nothing when the section is missing.</returns>",
+			],
+
+			[
 				"a list between two paragraphs",
 				"<remarks>\nThe first paragraph runs on long enough that the fill has to break it somewhere.\n<list type=\"bullet\">\n<item><description>One.</description></item>\n</list>\nThe second paragraph is shorter.\n</remarks>",
 			],
@@ -109,11 +135,6 @@ public sealed class DocReprintParityTests
 			[
 				"a blank line inside an element around a phrase",
 				"<summary>Binds the options of the sample.</summary>\n<returns>Text with <see cref=\"Widget\">one\n\ntwo</see> inside it.</returns>",
-			],
-
-			[
-				"a list beside an opaque element",
-				"<remarks>Binds the options.\n<list type=\"bullet\">\n<item><description>One.</description></item>\n</list>\n<code>var value = 1;</code>\n</remarks>",
 			],
 		];
 	}
@@ -228,23 +249,159 @@ public sealed class DocReprintParityTests
 		);
 	}
 
+	[TestMethod]
+	[DataRow("<remarks>Prose <code>x</code> and more</remarks>")]
+	[DataRow("<remarks>Prose <include file=\"a.xml\" path=\"x\"/> and more</remarks>")]
+	[DataRow("<remarks>Prose <inheritdoc cref=\"Y\"/> and more</remarks>")]
+	[DataRow(
+		"<summary>Alpha</summary>\n<remarks>Prose <code>x</code> and more</remarks>\n<returns>Beta</returns>"
+	)]
+	[DataRow("<remarks>\n\nPadded.\n\n<code>x</code>\n</remarks>")]
+	[DataRow("<remarks>\n\nPadded.\n\n<include file=\"a.xml\" path=\"x\"/>\n</remarks>")]
+	[DataRow("<remarks>\n\nPadded.\n\n<inheritdoc cref=\"Y\"/>\n</remarks>")]
+	[DataRow(
+		"<summary>Alpha</summary>\n\n<include file=\"a.xml\" path=\"x\"/>\n\n<returns>Beta</returns>"
+	)]
+	[DataRow("<summary>Alpha</summary>\n\n<inheritdoc cref=\"Y\"/>\n\n<returns>Beta</returns>")]
+	public void BothPassesLeaveAnElementThatHoldsASampleOrAPointerAsWritten(string body)
+	{
+		Assert.AreSequenceEqual(
+			CommentLinesWithoutPadding(body),
+			MemberLines(MemberBody(body, DocCleanupOptions.None with { Padding = true })),
+			"the two passes took different padding out."
+		);
+
+		DocumentationCommentTriviaSyntax comment = GetComment(CommentSource(body));
+
+		int fromComment = AnalyzerDocs
+			.DocCommentEdits.CreateMissingPeriodEdits(comment, comment.SyntaxTree.GetText())
+			.Count;
+
+		int fromMember =
+			MemberBody(body, DocCleanupOptions.None with { Period = true }).Length
+			- MemberBody(body).Length;
+
+		Assert.AreEqual(
+			fromMember,
+			fromComment,
+			"the two passes added a different number of periods."
+		);
+	}
+
+	[TestMethod]
+	[DataRow("<summary>True if bound; otherwise, false.</summary>")]
+	[DataRow("<summary>Returns true or null if bound, false otherwise.</summary>")]
+	[DataRow("<summary>Is <c>default</c> or <c>true</c> here, and <c>null</c> stays.</summary>")]
+	[DataRow("<summary>This is true if bound, and a false value is not a keyword.</summary>")]
+	[DataRow(
+		"<summary>Returns false.</summary>\n<remarks>Returns true positives. Returns false alarms only.</remarks>"
+	)]
+	[DataRow(
+		"<summary>Otherwise false positives are dropped. Tax returns, true to form. Otherwise default values apply.</summary>"
+	)]
+	[DataRow(
+		"<summary>Binds the value. True when bound; otherwise: false.\n\nReturns default if missing.</summary>"
+	)]
+	[DataRow(
+		"<summary>Returns null.</summary>\n<code>\n  var x = null;\n</code>\n<remarks>Reads null.</remarks>"
+	)]
+	[DataRow(
+		"<summary>Returns null.</summary>\n<remarks>Reads null.\n<code>return null;</code>\n</remarks>\n<returns>True if bound.</returns>"
+	)]
+	[DataRow(
+		"<summary>Returns null.</summary>\n<list type=\"bullet\">\n<item><description>Null.</description></item>\n</list>\n<remarks>Reads null.</remarks>"
+	)]
+	public void BothPassesMarkTheSameKeywords(string body)
+	{
+		MarkupNameSet keywords = new("null", "true", "false", "default");
+
+		List<string> fromComment =
+		[
+			.. AnalyzerDocs
+				.DocCommentEdits.CreateKeywordEdits(
+					GetComment(CommentSource(body)),
+					spacedSlash: false,
+					AnalyzerCore.MarkupNameSet.Parse(keywords.ToString())
+				)
+				.Select(edit => edit.Change.NewText ?? string.Empty),
+		];
+
+		string written = MemberBody(body, DocCleanupOptions.None with { Keywords = keywords });
+
+		List<string> fromMember = [.. KeywordTag().Matches(written).Select(match => match.Value)];
+
+		Assert.AreSequenceEqual(
+			fromComment,
+			fromMember,
+			$"the two passes marked different keywords in\n{written}"
+		);
+	}
+
+	[TestMethod]
+	[DataRow("<summary>alpha beta.</summary>\n<returns>the bound value.</returns>")]
+	[DataRow(
+		"<remarks>\n<para>first paragraph.</para>\n<para>second paragraph.</para>\n</remarks>"
+	)]
+	[DataRow(
+		"<summary>iOS and macOS.</summary>\n<returns><see langword=\"true\"/> if found.</returns>"
+	)]
+	[DataRow(
+		"<summary>null when missing.</summary>\n<remarks>https://example.com is read.</remarks>"
+	)]
+	[DataRow("<summary>true if found.</summary>\n<returns>appsettings.json is read.</returns>")]
+	[DataRow(
+		"<summary>reads.</summary>\n<remarks>reads <code>x</code> more.</remarks>\n<returns>writes.</returns>"
+	)]
+	[DataRow(
+		"<summary>\nreads the options.\n<list type=\"bullet\">\n<item><description>one.</description></item>\n</list>\n</summary>"
+	)]
+	[DataRow("<summary>Reads <c>x</c> here.</summary>\n<param name=\"value\">the value.</param>")]
+	public void BothPassesCapitalizeTheSameText(string body)
+	{
+		MarkupNameSet keywords = new("null", "true");
+		string source = CommentSource(body);
+		DocumentationCommentTriviaSyntax comment = GetComment(source);
+
+		List<AnalyzerDocs.DocCommentEdit> edits = AnalyzerDocs.DocCommentEdits.CreateCapitalEdits(
+			comment,
+			AnalyzerCore.MarkupNameSet.Parse(keywords.ToString())
+		);
+
+		StringBuilder builder = new(source);
+
+		foreach (AnalyzerDocs.DocCommentEdit edit in edits)
+		{
+			_ = builder
+				.Remove(edit.Change.Span.Start, edit.Change.Span.Length)
+				.Insert(edit.Change.Span.Start, edit.Change.NewText);
+		}
+
+		string written = MemberBody(body, DocCleanupOptions.None with { Capital = keywords });
+
+		Assert.AreEqual(
+			string.Join("\n", WrittenLines(builder.ToString())),
+			string.Join("\n", MemberLines(written)),
+			$"the two passes capitalized different text in\n{written}"
+		);
+	}
+
 	public static IEnumerable<object[]> GetLayoutRows()
 	{
 		foreach (bool indentText in new[] { true, false })
 		{
-			foreach (DocExpansion expansion in Enum.GetValues<DocExpansion>())
+			foreach (DocBlockElements blockElements in Enum.GetValues<DocBlockElements>())
 			{
 				yield return
 				[
-					$"{(indentText ? "nested" : "hanging")} indentation with {expansion} expanded",
+					$"{(indentText ? "nested" : "aligned")} indentation with block elements {blockElements}",
 					indentText,
-					expansion.ToString(),
+					blockElements.ToString(),
 				];
 			}
 		}
 	}
 
-	// The layout options reach both walks the same way: the style of the indentation and what the comment expands.
+	// The layout options reach both walks the same way: the text indent and which elements take a block form.
 	[TestMethod]
 	[DynamicData(
 		nameof(GetLayoutRows),
@@ -254,10 +411,10 @@ public sealed class DocReprintParityTests
 	public void BothWalksWriteTheSameLinesUnderEachIndentStyleAndExpansion(
 		string name,
 		bool indentText,
-		string expansionName
+		string blockElementsName
 	)
 	{
-		DocExpansion expansion = Enum.Parse<DocExpansion>(expansionName);
+		DocBlockElements blockElements = Enum.Parse<DocBlockElements>(blockElementsName);
 
 		string[] bodies =
 		[
@@ -271,7 +428,7 @@ public sealed class DocReprintParityTests
 			DocLayoutOptions layout = Layout(CommentWidth, indentSize: 2) with
 			{
 				IndentText = indentText,
-				Expansion = expansion,
+				BlockElements = blockElements,
 			};
 
 			List<string> fromComment = CommentLines(body, layout);
@@ -316,7 +473,6 @@ public sealed class DocReprintParityTests
 		List<string> fromMember = MemberLines(written);
 
 		Assert.IsNotEmpty(fromComment, "the comment walk wrote nothing.");
-
 		Assert.Contains("\t", string.Join("\n", fromMember), "the written body holds no tab.");
 
 		Assert.AreEqual(
@@ -475,8 +631,8 @@ public sealed class DocReprintParityTests
 			MaxOverflowColumns: DocLayoutOptions.DefaultMaxOverflowColumns,
 			IndentSize: indentSize,
 			IndentText: true,
-			Expansion: DocExpansion.None,
-			WeakTailWords: null,
+			BlockElements: DocBlockElements.Minimal,
+			WeakLineEndWords: null,
 			IndentWithTabs: indentWithTabs
 		);
 	}
@@ -492,13 +648,16 @@ public sealed class DocReprintParityTests
 			MaxOverflowColumns: layout.MaxOverflowColumns,
 			IndentSize: layout.IndentSize,
 			IndentText: layout.IndentText,
-			Expansion: (AnalyzerEngine.DocExpansion)layout.Expansion,
+			BlockElements: (AnalyzerEngine.DocBlockElements)layout.BlockElements,
 
-			WeakTailWords: AnalyzerEngine.DocNameSet.Parse(
-				layout.WeakTailWords?.ToString() ?? string.Empty
+			WeakLineEndWords: AnalyzerCore.MarkupNameSet.Parse(
+				layout.WeakLineEndWords?.ToString() ?? string.Empty
 			),
 
 			IndentWithTabs: layout.IndentWithTabs
 		);
 	}
+
+	[GeneratedRegex("<see langword=\"[a-z]+\"/>")]
+	private static partial Regex KeywordTag();
 }

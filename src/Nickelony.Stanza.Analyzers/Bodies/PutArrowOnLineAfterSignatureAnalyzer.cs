@@ -10,7 +10,7 @@ internal sealed class PutArrowOnLineAfterSignatureAnalyzer() : StanzaRuleAnalyze
 	{
 		var options = StanzaOptions.From(context.Options, context.Node.SyntaxTree);
 
-		if (!StanzaRuleState.OwnsTheSharedGap(scope: context, options, rule: Rule, position: context.Node.SpanStart))
+		if (!StanzaRuleState.IsTheOwningHalf(scope: context, options, rule: Rule, position: context.Node.SpanStart))
 			return;
 
 		BodyArrows.ReportArrowPlacement(context, options, rule: Rule, placement: ArrowPlacement.Leading);

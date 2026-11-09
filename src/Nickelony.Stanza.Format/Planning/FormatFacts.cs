@@ -12,4 +12,8 @@ internal sealed record FormatFacts(
 	ImmutableArray<string> ChangedFiles,
 	ImmutableArray<string> SkippedSources,
 	ImmutableArray<CompiledFile> CompiledFiles
-);
+)
+{
+	/// <summary>Every changed file of a run that reads the changes, or unset for a whole run.</summary>
+	public ImmutableArray<string> ScopedFiles { get; init; }
+}

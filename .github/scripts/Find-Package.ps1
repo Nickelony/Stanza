@@ -28,8 +28,9 @@ $ErrorActionPreference = 'Stop'
 
 Set-StrictMode -Version Latest
 
-# The version starts with a digit, so `Nickelony.Stanza.Markup.Core.*` cannot stand in for `Nickelony.Stanza.Markup`.
-$pattern = "^$([regex]::Escape($Id))\.(?<version>\d.*)\.nupkg$"
+. (Join-Path $PSScriptRoot 'Get-PackagePattern.ps1')
+
+$pattern = Get-PackagePattern $Id
 
 foreach ($file in Get-ChildItem -Path $Directory -File) {
 	$match = [regex]::Match($file.Name, $pattern)

@@ -15,12 +15,13 @@ public sealed class FixOptionsTests
 		ContentWidth: 80,
 		TabColumns: 4,
 		MinTailWords: 2,
-		MinLineWords: 2,
-		MaxOverflowColumns: 4,
-		IndentSize: 0,
-		IndentText: true,
-		Expansion: DocExpansion.None,
-		WeakTailWords: DocNameSet.Parse("a,the")
+		MinLineWords: 3,
+		MaxOverflowColumns: 5,
+		IndentSize: 6,
+		IndentText: false,
+		BlockElements: DocBlockElements.All,
+		WeakLineEndWords: MarkupNameSet.Parse("a,the"),
+		IndentWithTabs: true
 	);
 
 	[TestMethod]
@@ -37,21 +38,30 @@ public sealed class FixOptionsTests
 			KeptBlankLines: 0,
 			Change: new TextChange(new TextSpan(3, 2), "text"),
 			RunStart: 2,
-			RunEnd: 7
+			RunEnd: 7,
+			Keywords: MarkupNameSet.Parse("null,true"),
+			MergedIfs: 3,
+			SeparatesNeighbors: true,
+			JoinsNeighbors: true,
+			WritesGapAbove: true,
+			SeparatedUnits: 5,
+			Boundaries: [3, 7]
 		);
 
 		FixOptions read = Parse(written.ToProperties());
 
-		// An immutable array compares by reference, so the names are compared on their own.
+		// An immutable array compares by reference, so the lists are compared on their own.
 		FixOptions writtenRest = written with
 		{
 			ArgumentNames = default,
+			Boundaries = default,
 		};
 
-		FixOptions readRest = read with { ArgumentNames = default };
+		FixOptions readRest = read with { ArgumentNames = default, Boundaries = default };
 
 		Assert.AreEqual(writtenRest, readRest);
 		Assert.AreSequenceEqual(written.ArgumentNames, read.ArgumentNames);
+		Assert.AreSequenceEqual(written.Boundaries, read.Boundaries);
 	}
 
 	[TestMethod]

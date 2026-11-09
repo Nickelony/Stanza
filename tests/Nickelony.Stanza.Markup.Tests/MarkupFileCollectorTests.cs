@@ -21,6 +21,7 @@ public sealed class MarkupFileCollectorTests
 	public void AnExcludedDirectoryIsNeverEnteredByAScanOrAGlob(string argument)
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("src/kept.xml", "<root><a/><b/></root>\n");
 		_ = directory.Write("src/gen/dropped.xml", "<root><a/><b/></root>\n");
 

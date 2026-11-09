@@ -14,10 +14,34 @@ public sealed class DocCleanupConfigurationTests
 	public void TheSeverityLinesDriveTheCleanUpsOfAFile()
 	{
 		string source = Member("<summary>alpha beta gamma</summary>");
-		string period = "dotnet_diagnostic.ZA0210.severity = warning\n";
+		string period = "dotnet_diagnostic.ZA0911.severity = warning\n";
 
 		Assert.Contains("gamma.", FormatFromConfiguration(source, period).Text);
 		Assert.DoesNotContain("gamma.", FormatFromConfiguration(source, string.Empty).Text);
+	}
+
+	[TestMethod]
+	public void TheSeverityLineDrivesTheCapitalOfAFile()
+	{
+		string source = Member("<summary>alpha beta gamma</summary>");
+		string capital = "dotnet_diagnostic.ZA0910.severity = warning\n";
+
+		Assert.Contains("Alpha", FormatFromConfiguration(source, capital).Text);
+		Assert.DoesNotContain("Alpha", FormatFromConfiguration(source, string.Empty).Text);
+	}
+
+	[TestMethod]
+	public void TheKeywordKeyListsTheWordsTheCapitalLeavesAlone()
+	{
+		string source = Member("<summary>true if found</summary>");
+		string capital = "dotnet_diagnostic.ZA0910.severity = warning\n";
+
+		Assert.Contains("True if", FormatFromConfiguration(source, capital).Text);
+
+		Assert.Contains(
+			"true if",
+			FormatFromConfiguration(source, capital + "stanza_doc_langwords = null, true\n").Text
+		);
 	}
 
 	[TestMethod]
@@ -53,7 +77,7 @@ public sealed class DocCleanupConfigurationTests
 	{
 		string text = FormatFromConfiguration(
 			Member("<summary>alpha <c></c> beta</summary>\n  <param name=\"x\"></param>"),
-			"dotnet_diagnostic.ZA0210.severity = warning\n"
+			"dotnet_diagnostic.ZA0911.severity = warning\n"
 		).Text;
 
 		Assert.Contains("alpha <c></c> beta.", text);
@@ -68,7 +92,7 @@ public sealed class DocCleanupConfigurationTests
 
 		string text = FormatFromConfiguration(
 			source,
-			"dotnet_diagnostic.ZA0210.severity = warning\n"
+			"dotnet_diagnostic.ZA0911.severity = warning\n"
 		).Text;
 
 		Assert.Contains($"<b>a{space}b</b>", text);

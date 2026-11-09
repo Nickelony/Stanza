@@ -16,7 +16,7 @@ public sealed class DocCleanupTests
 
 		Assert.AreEqual(
 			Member("<summary>Binds.</summary>\n  <returns>Delta.</returns>"),
-			FormatReprint(source, Rules("ZA0203"), contentWidth: 60).Text
+			FormatReprint(source, Rules("ZA0903"), contentWidth: 60).Text
 		);
 	}
 
@@ -32,7 +32,7 @@ public sealed class DocCleanupTests
 	{
 		Assert.AreEqual(
 			Member("<summary>\n  alpha beta\n  gamma.\n  </summary>"),
-			FormatReprint(Member("<summary>alpha beta gamma</summary>"), Rules("ZA0210")).Text
+			FormatReprint(Member("<summary>alpha beta gamma</summary>"), Rules("ZA0911")).Text
 		);
 	}
 
@@ -45,15 +45,118 @@ public sealed class DocCleanupTests
 	[DataRow("<remarks>Intro <para>One</para></remarks>", "Intro.", "One.")]
 	public void EachParagraphGainsItsPeriodInOnePass(string element, string first, string second)
 	{
-		MarkupFormatResult once = FormatReprint(Member(element), Rules("ZA0210"), contentWidth: 60);
+		MarkupFormatResult once = FormatReprint(Member(element), Rules("ZA0911"), contentWidth: 60);
 
 		Assert.Contains(first, once.Text);
 		Assert.Contains(second, once.Text);
 
 		Assert.IsFalse(
-			FormatReprint(once.Text, Rules("ZA0210"), contentWidth: 60).HasEdits,
+			FormatReprint(once.Text, Rules("ZA0911"), contentWidth: 60).HasEdits,
 			once.Text
 		);
+	}
+
+	[TestMethod]
+	public void TheCapitalOpensTheOwnTextOfAnElement()
+	{
+		Assert.AreEqual(
+			Member("<summary>\n  Alpha beta\n  gamma\n  </summary>"),
+			FormatReprint(Member("<summary>alpha beta gamma</summary>"), Rules("ZA0910")).Text
+		);
+	}
+
+	[TestMethod]
+	[DataRow(
+		"<remarks>first paragraph\n\n  second paragraph</remarks>",
+		"First paragraph",
+		"Second paragraph"
+	)]
+	[DataRow("<remarks>intro <para>one</para></remarks>", "Intro", "One")]
+	[DataRow("<remarks><para>one</para> two</remarks>", "One", "Two")]
+	[DataRow(
+		"<remarks>reads.\n  <list type=\"bullet\">\n  <item>x</item>\n  </list>\n  then writes</remarks>",
+		"Reads.",
+		"Then writes"
+	)]
+	public void EachParagraphGainsItsCapitalInOnePass(string element, string first, string second)
+	{
+		MarkupFormatResult once = FormatReprint(Member(element), Rules("ZA0910"), contentWidth: 60);
+
+		Assert.Contains(first, once.Text);
+		Assert.Contains(second, once.Text);
+
+		Assert.IsFalse(
+			FormatReprint(once.Text, Rules("ZA0910"), contentWidth: 60).HasEdits,
+			once.Text
+		);
+	}
+
+	[TestMethod]
+	public void TheCapitalAndThePeriodSettleEachParagraphInOnePass()
+	{
+		MarkupFormatResult once = FormatReprint(
+			Member("<remarks>first paragraph\n\n  second paragraph</remarks>"),
+			Rules("ZA0910", "ZA0911"),
+			contentWidth: 60
+		);
+
+		Assert.Contains("First paragraph.", once.Text);
+		Assert.Contains("Second paragraph.", once.Text);
+
+		Assert.IsFalse(
+			FormatReprint(once.Text, Rules("ZA0910", "ZA0911"), contentWidth: 60).HasEdits,
+			once.Text
+		);
+	}
+
+	[TestMethod]
+	[DataRow("<see langword=\"true\"/> if found")]
+	[DataRow("<paramref name=\"value\"/> is read")]
+	[DataRow("<typeparamref name=\"T\"/> is read")]
+	[DataRow("<see cref=\"T:X\"/> is read")]
+	[DataRow("<c>x</c> is read")]
+	[DataRow("iOS apps")]
+	[DataRow("appsettings.json is read")]
+	[DataRow("https://example.com is read")]
+	[DataRow("null when missing")]
+	[DataRow("2 items")]
+	public void ATextWhoseStartKeepsItsCaseIsLeftAlone(string text)
+	{
+		string source = Member($"<summary>{text}</summary>");
+
+		Assert.AreEqual(
+			source,
+			FormatReprint(source, Rules("ZA0910"), contentWidth: 60).Text,
+			text
+		);
+	}
+
+	[TestMethod]
+	public void AListedKeywordAtTheStartSettlesWithTheKeywordRuleInOnePass()
+	{
+		MarkupNameSet keywords = new("null", "true");
+		MarkupRuleSet rules = Rules("ZA0908", "ZA0910", "ZA0912");
+
+		MarkupFormatResult once = FormatReprint(
+			source: Member("<summary>true if found</summary>"),
+			rules,
+			contentWidth: 60,
+			keywords: keywords
+		);
+
+		Assert.Contains("<summary><see langword=\"true\"/> if found</summary>", once.Text);
+
+		Assert.IsFalse(
+			FormatReprint(source: once.Text, rules, contentWidth: 60, keywords: keywords).HasEdits,
+			once.Text
+		);
+	}
+
+	[TestMethod]
+	public void TextOutsideEveryElementKeepsItsCase()
+	{
+		string source = Member("alpha beta");
+		Assert.AreEqual(source, FormatReprint(source, Rules("ZA0910"), contentWidth: 60).Text);
 	}
 
 	[TestMethod]
@@ -76,7 +179,7 @@ public sealed class DocCleanupTests
 	public void TheGapRulesLeaveAMemberTheReprintDeclinesAsWritten()
 	{
 		string source = Member("<summary>A <b><c>x</c>\n\n  <c>y</c></b> z</summary>");
-		Assert.IsFalse(FormatReprint(source, Rules("ZA0103"), contentWidth: 60).HasEdits);
+		Assert.IsFalse(FormatReprint(source, Rules("ZA2003"), contentWidth: 60).HasEdits);
 	}
 
 	[TestMethod]
@@ -100,7 +203,7 @@ public sealed class DocCleanupTests
 	public void AnElementThatEndsOnAnElementGainsNoPeriod()
 	{
 		string source = Member("<summary>alpha <c>beta</c></summary>");
-		Assert.AreEqual(source, FormatReprint(source, Rules("ZA0210"), contentWidth: 40).Text);
+		Assert.AreEqual(source, FormatReprint(source, Rules("ZA0911"), contentWidth: 40).Text);
 	}
 
 	[TestMethod]
@@ -112,7 +215,7 @@ public sealed class DocCleanupTests
 
 		Assert.AreEqual(
 			source,
-			FormatReprint(source, Rules("ZA0210"), contentWidth: 60).Text,
+			FormatReprint(source, Rules("ZA0911"), contentWidth: 60).Text,
 			text
 		);
 	}
@@ -125,7 +228,7 @@ public sealed class DocCleanupTests
 
 			FormatReprint(
 				Member("<summary>alpha nullify beta</summary>"),
-				Rules("ZA0211"),
+				Rules("ZA0912"),
 				contentWidth: 60
 			).Text
 		);
@@ -139,7 +242,7 @@ public sealed class DocCleanupTests
 
 			FormatReprint(
 				Member("<summary>alpha <see cref=\"T:X\"/> beta</summary>"),
-				Rules("ZA0207"),
+				Rules("ZA0907"),
 				contentWidth: 60
 			).Text
 		);
@@ -153,7 +256,7 @@ public sealed class DocCleanupTests
 
 			FormatReprint(
 				Member("<summary>alpha <see cref=\"T:X\" /> beta</summary>"),
-				Rules("ZA0208"),
+				Rules("ZA0908"),
 				contentWidth: 60
 			).Text
 		);
@@ -167,7 +270,7 @@ public sealed class DocCleanupTests
 
 			FormatReprint(
 				Member("<summary>alpha null beta</summary>"),
-				Rules("ZA0207", "ZA0211"),
+				Rules("ZA0907", "ZA0912"),
 				contentWidth: 60
 			).Text
 		);
@@ -181,8 +284,58 @@ public sealed class DocCleanupTests
 
 			FormatReprint(
 				Member("<summary>alpha null beta</summary>"),
-				Rules("ZA0207", "ZA0208", "ZA0211"),
+				Rules("ZA0907", "ZA0908", "ZA0912"),
 				contentWidth: 60
+			).Text
+		);
+	}
+
+	[TestMethod]
+	public void TheListedKeywordsAreMarkedWhereTheirPhraseProvesThem()
+	{
+		MarkupFormatResult result = FormatReprint(
+			source: Member(
+				"<summary>True if bound; otherwise, false. Is <c>default</c> or <c>true</c>.</summary>"
+			),
+
+			rules: Rules("ZA0908", "ZA0912"),
+			contentWidth: 200,
+			keywords: new MarkupNameSet("null", "true", "false", "default")
+		);
+
+		Assert.Contains(
+			"<summary><see langword=\"true\"/> if bound; otherwise, <see langword=\"false\"/>. Is <see langword=\"default\"/> or <see langword=\"true\"/>.</summary>",
+
+			result
+				.Text.Replace("\n", string.Empty, StringComparison.Ordinal)
+				.Replace("  ", " ", StringComparison.Ordinal)
+		);
+	}
+
+	[TestMethod]
+	public void AKeywordTheFileDoesNotListIsLeftAlone()
+	{
+		string source = Member("<summary>True if bound; otherwise, false, or null.</summary>");
+
+		MarkupFormatResult unlisted = FormatReprint(
+			source,
+			rules: Rules("ZA0912"),
+			contentWidth: 200,
+			keywords: new MarkupNameSet("null")
+		);
+
+		Assert.DoesNotContain("langword=\"true\"", unlisted.Text);
+		Assert.DoesNotContain("langword=\"false\"", unlisted.Text);
+		Assert.Contains("langword=\"null\"", unlisted.Text);
+
+		Assert.DoesNotContain(
+			"langword=\"null\"",
+
+			FormatReprint(
+				source,
+				rules: Rules("ZA0912"),
+				contentWidth: 200,
+				keywords: new MarkupNameSet("true")
 			).Text
 		);
 	}
@@ -195,7 +348,7 @@ public sealed class DocCleanupTests
 
 			FormatReprint(
 				Member("<summary>alpha <c></c> beta</summary>"),
-				Rules("ZA0209"),
+				Rules("ZA0909"),
 				contentWidth: 60
 			).Text
 		);
@@ -209,25 +362,26 @@ public sealed class DocCleanupTests
 
 			FormatReprint(
 				Member("<summary>alpha is null</summary>"),
-				Rules("ZA0210", "ZA0211"),
+				Rules("ZA0911", "ZA0912"),
 				contentWidth: 80
 			).Text
 		);
 	}
 
 	[TestMethod]
-	public void AListAtTheTopLevelLeavesEveryKeywordAlone()
+	public void AListAtTheTopLevelLeavesOnlyItsOwnKeywordsAlone()
 	{
 		string text = FormatReprint(
 			Member(
-				"<summary>alpha is null</summary>\n  <list type=\"bullet\">\n  <item><description>One.</description></item>\n  </list>"
+				"<summary>alpha is null</summary>\n  <list type=\"bullet\">\n  <item><description>One null.</description></item>\n  </list>"
 			),
 
-			Rules("ZA0211"),
+			Rules("ZA0912"),
 			contentWidth: 80
 		).Text;
 
-		Assert.Contains("alpha is null", text);
+		Assert.Contains("alpha is <see langword=\"null\"/>", text);
+		Assert.Contains("One null.", text);
 	}
 
 	[TestMethod]
@@ -238,7 +392,38 @@ public sealed class DocCleanupTests
 
 			FormatReprint(
 				Member("<summary>alpha is <see langword=\"null\"/></summary>"),
-				Rules("ZA0210"),
+				Rules("ZA0911"),
+				contentWidth: 80
+			).Text
+		);
+	}
+
+	[TestMethod]
+	public void ThePeriodAndTheShortTagLandInOnePassOnAKeywordElementWithNoContent()
+	{
+		MarkupFormatResult once = FormatReprint(
+			Member("<summary>Is <see langword=\"true\"></see></summary>"),
+			Rules("ZA0909", "ZA0911"),
+			contentWidth: 80
+		);
+
+		Assert.Contains("<see langword=\"true\"/>.", once.Text);
+
+		Assert.IsFalse(
+			FormatReprint(once.Text, Rules("ZA0909", "ZA0911"), contentWidth: 80).HasEdits,
+			once.Text
+		);
+	}
+
+	[TestMethod]
+	public void ThePeriodClosesASentenceThatEndsOnAKeywordElementWithNoContent()
+	{
+		Assert.Contains(
+			"<see langword=\"true\"></see>.",
+
+			FormatReprint(
+				Member("<summary>Is <see langword=\"true\"></see></summary>"),
+				Rules("ZA0911"),
 				contentWidth: 80
 			).Text
 		);
@@ -249,7 +434,7 @@ public sealed class DocCleanupTests
 	{
 		string text = FormatReprint(
 			Member("<remarks>Reads twice.</remarks>\n  <summary>Binds.</summary>"),
-			Rules("ZA0212"),
+			Rules("ZA0913"),
 			contentWidth: 60
 		).Text;
 
@@ -265,7 +450,7 @@ public sealed class DocCleanupTests
 					+ "  <param name=\"x\">P.</param>\n  <summary>S.</summary>"
 			),
 
-			Rules("ZA0212"),
+			Rules("ZA0913"),
 			contentWidth: 60
 		).Text;
 
@@ -280,7 +465,7 @@ public sealed class DocCleanupTests
 	{
 		string text = FormatReprint(
 			Member("<remarks>M.</remarks>\n  Reads.\n  <summary>S.</summary>"),
-			Rules("ZA0212"),
+			Rules("ZA0913"),
 			contentWidth: 60
 		).Text;
 
@@ -297,7 +482,7 @@ public sealed class DocCleanupTests
 					+ "  <summary>S.</summary>"
 			),
 
-			Rules("ZA0212"),
+			Rules("ZA0913"),
 			contentWidth: 60
 		).Text;
 
@@ -312,7 +497,7 @@ public sealed class DocCleanupTests
 
 		Assert.AreEqual(
 			FormatReprint(source, Rules(), contentWidth: 60).Text,
-			FormatReprint(source, Rules("ZA0212"), contentWidth: 60).Text
+			FormatReprint(source, Rules("ZA0913"), contentWidth: 60).Text
 		);
 	}
 
@@ -324,10 +509,11 @@ public sealed class DocCleanupTests
 				"<list type=\"bullet\">\n  <item><description>alpha null <c></c> <br /> beta</description></item>\n  </list>"
 			),
 
-			Rules("ZA0208", "ZA0209", "ZA0210", "ZA0211"),
+			Rules("ZA0908", "ZA0909", "ZA0910", "ZA0911", "ZA0912"),
 			contentWidth: 80
 		).Text;
 
+		Assert.Contains("<description>alpha", text);
 		Assert.Contains("<c></c>", text);
 		Assert.Contains("<br />", text);
 		Assert.DoesNotContain("<c/>", text);
@@ -344,7 +530,7 @@ public sealed class DocCleanupTests
 				"<list type=\"table\">\n  <item>\n    <description>Explains it.</description>\n    <term>Widget</term>\n  </item>\n  </list>"
 			),
 
-			Rules("ZA0213"),
+			Rules("ZA0914"),
 			contentWidth: 40
 		).Text;
 
@@ -359,7 +545,7 @@ public sealed class DocCleanupTests
 				"<list type=\"table\">\n  <item><term>a</term><description>b</description></item>\n  <listheader><term>h</term><description>d</description></listheader>\n  </list>"
 			),
 
-			Rules("ZA0213"),
+			Rules("ZA0914"),
 			contentWidth: 20
 		).Text;
 
@@ -375,7 +561,7 @@ public sealed class DocCleanupTests
 
 		Assert.AreEqual(
 			FormatReprint(source, Rules(), contentWidth: 60).Text,
-			FormatReprint(source, Rules("ZA0213"), contentWidth: 60).Text
+			FormatReprint(source, Rules("ZA0914"), contentWidth: 60).Text
 		);
 	}
 

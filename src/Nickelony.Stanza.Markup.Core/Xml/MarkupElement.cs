@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Nickelony.Stanza.Markup.Core.DocComments;
 
 namespace Nickelony.Stanza.Markup.Core.Xml;
 
@@ -13,6 +12,8 @@ internal sealed class MarkupElement(string name, int startLineIndex) : IMarkupIt
 	public string Name { get; } = name;
 	public bool IsPropertyElement { get; } = name.IndexOf('.', name.LastIndexOf(':') + 1) >= 0;
 
+	/// <summary>The name without its namespace prefix.</summary>
+	public string LocalName { get; } = name.Substring(name.LastIndexOf(':') + 1);
 	public int StartLineIndex { get; } = startLineIndex;
 
 	public int EndLineIndex
@@ -22,7 +23,7 @@ internal sealed class MarkupElement(string name, int startLineIndex) : IMarkupIt
 	} = startLineIndex;
 
 	/// <summary>
-	/// The text a tag is collapsed from only when read, which takes a check of Tomb-Editor from 3.1 s to 2.6 s.
+	/// The text a tag is collapsed from only when read, so an element nobody asks about is never collapsed.
 	/// </summary>
 	public MarkupSourceText? SourceText
 	{
@@ -31,11 +32,11 @@ internal sealed class MarkupElement(string name, int startLineIndex) : IMarkupIt
 	}
 
 	/// <summary>The open tag with its whitespace collapsed.</summary>
-	public string OpenTag => field ??= SourceText is null ? string.Empty : DocCollapser.Collapse(SourceText.Text, OpenTagStart, OpenTagEnd);
+	public string OpenTag => field ??= SourceText is null ? string.Empty : MarkupCollapser.Collapse(SourceText.Text, OpenTagStart, OpenTagEnd);
 
 	/// <summary>The end tag collapsed, or <see langword="null"/> for an element with none.</summary>
 	public string? CloseTag =>
-		CloseTagStart < 0 || SourceText is null ? null : field ??= DocCollapser.Collapse(SourceText.Text, CloseTagStart, CloseTagEnd);
+		CloseTagStart < 0 || SourceText is null ? null : field ??= MarkupCollapser.Collapse(SourceText.Text, CloseTagStart, CloseTagEnd);
 
 	public int OpenTagStart
 	{
@@ -86,7 +87,6 @@ internal sealed class MarkupElement(string name, int startLineIndex) : IMarkupIt
 	}
 
 	public IReadOnlyList<MarkupElement> ChildElements { get; private set; } = [];
-
 	public bool HasElementChildren => ChildElements.Count > 0;
 
 	public void Add(IMarkupChild child) => _children.Add(EnsureUnsealed(child));

@@ -9,12 +9,18 @@ namespace Nickelony.Stanza.Analyzers.Comments;
 internal static class CommentEdits
 {
 	/// <summary>Writes the space a single-line comment gains at the anchor, or <see langword="null"/>.</summary>
+	/// <remarks>
+	/// The fix lifts the banner exception, as it acts only at an anchor the rule reported.
+	/// </remarks>
 	public static TextChange? CreateSingleLineMarkerSpace(SyntaxTrivia trivia, TextSpan anchor) =>
-		CreateGapSpace(CommentGaps.FindSingleLineCommentGaps(trivia), anchor);
+		CreateGapSpace(CommentGaps.FindSingleLineCommentGaps(trivia, minBannerRun: 0), anchor);
 
 	/// <summary>Writes the space a delimited comment gains at the anchor, or <see langword="null"/>.</summary>
+	/// <remarks>
+	/// The fix lifts the banner exception, as it acts only at an anchor the rule reported.
+	/// </remarks>
 	public static TextChange? CreateDelimitedMarkerSpace(SyntaxTrivia trivia, TextSpan anchor) =>
-		CreateGapSpace(CommentGaps.FindDelimitedCommentGaps(trivia), anchor);
+		CreateGapSpace(CommentGaps.FindDelimitedCommentGaps(trivia, minBannerRun: 0), anchor);
 
 	/// <summary>Writes the space before a trailing comment, when its gap starts at the position.</summary>
 	public static TextChange? CreateTrailingSpace(SyntaxTrivia trivia, int position) =>

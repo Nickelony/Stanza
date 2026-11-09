@@ -3,7 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Core;
 using Nickelony.Stanza.Markup.Core.DocComments;
 using Nickelony.Stanza.Markup.Core.Formatting;
-using Nickelony.Stanza.Markup.Core.Xml;
+using Nickelony.Stanza.Markup.Core.Options;
 
 namespace Nickelony.Stanza.Tests.Shared;
 
@@ -45,7 +45,6 @@ internal static class MarkupFormatFixtures
 		MarkupFormatter.Format(source, new MarkupOptions(XmlPolicy));
 
 	public static string Member(string body) => $"<member name=\"X\">\n  {body}\n</member>";
-
 	public static MarkupRuleSet Rules(params string[] ids) => MarkupRuleSet.From(ids);
 
 	internal static MarkupFormatResult FormatReprint(
@@ -53,12 +52,13 @@ internal static class MarkupFormatFixtures
 		MarkupRuleSet rules = default,
 		int contentWidth = 12,
 		int indentSize = DocLayoutOptions.DefaultIndentSize,
-		bool indentWithTabs = false
+		bool indentWithTabs = false,
+		MarkupNameSet? keywords = null
 	)
 	{
 		return MarkupFormatter.Format(
 			source,
-			new MarkupOptions(XmlPolicy, Rules: rules),
+			new MarkupOptions(XmlPolicy, Rules: rules, Langwords: keywords),
 			reprintLayout: ReprintLayout(contentWidth, indentSize, indentWithTabs)
 		);
 	}
@@ -77,7 +77,7 @@ internal static class MarkupFormatFixtures
 			MaxOverflowColumns: DocLayoutOptions.DefaultMaxOverflowColumns,
 			IndentSize: indentSize,
 			IndentText: true,
-			Expansion: DocExpansion.None,
+			BlockElements: DocBlockElements.Minimal,
 			IndentWithTabs: indentWithTabs
 		);
 	}

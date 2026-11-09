@@ -62,7 +62,7 @@ internal static class ToolHost
 			error.WriteLine($"{ErrorPrefix}canceled.");
 			return CanceledExitCode;
 		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+		catch (Exception exception) when (FileFailures.IsFileFailure(exception))
 		{
 			return Fail(exception, error);
 		}
@@ -123,6 +123,38 @@ internal static class ToolHost
 	private static int Fail(Exception exception, TextWriter error)
 	{
 		error.WriteLine($"{ErrorPrefix}{exception.GetType().Name}: {ToReportLine(exception.Message)}");
+		return FailedExitCode;
+	}
+
+	/// <summary>Prints the usage or the version when the line asked for one, and says whether it did.</summary>
+	public static bool TryAnswerInformation(bool help, bool version, string usage, Assembly assembly, TextWriter output)
+	{
+		if (help)
+		{
+			output.WriteLine(usage);
+			return true;
+		}
+
+		if (version)
+		{
+			output.WriteLine(GetVersion(assembly));
+			return true;
+		}
+
+		return false;
+	}
+
+	/// <summary>Writes the error of a command line that cannot be run, and points at the tool's usage.</summary>
+	public static int FailUsage(string tool, string message, TextWriter error)
+	{
+		error.WriteLine($"{ErrorPrefix}{ToReportLine(message)}");
+		return FailWithHint(tool, error);
+	}
+
+	/// <summary>Points at the tool's usage after an error a reporter has written.</summary>
+	public static int FailWithHint(string tool, TextWriter error)
+	{
+		error.WriteLine($"Run '{tool} --help' for the usage.");
 		return FailedExitCode;
 	}
 

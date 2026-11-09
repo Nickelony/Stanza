@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.Text;
 using Nickelony.Stanza.Markup.Core;
+using Nickelony.Stanza.Markup.Core.Options;
 
 namespace Nickelony.Stanza.Analyzers.Bodies;
 
@@ -8,12 +9,12 @@ internal static class BodyWidth
 	/// <summary>The columns an arrow takes on its line, including the space beside it.</summary>
 	private const int ArrowColumns = 3;
 
-	public static bool ArrowPaysForItsLine(MultiLineTrigger trigger) => trigger is MultiLineTrigger.Either or MultiLineTrigger.Signature;
+	public static bool ArrowPaysForItsLine(MultiLineMemberPart part) => part is MultiLineMemberPart.Either or MultiLineMemberPart.Signature;
 
 	/// <summary>Whether the member fits one line; a bound below one skips the check.</summary>
 	public static bool FitsOneLine(SourceText sourceText, TextSpan signatureSpan, string bodyText, StanzaOptions options)
 	{
-		if (options.MaxLineLength <= 0)
+		if (!options.HasLineLimit)
 			return true;
 
 		int linePrefixColumns = GetLinePrefixColumns(sourceText, signatureSpan, options.TabColumns);
@@ -22,7 +23,7 @@ internal static class BodyWidth
 		// The arrow sits between the signature and the body with a space on each side.
 		int bodyStartColumn = linePrefixColumns + signatureColumns + ArrowColumns + 1;
 
-		return bodyStartColumn + MarkupColumns.GetColumns(bodyText, options.TabColumns, bodyStartColumn) <= options.MaxLineLength;
+		return bodyStartColumn + TextColumns.GetColumns(bodyText, options.TabColumns, bodyStartColumn) <= options.MaxLineLength;
 	}
 
 	/// <summary>Whether the signature and continuation lines fit; a bound below one skips the check.</summary>
@@ -31,19 +32,18 @@ internal static class BodyWidth
 		int maxLineLength = options.MaxLineLength;
 		int tabColumns = options.TabColumns;
 
-		if (maxLineLength <= 0)
+		if (!options.HasLineLimit)
 			return true;
 
 		int linePrefixColumns = GetLinePrefixColumns(sourceText, signatureSpan, tabColumns);
 		int indentationColumns = StanzaText.GetIndentationColumns(sourceText, signatureSpan.Start, tabColumns);
 		int continuationStepColumns = GetContinuationStepColumns(sourceText, signatureSpan, tabColumns, indentStepColumns: options.IndentStepColumns);
 		int signatureColumns = StanzaText.GetColumns(sourceText, signatureSpan, tabColumns);
-		int arrowColumns = ArrowPaysForItsLine(options.MultiLineTrigger) ? ArrowColumns : 0;
-
+		int arrowColumns = ArrowPaysForItsLine(options.MultiLineMemberPart) ? ArrowColumns : 0;
 		int bodyStartColumn = indentationColumns + continuationStepColumns + (placement == ArrowPlacement.Leading ? arrowColumns : 0);
 
 		return linePrefixColumns + signatureColumns + (placement == ArrowPlacement.Trailing ? arrowColumns : 0) <= maxLineLength
-			&& bodyStartColumn + MarkupColumns.GetColumns(bodyText, tabColumns, bodyStartColumn) <= maxLineLength;
+			&& bodyStartColumn + TextColumns.GetColumns(bodyText, tabColumns, bodyStartColumn) <= maxLineLength;
 	}
 
 	private static int GetLinePrefixColumns(SourceText sourceText, TextSpan signatureSpan, int tabColumns)

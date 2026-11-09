@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Configuration;
+using Nickelony.Stanza.Markup.Core;
 using Nickelony.Stanza.Markup.Core.DocComments;
 using Nickelony.Stanza.Markup.Core.Options;
 using Nickelony.Stanza.Markup.Notices;
@@ -75,8 +77,43 @@ public sealed class MarkupConfigurationKeyTests
 
 		Assert.IsTrue(configuration.IsEnabled(path));
 		Assert.AreEqual(MarkupProfiles.MsBuild, configuration.FindProfile(path, null));
-
 		Assert.IsTrue(configuration.GetOptions(path, MarkupProfiles.MsBuild).Policy.ContainersOnly);
+	}
+
+	[TestMethod]
+	public void TheScopeKeyOverridesTheProfileUnlessItIsForcedOrUnreadable()
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.csproj", string.Empty);
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig("[*.csproj]\nstanza_markup_scope = all\n")
+		);
+
+		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out _
+		);
+
+		Assert.IsFalse(
+			configuration.GetOptions(path, MarkupProfiles.MsBuild).Policy.ContainersOnly
+		);
+
+		Assert.IsTrue(
+			configuration
+				.GetOptions(path, MarkupProfiles.MsBuild, profileWasForced: true)
+				.Policy.ContainersOnly
+		);
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig("[*.csproj]\nstanza_markup_scope = nonsense\n")
+		);
+
+		MarkupConfiguration unreadable = MarkupFixtures.CreateConfiguration(directory.Root, out _);
+
+		Assert.IsTrue(unreadable.GetOptions(path, MarkupProfiles.MsBuild).Policy.ContainersOnly);
 	}
 
 	[TestMethod]
@@ -96,9 +133,8 @@ public sealed class MarkupConfigurationKeyTests
 		);
 
 		Assert.IsTrue(configuration.IsEnabled(path));
-
 		Assert.HasCount(1, notices.Items);
-		Assert.Contains(MarkupKeys.Enabled, notices.Items[0].Message);
+		Assert.Contains(OptionKeys.MarkupEnabled, notices.Items[0].Message);
 	}
 
 	[TestMethod]
@@ -184,7 +220,7 @@ public sealed class MarkupConfigurationKeyTests
 			".editorconfig",
 
 			MarkupFixtures.EditorConfig(
-				"[*.xml]\nstanza_doc_expand = bogus\nstanza_doc_indent_style = bouncy\n"
+				"[*.xml]\nstanza_doc_block_elements = bogus\nstanza_doc_text_indent = bouncy\n"
 					+ "stanza_doc_min_tail_words = many\nstanza_doc_indent_size = two\n"
 			)
 		);
@@ -200,10 +236,140 @@ public sealed class MarkupConfigurationKeyTests
 
 		string reported = string.Join("\n", notices.Items);
 
-		Assert.Contains("stanza_doc_expand", reported);
-		Assert.Contains("stanza_doc_indent_style", reported);
+		Assert.Contains("stanza_doc_block_elements", reported);
+		Assert.Contains("stanza_doc_text_indent", reported);
 		Assert.Contains("stanza_doc_min_tail_words", reported);
 		Assert.Contains("stanza_doc_indent_size", reported);
+	}
+
+	[TestMethod]
+	public void TheKeywordListIsReadAndAWordItCannotNameIsReported()
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", string.Empty);
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig("[*.xml]\nstanza_doc_langwords = null, TRUE ,false\n")
+		);
+
+		MarkupConfiguration listed = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices listedNotices
+		);
+
+		MarkupNameSet? words = listed.GetOptions(path, MarkupProfiles.Xml).Langwords;
+
+		Assert.IsEmpty(listedNotices.Items);
+		Assert.AreEqual("false,null,true", words?.ToString());
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig("[*.xml]\nstanza_doc_langwords = true, maybe\n")
+		);
+
+		MarkupConfiguration misspelled = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices misspelledNotices
+		);
+
+		Assert.AreEqual(
+			"true",
+			misspelled.GetOptions(path, MarkupProfiles.Xml).Langwords?.ToString()
+		);
+
+		Assert.HasCount(1, misspelledNotices.Items);
+		Assert.Contains("'maybe'", misspelledNotices.Items[0].Message);
+	}
+
+	[TestMethod]
+	public void TheListOfSeparatedElementsIsReadAndAnEntryThatIsNoLocalNameIsReported()
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", string.Empty);
+
+		_ = directory.Write(
+			".editorconfig",
+
+			MarkupFixtures.EditorConfig(
+				"[*.xml]\nstanza_markup_separated_elements = Separator , Gap\n"
+			)
+		);
+
+		MarkupConfiguration listed = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices listedNotices
+		);
+
+		Assert.AreEqual(
+			"Gap,Separator",
+			listed.GetOptions(path, MarkupProfiles.Xml).SeparatedElements?.ToString()
+		);
+
+		Assert.IsEmpty(listedNotices.Items);
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig("[*.xml]\nstanza_markup_separated_elements = Menu Item\n")
+		);
+
+		MarkupConfiguration misspelled = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices misspelledNotices
+		);
+
+		_ = misspelled.GetOptions(path, MarkupProfiles.Xml);
+
+		Assert.HasCount(1, misspelledNotices.Items);
+		Assert.Contains("'Menu Item'", misspelledNotices.Items[0].Message);
+	}
+
+	[TestMethod]
+	[DataRow("ui:Separator", "'ui'")]
+	[DataRow("Gap, x:Separator  # a comment", "'Gap, x'")]
+	public void APrefixedSeparatedElementIsReportedAsCutAtItsColon(string value, string read)
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", string.Empty);
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig($"[*.xml]\nstanza_markup_separated_elements = {value}\n")
+		);
+
+		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices notices
+		);
+
+		_ = configuration.GetOptions(path, MarkupProfiles.Xml);
+
+		Assert.HasCount(1, notices.Items);
+		Assert.Contains("holds a colon", notices.Items[0].Message);
+		Assert.Contains($"only {read} is read", notices.Items[0].Message);
+	}
+
+	[TestMethod]
+	[DataRow("none")]
+	[DataRow("")]
+	[DataRow(",")]
+	public void NoListOfSeparatedElementsIsReadFromNoneAnEmptyValueOrOnlySeparators(string value)
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", string.Empty);
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig($"[*.xml]\nstanza_markup_separated_elements = {value}\n")
+		);
+
+		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices notices
+		);
+
+		Assert.IsNull(configuration.GetOptions(path, MarkupProfiles.Xml).SeparatedElements);
+		Assert.IsEmpty(notices.Items);
 	}
 
 	[TestMethod]
@@ -213,7 +379,6 @@ public sealed class MarkupConfigurationKeyTests
 	[DataRow("stanza_doc_min_tail_words", 1000)]
 	[DataRow("stanza_doc_min_line_words", 1000)]
 	[DataRow("stanza_doc_max_overflow_columns", 1000)]
-	[DataRow("stanza_tab_width", 64)]
 	[DataRow("stanza_doc_indent_size", 64)]
 	[DataRow("tab_width", 64)]
 	[DataRow("indent_size", 64)]
@@ -314,6 +479,7 @@ public sealed class MarkupConfigurationKeyTests
 
 		Assert.HasCount(1, notices.Items);
 		Assert.Contains("stanza_doc_expnd", notices.Items[0].Message);
+		Assert.AreEqual(MarkupNoticeLevel.Warning, notices.Items[0].Level);
 	}
 
 	[TestMethod]
@@ -326,8 +492,8 @@ public sealed class MarkupConfigurationKeyTests
 			".editorconfig",
 
 			MarkupFixtures.EditorConfig(
-				"[*.xml]\nstanza_doc_expand = sections\nstanza_doc_indent_style = hanging\n"
-					+ "stanza_doc_indent_size = tab\nstanza_doc_max_line_length = 0\nstanza_doc_weak_tail_words = none\n"
+				"[*.xml]\nstanza_doc_block_elements = sections\nstanza_doc_text_indent = aligned\n"
+					+ "stanza_doc_indent_size = tab\nstanza_doc_max_line_length = 0\nstanza_doc_weak_line_end_words = none\n"
 			)
 		);
 
@@ -351,7 +517,8 @@ public sealed class MarkupConfigurationKeyTests
 			".editorconfig",
 
 			MarkupFixtures.EditorConfig(
-				"[*.xml]\nstanza_named_argument_count = bogus\nstanza_assertion_roots = Verify\n"
+				"[*.xml]\nstanza_named_argument_min_arguments = bogus\nstanza_assertion_roots = Verify\n"
+					+ "stanza_markup_literals = bogus\n"
 			)
 		);
 
@@ -363,6 +530,34 @@ public sealed class MarkupConfigurationKeyTests
 		_ = configuration.GetOptions(path, MarkupProfiles.Xml);
 
 		Assert.IsEmpty(notices.Items);
+	}
+
+	[TestMethod]
+	public void AMisspelledAnalyzerKeyIsReportedAsAWarning()
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", string.Empty);
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig("[*.xml]\nstanza_max_line_lenght = 120\n")
+		);
+
+		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices notices
+		);
+
+		_ = configuration.GetOptions(path, MarkupProfiles.Xml);
+
+		Assert.HasCount(1, notices.Items);
+
+		Assert.Contains(
+			"sets stanza_max_line_lenght to '120': not a key this tool reads, so it was ignored.",
+			notices.Items[0].Message
+		);
+
+		Assert.AreEqual(MarkupNoticeLevel.Warning, notices.Items[0].Level);
 	}
 
 	[TestMethod]
@@ -490,7 +685,6 @@ public sealed class MarkupConfigurationKeyTests
 
 		Assert.IsNull(configuration.ResolveReprintLayout(path));
 		Assert.HasCount(1, notices.Items);
-
 		Assert.Contains("neither 'members' nor 'off'", string.Join("\n", notices.Items));
 	}
 
@@ -549,7 +743,7 @@ public sealed class MarkupConfigurationKeyTests
 	}
 
 	[TestMethod]
-	public void AnAbsentIndentStyleKeepsTheTextNested()
+	public void AnAbsentTextIndentKeepsTheTextNested()
 	{
 		using TempDirectory directory = new();
 		string path = directory.Write("sample.xml", string.Empty);
@@ -568,5 +762,79 @@ public sealed class MarkupConfigurationKeyTests
 
 		Assert.IsNotNull(reprint);
 		Assert.IsTrue(reprint.Value.IndentText);
+	}
+
+	[TestMethod]
+	[DataRow(null, null, null, 100)]
+	[DataRow(null, null, "120", 120)]
+	[DataRow(null, null, "off", 100)]
+	[DataRow(null, null, "wide", 100)]
+	[DataRow(null, "90", "120", 90)]
+	[DataRow(null, "wide", "120", 120)]
+	[DataRow(null, "wide", "off", 100)]
+	[DataRow("70", "90", "120", 70)]
+	[DataRow("wide", "90", "120", 90)]
+	[DataRow("wide", null, "120", 120)]
+	public void TheReprintWidthFollowsTheLineLengthKeysInOrder(
+		string? docWidth,
+		string? width,
+		string? standardWidth,
+		int expected
+	)
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", string.Empty);
+
+		List<string> lines = ["[*.xml]", "stanza_markup_doc_reprint = members"];
+
+		if (docWidth is not null)
+			lines.Add($"stanza_doc_max_line_length = {docWidth}");
+
+		if (width is not null)
+			lines.Add($"stanza_max_line_length = {width}");
+
+		if (standardWidth is not null)
+			lines.Add($"max_line_length = {standardWidth}");
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig(string.Join("\n", lines) + "\n")
+		);
+
+		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out _
+		);
+
+		DocLayoutOptions? reprint = configuration.ResolveReprintLayout(path);
+
+		Assert.IsNotNull(reprint);
+		Assert.AreEqual(expected, reprint.Value.ContentWidth);
+	}
+
+	[TestMethod]
+	public void AnOffStandardWidthIsNotReportedButAnInvalidStanzaWidthIs()
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", string.Empty);
+
+		_ = directory.Write(
+			".editorconfig",
+
+			MarkupFixtures.EditorConfig(
+				"[*.xml]\nmax_line_length = off\nstanza_max_line_length = wide\n"
+			)
+		);
+
+		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices notices
+		);
+
+		_ = configuration.GetOptions(path, MarkupProfiles.Xml);
+
+		Assert.HasCount(1, notices.Items);
+		Assert.Contains("stanza_max_line_length", notices.Items[0].Message);
+		Assert.Contains("so the key is ignored", notices.Items[0].Message);
 	}
 }

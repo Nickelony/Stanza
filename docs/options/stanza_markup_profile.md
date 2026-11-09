@@ -2,7 +2,7 @@
 
 Controls the layout profile a markup file uses when extension-based selection is not enough.
 Default: the profile that claims the file's extension.
-Read by stanza-markup.
+Read by stanza-markup alone; the analyzer ignores it.
 
 | Value                    | Effect                                                                |
 | ------------------------ | --------------------------------------------------------------------- |

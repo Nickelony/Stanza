@@ -5,10 +5,6 @@ artifacts/
 *.nupkg
 *.snupkg
 
-# The site's installed packages and its build.
-site/node_modules/
-site/dist/
-
 # Test results and logs
 TestResults/
 *.trx
@@ -17,6 +13,7 @@ TestResults/
 
 # User-specific files
 .vs/
+.idea/
 *.user
 *.suo
 *.tmp
@@ -32,7 +29,6 @@ TestResults/
 # The maintainer's own notes and process, kept out of the repository.
 AGENTS.md
 BACKLOG.md
-RELEASING.md
 REVIEWING.md
 
 # Local tool state.

@@ -18,17 +18,17 @@ internal sealed class BodyCodeFixProvider : StanzaCodeFixProvider
 	private static readonly FixChanges s_blockBody = CreateBlockBodyAsync;
 
 	private static readonly FixChanges s_expressionBody = FromSync(
-		static (document, diagnostic, _) => CreateExpressionBody(document.Root, document.Text, diagnostic)
+		static (document, diagnostic) => CreateExpressionBody(document.Root, document.Text, diagnostic)
 	);
 
 	/// <summary>Each arrow rule knows its placement, so a bare diagnostic still moves the arrow.</summary>
 	private static readonly FixChanges s_trailingArrow = FromSync(
-		static (document, diagnostic, _) =>
+		static (document, diagnostic) =>
 			CreateArrowPlacement(root: document.Root, sourceText: document.Text, diagnostic, placement: ArrowPlacement.Trailing)
 	);
 
 	private static readonly FixChanges s_leadingArrow = FromSync(
-		static (document, diagnostic, _) =>
+		static (document, diagnostic) =>
 			CreateArrowPlacement(root: document.Root, sourceText: document.Text, diagnostic, placement: ArrowPlacement.Leading)
 	);
 
@@ -41,7 +41,7 @@ internal sealed class BodyCodeFixProvider : StanzaCodeFixProvider
 		FixRow.For(
 			DiagnosticDescriptors.BreakExpressionOffSignatureLine,
 			"Move the expression off the signature line",
-			FromSync(static (document, diagnostic, _) => CreateExpressionBreak(document.Root, document.Text, diagnostic))
+			FromSync(static (document, diagnostic) => CreateExpressionBreak(document.Root, document.Text, diagnostic))
 		),
 
 		FixRow.For(DiagnosticDescriptors.KeepArrowOnSignatureLine, "Move the arrow onto the signature line", s_trailingArrow),
@@ -79,16 +79,8 @@ internal sealed class BodyCodeFixProvider : StanzaCodeFixProvider
 
 	private static ImmutableArray<TextChange> CreateExpressionBody(SyntaxNode root, SourceText sourceText, Diagnostic diagnostic)
 	{
-		var options = FixOptions.Parse(diagnostic);
-
 		return BodyTargets.FindBlockTarget(root, diagnostic) is { } target
-			? BodyConversion.CreateExpressionBody(
-				sourceText,
-				target,
-				placement: options.Placement,
-				openOwnLine: options.OpensOwnLine,
-				indentStepColumns: options.IndentStepColumns
-			)
+			? BodyConversion.CreateExpressionBody(sourceText, target, FixOptions.Parse(diagnostic))
 			: [];
 	}
 

@@ -1,0 +1,22 @@
+# Hooks for pre-commit. pre-commit reads this file from the root of a repository,
+# so a project that installs nickelony-stanza from the Stanza repository declares them as local hooks, as docs/Configuration.md shows.
+- id: stanza-py-check
+  name: stanza-py check
+  description: Report the blank lines and argument names the Python Stanza rules ask for.
+  entry: stanza-py check
+  language: python
+  types: [python]
+
+- id: stanza-py-fix
+  name: stanza-py fix
+  description: Write the blank lines and argument names the Python Stanza rules ask for.
+  entry: stanza-py fix
+  language: python
+  types: [python]
+
+- id: stanza-py-format
+  name: stanza-py format
+  description: Run the formatter, then write the blank lines and argument names the Python Stanza rules ask for.
+  entry: stanza-py format
+  language: python
+  types: [python]

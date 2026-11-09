@@ -54,10 +54,10 @@ a machine-owned manifest such as `AnalyzerReleases.*.md`, and a JSON value, sinc
   from the wrap width to the element order and the closing period.
   `./format.ps1` applies them and the build reports what is left,
   so write the words and let the tooling settle the layout.
-- Mark a language keyword with `<see langword="..."/>`. `ZA0211` does it for `null`;
-  the other keywords are marked by hand. A bare `null` stays only where it is a wire term.
+- Mark a language keyword with `<see langword="..."/>`. `ZA0912` does it for `null` and for the keywords `stanza_doc_langwords` lists;
+  this repository lists none, so the other keywords are marked by hand. A bare `null` stays only where it is a wire term.
 - Documentation elements follow the order `DocElementOrder.ElementOrder` defines,
-  which [ZA0212](https://github.com/Nickelony/Stanza/wiki/ZA0212-Order-the-elements-of-a-documentation-comment) enforces.
+  which [ZA0913](https://github.com/Nickelony/Stanza/wiki/ZA0913-Order-the-elements-of-a-documentation-comment) enforces.
 - An `<exception>` names the condition as a fragment, never with "Thrown when".
 - A `cancellationToken` parameter reads "A token that can cancel the {operation}."
   An event reads "Raised when/after", and a protected hook the base invokes reads "Invoked when/after".
@@ -69,7 +69,7 @@ a machine-owned manifest such as `AnalyzerReleases.*.md`, and a JSON value, sinc
 - A test needs no XML doc; its name states what it checks.
   A fixture or guard a reader cannot infer from its name earns one line.
 - When a fact outgrows `<remarks>`, it moves to the page that owns it,
-  and the member keeps a one-line consequence and a link.
+  and the member keeps a single-line consequence and a link.
 
 ## Pages
 
@@ -113,7 +113,7 @@ so both link absolutely:
 ## READMEs
 
 A package readme is a front page, not a manual:
-a one-line summary, install, one or two runnable examples, then the few facts the signature does not carry.
+a single-line summary, install, one or two runnable examples, then the few facts the signature does not carry.
 Install and a first successful command come before any explanation.
 
 - Show the call instead of describing it.
@@ -136,7 +136,7 @@ Length is judgment, not a quota: write as short as the facts allow,
 and split a page that stops being a one-sitting read rather than trim a fact.
 A comment passage that needs a heading, a list or a second paragraph belongs on a page. The ceilings bound a single run:
 
-- An XML doc block is at most 4 `///` lines, so a one-line `<summary>` can carry a `<remarks>` sentence;
+- An XML doc block is at most 4 `///` lines, so a single-line `<summary>` can carry a `<remarks>` sentence;
   an inline comment run at most 4 `//` lines.
 - A paragraph outside fences, tables and lists, a list item and a sentence each have a word ceiling.
   The Vale rules `ParagraphLength`, `ListItemLength` and `SentenceLength` of `.vale/styles/Stanza` hold the numbers.

@@ -8,9 +8,7 @@ internal sealed class DocContent(List<DocBlock> blocks, MarkupSpan? firstParagra
 	public MarkupSpan? FirstParagraphBreak { get; } = firstParagraphBreak;
 	public bool SawBlankLine { get; } = sawBlankLine;
 	public bool HoldsUnmarkedBlankLine { get; } = holdsUnmarkedBlankLine;
-
 	public bool HoldsBlankLine => SawBlankLine || HoldsUnmarkedBlankLine;
 	public bool IsProseOnly => Blocks.Count == 1 && Blocks[0].IsProse;
-
 	public IReadOnlyList<DocParagraph> Paragraphs => Blocks[0].Paragraphs;
 }

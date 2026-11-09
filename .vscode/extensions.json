@@ -3,6 +3,8 @@
 		"ms-dotnettools.csdevkit",
 		"editorconfig.editorconfig",
 		"ms-vscode.powershell",
-		"csharpier.csharpier-vscode"
+		"csharpier.csharpier-vscode",
+		"esbenp.prettier-vscode",
+		"oxc.oxc-vscode"
 	]
 }

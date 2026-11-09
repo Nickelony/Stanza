@@ -11,7 +11,7 @@
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
 	</ItemGroup>
 
-	<!-- The analyzer compiles the markup engine into itself, all but `Formatting/`, which only the tools run; a new engine file or directory joins unless it is excluded here. -->
+	<!-- The analyzer compiles the markup engine into itself, all but `Formatting/`, which only `stanza-markup` runs; a new engine file or directory joins unless it is excluded here. -->
 	<ItemGroup>
 		<Compile
 			Include="..\Nickelony.Stanza.Markup.Core\**\*.cs"

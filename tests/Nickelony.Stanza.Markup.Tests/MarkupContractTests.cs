@@ -1,5 +1,3 @@
-extern alias stanza;
-
 using System;
 using System.IO;
 using System.Linq;
@@ -15,6 +13,8 @@ namespace Nickelony.Stanza.Markup.Tests;
 [TestCategory("Repository")]
 public sealed class MarkupContractTests
 {
+	private const string MarkupPrefix = "stanza_markup_";
+
 	[TestMethod]
 	public void EveryProfileAndExtensionIsNamedByTheBehaviorPage()
 	{
@@ -50,7 +50,7 @@ public sealed class MarkupContractTests
 	{
 		string[] keys =
 		[
-			.. typeof(MarkupKeys)
+			.. typeof(OptionKeys)
 				.GetFields(BindingFlags.Public | BindingFlags.Static)
 				.Where(field => field.IsLiteral)
 				.Select(field => field.GetRawConstantValue() as string)
@@ -60,7 +60,7 @@ public sealed class MarkupContractTests
 
 		Assert.IsNotEmpty(
 			keys,
-			"No markup key is found in MarkupKeys, so the check below would pass vacuously."
+			"No markup key is found in OptionKeys, so the check below would pass vacuously."
 		);
 
 		string[] rows =
@@ -83,11 +83,13 @@ public sealed class MarkupContractTests
 		}
 	}
 
+	// The analyzer alone reads which literals the markup rules see, so the tool's keys table leaves that key out.
 	private static bool IsMarkupKey(string? value)
 	{
 		return value is not null
-			&& value.Length > MarkupKeys.MarkupPrefix.Length
-			&& value.StartsWith(MarkupKeys.MarkupPrefix, StringComparison.Ordinal);
+			&& value.Length > MarkupPrefix.Length
+			&& value.StartsWith(MarkupPrefix, StringComparison.Ordinal)
+			&& value != OptionKeys.MarkupLiterals;
 	}
 
 	private static string BehaviorPath() => RepositoryPaths.Below("docs", "Markup-behavior.md");

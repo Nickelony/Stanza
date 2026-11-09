@@ -56,8 +56,8 @@ internal sealed class FormatRunner(string root, TextWriter output, TextWriter er
 		ImmutableArray<string> problems = step.Kind switch
 		{
 			FormatStepKind.SourceLayout => CollectSourceLayoutDrift(step),
-			FormatStepKind.LineEndings => FormatChecks.CollectWrongLineEndings(GitRepository.ReadLineEndings(root, cancellationToken)),
-			_ => FormatChecks.CollectMarkedFiles(GitRepository.ReadMarkedFiles(root, cancellationToken)),
+			FormatStepKind.LineEndings => CollectWrongLineEndings(step),
+			_ => FormatChecks.CollectMarkedFiles(GitRepository.ReadMarkedFiles(root, cancellationToken), step.Scope),
 		};
 
 		foreach (string problem in problems)
@@ -66,12 +66,21 @@ internal sealed class FormatRunner(string root, TextWriter output, TextWriter er
 		return problems.IsEmpty;
 	}
 
+	private ImmutableArray<string> CollectWrongLineEndings(FormatStep step)
+	{
+		string listing = GitRepository.ReadLineEndings(root, cancellationToken);
+		return FormatChecks.CollectWrongLineEndings(listing, step.Scope);
+	}
+
 	private bool TryRunCommands(FormatStep step)
 	{
 		for (int pass = 1; ; pass++)
 		{
 			string before = step.Watched.IsEmpty ? string.Empty : ReadFingerprint(step.Watched);
 
+			bool changed = false;
+
+			// A check goes on past a command that would change a file, so each command reports; a write run has no change code.
 			foreach (ImmutableArray<string> command in step.Commands)
 			{
 				output.WriteLine($"    {ToolHost.EscapeNonPrintingCharacters(BuildShownCommand(command))}");
@@ -81,9 +90,12 @@ internal sealed class FormatRunner(string root, TextWriter output, TextWriter er
 				if (result.ExitCode != 0)
 				{
 					output.WriteLine($"    The command exited with code {result.ExitCode}.");
-					return false;
+					changed = true;
 				}
 			}
+
+			if (changed)
+				return false;
 
 			if (step.Watched.IsEmpty || ReadFingerprint(step.Watched) == before)
 				return true;
@@ -103,26 +115,43 @@ internal sealed class FormatRunner(string root, TextWriter output, TextWriter er
 	/// </summary>
 	private ImmutableArray<string> CollectSourceLayoutDrift(FormatStep step)
 	{
-		ProcessResult check = RunStepCommand(step, step.Commands[0], echo: null);
+		// Each batch of files is a command, and the files checked add up.
+		List<string> drift = [];
+		List<string> unformatted = [];
 
-		CSharpierReport report = FormatChecks.ReadCSharpierReport(check.Output + "\n" + check.Error);
+		int checkedFiles = 0;
+		int exitCode = 0;
 
-		// CSharpier exits with the change code for a failure too, so a failure line ends the run.
-		ImmutableArray<string> failures = report.Failures;
+		bool summarized = true;
 
-		if (check.ExitCode != 0 && !failures.IsEmpty)
+		foreach (ImmutableArray<string> command in step.Commands)
 		{
-			string more = failures.Length > 1 ? $" (and {failures.Length - 1} more line(s))" : string.Empty;
-			throw new FormatRunException($"{step.Title} could not run, as CSharpier reported: {failures[0]}{more}");
+			ProcessResult check = RunStepCommand(step, command, echo: null);
+			CSharpierReport report = FormatChecks.ReadCSharpierReport(check.Output + "\n" + check.Error);
+
+			// CSharpier exits with the change code for a failure too, so a failure line ends the run.
+			ImmutableArray<string> failures = report.Failures;
+
+			if (check.ExitCode != 0 && !failures.IsEmpty)
+			{
+				string more = failures.Length > 1 ? $" (and {failures.Length - 1} more line(s))" : string.Empty;
+				throw new FormatRunException($"{step.Title} could not run, as CSharpier reported: {failures[0]}{more}");
+			}
+
+			drift.AddRange(report.Unknown);
+			unformatted.AddRange(report.Unformatted);
+
+			checkedFiles += Math.Max(report.CheckedFiles, 0);
+			exitCode = Math.Max(exitCode, check.ExitCode);
+			summarized &= report.CheckedFiles >= 0;
 		}
 
-		List<string> drift = [.. report.Unknown];
 		string workingDirectory = Path.GetFullPath(step.WorkingDirectory, root);
 
 		// A project file is compared exactly, as no rule pass writes one.
 		// A source starts a process of its own, and a formatted repository can have hundreds that differ only in blank lines.
 		ImmutableArray<bool> drifts = ProcessRunner.RunEach(
-			report.Unformatted,
+			[.. unformatted],
 			path => !FormatPlanner.IsSource(path) || DriftsFromCSharpier(step, path, workingDirectory),
 			cancellationToken
 		);
@@ -130,12 +159,12 @@ internal sealed class FormatRunner(string root, TextWriter output, TextWriter er
 		for (int index = 0; index < drifts.Length; index++)
 		{
 			if (drifts[index])
-				drift.Add(RepositoryPath.ToRelative(root, Path.GetFullPath(report.Unformatted[index], workingDirectory)));
+				drift.Add(SlashPath.ToRelative(root, Path.GetFullPath(unformatted[index], workingDirectory)));
 		}
 
-		// A check of no file is not a check.
-		if (report.CheckedFiles <= 0)
-			drift.Add($"CSharpier checked no file (exit code {check.ExitCode}).");
+		// A check of no file is not a check, but CSharpier ignores a file a scoped check names, and says so in its summary.
+		if (!summarized || (checkedFiles == 0 && step.Scope.IsDefault))
+			drift.Add($"CSharpier checked no file (exit code {exitCode}).");
 
 		return [.. drift];
 	}

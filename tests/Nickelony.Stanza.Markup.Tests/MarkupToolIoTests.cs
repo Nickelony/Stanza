@@ -222,7 +222,6 @@ public sealed class MarkupToolIoTests
 
 			Assert.AreEqual(0, relaxed.ExitCode);
 			Assert.Contains("could not be read", relaxed.Error);
-
 			Assert.AreEqual(2, Run(directory, "check", "--strict", "hidden.xml").ExitCode);
 		}
 		finally
@@ -377,6 +376,7 @@ public sealed class MarkupToolIoTests
 	public void AFileWithAnUnsupportedEncodingIsLeftAlone()
 	{
 		using TempDirectory directory = new();
+
 		string path = directory.Write("legacy.xml", LineFeed(Legacy));
 		byte[] before = File.ReadAllBytes(path);
 
@@ -395,6 +395,7 @@ public sealed class MarkupToolIoTests
 	public void ACheckJudgesAFileWithAnUnsupportedEncoding()
 	{
 		using TempDirectory directory = new();
+
 		_ = directory.Write("legacy.xml", LineFeed(LegacySeparated));
 		_ = directory.Write("dirty.xml", LineFeed(Legacy));
 
@@ -407,6 +408,7 @@ public sealed class MarkupToolIoTests
 	public void AFormatRefusesAnUnsupportedEncodingOnlyForAFileItWouldWrite()
 	{
 		using TempDirectory directory = new();
+
 		string path = directory.Write("legacy.xml", LineFeed(LegacySeparated));
 		byte[] before = File.ReadAllBytes(path);
 
@@ -421,6 +423,7 @@ public sealed class MarkupToolIoTests
 	public void AFileThatNamesASingleByteCodePageIsFormattedInIt()
 	{
 		using TempDirectory directory = new();
+
 		string path = directory.Write("legacy.xml", string.Empty);
 		Encoding latin1 = Encoding.Latin1;
 

@@ -15,6 +15,11 @@ internal sealed class FormatTool(TextWriter output, TextWriter error, string wor
 	/// <summary>A run names this many skipped sources, so one line stays short when a tree holds hundreds.</summary>
 	private const int MaxNamedSkippedSources = 5;
 
+	private const string ToolName = "stanza-format";
+	private const string NothingToFormat = "No changed source, project or markup file to format.";
+	private const string FormattingFinished = "Formatting finished. Review the changes and commit them.";
+	private const string NotSettled = "https://github.com/Nickelony/Stanza/wiki/Troubleshooting#stanza-format-says-the-run-did-not-settle";
+
 	public static int Run(
 		string[] args,
 		TextWriter output,
@@ -40,25 +45,23 @@ internal sealed class FormatTool(TextWriter output, TextWriter error, string wor
 	{
 		// An unreadable option is reported before --help or --version, so a typo cannot pass for either.
 		if (!FormatCommandLine.TryParse(args, out FormatCommandLine? commandLine, out string? parseError))
-			return Fail(parseError);
+			return ToolHost.FailUsage(ToolName, parseError, error);
 
-		if (commandLine.Help)
-		{
-			output.WriteLine(FormatCommandLine.Usage);
-			return 0;
-		}
+		bool answered = ToolHost.TryAnswerInformation(
+			help: commandLine.Help,
+			version: commandLine.Version,
+			usage: FormatCommandLine.Usage,
+			assembly: typeof(FormatTool).Assembly,
+			output
+		);
 
-		if (commandLine.Version)
-		{
-			output.WriteLine(ToolHost.GetVersion(typeof(FormatTool).Assembly));
+		if (answered)
 			return 0;
-		}
 
 		FormatOptions options = commandLine.Options;
 
 		string solution = ResolveSolution(options.Path);
 		string solutionDirectory = Path.GetDirectoryName(solution) ?? workingDirectory;
-
 		string root = GitRepository.ReadRoot(solutionDirectory, cancellationToken);
 
 		// The manifest decides the layout, so a run refuses a layout it cannot use before it reads the changes.
@@ -72,18 +75,15 @@ internal sealed class FormatTool(TextWriter output, TextWriter error, string wor
 		{
 			throw new FormatRunException(
 				$"the tool manifest pins CSharpier {manifest.CSharpierVersion}, "
-					+ "but stanza-format needs CSharpier 1.0 or later. "
+					+ "but stanza-format needs CSharpier 1.1 or later. "
 					+ "Update it with 'dotnet tool update csharpier', or pass '--layout whitespace'."
 			);
 		}
 
-		FormatFacts facts = ReadFacts(options, root, solution: RepositoryPath.ToRelative(root, solution), manifest);
+		FormatFacts facts = ReadFacts(options, root, solution: SlashPath.ToRelative(root, solution), manifest);
 		ImmutableArray<FormatStep> steps = FormatPlanner.Plan(options, facts, layout);
 
-		string scope =
-			options.Check ? "Check the whole solution"
-			: options.All ? "Format the whole solution"
-			: $"Format {facts.ChangedFiles.Length} changed file(s)";
+		string scope = DescribeScope(options, facts.ChangedFiles.Length);
 
 		output.WriteLine(
 			$"==> {scope} of {ToolHost.EscapeNonPrintingCharacters(facts.Solution)}, laid out by {layout.ToString().ToLowerInvariant()}"
@@ -94,24 +94,92 @@ internal sealed class FormatTool(TextWriter output, TextWriter error, string wor
 
 		if (steps.IsEmpty)
 		{
-			output.WriteLine("No changed source, project or markup file to format.");
+			output.WriteLine(NothingToFormat);
 			return 0;
 		}
 
 		FormatRunner runner = new(root, output, error, cancellationToken);
 		ImmutableArray<FormatStep> failed = runner.Run(steps, options.Check);
 
+		// A write run of the marker step alone formatted nothing, so it does not ask for a review of its changes.
+		if (failed.IsEmpty && !options.Check && steps.All(static step => step.Kind == FormatStepKind.Markers))
+		{
+			output.WriteLine(NothingToFormat);
+			return 0;
+		}
+
+		if (failed.IsEmpty && !options.Check)
+			return CheckSettled(runner, FormatPlanner.PlanSettleCheck(options, facts, layout));
+
 		ReportOutcome(failed, options);
 
 		return GetExitCode(failed, options.Check);
 	}
 
+	/// <summary>Checks the files a write run formatted, as two passes that undo each other never settle.</summary>
+	private int CheckSettled(FormatRunner runner, ImmutableArray<FormatStep> checks)
+	{
+		output.WriteLine();
+		output.WriteLine("Checking the formatted files, so a run that did not settle says so.");
+
+		ImmutableArray<FormatStep> unsettled = runner.Run(checks, check: true);
+
+		output.WriteLine();
+
+		if (unsettled.IsEmpty)
+		{
+			output.WriteLine(FormattingFinished);
+			return 0;
+		}
+
+		error.WriteLine($"{ToolHost.ErrorPrefix}the run did not settle, as a check of the files it formatted still finds work in these steps:");
+
+		foreach (FormatStep step in unsettled)
+			error.WriteLine($"  - {step.Title}");
+
+		foreach (string fix in unsettled.Select(static step => ToSettleFix(step.Kind)).Distinct(StringComparer.Ordinal))
+			error.WriteLine(fix);
+
+		return ToolHost.NeedsFormattingExitCode;
+	}
+
+	/// <summary>A write run applied every fix, so a check finds a fix by hand or a pair that disagrees.</summary>
+	private static string ToSettleFix(FormatStepKind kind)
+	{
+		return kind switch
+		{
+			FormatStepKind.Diagnostics => "Fix by hand each diagnostic the check printed, or set its severity below info; "
+				+ $"one the run fixed means a rule and the layout disagree: {NotSettled}",
+
+			FormatStepKind.Markup => "Fix by hand each markup warning or defect the check printed.",
+			_ => $"A rule's fix undid the layout, so the rule and the layout disagree: {NotSettled}",
+		};
+	}
+
+	private static string DescribeScope(FormatOptions options, int changedFiles)
+	{
+		string verb = options.Check ? "Check" : "Format";
+
+		if (options.Since is not null)
+			return $"{verb} {changedFiles} file(s) changed since {ToolHost.EscapeNonPrintingCharacters(options.Since)}";
+
+		if (options.Check || options.All)
+			return $"{verb} the whole solution";
+
+		return $"Format {changedFiles} changed file(s)";
+	}
+
 	private FormatFacts ReadFacts(FormatOptions options, string root, string solution, ToolManifest manifest)
 	{
-		ImmutableArray<string> changed = options.All || options.Check ? [] : GitRepository.CollectChangedFiles(root, cancellationToken);
+		ImmutableArray<string> changed = options switch
+		{
+			{ Since: { } since } => GitRepository.CollectChangedFilesSince(root, since, cancellationToken),
+			{ All: true } or { Check: true } => [],
+			_ => GitRepository.CollectChangedFiles(root, cancellationToken),
+		};
 
-		// A check reads the solution whole, and a run with no changed source formats no project, so neither needs the projects' files.
-		bool readsProjects = !options.Check && (options.All || changed.Any(FormatPlanner.IsSource));
+		// A whole check reads the solution whole, and a run with no changed source formats no project, so neither needs the projects' files.
+		bool readsProjects = (options.Since is not null || !options.Check) && (options.All || changed.Any(FormatPlanner.IsSource));
 		ImmutableArray<CompiledFile> compiled = readsProjects ? CompileItems.Collect(root, solution, cancellationToken) : [];
 		ImmutableArray<string> inScope = FormatPlanner.CollectChangedFilesInScope(solution, changed, compiled);
 
@@ -121,7 +189,10 @@ internal sealed class FormatTool(TextWriter output, TextWriter error, string wor
 			ChangedFiles: inScope,
 			SkippedSources: FormatPlanner.CollectSkippedSources(changed, inScope),
 			CompiledFiles: compiled
-		);
+		)
+		{
+			ScopedFiles = options.All || (options.Check && options.Since is null) ? default : changed,
+		};
 	}
 
 	/// <summary>Names the first few sources a default run leaves out, so a run that formats none says why.</summary>
@@ -168,7 +239,8 @@ internal sealed class FormatTool(TextWriter output, TextWriter error, string wor
 
 		if (failed.IsEmpty)
 		{
-			output.WriteLine(options.Check ? "The working tree is formatted." : "Formatting finished. Review the changes and commit them.");
+			// Only a check passes here, as a write run that ran every step ends with the settle check.
+			output.WriteLine("The working tree is formatted.");
 			return;
 		}
 
@@ -215,7 +287,9 @@ internal sealed class FormatTool(TextWriter output, TextWriter error, string wor
 			: options.Path.StartsWith('-') ? $" -- {BuildShownArgument(options.Path)}"
 			: $" {BuildShownArgument(options.Path)}";
 
-		return $"stanza-format --all{layout}{path}";
+		string scope = options.Since is { } since ? $"--since {BuildShownArgument(since)}" : "--all";
+
+		return $"stanza-format {scope}{layout}{path}";
 	}
 
 	private static string BuildShownArgument(string argument) =>
@@ -227,13 +301,5 @@ internal sealed class FormatTool(TextWriter output, TextWriter error, string wor
 			return 0;
 
 		return check ? ToolHost.NeedsFormattingExitCode : ToolHost.FailedExitCode;
-	}
-
-	private int Fail(string message)
-	{
-		error.WriteLine($"{ToolHost.ErrorPrefix}{ToolHost.ToReportLine(message)}");
-		error.WriteLine("Run 'stanza-format --help' for the usage.");
-
-		return ToolHost.FailedExitCode;
 	}
 }

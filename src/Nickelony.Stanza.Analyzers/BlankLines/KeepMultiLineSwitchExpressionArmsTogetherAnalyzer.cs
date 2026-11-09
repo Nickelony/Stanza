@@ -5,4 +5,4 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class KeepMultiLineSwitchExpressionArmsTogetherAnalyzer()
-	: KeepMultiLineSiblingsTogetherAnalyzer(StanzaRules.KeepMultiLineSwitchExpressionArmsTogether);
+	: RemovableMultiLineGapAnalyzer(StanzaRules.KeepMultiLineSwitchExpressionArmsTogether);

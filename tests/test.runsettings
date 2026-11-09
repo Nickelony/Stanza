@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The runner stops a test that outlasts TestTimeout, so a loop that never ends fails its own test and not the job. -->
-<!-- Keep it well above the slowest test, which the Format tests run for tens of seconds. -->
+<!-- Keep it above the slowest test, a convergence matrix that runs for minutes beside the rest of the suite. -->
 <RunSettings>
 	<MSTest>
 		<TestTimeout>300000</TestTimeout>

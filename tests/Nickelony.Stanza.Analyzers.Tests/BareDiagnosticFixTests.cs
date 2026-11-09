@@ -1,8 +1,10 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.Arguments;
 using Nickelony.Stanza.Analyzers.BlankLines;
@@ -10,6 +12,7 @@ using Nickelony.Stanza.Analyzers.Bodies;
 using Nickelony.Stanza.Analyzers.Braces;
 using Nickelony.Stanza.Analyzers.Documentation;
 using Nickelony.Stanza.Analyzers.MarkupLiterals;
+using Nickelony.Stanza.Analyzers.Regions;
 using Nickelony.Stanza.Tests.Shared;
 
 namespace Nickelony.Stanza.Analyzers.Tests;
@@ -205,6 +208,24 @@ public sealed class BareDiagnosticFixTests
 		],
 
 		[
+			"the extra blank lines rule",
+			new CollapseExtraBlankLinesAnalyzer(),
+			OffersAFix,
+			null,
+
+			"""
+				class C
+				{
+					int first;
+
+
+
+					int second;
+				}
+				""",
+		],
+
+		[
 			"the loose run rule",
 			new GatherRunOfLooseStatementsAnalyzer(),
 			OffersNoFix,
@@ -225,6 +246,61 @@ public sealed class BareDiagnosticFixTests
 
 						fourth = 4;
 					}
+				}
+				""",
+		],
+
+		[
+			"the loose member run rule",
+			new GatherRunOfLooseMembersAnalyzer(),
+			OffersNoFix,
+			null,
+
+			"""
+				class C
+				{
+					int first;
+
+					int second;
+
+					int third;
+
+					int fourth;
+				}
+				""",
+		],
+
+		[
+			"the statement keep rule",
+			new KeepRunOfStatementsTogetherAnalyzer(),
+			OffersNoFix,
+			null,
+
+			"""
+				class C
+				{
+					void M()
+					{
+						int first = 1;
+
+						int second = 2;
+					}
+				}
+				""",
+		],
+
+		[
+			"the member keep rule",
+			new KeepRunOfMembersTogetherAnalyzer(),
+			OffersNoFix,
+			null,
+
+			"""
+				class C
+				{
+					int first;
+
+					int second;
 				}
 				""",
 		],
@@ -300,11 +376,11 @@ public sealed class BareDiagnosticFixTests
 			""";
 
 		AnalyzerRunResult result =
-			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<MarkNullKeywordAnalyzer>(
+			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<MarkLanguageKeywordsAnalyzer>(
 				source,
 
 				TestRuleSets.Only(
-					DiagnosticDescriptors.MarkNullKeyword,
+					DiagnosticDescriptors.MarkLanguageKeywords,
 					DiagnosticDescriptors.SeparateSlashOfSelfClosingTag
 				)
 			);
@@ -853,6 +929,198 @@ public sealed class BareDiagnosticFixTests
 			);
 
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	[CrossCutting]
+	public async Task TheRegionMarkerRuleAddsTheBlankLineBelowTheEndMarkerWithoutTheChange()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+				#region Fields
+
+				private int _count;
+				#endregion
+
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+				#region Fields
+
+				private int _count;
+
+				#endregion
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(
+				source,
+				Only(DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors)
+			);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	[CrossCutting]
+	public async Task TheConditionalBlockRuleAddsTheBlankLineBelowTheEndifWithoutTheChange()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+				#if TRACE
+				private int _trace;
+				#endif
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+				#if TRACE
+				private int _trace;
+				#endif
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				Only(DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors)
+			);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	[CrossCutting]
+	public async Task TheRegionNameRuleWritesTheNameOfTheMarkerWithoutTheChange()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				#region Fields
+				private int _count;
+				#endregion
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				#region Fields
+				private int _count;
+				#endregion Fields
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<NameClosingRegionDirectiveAnalyzer>(
+				source,
+				Only(DiagnosticDescriptors.NameClosingRegionDirective)
+			);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	[CrossCutting]
+	public async Task TheConditionalNameRuleNamesOnlyTheEndifItReportsWithoutTheChange()
+	{
+		string fields = string.Concat(
+			Enumerable.Range(0, 10).Select(static index => $"\tprivate int _field{index};\n")
+		);
+
+		string shortFields = string.Concat(
+			Enumerable.Range(0, 9).Select(static index => $"\tprivate int _field{index};\n")
+		);
+
+		string source =
+			$"internal sealed class Sample\n{{\n#if SHORT\n{shortFields}#endif\n\n#if LONG\n{fields}#endif\n}}\n";
+
+		string fixedSource =
+			$"internal sealed class Sample\n{{\n#if SHORT\n{shortFields}#endif\n\n#if LONG\n{fields}#endif // LONG\n}}\n";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<NameClosingConditionalDirectiveAnalyzer>(
+				source,
+				Only(DiagnosticDescriptors.NameClosingConditionalDirective)
+			);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	[CrossCutting]
+	public async Task TheEmptyRegionRuleRemovesTheRegionWithoutTheChange()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+				#region Fields
+				#endregion
+
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<RemoveEmptyRegionsAnalyzer>(
+				source,
+				Only(DiagnosticDescriptors.RemoveEmptyRegions)
+			);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	[DataRow("1", 1)]
+	[DataRow("many", 0)]
+	[DataRow("", 0)]
+	[DataRow("-1", 0)]
+	[DataRow("1.5", 0)]
+	public async Task OnlyAKeptBlankLinesPropertyThatIsANumberOffersTheFix(string kept, int fixes)
+	{
+		const string source = "<a>\n\n\n\n<b />\n</a>";
+
+		int offered = await RoslynTestHarness.CountOfferedFixesAsync(
+			source,
+			descriptor: DiagnosticDescriptors.KeepMultiLineMarkupElementsTogether,
+			span: new TextSpan(source.IndexOf("<b", System.StringComparison.Ordinal), 2),
+			properties: ImmutableDictionary<string, string?>.Empty.Add("keptBlankLines", kept)
+		);
+
+		Assert.AreEqual(fixes, offered, $"A kept count of '{kept}' offers {offered} fixes.");
 	}
 
 	private static IReadOnlyDictionary<string, ReportDiagnostic> Only(

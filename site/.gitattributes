@@ -1,0 +1,5 @@
+# The site's sources are built by Node on every platform, so they keep one ending.
+* text eol=lf
+
+# The `*` above beats the root `.gitattributes`, so its binary line is repeated here.
+*.png binary

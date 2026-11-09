@@ -91,45 +91,42 @@ internal static class ArgumentEdits
 		// A comment keeps its place, and the colon takes one space beside it with it,
 		// so the comment ends up beside what stood before the name rather than a space away from it.
 		TextSpan colon = nameColon.ColonToken.Span;
+		TextSpan name = FindNameRemoval(sourceText, nameColon, out bool endsOnDirective);
 
-		TextSpan colonRemoval = gapIsWhitespace
-			? ReadSpanThroughPrecedingSpaces(sourceText, colon, limit: nameColon.Name.Span.End)
-			: ReadSpanThroughFollowingSpaces(sourceText, colon, limit: contentStart);
+		TextSpan colonRemoval =
+			gapIsWhitespace && !endsOnDirective
+				? ReadSpanThroughPrecedingSpaces(sourceText, colon, limit: nameColon.Name.Span.End)
+				: ReadSpanThroughFollowingSpaces(sourceText, colon, limit: contentStart);
 
-		return
-		[
-			new TextChange(
-				TextSpan.FromBounds(
-					nameColon.Name.SpanStart,
-					StanzaText.SkipWhitespace(sourceText, nameColon.Name.Span.End, nameColon.ColonToken.SpanStart)
-				),
-
-				string.Empty
-			),
-
-			new TextChange(colonRemoval, string.Empty),
-		];
+		return [new TextChange(name, string.Empty), new TextChange(colonRemoval, string.Empty)];
 	}
 
-	private static TextSpan ReadSpanThroughFollowingSpaces(SourceText sourceText, TextSpan span, int limit)
+	/// <summary>Finds the name and the whitespace after it, up to a directive that has to keep its own line.</summary>
+	private static TextSpan FindNameRemoval(SourceText sourceText, NameColonSyntax nameColon, out bool endsOnDirective)
 	{
-		int end = span.End;
+		SyntaxToken name = nameColon.Name.Identifier;
+		int end = StanzaText.SkipWhitespace(sourceText, name.Span.End, nameColon.ColonToken.SpanStart);
 
-		while (end < limit && sourceText[end] is ' ' or '\t')
-			end++;
+		// A directive starts its line, so the line break before it has to stay, or it would join the text before the name.
+		endsOnDirective = end < nameColon.ColonToken.SpanStart && sourceText[end] == '#';
 
-		return TextSpan.FromBounds(span.Start, end);
+		if (!endsOnDirective)
+			return TextSpan.FromBounds(name.SpanStart, end);
+
+		TextLine directiveLine = sourceText.Lines.GetLineFromPosition(end);
+		TextLine nameLine = sourceText.Lines.GetLineFromPosition(name.SpanStart);
+
+		// A name that stands alone on its line takes the line with it; one that follows other text leaves the line break.
+		return StanzaText.StartsItsLine(sourceText, name.SpanStart)
+			? TextSpan.FromBounds(nameLine.Start, directiveLine.Start)
+			: TextSpan.FromBounds(name.SpanStart, sourceText.Lines[directiveLine.LineNumber - 1].End);
 	}
 
-	private static TextSpan ReadSpanThroughPrecedingSpaces(SourceText sourceText, TextSpan span, int limit)
-	{
-		int start = span.Start;
+	private static TextSpan ReadSpanThroughFollowingSpaces(SourceText sourceText, TextSpan span, int limit) =>
+		TextSpan.FromBounds(span.Start, StanzaText.SkipBlanksForward(sourceText, span.End, limit));
 
-		while (start > limit && sourceText[start - 1] is ' ' or '\t')
-			start--;
-
-		return TextSpan.FromBounds(start, span.End);
-	}
+	private static TextSpan ReadSpanThroughPrecedingSpaces(SourceText sourceText, TextSpan span, int limit) =>
+		TextSpan.FromBounds(StanzaText.SkipBlanksBackward(sourceText, span.Start, limit), span.End);
 
 	private static string FormatName(string name) => $"{ArgumentBinding.EscapeName(name)}: ";
 }

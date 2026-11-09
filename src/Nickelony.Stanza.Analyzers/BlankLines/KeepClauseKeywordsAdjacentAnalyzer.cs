@@ -7,5 +7,5 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 internal sealed class KeepClauseKeywordsAdjacentAnalyzer() : ClauseKeywordGapAnalyzer(StanzaRules.KeepClauseKeywordsAdjacent)
 {
 	protected override void ReportGap(SyntaxNodeAnalysisContext context, SyntaxToken keyword, SyntaxToken brace) =>
-		BlankLineRemoval.ReportRemovableBlankLine(context, anchor: keyword, neighbor: brace, rule: Rule);
+		RemovableBlankLineAnalysis.ReportRemovableBlankLine(context, anchor: keyword, neighbor: brace, rule: Rule);
 }

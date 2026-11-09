@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Nickelony.Stanza.Shared;
 
 namespace Nickelony.Stanza.Format.Running;
 
@@ -58,8 +59,10 @@ internal static partial class FormatChecks
 	/// <summary>
 	/// Skips a binary file, one whose attributes pin no ending, one with no line break, and one the working tree lacks.
 	/// </summary>
-	public static ImmutableArray<string> CollectWrongLineEndings(string listing)
+	public static ImmutableArray<string> CollectWrongLineEndings(string listing, ImmutableArray<string> scope = default)
 	{
+		HashSet<string>? scoped = ToSet(scope);
+
 		// Each entry ends with a NUL character, and only the text before its tab is read, as a path may hold anything.
 		return
 		[
@@ -70,12 +73,21 @@ internal static partial class FormatChecks
 			let written = endings.Groups["written"].Value
 			where pinned.Success && endings.Groups["index"].Value != "-text" && written is not ("" or "none" or "-text")
 			where written != pinned.Groups["ending"].Value
+			where scoped is null || (line.Length > meta.Length && scoped.Contains(line[(meta.Length + 1)..]))
 			select line,
 		];
 	}
 
 	/// <summary>Reads the files <see cref="GitRepository.ReadMarkedFiles"/> named.</summary>
-	public static ImmutableArray<string> CollectMarkedFiles(string output) => [.. GitRepository.ReadPaths(output)];
+	public static ImmutableArray<string> CollectMarkedFiles(string output, ImmutableArray<string> scope = default)
+	{
+		HashSet<string>? scoped = ToSet(scope);
+		return [.. GitRepository.ReadPaths(output).Where(path => scoped is null || scoped.Contains(path))];
+	}
+
+	/// <summary>A scope that was never set holds every file, which a <see langword="null"/> set stands for.</summary>
+	private static HashSet<string>? ToSet(ImmutableArray<string> scope) =>
+		scope.IsDefault ? null : new HashSet<string>(scope, PathComparison.Comparer);
 
 	/// <summary>Reads the lines that are not empty, and the runs of empty lines that a match compares.</summary>
 	private static List<string> ReadLayout(string text)

@@ -66,7 +66,6 @@ public sealed class AnalyzerBoilerplateTests
 	{
 		public bool ConfiguredGeneratedCode { get; private set; }
 		public bool EnabledConcurrency { get; private set; }
-
 		public GeneratedCodeAnalysisFlags GeneratedCodeFlags { get; private set; }
 
 		public override void ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags analysisMode)

@@ -1,15 +1,18 @@
 using System;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Nickelony.Stanza.Analyzers;
 
-/// <summary>Decides whether a rule is off at a place, and which half of a pair owns the gap they share.</summary>
+/// <summary>
+/// Decides whether a rule is off at a place, and which half of a pair owns the gap or construct they share.
+/// </summary>
 internal static class StanzaRuleState
 {
 	/// <summary>
 	/// A rule's own severity beats the bulk keys, and <see cref="ReportDiagnostic.Default"/> keeps its shipped state.
 	/// </summary>
-	public static bool IsRuleOff(RuleScope scope, StanzaOptions options, StanzaRule rule)
+	public static bool IsRuleDisabled(RuleScope scope, StanzaOptions options, StanzaRule rule)
 	{
 		string ruleId = rule.Descriptor.Id;
 
@@ -18,7 +21,7 @@ internal static class StanzaRuleState
 		{
 			ReportDiagnostic.Default => !rule.Descriptor.IsEnabledByDefault,
 			{ } severity => severity == ReportDiagnostic.Suppress,
-			null => options.RulesOffUnlessEnabled.Contains(ruleId),
+			null => options.RulesDisabledUnlessEnabled.Contains(ruleId),
 		};
 	}
 
@@ -63,7 +66,7 @@ internal static class StanzaRuleState
 
 	public static bool IsOffAt(RuleScope scope, StanzaOptions options, StanzaRule rule, int position)
 	{
-		return IsRuleOff(scope, options, rule)
+		return IsRuleDisabled(scope, options, rule)
 			|| StanzaPragmas.IsSilencedByPragma(
 				syntaxTree: scope.Tree,
 				ruleId: rule.Descriptor.Id,
@@ -72,19 +75,36 @@ internal static class StanzaRuleState
 			);
 	}
 
+	/// <summary>
+	/// The entry of the target the rule defers to, or <see langword="null"/> when the target judges no such container.
+	/// </summary>
+	public static StanzaRule? FindJudgingDeferral(StanzaRule rule, DiagnosticDescriptor target, SyntaxKind containerKind) =>
+		rule.Defers(target) && StanzaRules.Get(target) is { } deferral && deferral.Kinds.Contains(containerKind) ? deferral : null;
+
+	/// <summary>Whether the rule defers to the target and the target is on.</summary>
+	public static bool IsDeferralOn(RuleScope scope, StanzaOptions options, StanzaRule rule, DiagnosticDescriptor target) =>
+		rule.Defers(target) && !IsRuleDisabled(scope, options, rule: StanzaRules.Get(target));
+
+	/// <summary>Whether the rule defers to the target and the target is on at the position.</summary>
+	public static bool IsDeferralOnAt(RuleScope scope, StanzaOptions options, StanzaRule rule, DiagnosticDescriptor target, int position) =>
+		rule.Defers(target) && !IsOffAt(scope, options, rule: StanzaRules.Get(target), position);
+
+	/// <summary>Whether the target is on at the position, or throws when the rule's entry omits it.</summary>
+	public static bool IsRequiredDeferralOnAt(RuleScope scope, StanzaOptions options, StanzaRule rule, DiagnosticDescriptor target, int position) =>
+		!IsOffAt(scope, options, rule: rule.GetDeferral(target), position);
+
 	public static bool IsEnabledByConfig(RuleScope scope, StanzaRule rule)
 	{
 		return ReadConfiguredSeverity(scope, rule.Descriptor.Id) is { } severity
 			&& severity is not ReportDiagnostic.Suppress and not ReportDiagnostic.Default;
 	}
 
-	public static bool ReportsTheSharedGap(RuleScope scope, StanzaOptions options, StanzaRule rule, int position) =>
-		OwnsTheSharedGap(scope, options, rule, position) && !IsOffAt(scope, options, rule, position);
+	/// <summary>Whether <paramref name="rule"/> is the owning half and no pragma silences it there.</summary>
+	public static bool IsTheReportingHalf(RuleScope scope, StanzaOptions options, StanzaRule rule, int position) =>
+		IsTheOwningHalf(scope, options, rule, position) && !IsOffAt(scope, options, rule, position);
 
-	/// <summary>
-	/// Whether <paramref name="rule"/> owns the gap it shares with its pair, so only one half reports it.
-	/// </summary>
-	public static bool OwnsTheSharedGap(RuleScope scope, StanzaOptions options, StanzaRule rule, int position)
+	/// <summary>Whether <paramref name="rule"/> owns the gap or construct its pair judges.</summary>
+	public static bool IsTheOwningHalf(RuleScope scope, StanzaOptions options, StanzaRule rule, int position)
 	{
 		if (rule.Pair is not { } pair)
 			return true;

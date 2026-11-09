@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.IO;
+using Nickelony.Stanza.Markup.Core;
 using Nickelony.Stanza.Markup.Core.Formatting;
 using Nickelony.Stanza.Markup.Notices;
 
@@ -9,13 +10,25 @@ namespace Nickelony.Stanza.Markup.Cli;
 internal abstract class MarkupReporter(TextWriter output, TextWriter error)
 {
 	protected TextWriter Output { get; } = output;
-
 	protected TextWriter Error { get; } = error;
 
 	/// <summary>Whether the run ends with a count line; a shape a machine reads has none.</summary>
 	public abstract bool WritesSummary { get; }
 
 	public abstract void ReportFailure(string displayPath, string message, int? line, int? column, bool isError);
+
+	/// <summary>Reports why a document was not laid out; a defect is an error in every mode.</summary>
+	public void ReportFailure(string displayPath, MarkupFailure failure, bool isDefect, bool strict)
+	{
+		// A document the layout rejects is softened by the mode.
+		ReportFailure(
+			displayPath,
+			message: isDefect ? $"produced {failure.Reason}, so it was left alone." : $"could not be laid out: {failure.Reason}",
+			line: failure.Line,
+			column: failure.Column,
+			isError: strict || isDefect
+		);
+	}
 
 	public abstract void ReportChanged(string displayPath, ImmutableArray<MarkupEdit> edits, bool write);
 

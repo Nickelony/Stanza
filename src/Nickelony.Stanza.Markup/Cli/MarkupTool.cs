@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading;
 using Nickelony.Stanza.Markup.Collection;
 using Nickelony.Stanza.Markup.Configuration;
-using Nickelony.Stanza.Markup.Core;
 using Nickelony.Stanza.Markup.Core.Formatting;
 using Nickelony.Stanza.Markup.Files;
 using Nickelony.Stanza.Markup.Notices;
@@ -18,6 +17,8 @@ namespace Nickelony.Stanza.Markup.Cli;
 /// <summary>Runs a <c>stanza-markup</c> command over the files its paths select, and reports each outcome.</summary>
 internal sealed class MarkupTool(TextWriter output, TextWriter error, string workingDirectory, CancellationToken cancellationToken)
 {
+	private const string ToolName = "stanza-markup";
+
 	private readonly MarkupPaths _paths = new(workingDirectory);
 
 	public static int Run(
@@ -31,21 +32,20 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 	private int RunCommand(string[] args)
 	{
 		// An unreadable option is reported before --help or --version, so a typo cannot pass for either.
-		// The line did not parse, so the report takes the human shape.
+		// The line did not parse, so the error takes the plain shape of the human report.
 		if (!MarkupCommandLine.TryParse(args, out MarkupCommandLine? commandLine, out string? parseError))
-			return Fail(parseError, new MarkupHumanReporter(output, error));
+			return ToolHost.FailUsage(ToolName, parseError, error);
 
-		if (commandLine.Help)
-		{
-			output.WriteLine(MarkupCommandLine.Usage);
-			return 0;
-		}
+		bool answered = ToolHost.TryAnswerInformation(
+			help: commandLine.Help,
+			version: commandLine.Version,
+			usage: MarkupCommandLine.Usage,
+			assembly: typeof(MarkupTool).Assembly,
+			output
+		);
 
-		if (commandLine.Version)
-		{
-			output.WriteLine(ToolHost.GetVersion(typeof(MarkupTool).Assembly));
+		if (answered)
 			return 0;
-		}
 
 		MarkupReporter reporter =
 			commandLine.ReportFormat == MarkupReportFormat.MsBuild
@@ -59,7 +59,14 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 			forced = MarkupProfiles.FindByName(commandLine.Profile);
 
 			if (forced is null)
-				return Fail($"unknown profile '{commandLine.Profile}'. Known profiles: {MarkupProfiles.Summary}.", reporter);
+			{
+				// The reporter writes the error in its own shape, so MSBuild reads it too.
+				reporter.ReportNotice(
+					new MarkupNotice($"unknown profile '{commandLine.Profile}'. Known profiles: {MarkupProfiles.Summary}.", MarkupNoticeLevel.Error)
+				);
+
+				return ToolHost.FailWithHint(ToolName, error);
+			}
 		}
 
 		MarkupNotices notices = new(strict: commandLine.Strict);
@@ -68,8 +75,8 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 		ReportNotices(notices.Items, reporter);
 
 		bool write = commandLine.Command == MarkupCommand.Format;
-
 		(bool failed, int changed) = ProcessInputs(inputs, write, reporter, strict: commandLine.Strict);
+
 		ReportSummary(changed, write, reporter);
 
 		return GetExitCode(failed: failed || notices.Items.Any(static notice => notice.IsError), changed, write);
@@ -84,6 +91,10 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 		// so a directory one of them covers is pruned while the walk reaches it,
 		// not after its entries are read.
 		var excludes = MarkupExcludeSet.Resolve(commandLine.Excludes, _paths, notices);
+
+		// A refused exclude ends the run here, before any input is collected.
+		if (excludes.HasRefused)
+			return [];
 
 		MarkupCollectionContext context = new(paths: _paths, forced, configuration, excludes, notices, cancellationToken);
 
@@ -101,8 +112,8 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 		foreach (MarkupNotice notice in notices.Where(static notice => !notice.IsError))
 			reporter.ReportNotice(notice);
 
-		// A path that could not be collected fails the run;
-		// it is reported here, and the other inputs are still processed.
+		// A path that could not be collected fails the run, and a refused exclude collects none;
+		// otherwise the other inputs are still processed, and the error is reported here.
 		foreach (MarkupNotice error in notices.Where(static notice => notice.IsError))
 			reporter.ReportNotice(error);
 	}
@@ -123,7 +134,7 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 				changed++;
 				reporter.ReportChanged(result.DisplayPath, result.Edits, write);
 			}
-			else if (FailsTheRun(result.Outcome, strict))
+			else if (result.FailsTheRun(strict))
 			{
 				failed = true;
 			}
@@ -132,9 +143,7 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 		return (failed, changed);
 	}
 
-	/// <summary>
-	/// Skips the machine-read MSBuild shape; a run that fails on one file still counts the files it changed or found.
-	/// </summary>
+	/// <summary>Writes the count line, which a failing file does not stop; the MSBuild shape has none.</summary>
 	private void ReportSummary(int changed, bool write, MarkupReporter reporter)
 	{
 		if (changed > 0 && reporter.WritesSummary)
@@ -152,34 +161,6 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 
 		return changed == 0 || write ? 0 : ToolHost.NeedsFormattingExitCode;
 	}
-
-	public static bool FailsTheRun(MarkupFileOutcome outcome, bool strict)
-	{
-		// Only a plain failure yields to the mode;
-		// a defect is the tool's own and an unwritten file is never a pass.
-		return outcome switch
-		{
-			MarkupFileOutcome.Failed => strict,
-			MarkupFileOutcome.Defect or MarkupFileOutcome.NotWritten => true,
-			_ => false,
-		};
-	}
-
-	/// <summary>Reports why a document was not laid out; a defect fails the run in every mode.</summary>
-	public static void ReportFailure(string displayPath, MarkupFailure failure, bool isDefect, bool strict, MarkupReporter reporter)
-	{
-		// A document the layout rejects is softened by the mode.
-		reporter.ReportFailure(
-			displayPath,
-			message: isDefect ? $"produced {failure.Reason}, so it was left alone." : $"could not be laid out: {failure.Reason}",
-			line: failure.Line,
-			column: failure.Column,
-			isError: strict || isDefect
-		);
-	}
-
-	public static MarkupFileOutcome GetFailureOutcome(MarkupFormatResult result) =>
-		result.IsDefect ? MarkupFileOutcome.Defect : MarkupFileOutcome.Failed;
 
 	/// <summary>The collector has dropped the repeats of a file, so this puts the rest in path order.</summary>
 	private static ImmutableArray<MarkupInput> ToSorted(List<MarkupInput> collected) =>
@@ -224,8 +205,8 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 
 		if (result.Failure is { } failure)
 		{
-			ReportFailure(displayPath, failure, isDefect: result.IsDefect, strict, reporter);
-			return new(GetFailureOutcome(result), displayPath, []);
+			reporter.ReportFailure(displayPath, failure, isDefect: result.IsDefect, strict);
+			return MarkupFileResult.ForFailure(displayPath, result);
 		}
 
 		if (!result.HasEdits)
@@ -246,13 +227,5 @@ internal sealed class MarkupTool(TextWriter output, TextWriter error, string wor
 		}
 
 		return new(MarkupFileOutcome.Changed, displayPath, [.. result.Edits]);
-	}
-
-	private int Fail(string message, MarkupReporter reporter)
-	{
-		reporter.ReportNotice(new MarkupNotice(message, MarkupNoticeLevel.Error));
-		error.WriteLine("Run 'stanza-markup --help' for the usage.");
-
-		return ToolHost.FailedExitCode;
 	}
 }

@@ -1,0 +1,192 @@
+name: JS
+
+# The plugin and the stylelint config are built, tested and linted from js/ alone, so a change there or to this workflow runs them.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/**'
+      - '.github/workflows/js.yml'
+  pull_request:
+    paths:
+      - 'js/**'
+      - '.github/workflows/js.yml'
+  workflow_dispatch:
+
+# A new push to a pull request supersedes its running build.
+# Each push to main gets a group of its own, so no commit of main goes unverified.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The token is read-only by default.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: js
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: js/.node-version
+          cache: npm
+          cache-dependency-path: |
+            js/package-lock.json
+            js/stylelint-config/package-lock.json
+
+      - name: Install the packages
+        run: npm ci
+
+      # The lint step loads the built plugin, so the build comes first.
+      - name: Build
+        run: npm run build
+
+      - name: Check the types
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Check the formatting
+        run: npm run format:check
+
+      # The plugin lints its own source with its strong preset.
+      - name: Lint
+        run: npm run lint
+
+      # The stylelint config is a package of its own under js/, and its lint loads the plugin built above.
+      - name: Install the packages of the stylelint config
+        working-directory: js/stylelint-config
+        run: npm ci
+
+      - name: Test the stylelint config
+        working-directory: js/stylelint-config
+        run: npm test
+
+      - name: Check the formatting of the stylelint config
+        working-directory: js/stylelint-config
+        run: npm run format:check
+
+      - name: Lint the stylelint config
+        working-directory: js/stylelint-config
+        run: npm run lint
+
+  # The peer range of the plugin names ESLint 10, so its tests run against it too.
+  # The lock file pins ESLint 9, which the verify job runs.
+  eslint-10:
+    name: ESLint 10
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: js
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: js/.node-version
+          cache: npm
+          cache-dependency-path: js/package-lock.json
+
+      - name: Install the packages
+        run: npm ci
+
+      - name: Install ESLint 10 over the locked version
+        run: npm install --no-save eslint@10
+
+      - name: Build
+        run: npm run build
+
+      - name: Check the types
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+  # A consumer installs the tarballs, so a file that `files` leaves out or a dependency in the wrong list breaks only there.
+  # The scratch project takes the newest ESLint and Stylelint, as an install beside the packages would.
+  pack-smoke:
+    name: Pack smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: js/.node-version
+          cache: npm
+          cache-dependency-path: |
+            js/package-lock.json
+            js/stylelint-config/package-lock.json
+
+      - name: Install the packages and build the plugin
+        working-directory: js
+        run: |
+          npm ci
+          npm run build
+
+      - name: Pack both packages
+        run: |
+          mkdir "$RUNNER_TEMP/packs"
+          npm pack ./js --pack-destination "$RUNNER_TEMP/packs"
+          npm pack ./js/stylelint-config --pack-destination "$RUNNER_TEMP/packs"
+
+      # TypeScript stays on 6, the newest major that typescript-eslint supports, so a new TypeScript cannot fail the smoke.
+      - name: Install the tarballs beside the newest ESLint and Stylelint
+        run: |
+          mkdir "$RUNNER_TEMP/smoke"
+          cd "$RUNNER_TEMP/smoke"
+          npm init --yes
+          npm install eslint@latest stylelint@latest typescript-eslint@latest typescript@6 "$RUNNER_TEMP"/packs/eslint-plugin-stanza-*.tgz "$RUNNER_TEMP"/packs/stylelint-config-stanza-*.tgz
+          npm ls eslint stylelint
+
+      # The file breaks one rule, so the lint must report it, and the fix must leave a file that lints clean.
+      - name: Lint a TypeScript file with the strong preset
+        working-directory: ${{ runner.temp }}/smoke
+        run: |
+          printf "import stanza from 'eslint-plugin-stanza';\nimport tseslint from 'typescript-eslint';\n\nexport default [{ files: ['**/*.ts'], languageOptions: { parser: tseslint.parser } }, stanza.configs.strong];\n" > eslint.config.mjs
+          printf 'export function run(id: string): number {\n\tconst order = load(id);\n\tvalidate(order);\n\treturn order;\n}\n' > example.ts
+          npx eslint example.ts 2>&1 | tee report.txt || true
+          grep -q 'stanza/separate-jump-statements' report.txt
+          npx eslint --fix example.ts
+          npx eslint example.ts
+
+      # The `//` comment needs the SCSS syntax, and the nested rule breaks one rule.
+      - name: Lint a SCSS file with the stylelint config
+        working-directory: ${{ runner.temp }}/smoke
+        run: |
+          printf "export default { extends: ['stylelint-config-stanza'] };\n" > stylelint.config.mjs
+          printf '.a {\n\t// First.\n\tcolor: red;\n\t&:hover {\n\t\tcolor: blue;\n\t}\n}\n' > example.scss
+          npx stylelint example.scss 2>&1 | tee report.txt || true
+          grep -q 'rule-empty-line-before' report.txt
+          npx stylelint --fix example.scss
+          npx stylelint example.scss

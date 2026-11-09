@@ -1,0 +1,78 @@
+name: Python
+
+# The tool is tested from py/, and its tests read the rule pages of docs/ and js/ to check the C# and JS counterparts,
+# so a change to any of these directories or to this workflow runs it.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'py/**'
+      - 'docs/rules/**'
+      - 'js/docs/rules/**'
+      - '.github/workflows/py.yml'
+  pull_request:
+    paths:
+      - 'py/**'
+      - 'docs/rules/**'
+      - 'js/docs/rules/**'
+      - '.github/workflows/py.yml'
+  workflow_dispatch:
+
+# A new push to a pull request supersedes its running build.
+# Each push to main gets a group of its own, so no commit of main goes unverified.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The token is read-only by default.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Python ${{ matrix.python-version }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: py
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: py/pyproject.toml
+
+      - name: Install the package and the development tools
+        run: python -m pip install --editable ".[dev]"
+
+      - name: Test
+        run: pytest
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Check the formatting
+        run: ruff format --check .
+
+      - name: Check the types
+        run: mypy
+
+      # The tool lints its own source and tests with its strong preset.
+      - name: Check the blank lines
+        run: stanza-py check src tests

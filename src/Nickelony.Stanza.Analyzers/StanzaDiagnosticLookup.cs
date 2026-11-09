@@ -78,16 +78,7 @@ internal static class StanzaDiagnosticLookup
 			if (candidate.Parent is not null)
 			{
 				ImmutableArray<SyntaxNode> siblings = StanzaSyntax.ReadSiblings(candidate.Parent);
-				int index = -1;
-
-				for (int siblingIndex = 0; siblingIndex < siblings.Length; siblingIndex++)
-				{
-					if (siblings[siblingIndex].Span == candidate.Span)
-					{
-						index = siblingIndex;
-						break;
-					}
-				}
+				int index = FindSiblingIndex(siblings, candidate.Span);
 
 				if (index > 0)
 					return new NeighborUnits(siblings[index - 1], siblings[index]);
@@ -99,7 +90,16 @@ internal static class StanzaDiagnosticLookup
 		return null;
 	}
 
-	public readonly record struct NeighborUnits(SyntaxNode Previous, SyntaxNode Next);
+	private static int FindSiblingIndex(ImmutableArray<SyntaxNode> siblings, TextSpan span)
+	{
+		for (int index = 0; index < siblings.Length; index++)
+		{
+			if (siblings[index].Span == span)
+				return index;
+		}
 
-	public readonly record struct TokenPair(SyntaxToken Previous, SyntaxToken Next);
+		return -1;
+	}
+
+	public readonly record struct NeighborUnits(SyntaxNode Previous, SyntaxNode Next);
 }

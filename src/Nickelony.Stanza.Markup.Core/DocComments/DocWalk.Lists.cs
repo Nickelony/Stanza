@@ -54,8 +54,8 @@ internal static partial class DocWalk
 		string indent = layout.GetIndent(depth, text: false);
 
 		// An item holding a list at any depth is never folded, so that list's opening tag owns a line.
-		// The fold is also refused for an item the expansion setting expands.
-		string? folded = HoldsAList(item, depth: 0) || layout.IsExpanded(item.Name) ? null : FoldItem(item, depth);
+		// The fold is also refused for an item the block elements setting makes a block.
+		string? folded = HoldsAList(item, depth: 0) || layout.IsBlockElement(item.Name) ? null : FoldItem(item, depth);
 
 		if (folded is not null && layout.GetIndentationColumns(depth, text: false) + layout.GetColumns(folded) <= layout.ContentWidth)
 		{
@@ -160,7 +160,6 @@ internal static partial class DocWalk
 	/// Inline and self-closing elements are words of the item's text; a term, description or list is a part of its own.
 	/// </summary>
 	private static bool IsWordOfTheText(DocElement element) => element.IsEmpty || DocElementNames.InlineElements.Contains(element.Name);
-
 	private static string GetWordText(DocElement element) => element.IsEmpty ? element.OpenTag : element.Phrase;
 
 	private static bool IsWritableItem(DocElement item, int depth)
@@ -201,9 +200,7 @@ internal static partial class DocWalk
 
 		/// <summary>An item holds no blank line, so one refuses the read.</summary>
 		public bool TryAddText(string text) => _words.TryRead(text, atoms: () => atoms, readBreak: _ => _words.LineBreaks < 2);
-
 		public void AddWord(string text) => _words.AddWord(atoms, text);
-
 		public void EndRun() => _words.EndRun();
 	}
 }

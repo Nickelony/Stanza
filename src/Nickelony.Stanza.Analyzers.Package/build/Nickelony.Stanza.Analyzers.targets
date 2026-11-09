@@ -1,0 +1,89 @@
+<Project>
+	<!--
+		StanzaLevel, StanzaSeverity and StanzaFormatter pick the .globalconfig files under presets: they are read here, after the project body set them.
+		The level file sits at global_level -100 and the csharpier overlay at -99, so the overlay wins a key both set.
+		Roslyn gives an .editorconfig line precedence over a .globalconfig line, and a lower global_level loses to a higher one,
+		so a project that sets a rule itself keeps its setting.
+		The moderate level at suggestion is what the analyzers ship, so it adds no file.
+	-->
+	<PropertyGroup>
+		<_StanzaPresetDirectory>$(MSBuildThisFileDirectory)presets\</_StanzaPresetDirectory>
+	</PropertyGroup>
+
+	<Target Name="_StanzaAddLevel" BeforeTargets="CoreCompile">
+		<PropertyGroup>
+			<_StanzaLevel>$(StanzaLevel.Trim().ToLowerInvariant())</_StanzaLevel>
+			<_StanzaLevel Condition="'$(_StanzaLevel)' == ''">moderate</_StanzaLevel>
+			<_StanzaSeverity>$(StanzaSeverity.Trim().ToLowerInvariant())</_StanzaSeverity>
+			<_StanzaSeverity Condition="'$(_StanzaSeverity)' == ''">suggestion</_StanzaSeverity>
+			<_StanzaFormatter>$(StanzaFormatter.Trim().ToLowerInvariant())</_StanzaFormatter>
+			<_StanzaFormatter Condition="'$(_StanzaFormatter)' == ''">stanza-format</_StanzaFormatter>
+		</PropertyGroup>
+
+		<Error
+			Condition="'$(_StanzaLevel)' != 'minimal' and '$(_StanzaLevel)' != 'moderate' and '$(_StanzaLevel)' != 'strong' and '$(_StanzaLevel)' != 'none'"
+			Code="STANZA001"
+			Text="StanzaLevel '$(StanzaLevel)' names no level. Use one of: minimal, moderate, strong, none."
+		/>
+
+		<Error
+			Condition="'$(_StanzaSeverity)' != 'suggestion' and '$(_StanzaSeverity)' != 'warning' and '$(_StanzaSeverity)' != 'error'"
+			Code="STANZA001"
+			Text="StanzaSeverity '$(StanzaSeverity)' names no severity. Use one of: suggestion, warning, error."
+		/>
+
+		<Error
+			Condition="'$(_StanzaFormatter)' != 'stanza-format' and '$(_StanzaFormatter)' != 'csharpier'"
+			Code="STANZA001"
+			Text="StanzaFormatter '$(StanzaFormatter)' names no formatter. Use one of: stanza-format, csharpier."
+		/>
+
+		<!-- The csharpier overlay changes only rules of the strong level, so the levels below it take no overlay. -->
+		<ItemGroup>
+			<EditorConfigFiles Include="$(_StanzaPresetDirectory)none.globalconfig" Condition="'$(_StanzaLevel)' == 'none'" />
+			<EditorConfigFiles
+				Include="$(_StanzaPresetDirectory)$(_StanzaLevel).$(_StanzaSeverity).globalconfig"
+				Condition="'$(_StanzaLevel)' != 'none' and !('$(_StanzaLevel)' == 'moderate' and '$(_StanzaSeverity)' == 'suggestion')"
+			/>
+			<EditorConfigFiles
+				Include="$(_StanzaPresetDirectory)csharpier.$(_StanzaSeverity).globalconfig"
+				Condition="'$(_StanzaLevel)' == 'strong' and '$(_StanzaFormatter)' == 'csharpier'"
+			/>
+		</ItemGroup>
+	</Target>
+
+	<!--
+		A compiler older than the Roslyn the analyzers build against skips the analyzers directory without a message, so no rule reports.
+		The floor is the name of that directory, and the compiler's version is the version of its tasks assembly,
+		which a Microsoft.Net.Compilers.Toolset package names in RoslynTasksAssembly and the SDK keeps in RoslynTargetsPath.
+	-->
+	<Target Name="_StanzaCheckCompiler" BeforeTargets="CoreCompile">
+		<ItemGroup>
+			<_StanzaAnalyzerAssembly Include="$(MSBuildThisFileDirectory)..\analyzers\dotnet\roslyn*\cs\Nickelony.Stanza.Analyzers.dll" />
+		</ItemGroup>
+
+		<PropertyGroup>
+			<_StanzaRoslynFloor>@(_StanzaAnalyzerAssembly)</_StanzaRoslynFloor>
+			<_StanzaRoslynFloor>$([System.Text.RegularExpressions.Regex]::Match('$(_StanzaRoslynFloor)', '(?&lt;=[\\/]roslyn)\d+\.\d+(?=[\\/]cs[\\/])').Value)</_StanzaRoslynFloor>
+			<_StanzaTasksAssembly>$(RoslynTasksAssembly)</_StanzaTasksAssembly>
+			<_StanzaTasksAssembly Condition="'$(_StanzaTasksAssembly)' == ''"
+				>$(RoslynTargetsPath)\Microsoft.Build.Tasks.CodeAnalysis.dll</_StanzaTasksAssembly>
+		</PropertyGroup>
+
+		<!-- A check that cannot read either value stays silent, because it must never fail a build that would have worked. -->
+		<GetAssemblyIdentity AssemblyFiles="$(_StanzaTasksAssembly)" Condition="'$(_StanzaRoslynFloor)' != '' and Exists('$(_StanzaTasksAssembly)')">
+			<Output TaskParameter="Assemblies" ItemName="_StanzaCompilerIdentity" />
+		</GetAssemblyIdentity>
+
+		<PropertyGroup>
+			<_StanzaCompilerVersion>@(_StanzaCompilerIdentity->'%(Version)')</_StanzaCompilerVersion>
+			<_StanzaCompilerVersion>$([System.Text.RegularExpressions.Regex]::Match('$(_StanzaCompilerVersion)', '^\d+\.\d+').Value)</_StanzaCompilerVersion>
+		</PropertyGroup>
+
+		<Warning
+			Condition="'$(_StanzaCompilerVersion)' != '' and $([MSBuild]::VersionLessThan('$(_StanzaCompilerVersion)', '$(_StanzaRoslynFloor)'))"
+			Code="STANZA002"
+			Text="The compiler is Roslyn $(_StanzaCompilerVersion), and the Stanza analyzers need Roslyn $(_StanzaRoslynFloor) or later, so no Stanza rule reports in this build. Update the SDK or Visual Studio."
+		/>
+	</Target>
+</Project>

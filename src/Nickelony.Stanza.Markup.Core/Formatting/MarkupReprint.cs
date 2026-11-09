@@ -35,7 +35,7 @@ internal static class MarkupReprint
 
 			MarkupElement element = pending.Pop();
 
-			if (BuildBody(element, sourceText, reprintLayout, cleanup) is { } body)
+			if (BuildReprintedBody(element, sourceText, reprintLayout, cleanup) is { } body)
 			{
 				bodies.Add(body);
 				continue;
@@ -48,7 +48,7 @@ internal static class MarkupReprint
 		return bodies;
 	}
 
-	private static MarkupReprintedBody? BuildBody(
+	private static MarkupReprintedBody? BuildReprintedBody(
 		MarkupElement element,
 		MarkupSourceText sourceText,
 		DocLayoutOptions reprintLayout,
@@ -151,14 +151,14 @@ internal static class MarkupReprint
 	private static string? Write(MarkupElement element, DocLayoutOptions layout, DocCleanupOptions cleanup, MemberBodyShape shape)
 	{
 		// The member itself stands at depth 0, so its children stand at depth 1.
-		if (BuildBody(element.Body, depth: 1) is not { } body)
+		if (BuildMemberBody(element.Body, shape.BaseIndent) is not { } body)
 			return null;
 
 		// The clean-ups rewrite the body the walk lays out rather than the lines it writes,
 		// so a sentence that gains a period is filled into the width the way any other is.
 		body = DocCleanup.Apply(body, cleanup);
 
-		if (DocWalk.Write(body, layout, markParagraphs: true, closeParagraphs: cleanup.Period) is not { } lines)
+		if (DocWalk.Write(body, layout, markParagraphs: true, cleanup) is not { } lines)
 			return null;
 
 		StringBuilder builder = new();
@@ -176,6 +176,102 @@ internal static class MarkupReprint
 		builder.Append(shape.LineEnding).Append(shape.MemberIndent);
 
 		return builder.ToString();
+	}
+
+	/// <summary>Reads the nodes of a member, keeping an element that holds a sample or a pointer as written.</summary>
+	private static List<DocNode>? BuildMemberBody(IReadOnlyList<IMarkupBodyNode> nodes, string baseIndent)
+	{
+		List<DocNode> body = [];
+
+		foreach (IMarkupBodyNode node in nodes)
+		{
+			DocNode? built =
+				node is MarkupElement element && HoldsKeptElement(element, depth: 1)
+					? BuildKeptElement(element, baseIndent)
+					: BuildNode(node, depth: 1);
+
+			if (built is null)
+				return null;
+
+			body.Add(built);
+		}
+
+		return body;
+	}
+
+	private static bool HoldsKeptElement(MarkupElement element, int depth)
+	{
+		if (DocElementNames.IsKeptAsWritten(element.LocalName))
+			return true;
+
+		if (depth >= DocWalk.MaxElementDepth)
+			return false;
+
+		foreach (MarkupElement child in element.ChildElements)
+		{
+			if (HoldsKeptElement(child, depth + 1))
+				return true;
+		}
+
+		return false;
+	}
+
+	/// <summary>Reads an element as its lines, or <see langword="null"/> if one stands left of the body.</summary>
+	private static DocElement? BuildKeptElement(MarkupElement element, string baseIndent)
+	{
+		if (element.SourceText is not { } sourceText)
+			return null;
+
+		string source = sourceText.Text;
+
+		int start = element.OpenTagStart;
+		int end = element.IsEmpty ? element.OpenTagEnd : element.CloseTagEnd;
+
+		// The first line keeps the indentation before the element, unless other text stands there too.
+		int lineStart = start;
+
+		while (lineStart > 0 && source[lineStart - 1] != '\n' && MarkupWhitespace.IsXmlWhitespace(source[lineStart - 1]))
+			lineStart--;
+
+		bool isFirstOnLine = lineStart == 0 || source[lineStart - 1] == '\n';
+		string before = isFirstOnLine ? source.Substring(lineStart, start - lineStart) : string.Empty;
+
+		List<string> lines = [];
+		string[] rows = source.Substring(start, end - start).Split('\n');
+
+		for (int index = 0; index < rows.Length; index++)
+		{
+			string row = rows[index].TrimEnd('\r');
+
+			if (index == 0 && !isFirstOnLine)
+			{
+				lines.Add(row);
+				continue;
+			}
+
+			string line = index == 0 ? before + row : row;
+
+			if (line.StartsWith(baseIndent, StringComparison.Ordinal))
+				lines.Add(line.Substring(baseIndent.Length));
+			else if (MarkupWhitespace.IsBlank(line))
+				lines.Add(string.Empty);
+			else
+				return null;
+		}
+
+		string name = element.LocalName;
+
+		return new DocElement(
+			name,
+			openTag: element.OpenTag,
+			closeTag: element.CloseTag,
+			isEmpty: element.IsEmpty,
+			body: [],
+			phrase: GetElementText(element, depth: 0)
+		)
+		{
+			VerbatimLines = lines,
+		};
 	}
 
 	private static List<DocNode>? BuildBody(IReadOnlyList<IMarkupBodyNode> nodes, int depth)
@@ -208,7 +304,7 @@ internal static class MarkupReprint
 		if (depth >= DocWalk.MaxElementDepth)
 			return null;
 
-		string name = DocElementNames.GetLocalName(element.Name);
+		string name = element.LocalName;
 
 		// An element the engine may not re-wrap leaves the whole body as written.
 		if (
@@ -231,14 +327,14 @@ internal static class MarkupReprint
 
 	public static string GetElementText(MarkupElement element, int depth)
 	{
-		DocCollapser collapser = new();
+		MarkupCollapser collapser = new();
 
 		AppendElementText(collapser, element, depth);
 
 		return collapser.ToString();
 	}
 
-	private static void AppendElementText(DocCollapser collapser, MarkupElement element, int depth)
+	private static void AppendElementText(MarkupCollapser collapser, MarkupElement element, int depth)
 	{
 		if (depth >= DocWalk.MaxElementDepth)
 			return;

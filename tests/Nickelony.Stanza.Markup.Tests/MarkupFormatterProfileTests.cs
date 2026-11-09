@@ -3,7 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Markup.Configuration;
 using Nickelony.Stanza.Markup.Core;
 using Nickelony.Stanza.Markup.Core.Formatting;
-using Nickelony.Stanza.Markup.Core.Xml;
+using Nickelony.Stanza.Markup.Core.Options;
 using Nickelony.Stanza.Tests.Shared;
 
 using static Nickelony.Stanza.Markup.Tests.MarkupFixtures;
@@ -298,8 +298,6 @@ public sealed class MarkupFormatterProfileTests
 	{
 		Assert.AreEqual(MarkupProfiles.Xml, MarkupProfiles.FindByPath("a.xml"));
 		Assert.AreEqual(MarkupProfiles.Xml, MarkupProfiles.FindByPath("A.CONFIG"));
-		Assert.AreEqual(MarkupProfiles.MsBuild, MarkupProfiles.FindByPath("a.csproj"));
-		Assert.AreEqual(MarkupProfiles.MsBuild, MarkupProfiles.FindByPath("dir/a.props"));
 		Assert.AreEqual(MarkupProfiles.Slnx, MarkupProfiles.FindByPath("a.slnx"));
 		Assert.AreEqual(MarkupProfiles.Xaml, MarkupProfiles.FindByPath("a.axaml"));
 		Assert.IsNull(MarkupProfiles.FindByPath("a.txt"));

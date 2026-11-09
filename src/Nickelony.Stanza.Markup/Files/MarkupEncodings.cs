@@ -51,13 +51,13 @@ internal static partial class MarkupEncodings
 	[GeneratedRegex("^\\s*<\\?xml\\s[^>]*?encoding\\s*=\\s*[\"'](?<name>[^\"']+)[\"']", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
 	private static partial Regex Declaration();
 
-	internal static MarkupEncodingChoice Resolve(byte[] bytes)
+	internal static MarkupSourceEncoding Resolve(byte[] bytes)
 	{
 		// A mark wins over the declaration, and one that disagrees with it is refused;
 		// without a mark the prolog byte pattern decides, then the declaration.
 		if (TryReadPreamble(bytes, out Encoding marked, out int preambleLength))
 		{
-			return new MarkupEncodingChoice(
+			return new MarkupSourceEncoding(
 				Encoding: marked,
 				PreambleLength: preambleLength,
 				WriteBackRefusal: null,
@@ -69,7 +69,7 @@ internal static partial class MarkupEncodings
 		// so a Latin-1 read would find a NUL after every character and no name at all.
 		if (SniffMarklessUnicode(bytes) is { } sniffed)
 		{
-			return new MarkupEncodingChoice(
+			return new MarkupSourceEncoding(
 				Encoding: sniffed,
 				PreambleLength: 0,
 				WriteBackRefusal: null,
@@ -80,18 +80,18 @@ internal static partial class MarkupEncodings
 		string? name = ReadDeclaration(bytes, Encoding.Latin1);
 
 		if (name is null)
-			return new MarkupEncodingChoice(Encoding: s_utf8WithoutMark, PreambleLength: 0, WriteBackRefusal: null, Refusal: null);
+			return new MarkupSourceEncoding(Encoding: s_utf8WithoutMark, PreambleLength: 0, WriteBackRefusal: null, Refusal: null);
 
 		if (ReadDeclared(name) is { } resolved)
 		{
 			// The bytes held no UTF-16 or UTF-32 prolog above, so a declaration of either stands over single-byte text.
 			string? refusal = IsWide(resolved) ? FindDeclarationRefusal(name, stated: s_utf8WithoutMark) : null;
-			return new MarkupEncodingChoice(Encoding: resolved, PreambleLength: 0, WriteBackRefusal: null, Refusal: refusal);
+			return new MarkupSourceEncoding(Encoding: resolved, PreambleLength: 0, WriteBackRefusal: null, Refusal: refusal);
 		}
 
 		// A declaration naming an encoding outside the set is read as Latin-1, a guess;
 		// only a write reports the refusal.
-		return new MarkupEncodingChoice(Encoding: s_latin1, PreambleLength: 0, WriteBackRefusal: DescribeRefusal(name), Refusal: null);
+		return new MarkupSourceEncoding(Encoding: s_latin1, PreambleLength: 0, WriteBackRefusal: DescribeRefusal(name), Refusal: null);
 	}
 
 	private static string? FindDeclarationRefusal(string? declared, Encoding stated)

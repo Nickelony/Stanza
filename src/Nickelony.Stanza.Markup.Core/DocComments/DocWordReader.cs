@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Nickelony.Stanza.Markup.Core.DocComments;
 
@@ -23,6 +24,10 @@ internal sealed class DocWordReader
 		int breakIndex = 0;
 		bool continuesSpan = false;
 
+		// The joins to the last atom build up in a builder, so a span over many lines is copied once, not once per line.
+		List<DocAtom>? target = null;
+		StringBuilder? open = null;
+
 		for (int index = 0; index < lines.Count; index++)
 		{
 			if (lines[index].Text is not { } piece)
@@ -36,6 +41,10 @@ internal sealed class DocWordReader
 					continue;
 				}
 
+				// The break may start another list of atoms, so the open word is written to the list it belongs to first.
+				if (target is not null)
+					DocFill.CloseWord(target, ref open);
+
 				LineBreaks++;
 				Attached = false;
 
@@ -48,11 +57,16 @@ internal sealed class DocWordReader
 			LineBreaks = 0;
 
 			int plainBacktick = FindPlainBacktick(piece, lines[index].Offset, withinSpan);
-			DocFill.AddWords(atoms: atoms(), text: piece, attached: Attached, continuesSpan, plainBacktick);
+
+			target = atoms();
+			DocFill.AddWords(atoms: target, text: piece, attached: Attached, continuesSpan, plainBacktick, ref open);
 
 			continuesSpan = false;
 			Attached = DocFill.EndsTouching(piece);
 		}
+
+		if (target is not null)
+			DocFill.CloseWord(target, ref open);
 
 		return true;
 	}

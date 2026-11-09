@@ -8,7 +8,7 @@ internal sealed class SeparateImportSectionAnalyzer() : StanzaRuleAnalyzer(Stanz
 {
 	protected override void Analyze(SyntaxNodeAnalysisContext context)
 	{
-		BlankLineAnalysis.ReportImportBoundaries(
+		RequiredBlankLineAnalysis.ReportImportBoundaries(
 			context,
 			siblings: StanzaSyntax.ReadSiblings(context.Node),
 			rule: Rule,

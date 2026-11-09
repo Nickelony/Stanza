@@ -53,12 +53,25 @@ internal static partial class GeneratedDocBody
 		return lines;
 	}
 
-	/// <summary>Returns the words of a body in order, without any tag.</summary>
+	/// <summary>Returns the words of a body in order, each first letter lowercase.</summary>
 	public static string[] ReadWords(IEnumerable<string> lines)
 	{
-		string text = string.Join(" ", lines);
-		return [.. Words().Matches(Tags().Replace(text, " ")).Select(match => match.Value)];
+		return
+		[
+			.. ReadWordMatches(lines)
+				.Select(match => char.ToLowerInvariant(match.Value[0]) + match.Value[1..]),
+		];
 	}
+
+	public static int CountCapitals(IEnumerable<string> lines) =>
+		ReadWordMatches(lines).Count(match => char.IsUpper(match.Value[0]));
+
+	/// <summary>Counts the start tags; each opens a text that may take one capital.</summary>
+	public static int CountStartTags(IEnumerable<string> lines) =>
+		StartTags().Count(string.Join(" ", lines));
+
+	private static MatchCollection ReadWordMatches(IEnumerable<string> lines) =>
+		Words().Matches(Tags().Replace(string.Join(" ", lines), " "));
 
 	private static List<string> Remarks(Random random)
 	{
@@ -135,6 +148,9 @@ internal static partial class GeneratedDocBody
 
 	[GeneratedRegex("<[^>]*>")]
 	private static partial Regex Tags();
+
+	[GeneratedRegex("<[A-Za-z]")]
+	private static partial Regex StartTags();
 
 	[GeneratedRegex("[A-Za-z0-9]+")]
 	private static partial Regex Words();

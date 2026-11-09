@@ -7,5 +7,5 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 internal sealed class SeparateFileScopedNamespaceDeclarationFromFirstMemberAnalyzer()
 	: StanzaRuleAnalyzer(StanzaRules.SeparateFileScopedNamespaceDeclarationFromFirstMember)
 {
-	protected override void Analyze(SyntaxNodeAnalysisContext context) => BlankLineAnalysis.ReportFileScopedNamespaceGap(context, Rule);
+	protected override void Analyze(SyntaxNodeAnalysisContext context) => RequiredBlankLineAnalysis.ReportFileScopedNamespaceGap(context, Rule);
 }

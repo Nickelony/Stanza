@@ -13,15 +13,23 @@ internal sealed class MarkupExcludeSet
 {
 	private readonly List<ExcludePattern> _patterns;
 
-	private MarkupExcludeSet(List<ExcludePattern> patterns) => _patterns = patterns;
+	private MarkupExcludeSet(List<ExcludePattern> patterns, bool hasRefused)
+	{
+		_patterns = patterns;
+		HasRefused = hasRefused;
+	}
 
 	/// <summary>A set that excludes nothing; a test seam.</summary>
-	public static MarkupExcludeSet Empty { get; } = new([]);
+	public static MarkupExcludeSet Empty { get; } = new([], hasRefused: false);
 
-	/// <summary>Reports a pattern that is invalid or unresolvable and leaves it out.</summary>
+	/// <summary>Whether a pattern was refused, which the resolve already reported as an error.</summary>
+	public bool HasRefused { get; }
+
+	/// <summary>Reports each pattern that is invalid or unresolvable as an error and leaves it out.</summary>
 	public static MarkupExcludeSet Resolve(ImmutableArray<string> excludes, MarkupPaths paths, MarkupNotices notices)
 	{
 		List<ExcludePattern> patterns = [];
+		bool hasRefused = false;
 
 		foreach (string pattern in excludes)
 		{
@@ -29,31 +37,30 @@ internal sealed class MarkupExcludeSet
 			// so each backslash is normalized to a slash before the pattern is validated and matched.
 			// That loses an escape the glob dialect defines, such as \*, on the command line.
 			string normalized = GlobMatcher.Normalize(pattern);
-			GlobTarget target;
 
-			try
-			{
-				target = GlobPath.Resolve(normalized, paths.WorkingDirectory);
-			}
-			catch (Exception exception) when (MarkupPaths.IsUnresolvable(exception))
-			{
-				// One bad pattern is reported by itself; the patterns after it still apply.
-				notices.AddWarning($"the exclude pattern '{pattern}' could not be resolved to a path: {exception.Message}");
-				continue;
-			}
+			bool valid = GlobPath.TryResolveValid(
+				argument: normalized,
+				workingDirectory: paths.WorkingDirectory,
+				out GlobTarget target,
+				out GlobProblem problem
+			);
 
-			// The target's directory is compared as text, so only the pattern below it is validated.
-			if (!GlobMatcher.TryValidate(target.Pattern, out string? refusal))
+			// Every bad pattern is reported, and the run ends before it reads a file,
+			// as a typo must never let a write run rewrite the files the exclude was meant to protect.
+			// Like a refused glob, it fails the run in every mode.
+			if (!valid)
 			{
-				// Reported like a glob, so --strict escalates it.
-				notices.AddWarning($"the exclude pattern '{pattern}' is refused ({refusal}); it matches nothing.");
+				string name = $"the exclude pattern '{pattern}'";
+				notices.AddError(problem.Describe(unresolvedName: name, refusedName: name));
+				hasRefused = true;
+
 				continue;
 			}
 
 			patterns.Add(new(normalized, target));
 		}
 
-		return new(patterns);
+		return new(patterns, hasRefused);
 	}
 
 	public bool IsExcluded(string path, MarkupPaths paths)
@@ -85,9 +92,9 @@ internal sealed class MarkupExcludeSet
 			return false;
 
 		string root = GlobMatcher.Normalize(paths.WorkingDirectory).TrimEnd('/');
-		string? current = GlobMatcher.Normalize(path);
+		string current = GlobMatcher.Normalize(path);
 
-		while (current is not null)
+		while (current.Length > 0)
 		{
 			bool belowRoot = RelativePathScope.IsBelow(current, root);
 
@@ -105,16 +112,10 @@ internal sealed class MarkupExcludeSet
 				}
 			}
 
-			current = FindParent(current);
+			current = SlashPath.GetDirectory(current);
 		}
 
 		return false;
-	}
-
-	private static string? FindParent(string path)
-	{
-		int separator = path.LastIndexOf('/');
-		return separator <= 0 ? null : path[..separator];
 	}
 
 	private static bool CoversSubtree(string pattern)

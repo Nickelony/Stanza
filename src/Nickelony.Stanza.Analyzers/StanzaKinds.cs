@@ -14,11 +14,24 @@ internal static class StanzaKinds
 		? [kind]
 		: [];
 
+	/// <summary>Lists the nodes that hold arguments; a tuple literal is its own list.</summary>
 	public static readonly ImmutableArray<SyntaxKind> ArgumentListKinds =
 	[
 		SyntaxKind.ArgumentList,
 		SyntaxKind.AttributeArgumentList,
 		SyntaxKind.BracketedArgumentList,
+		SyntaxKind.TupleExpression,
+	];
+
+	public static readonly ImmutableArray<SyntaxKind> CallKinds =
+	[
+		SyntaxKind.BaseConstructorInitializer,
+		SyntaxKind.ElementAccessExpression,
+		SyntaxKind.ImplicitObjectCreationExpression,
+		SyntaxKind.InvocationExpression,
+		SyntaxKind.ObjectCreationExpression,
+		SyntaxKind.PrimaryConstructorBaseType,
+		SyntaxKind.ThisConstructorInitializer,
 	];
 
 	public static readonly ImmutableArray<SyntaxKind> CollectionElementKinds =
@@ -36,7 +49,25 @@ internal static class StanzaKinds
 		SyntaxKind.WithInitializerExpression,
 	];
 
-	public static readonly ImmutableArray<SyntaxKind> ParameterListKinds = [SyntaxKind.BracketedParameterList, SyntaxKind.ParameterList];
+	/// <summary>Lists the nodes whose last element may end in a comma.</summary>
+	public static readonly ImmutableArray<SyntaxKind> TrailingCommaKinds =
+	[
+		SyntaxKind.EnumDeclaration,
+		SyntaxKind.ListPattern,
+		SyntaxKind.PropertyPatternClause,
+		SyntaxKind.SwitchExpression,
+		// The braces of a complex element hold the arguments of an `Add` call, which take no trailing comma.
+		.. CollectionElementKinds.Remove(SyntaxKind.ComplexElementInitializerExpression),
+		.. InitializerMemberKinds,
+	];
+
+	/// <summary>Lists the nodes that hold parameters; a tuple type is its own list.</summary>
+	public static readonly ImmutableArray<SyntaxKind> ParameterListKinds =
+	[
+		SyntaxKind.BracketedParameterList,
+		SyntaxKind.ParameterList,
+		SyntaxKind.TupleType,
+	];
 
 	public static readonly ImmutableArray<SyntaxKind> MarkupLiteralKinds =
 	[
@@ -102,13 +133,22 @@ internal static class StanzaKinds
 	public static readonly ImmutableArray<SyntaxKind> BraceContainerKinds =
 	[
 		SyntaxKind.AccessorList,
+		SyntaxKind.AnonymousObjectCreationExpression,
+		SyntaxKind.ArrayInitializerExpression,
 		SyntaxKind.Block,
 		SyntaxKind.ClassDeclaration,
+		SyntaxKind.CollectionInitializerExpression,
+		SyntaxKind.ComplexElementInitializerExpression,
 		SyntaxKind.EnumDeclaration,
 		SyntaxKind.InterfaceDeclaration,
+		SyntaxKind.NamespaceDeclaration,
+		SyntaxKind.ObjectInitializerExpression,
 		SyntaxKind.RecordDeclaration,
 		SyntaxKind.RecordStructDeclaration,
 		SyntaxKind.StructDeclaration,
+		SyntaxKind.SwitchExpression,
+		SyntaxKind.SwitchStatement,
+		SyntaxKind.WithInitializerExpression,
 		.. s_extensionBlockKinds,
 	];
 

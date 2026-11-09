@@ -11,7 +11,7 @@ The [command reference](https://github.com/Nickelony/Stanza/wiki/Markup-command-
 - A pattern of about 200 literal characters or wildcards is refused too, and a class such as `[a-c]` counts as one wildcard.
 - A pattern of more than 1,024 characters is refused before it is translated, which bounds the time the translation takes;
   a rooted pattern is measured without its leading `/`.
-- An `--exclude` or a section glob in `.editorconfig` that the dialect refuses matches nothing and is a warning, which `--strict` makes an error.
+- A section glob in `.editorconfig` that the dialect refuses matches nothing and is a warning, which `--strict` makes an error.
 
 ## Escaping
 

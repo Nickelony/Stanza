@@ -23,12 +23,13 @@ env:
 
 jobs:
   # Linux distinguishes letter case in paths, so it exercises what Windows hides.
+  # macOS keeps the case of a name on a volume that ignores it, and runs the Unix code paths on another file system.
   # Packing and the checks on the packages run once, on Windows.
   build:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -45,6 +46,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # The default temp directory of macOS is behind the /var link to /private/var,
+      # so a path a test builds would differ from the same path once the tool resolves its links.
+      - name: Use a temp directory that has no link on its path
+        if: runner.os == 'macOS'
+        run: echo "TMPDIR=$RUNNER_TEMP/" >> "$GITHUB_ENV"
+
       - uses: ./.github/actions/setup-dotnet
         with:
           cache: ${{ inputs.cache }}
@@ -55,6 +62,40 @@ jobs:
         run: |
           $version = @($env:VERSION_PROPERTY) -ne ''
           dotnet build Nickelony.Stanza.slnx -c Release --no-incremental @version
+
+      # The link tests of the markup tool skip on a runner that cannot make a file symbolic link, and the skip check then fails the run.
+      # This step makes the same call first, turns on Developer Mode if it fails, and fails with the cause if the call still does.
+      - name: Check that the runner can make links
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $directory = Join-Path $env:RUNNER_TEMP 'link-probe'
+          $target = Join-Path $directory 'target.txt'
+          $link = Join-Path $directory 'link.txt'
+
+          New-Item -ItemType Directory -Path $directory -Force | Out-Null
+          Set-Content -LiteralPath $target -Value 'probe'
+
+          function Test-Link {
+            Remove-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
+
+            try {
+              [void] [System.IO.File]::CreateSymbolicLink($link, $target)
+              return $true
+            }
+            catch {
+              Write-Host "CreateSymbolicLink failed: $($_.Exception.Message)"
+              return $false
+            }
+          }
+
+          if (-not (Test-Link)) {
+            reg add 'HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock' /t REG_DWORD /f /v AllowDevelopmentWithoutDevLicense /d 1
+
+            if (-not (Test-Link)) {
+              throw 'This runner cannot make a file symbolic link, so the link tests of MarkupToolLinkTests would skip and prove nothing.'
+            }
+          }
 
       # The solution names each test project, so a new one runs here without a step of its own.
       - name: Test the solution
@@ -70,7 +111,7 @@ jobs:
         shell: pwsh
         run: ./format.ps1 -Check
 
-      # The solution packs each packable project; PackageLayoutTests holds what each package carries.
+      # The solution packs each packable project; PackageLayoutGuardTests holds what each package carries.
       - name: Pack
         if: runner.os == 'Windows'
         shell: pwsh
@@ -152,6 +193,24 @@ jobs:
 
       - name: Check the prose
         run: vale --glob='!**/{bin,obj,artifacts}/**' .
+
+  # The release script and the changelog check run for real only when a release is cut, so these steps run them on fixture changelogs.
+  # The test never runs release.ps1 or wiki.ps1 themselves.
+  release-scripts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test the changelog steps of the release scripts
+        shell: pwsh
+        run: ./.github/scripts/Test-ReleaseScripts.ps1
 
   # The analyzers build against the oldest Roslyn they load in, and a current host runs them on a newer Roslyn that parses C# 14.
   newest-roslyn:
@@ -312,7 +371,7 @@ jobs:
             Remove-Item Class1.cs -Force
             Pop-Location
 
-            # ZA0002 reports the missing blank line before the property,
+            # ZA0013 reports the missing blank line before the property,
             # and the namespace and the static methods keep CA1050 and CA1822 quiet, so the Stanza fix is the one change a run makes.
             $broken = @(
               'namespace Consumer;'
@@ -344,7 +403,7 @@ jobs:
               throw "The consumer build failed (exit code $LASTEXITCODE).`n$build"
             }
 
-            if ($build -notmatch 'warning ZA0002') {
+            if ($build -notmatch 'warning ZA0013') {
               throw "The analyzer package reported nothing in a consumer build, so the package carries no analyzer."
             }
 
@@ -370,7 +429,7 @@ jobs:
               $written = @(Get-Content Consumer/Smoke.cs)
 
               if (($written -join "`n") -ne ($fixed -join "`n")) {
-                throw "$name did not write the ZA0002 fix, so the analyzer package's fixes did not load:`n$($written -join "`n")"
+                throw "$name did not write the ZA0013 fix, so the analyzer package's fixes did not load:`n$($written -join "`n")"
               }
 
               & $tool --check
@@ -387,7 +446,8 @@ jobs:
       # The SDK compiler is a newer Roslyn than the floor the analyzers build against, so the build above never loads them on it.
       # This build takes the compiler of the floor named in Directory.Packages.props from its toolset package;
       # `RoslynCompilerType=Custom` stops the SDK from putting its own compiler back in place of it.
-      - name: The analyzer package reports in a consumer build on the Roslyn floor
+      # A build one minor version below the floor then proves the package warns where it can load nothing.
+      - name: The analyzer package reports on the Roslyn floor and warns below it
         shell: pwsh
         run: |
           $install = Join-Path $env:GITHUB_WORKSPACE '.github/scripts/Install-Package.ps1'
@@ -452,8 +512,36 @@ jobs:
               throw "The consumer build on Roslyn $floor failed (exit code $LASTEXITCODE).`n$build"
             }
 
-            if ($build -notmatch 'warning ZA0002') {
+            if ($build -notmatch 'warning ZA0013') {
               throw "The analyzer package reported nothing on Roslyn $floor, so its analyzers did not load there."
+            }
+
+            if ($build -match 'STANZA002') {
+              throw "The package warned that Roslyn $floor is too old, though it is the floor.`n$build"
+            }
+
+            # The toolset one minor version below the floor skips the analyzers, so the package targets must say so.
+            $parts = $floor -split '\.'
+            $below = "$($parts[0]).$([int] $parts[1] - 1).0"
+
+            dotnet add Consumer package Microsoft.Net.Compilers.Toolset --version $below | Out-Host
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Adding Microsoft.Net.Compilers.Toolset $below failed (exit code $LASTEXITCODE)."
+            }
+
+            $build = dotnet build Consumer -p:RoslynCompilerType=Custom | Out-String
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "The consumer build on Roslyn $below failed (exit code $LASTEXITCODE).`n$build"
+            }
+
+            if ($build -notmatch 'warning STANZA002') {
+              throw "The build on Roslyn $below did not warn that the compiler is below the floor.`n$build"
+            }
+
+            if ($build -match 'warning ZA0013') {
+              throw "The analyzer package reported on Roslyn $below, so the floor is lower than the package says.`n$build"
             }
           }
           finally {

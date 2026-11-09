@@ -1,9 +1,12 @@
 # Markup behavior
 
 `stanza-markup` lays out each file under one profile, and the profile decides which elements the rules see.
-Outside a [reprinted](https://github.com/Nickelony/Stanza/wiki/Terms) `<member>` body, the tool changes only whitespace:
-the [gaps](https://github.com/Nickelony/Stanza/wiki/Terms) between elements, and the space between a comment marker and its text.
-The [Markup encoding](https://github.com/Nickelony/Stanza/wiki/Markup-encoding) page covers how a file's encoding is chosen.
+Outside a [reprinted](https://github.com/Nickelony/Stanza/wiki/Terms) `<member>` body, the tool changes only whitespace and the tags of an empty element.
+It changes the [gaps](https://github.com/Nickelony/Stanza/wiki/Terms) between elements, the blank lines inside an element,
+the space before the slash of a self-closing tag, and the space between a comment marker and its text.
+
+The [Markup encoding](https://github.com/Nickelony/Stanza/wiki/Markup-encoding) page covers how a file's encoding is chosen,
+and the [Markup](https://github.com/Nickelony/Stanza/wiki/Markup) page opens the rest of the tool's pages.
 
 ## Profiles
 
@@ -52,15 +55,36 @@ so no `stanza_markup_scope` entry applies to the run.
 
 ## What it changes
 
-- The [separating rule](https://github.com/Nickelony/Stanza/wiki/Terms), [`ZA0101`](https://github.com/Nickelony/Stanza/wiki/ZA0101-Separate-multi-line-markup-elements),
-  and its [tight rule](https://github.com/Nickelony/Stanza/wiki/Terms), [`ZA0102`](https://github.com/Nickelony/Stanza/wiki/ZA0102-Keep-multi-line-markup-elements-together), are a pair;
+The tool applies the markup rules `ZA2001` to `ZA2010`, which the C# analyzers share, and has no C# levels.
+A `dotnet_diagnostic.<id>.severity` line enables or disables a rule in the tool and in the analyzer alike,
+and the tool reads no other key for that.
+Each rule below says whether the tool applies it unless a file disables it or only where a file enables it.
+
+The analyzer applies the rules to multi-line raw string literals that a C# file marks as XML only,
+with `[StringSyntax("xml")]` on the target or a `// language=xml` comment above the literal,
+and the option [`stanza_markup_literals`](https://github.com/Nickelony/Stanza/wiki/stanza_markup_literals) changes that.
+The tool ignores that key.
+Only the tool reports [`ZA2901`](https://github.com/Nickelony/Stanza/wiki/ZA2901-Report-a-file-that-could-not-be-read-or-parsed)
+and [`ZA2902`](https://github.com/Nickelony/Stanza/wiki/ZA2902-Reprint-the-body-of-a-documentation-member).
+
+- The [separating rule](https://github.com/Nickelony/Stanza/wiki/Terms), [`ZA2001`](https://github.com/Nickelony/Stanza/wiki/ZA2001-Separate-multi-line-markup-elements),
+  and its [tight rule](https://github.com/Nickelony/Stanza/wiki/Terms), [`ZA2002`](https://github.com/Nickelony/Stanza/wiki/ZA2002-Keep-multi-line-markup-elements-together), are a pair;
   [the pair table](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#pairs-and-their-default-halves) says which half a file gets.
-- The single-line tight rule, [`ZA0103`](https://github.com/Nickelony/Stanza/wiki/ZA0103-Keep-single-line-markup-elements-together), applies only where a file enables it.
-- The blank-line cap, [`ZA0104`](https://github.com/Nickelony/Stanza/wiki/ZA0104-Collapse-extra-blank-lines-between-markup-elements), applies unless a file disables it.
-- The comment-marker space, [`ZA0105`](https://github.com/Nickelony/Stanza/wiki/ZA0105-Separate-a-markup-comment-marker-from-its-text), applies unless a file disables it.
+- The single-line tight rule, [`ZA2003`](https://github.com/Nickelony/Stanza/wiki/ZA2003-Keep-single-line-markup-elements-together), applies only where a file enables it.
+- The blank line above a commented single-line element, [`ZA2004`](https://github.com/Nickelony/Stanza/wiki/ZA2004-Separate-a-commented-markup-element), applies only where a file enables it.
+- The padding rule, [`ZA2005`](https://github.com/Nickelony/Stanza/wiki/ZA2005-Remove-markup-element-padding),
+  removes the blank lines beside the tags of an element and applies only where a file enables it.
+- The blank-line cap, [`ZA2006`](https://github.com/Nickelony/Stanza/wiki/ZA2006-Collapse-extra-blank-lines-between-markup-elements), applies unless a file disables it.
+- The comment-marker space, [`ZA2007`](https://github.com/Nickelony/Stanza/wiki/ZA2007-Separate-a-markup-comment-marker-from-its-text), applies unless a file disables it.
+- The slash [pair](https://github.com/Nickelony/Stanza/wiki/Terms), [`ZA2008`](https://github.com/Nickelony/Stanza/wiki/ZA2008-Separate-the-slash-of-a-self-closing-markup-element) and [`ZA2009`](https://github.com/Nickelony/Stanza/wiki/ZA2009-Keep-the-slash-of-a-self-closing-markup-element-tight),
+  applies neither half unless a file enables one. A file that enables both gets `ZA2008`.
+- The empty-element rule, [`ZA2010`](https://github.com/Nickelony/Stanza/wiki/ZA2010-Write-an-empty-markup-element-as-a-self-closing-tag), applies only where a file enables it, and takes the slash shape of the pair above.
+- `xml:space="preserve"` does not stop the empty-element rule, because the element holds no whitespace.
+- The empty-element rule leaves an HTML element that needs an end tag, such as `div`, `span` or `script`, as written.
 - A reprint also applies the documentation clean-ups, each only where its rule is enabled.
   [`stanza_markup_doc_reprint`](https://github.com/Nickelony/Stanza/wiki/stanza_markup_doc_reprint) decides whether the member bodies are rewritten.
-- A reprint gives no ZA0101 separation inside a body it rewrites, so `format --reprint` followed by a plain `check` can report files.
+- While a reprint is on, no gap, padding, slash or empty-element edit lands inside any `<member>`, whether the reprint rewrites its body or not,
+  so `format --reprint` followed by a plain `check` can report files.
   Setting `stanza_markup_doc_reprint` in `.editorconfig` keeps the two consistent.
 
 ## What it never touches
@@ -72,18 +96,24 @@ A new blank line takes the line ending of the line below it, so a file keeps its
 
 A [reprint](https://github.com/Nickelony/Stanza/wiki/stanza_markup_doc_reprint) rewrites only what sits between the tags of a `<member>`,
 the documentation clean-ups included.
+It fills the text as [`ZA0901`](https://github.com/Nickelony/Stanza/wiki/ZA0901-Lay-out-a-documentation-comment) does,
+so it changes more than the line breaks:
+
+- A word made of closing marks joins the word before it, so `a ? b : c` in prose becomes `a? b: c`.
+- A `<c>` element keeps its marks apart, but the spaces between its words collapse to one.
+- A backtick code span keeps its marks and its spaces, so an expression whose spacing matters belongs in one.
 
 ## What it leaves alone
 
-- **Mixed content and preserved space.** A container with text of its own is skipped;
-  `xml:space="preserve"` disables the blank line rules for a subtree until `xml:space="default"`.
+- **Mixed content and preserved space.** The blank line rules skip a container with text of its own;
+  `xml:space="preserve"` disables them, and the slash pair, for a subtree until `xml:space="default"`.
 - **Links.** A file that is a symlink is skipped with the warning "is a link and was left alone",
   because a write would replace the link.
   Only a link to a file that a profile claims and `.editorconfig` enables is reported, named or found by a scan.
 - **Cloud placeholders.** A file that a sync client such as OneDrive keeps online only is not a link, so it is read like any other file.
 - **Skipped directories.** A scan does not enter a linked directory, and it does not report one.
   It also skips the [directories the command reference lists](https://github.com/Nickelony/Stanza/wiki/Markup-command-reference#paths-and-globs).
-  A linked directory named on the command line is scanned, and a file that two arguments reach through it is inspected once.
+  A linked directory named on the command line is scanned.
 - **Large documents.** A document over 64 Mi characters of decoded text, or with more than 1 Mi elements, is refused rather than read.
 - **Files without a length.** A file that states a length of 0, as an empty file, a pipe or a device does, is read as empty without being opened,
   because opening a pipe blocks until a writer does. An `.editorconfig` that states no length is skipped the same way.
@@ -96,6 +126,7 @@ the documentation clean-ups included.
 - **Comments and PIs.**
   A comment or processing instruction directly above an element belongs to it,
   so the blank line goes above that comment; one already separated by a blank line stays as a section marker.
+  [`ZA2001`](https://github.com/Nickelony/Stanza/wiki/ZA2001-Separate-multi-line-markup-elements) and [`ZA2004`](https://github.com/Nickelony/Stanza/wiki/ZA2004-Separate-a-commented-markup-element) write it.
 - **A document it cannot read.** A file that is not well formed is reported, not rewritten;
   an external entity is never resolved, and an internal-DTD entity is expanded only up to 1 Mi characters.
 
@@ -105,7 +136,7 @@ A [reprint](https://github.com/Nickelony/Stanza/wiki/stanza_markup_doc_reprint) 
 
 - The body holds `&`, a CDATA section, a comment or a processing instruction.
 - The member, or an element inside it, is under `xml:space="preserve"`.
-- The body contains a `<code>`, `<include>` or `<inheritdoc>` element.
+- A line of an element that holds a `<code>`, `<include>` or `<inheritdoc>` element stands left of the body's indentation.
 - The start tag does not end its line, or the end tag does not stand on a line of its own.
 - An element sits 32 levels or more below the member.
 - A blank line sits inside a nested element other than a `<para>`.
@@ -116,6 +147,10 @@ A [reprint](https://github.com/Nickelony/Stanza/wiki/stanza_markup_doc_reprint) 
 - The body is empty.
 - The file breaks its lines with a bare carriage return and no line feed.
 
+A direct child of the member that holds a `<code>`, `<include>` or `<inheritdoc>` element is copied as written, line by line,
+and the children beside it are laid out.
+The keyword clean-up skips such a child as well.
+
 ## Writing back
 
 A write goes through a sibling temp file that replaces the original,
@@ -125,8 +160,7 @@ On Windows the replace keeps the original's access list and alternate streams.
 A read-only file is never replaced, and neither is a file that changed after the run read it, on any system.
 The run reports either as not written, as [Failures and warnings](#failures-and-warnings) describes.
 
-A hard kill between the write and the replace leaves the temp file, `<start of name>.<random>.stanza-tmp`, beside the original.
-The start is the first 32 characters of the original's name, so a name of any length the file system accepts can be written.
+A hard kill between the write and the replace leaves the temp file beside the original, with the extension `.stanza-tmp`.
 No profile claims that extension, so a scan passes it by unless a profile key, or a glob given with `--profile`, claims it.
 
 A replace that fails after the original is gone moves the temp file into its place, so the new text is never lost.
@@ -141,7 +175,7 @@ The [command reference](https://github.com/Nickelony/Stanza/wiki/Markup-command-
 A warning leaves the run passing, and `--strict` makes each warning below an error, which fails it.
 
 - A file the run cannot read or parse is a warning.
-  Under `--format msbuild` it is reported as [`ZA0100`](https://github.com/Nickelony/Stanza/wiki/ZA0100-Report-a-file-that-could-not-be-read-or-parsed).
+  Under `--format msbuild` it is reported as [`ZA2901`](https://github.com/Nickelony/Stanza/wiki/ZA2901-Report-a-file-that-could-not-be-read-or-parsed).
 - A file that `format` has changes for but will not write back in the encoding it declares is a warning, and is left as it was;
   [Markup encoding](https://github.com/Nickelony/Stanza/wiki/Markup-encoding) says which declarations those are.
 - A directory scan that collects no file, or a glob whose matches are all excluded, disabled or claimed by no profile, is a warning.
@@ -158,6 +192,8 @@ even when it is a link. `--strict` never makes a note an error, so a hook that p
 These problems fail the run in every mode:
 
 - A path that does not exist, and a command-line glob that matches no file or that the dialect refuses.
+  An `--exclude` the dialect refuses fails the run too, before any file is read or written,
+  as the [command reference](https://github.com/Nickelony/Stanza/wiki/Markup-command-reference#paths-and-globs) says.
   [Markup globs](https://github.com/Nickelony/Stanza/wiki/Markup-globs) lists what the dialect refuses.
 - A defect of the tool, a layout it would write broken, is an error in every mode, and the file is left as it was.
 - A file whose write fails with an I/O error fails the run in every mode.

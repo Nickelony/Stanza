@@ -87,14 +87,14 @@ public sealed class MarkupToolCancellationTests
 			cancellationToken: cancellation.Token
 		);
 
-		IEnumerable<FileSystemInfo> walk = MarkupDirectoryWalker.EnumerateEntries(root, context);
+		IEnumerable<FileSystemInfo> walk = MarkupDirectoryWalker.EnumerateFiles(root, context);
 		List<string> walked = [];
 
 		_ = Assert.ThrowsExactly<OperationCanceledException>(() =>
 		{
-			foreach (FileSystemInfo entry in walk)
+			foreach (FileSystemInfo file in walk)
 			{
-				walked.Add(entry.Name);
+				walked.Add(file.Name);
 				cancellation.Cancel();
 			}
 		});

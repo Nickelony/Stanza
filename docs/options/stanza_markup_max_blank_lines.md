@@ -2,8 +2,8 @@
 
 Controls the most blank lines a [gap](https://github.com/Nickelony/Stanza/wiki/Terms) between two markup elements may keep.
 Default: `1`.
-Read by [`ZA0104`](https://github.com/Nickelony/Stanza/wiki/ZA0104-Collapse-extra-blank-lines-between-markup-elements) and the markup [tight rules](https://github.com/Nickelony/Stanza/wiki/Terms),
-and by stanza-markup.
+Read by [`ZA2006`](https://github.com/Nickelony/Stanza/wiki/ZA2006-Collapse-extra-blank-lines-between-markup-elements) and the markup [tight rules](https://github.com/Nickelony/Stanza/wiki/Terms) of the analyzer,
+on the literals that [`stanza_markup_literals`](https://github.com/Nickelony/Stanza/wiki/stanza_markup_literals) picks, and by stanza-markup.
 
 | Value                                           | Effect                                                                                    |
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -13,6 +13,7 @@ and by stanza-markup.
 
 ```csharp
 // Before - three blank lines between the two elements
+// language=xml
 const string Project = """
 	<Project>
 	  <ItemGroup>
@@ -28,6 +29,7 @@ const string Project = """
 	""";
 
 // After - the cap of one
+// language=xml
 const string Project = """
 	<Project>
 	  <ItemGroup>
@@ -43,9 +45,9 @@ const string Project = """
 
 A tight rule that a file [enables](https://github.com/Nickelony/Stanza/wiki/Terms) owns its whole gap,
 whatever the cap says, and removes every blank line in it.
-[ZA0102](https://github.com/Nickelony/Stanza/wiki/ZA0102-Keep-multi-line-markup-elements-together) or [ZA0103](https://github.com/Nickelony/Stanza/wiki/ZA0103-Keep-single-line-markup-elements-together) owns a gap,
+[ZA2002](https://github.com/Nickelony/Stanza/wiki/ZA2002-Keep-multi-line-markup-elements-together) or [ZA2003](https://github.com/Nickelony/Stanza/wiki/ZA2003-Keep-single-line-markup-elements-together) owns a gap,
 as [`stanza_markup_scope`](https://github.com/Nickelony/Stanza/wiki/stanza_markup_scope) decides.
 Where a `#pragma` silences a tight rule over a literal, the cap takes the gaps that rule would have owned there.
 
-[ZA0104](https://github.com/Nickelony/Stanza/wiki/ZA0104-Collapse-extra-blank-lines-between-markup-elements) cuts every other gap above the cap back to the cap,
+[ZA2006](https://github.com/Nickelony/Stanza/wiki/ZA2006-Collapse-extra-blank-lines-between-markup-elements) cuts every other gap above the cap back to the cap,
 and its page states which gaps the cap reaches and when the tool applies it.

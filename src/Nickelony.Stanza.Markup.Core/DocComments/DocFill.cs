@@ -13,7 +13,7 @@ internal static class DocFill
 	private static readonly char[] s_closingMarks = [',', '.', ';', ':', '!', '?', ')', ']', '}'];
 
 	private const double TailPenalty = 10_000;
-	private const double WeakTailPenalty = 10_000;
+	private const double WeakLineEndPenalty = 10_000;
 	private const double RuntPenalty = 100_000;
 	private const double ToleratedPenalty = 1_000;
 	private const double OverflowPenalty = 1_000_000;
@@ -25,6 +25,19 @@ internal static class DocFill
 	/// <summary>Adds the words of one line of text; a backtick span is one word, spaces and all.</summary>
 	public static void AddWords(List<DocAtom> atoms, string text, bool attached, bool continuesSpan = false, int plainBacktick = -1)
 	{
+		StringBuilder? open = null;
+
+		AddWords(atoms, text, attached, continuesSpan, plainBacktick, ref open);
+		CloseWord(atoms, ref open);
+	}
+
+	/// <summary>Adds the words, and holds the last atom's text in the builder while a later line extends it.</summary>
+	public static void AddWords(List<DocAtom> atoms, string text, bool attached, bool continuesSpan, int plainBacktick, ref StringBuilder? open)
+	{
+		// The caller closes the word before it reads a line break, since the break may change which list the atoms go to.
+		if (!continuesSpan)
+			CloseWord(atoms, ref open);
+
 		bool glued = attached && text.Length > 0 && !MarkupWhitespace.IsXmlWhitespace(text[0]);
 		bool first = true;
 		bool withinSpan = continuesSpan;
@@ -62,8 +75,8 @@ internal static class DocFill
 
 			if (joinsSpan)
 			{
-				DocAtom open = atoms[atoms.Count - 1];
-				atoms[atoms.Count - 1] = new DocAtom(open.Text + " " + word, open.IsGlued);
+				open ??= new StringBuilder(atoms[atoms.Count - 1].Text);
+				open.Append(' ').Append(word);
 
 				continue;
 			}
@@ -72,14 +85,27 @@ internal static class DocFill
 			// so neither a space nor a break may come between the two.
 			if (atoms.Count > 0 && IsOnlyClosingMarks(word))
 			{
-				DocAtom previous = atoms[atoms.Count - 1];
-				atoms[atoms.Count - 1] = new DocAtom(previous.Text + word, previous.IsGlued);
+				open ??= new StringBuilder(atoms[atoms.Count - 1].Text);
+				open.Append(word);
 
 				continue;
 			}
 
+			CloseWord(atoms, ref open);
 			atoms.Add(new DocAtom(word, glued && firstWord));
 		}
+	}
+
+	/// <summary>Writes the text a run of joins built up into the last atom, which then stands as it is.</summary>
+	public static void CloseWord(List<DocAtom> atoms, ref StringBuilder? open)
+	{
+		if (open is null)
+			return;
+
+		DocAtom last = atoms[atoms.Count - 1];
+		atoms[atoms.Count - 1] = new DocAtom(open.ToString(), last.IsGlued);
+
+		open = null;
 	}
 
 	private static bool IsWordBreak(char character) => MarkupWhitespace.IsXmlWhitespace(character);
@@ -186,16 +212,17 @@ internal static class DocFill
 
 				int slack = layout.ContentWidth - facts.GetLength(start, end);
 
+				bool isPastOverflow = -slack > layout.MaxOverflowColumns;
+				bool isGlued = end + 1 < count && atoms[end + 1].IsGlued;
+
+				// Past the tolerated overflow the rest of the run only adds columns, so the search goes to where the run ends.
+				if (isGlued && isPastOverflow)
+					end = facts.RunEnds[end] - 1;
+
 				// A word that touches the one before it may not be moved onto the next line:
 				// a break there would put a space where the author wrote none.
-				if (end + 1 < count && atoms[end + 1].IsGlued)
-				{
-					// Past the tolerated overflow the rest of the run only adds columns, so the search goes to where the run ends.
-					if (-slack > layout.MaxOverflowColumns)
-						end = facts.RunEnds[end] - 1;
-
+				if (isGlued)
 					continue;
-				}
 
 				double cost = best[end + 1] + facts.GetLineCost(start, end, slack);
 
@@ -207,7 +234,7 @@ internal static class DocFill
 
 				// Past the tolerated overflow each column costs more than every other penalty of the rest of the run,
 				// so a longer line never wins and the search for this start ends at its first legal break there.
-				if (-slack > layout.MaxOverflowColumns)
+				if (isPastOverflow)
 					break;
 			}
 		}
@@ -241,10 +268,10 @@ internal static class DocFill
 		private readonly int[] _nextClauseEnds;
 
 		private readonly DocLayoutOptions _layout;
-		private readonly DocNameSet? _weak;
+		private readonly MarkupNameSet? _weak;
 
 		/// <summary>
-		/// The atoms normalized as stanza_doc_weak_tail_words normalizes its words, once, not per candidate line.
+		/// The atoms normalized as stanza_doc_weak_line_end_words normalizes its words, once, not per candidate line.
 		/// </summary>
 		private readonly string[] _normalized;
 
@@ -253,7 +280,7 @@ internal static class DocFill
 			int count = atoms.Count;
 
 			_layout = layout;
-			_weak = layout.WeakTailWords;
+			_weak = layout.WeakLineEndWords;
 			_normalized = _weak is null ? [] : NormalizeAtoms(atoms);
 
 			_columnsBefore = new int[count + 1];
@@ -327,7 +354,7 @@ internal static class DocFill
 
 				// A line may stand a few columns over the width when that keeps a phrase whole.
 				// stanza_doc_max_overflow_columns says how many; each column costs ToleratedPenalty, below TailPenalty,
-				// so overflow goes only to avoid a short tail, a weak tail, a fragment before a clause end or a leftover line.
+				// so overflow goes only to avoid a short tail, a weak line end, a fragment before a clause end or a leftover line.
 				// A line further over pays OverflowPenalty per column, a far higher cost.
 				cost += excess <= _layout.MaxOverflowColumns ? ToleratedPenalty * excess : OverflowPenalty * excess;
 			}
@@ -360,7 +387,7 @@ internal static class DocFill
 			}
 
 			if (_weak is not null && _weak.Contains(_normalized[end]))
-				cost += WeakTailPenalty;
+				cost += WeakLineEndPenalty;
 
 			return cost;
 		}
