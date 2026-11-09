@@ -43,14 +43,14 @@
 	"dependencies": {
 		"postcss-scss": "^4.0.9",
 		"postcss-styled-syntax": "^0.7.4",
-		"typescript": "^6.0.3"
+		"typescript": "^7.0.2"
 	},
 	"devDependencies": {
-		"@eslint/js": "^9.39.5",
+		"@eslint/js": "^10.0.1",
 		"@ianvs/prettier-plugin-sort-imports": "^4.7.1",
-		"eslint": "^9.39.0",
+		"eslint": "^10.14.0",
 		"postcss": "^8.5.28",
 		"prettier": "^3.9.10",
-		"stylelint": "^17.16.0"
+		"stylelint": "^18.0.0"
 	}
 }
