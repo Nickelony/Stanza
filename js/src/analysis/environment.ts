@@ -2,6 +2,11 @@
 export interface Environment {
 	readonly assertionRoots: ReadonlySet<string>;
 	readonly testRoots: ReadonlySet<string>;
+	readonly receiverRoots: ReadonlySet<string>;
+	readonly receiverComparison: 'root' | 'path';
+	readonly receiverEnabled: boolean;
+	readonly receiverSeparationEnabled: boolean;
+	readonly declarationShapes: 'merge' | 'split';
 
 	/** The names whose bare call is a guard, which `separate-guard-clauses` and `separate-base-call` both read. */
 	readonly guardRoots: ReadonlySet<string>;
@@ -12,6 +17,10 @@ export interface Environment {
 	/** True when `separate-await-runs` is enabled, which makes an awaited call an await statement whatever it calls. */
 	readonly awaitEnabled: boolean;
 }
+
+export const defaultReceiverRoots: readonly string[] = [];
+export const defaultReceiverComparison = 'root';
+export const defaultDeclarationShapes = 'merge';
 
 export const defaultGuardRoots: readonly string[] = ['assert', 'invariant'];
 export const defaultAssertionRoots: readonly string[] = ['assert', 'expect', 'expectTypeOf', 't'];
@@ -36,7 +45,10 @@ export const leastMaxLooseRunSize = 0;
 export const greatestMaxLooseRunSize = 1000;
 
 /** The settings that `settings.stanza` holds, which `readSharedSettings` returns once they are read. */
-export type SharedSettings = Pick<Environment, 'assertionRoots' | 'testRoots' | 'guardRoots' | 'maxLooseRunSize'>;
+export type SharedSettings = Pick<
+	Environment,
+	'assertionRoots' | 'testRoots' | 'guardRoots' | 'maxLooseRunSize' | 'receiverRoots' | 'receiverComparison' | 'declarationShapes'
+>;
 
 /** Reads one setting from its configured value, which is never `undefined`, and throws when the value is invalid. */
 type SettingReader<Value> = (key: string, value: unknown) => Value;
@@ -63,7 +75,7 @@ function listWords(words: readonly string[]): string {
 	return words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words.at(-1)}`;
 }
 
-/** Reads a list of names; an empty list is no names, and a value that is no array of strings is an error. */
+/** Reads a list of names; an empty list is no names, and a value that is no array of strings, or a name that is blank or padded with spaces, is an error. */
 function readNames(): SettingReader<ReadonlySet<string>> {
 	return (key, value) => {
 		if (!Array.isArray(value)) {
@@ -74,6 +86,15 @@ function readNames(): SettingReader<ReadonlySet<string>> {
 
 		if (index >= 0) {
 			throw new Error(`Stanza: setting "${key}" must be an array of strings, but item ${index} is ${describeValue(value[index])}.`);
+		}
+
+		// A name is matched exactly, so a blank one or one with spaces around it would match nothing and only hide a typo.
+		const padded = (value as string[]).findIndex((item) => item === '' || item.trim() !== item);
+
+		if (padded >= 0) {
+			throw new Error(
+				`Stanza: setting "${key}" must list names that are not blank and have no spaces around them, but item ${padded} is ${describeValue(value[padded])}.`,
+			);
 		}
 
 		return new Set(value as string[]);
@@ -91,8 +112,27 @@ const readLooseRunSize: SettingReader<number> = (key, value) => {
 	);
 };
 
+const readDeclarationShapes: SettingReader<SharedSettings['declarationShapes']> = (key, value) => {
+	if (value === 'merge' || value === 'split') {
+		return value;
+	}
+
+	throw new Error(`Stanza: setting "${key}" must be "merge" or "split", but is ${describeValue(value)}.`);
+};
+
+const readReceiverComparison: SettingReader<SharedSettings['receiverComparison']> = (key, value) => {
+	if (value === 'root' || value === 'path') {
+		return value;
+	}
+
+	throw new Error(`Stanza: setting "${key}" must be "root" or "path", but is ${describeValue(value)}.`);
+};
+
 /** The one table of the settings: each key `settings.stanza` accepts, with the default of an absent key and how a present value is read. */
 const settingTable = {
+	declarationShapes: { defaultValue: defaultDeclarationShapes, read: readDeclarationShapes },
+	receiverComparison: { defaultValue: defaultReceiverComparison, read: readReceiverComparison },
+	receiverRoots: { defaultValue: new Set(defaultReceiverRoots), read: readNames() },
 	assertionRoots: { defaultValue: new Set(defaultAssertionRoots), read: readNames() },
 	guardRoots: { defaultValue: new Set(defaultGuardRoots), read: readNames() },
 	maxLooseRunSize: { defaultValue: defaultMaxLooseRunSize, read: readLooseRunSize },

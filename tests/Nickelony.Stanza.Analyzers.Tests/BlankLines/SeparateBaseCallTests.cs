@@ -594,4 +594,37 @@ public sealed class SeparateBaseCallTests
 			after: "\n\tvoid Use(int value) { }\n"
 		);
 	}
+
+	[TestMethod]
+	public async Task AnEnabledKeptPairDoesNotRequireRunDeferralsFromTheBaseCallRule()
+	{
+		const string source = """
+			class B
+			{
+				public virtual void M() { }
+			}
+
+			class C : B
+			{
+				public override void M()
+				{
+					base.M();
+					Work();
+					Work();
+				}
+
+				void Work() { }
+			}
+			""";
+
+		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.OnSuppressingAllOthers([
+			DiagnosticDescriptors.SeparateBaseCall,
+			DiagnosticDescriptors.KeepGuardWithBinding,
+		]);
+
+		AnalyzerRunResult result = await RoslynTestHarness.ReportAllAsync(source, rules);
+
+		Assert.HasCount(1, result.Diagnostics);
+		Assert.AreEqual(DiagnosticDescriptors.SeparateBaseCall.Id, result.Diagnostics[0].Id);
+	}
 }

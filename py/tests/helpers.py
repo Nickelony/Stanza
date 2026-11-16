@@ -13,7 +13,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from nickelony_stanza import Config, Options, fix, lint
-from nickelony_stanza.engine import Finding
+from nickelony_stanza.analysis.source import SourceFile
+from nickelony_stanza.engine import Finding, apply_edits
 from nickelony_stanza.rules import ALL_RULES, CALL_RULES
 
 CORPUS = Path(__file__).parent / "corpus"
@@ -31,6 +32,23 @@ CONFIGS = {
     "everything": Config.create("strong", enable=[code for code in OPT_IN if code != "ZA3201"]),
     "everything separating": Config.create("strong", enable=OPT_IN),
     "everything both halves": Config.create("strong", enable=[*OPT_IN, "ZA3111", "ZA3202"]),
+}
+
+
+# The settings that change how the relationship rules group statements; a formatter owns none of those gaps,
+# so the tests of how a fix settles run them on every corpus file and the formatter tests on one.
+OPTION_VARIANTS = {
+    "receiver roots": Options(receiver_roots=("*",)),
+    "receiver paths": Options(receiver_roots=("*",), receiver_comparison="path", declaration_shapes="split"),
+    "named receivers": Options(receiver_roots=("db",), receiver_comparison="path", declaration_shapes="split"),
+}
+
+SETTLING_CONFIGS = {
+    **CONFIGS,
+    **{
+        f"everything {name}": replace(CONFIGS["everything"], options=options)
+        for name, options in OPTION_VARIANTS.items()
+    },
 }
 
 
@@ -52,6 +70,34 @@ def fix_with(text: str, *rules: str, options: Options | None = None) -> str:
 def findings_with(text: str, *rules: str, options: Options | None = None) -> list[Finding]:
     """Lists the findings of exactly the given rules."""
     return lint(text, config_for(rules, options))
+
+
+def function_of(body: str, parameters: str = "") -> str:
+    """Wraps a body in a function, indenting each line that is not blank."""
+    return f"def f({parameters}):\n" + "".join("    " + line + "\n" if line else "\n" for line in body.splitlines())
+
+
+# A keeper and a body where the keeper joins the gap above the unit right above a jump, so the jump rule reads that join.
+JUMP_KEEPERS = [
+    ("ZA3061", "value = get()\n\nassert value is not None\nreturn value"),
+    ("ZA3062", "value = Item()\n\nvalue.start()\nreturn value"),
+    ("ZA3063", "db.first()\n\ndb.second()\nreturn db"),
+    ("ZA3064", "value = get()\n\nnext_value = use(value)\nreturn next_value"),
+]
+
+
+def fix_in_steps(text: str, config: Config, mode: str) -> str:
+    """Applies the first finding, the last one or all of them, then lints again, for at most four rounds."""
+    for _ in range(4):
+        findings = lint(text, config)
+
+        if not findings:
+            break
+
+        chosen = findings[:1] if mode == "first" else findings[-1:] if mode == "last" else findings
+        text = apply_edits(SourceFile(text), chosen)
+
+    return text
 
 
 def run_formatter(tool: str, text: str) -> str | None:

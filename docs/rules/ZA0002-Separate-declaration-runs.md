@@ -31,6 +31,8 @@ return total;
   and so does a deconstruction that declares every name, such as `var (a, b) = Read();` or `(int a, string b) = Read();`.
 - A deconstruction counts as `var` when it declares every name with `var`, and as an explicit type otherwise.
   One that writes an existing name, as `(int a, b) = Read();` does, is an assignment.
+- Where [`stanza_declaration_shapes`](https://github.com/Nickelony/Stanza/wiki/stanza_declaration_shapes) is `split`, a deconstruction and an ordinary declaration never share a run.
+- Where [`stanza_declaration_typing`](https://github.com/Nickelony/Stanza/wiki/stanza_declaration_typing) is `merge`, a declaration that writes `var` and one that writes a type share a run.
 - A declaration on its own, directly above a run, takes its blank line from the rule of that run, this rule included,
   and stays tight against the run while that rule is [off](https://github.com/Nickelony/Stanza/wiki/Terms).
 - A gap where two runs meet goes to the rule with the lower ID, as [One run of statements, several owners](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#one-run-of-statements-several-owners) says.

@@ -24,6 +24,8 @@ internal static class BlankLineOwnership
 		(BlankLineGrouping.RunFamily.Await, DiagnosticDescriptors.SeparateAwaitRuns),
 		(BlankLineGrouping.RunFamily.Subscription, DiagnosticDescriptors.SeparateEventSubscriptionRuns),
 		(BlankLineGrouping.RunFamily.Assignment, DiagnosticDescriptors.SeparateAssignmentRuns),
+		(BlankLineGrouping.RunFamily.Yield, DiagnosticDescriptors.SeparateYieldRuns),
+		(BlankLineGrouping.RunFamily.LocalFunction, DiagnosticDescriptors.SeparateLocalFunctionRuns),
 	];
 
 	/// <summary>Gets the rule that owns the runs of a family.</summary>
@@ -43,6 +45,10 @@ internal static class BlankLineOwnership
 	{
 		SyntaxNode previous = container.Siblings[boundary - 1];
 		SyntaxNode next = container.Siblings[boundary];
+
+		// A keep rule that is on wins the gap of the pair it keeps together over every separating rule.
+		if (BlankLineKeptPairs.IsGapClaimedByAnother(container, boundary, askingRule: rule))
+			return true;
 
 		if (IsGapAboveOwnedByCommentedSibling(context: container.Context, options: container.Options, previous, next, rule))
 			return true;
@@ -65,6 +71,140 @@ internal static class BlankLineOwnership
 				target: DiagnosticDescriptors.SeparateMultiLineConstructs,
 				position: next.SpanStart
 			);
+	}
+
+	/// <summary>Reads the edges earlier separating owners ask for after kept-group transfer.</summary>
+	public static ImmutableHashSet<int> ReadAskedSeparatingBoundaries(ContainerContext container, StanzaRule rule)
+	{
+		if (!BlankLineKeptPairs.HasEnabledRule(container) && rule.Descriptor != DiagnosticDescriptors.SeparateReceiverGroups)
+			return [];
+
+		ImmutableHashSet<int>.Builder owned = ImmutableHashSet.CreateBuilder<int>();
+		StanzaRule? multiLine = StanzaRuleState.FindJudgingDeferral(rule, DiagnosticDescriptors.SeparateMultiLineConstructs, container.Kind);
+
+		if (multiLine is not null && !StanzaRuleState.IsRuleDisabled(container, container.Options, multiLine))
+			owned.UnionWith(ReadOwnerBoundaries(container, ReadMultiLineBoundaries(container, multiLine), multiLine));
+
+		if (!s_runRules.Any(pair => rule.Defers(pair.Rule)) && !rule.Defers(DiagnosticDescriptors.SeparateSameTypeDeclarationRuns))
+			return owned.ToImmutable();
+
+		foreach ((BlankLineGrouping.RunFamily family, DiagnosticDescriptor descriptor) in s_runRules)
+		{
+			if (descriptor == rule.Descriptor)
+				break;
+
+			if (!rule.Defers(descriptor))
+				continue;
+
+			StanzaRule owner = rule.GetDeferral(descriptor);
+
+			if (StanzaRuleState.IsRuleDisabled(container, container.Options, owner))
+				continue;
+
+			GapOwners ownerGaps = ReadGapOwners(container, owner);
+			var reader = new FamilyReader(container, rule: owner, gapOwners: ownerGaps, gathered: null);
+			ImmutableArray<int> boundaries = [.. reader.ReadFamilyBorders(family).Select(border => border.Boundary)];
+			owned.UnionWith(ReadOwnerBoundaries(container, boundaries, owner));
+		}
+
+		if (rule.Defers(DiagnosticDescriptors.SeparateSameTypeDeclarationRuns))
+		{
+			StanzaRule owner = rule.GetDeferral(DiagnosticDescriptors.SeparateSameTypeDeclarationRuns);
+
+			if (!StanzaRuleState.IsRuleDisabled(container, container.Options, owner))
+			{
+				ImmutableArray<int> boundaries =
+				[
+					.. BlankLineGrouping
+						.ReadSameTypeDeclarationBorders(
+							siblings: container.Siblings,
+							gapOwners: ReadGapOwners(container, owner),
+							gathered: null,
+							cancellationToken: container.CancellationToken
+						)
+						.Select(border => border.Boundary),
+				];
+
+				owned.UnionWith(ReadOwnerBoundaries(container, boundaries, owner));
+			}
+		}
+
+		return owned.ToImmutable();
+	}
+
+	private static ImmutableArray<int> ReadMultiLineBoundaries(ContainerContext container, StanzaRule multiLine)
+	{
+		return
+		[
+			.. Enumerable
+				.Range(1, Math.Max(0, container.Siblings.Length - 1))
+				.Where(boundary => StanzaSyntax.IsMultiLine(container.Siblings[boundary - 1]) || StanzaSyntax.IsMultiLine(container.Siblings[boundary]))
+				.Where(boundary =>
+					StanzaRuleState.IsTheOwningHalf(
+						scope: container,
+						options: container.Options,
+						rule: multiLine,
+						position: container.Siblings[boundary].SpanStart
+					)
+				),
+		];
+	}
+
+	/// <summary>Gets the gaps above kept groups where the multi-line rule asks in place of a gap inside them.</summary>
+	/// <remarks>
+	/// A read of runs ends a run there, as the blank line written later will.
+	/// </remarks>
+	private static ImmutableHashSet<int> GetDisplacedMultiLineBoundaries(ContainerContext container, StanzaRule rule)
+	{
+		StanzaRule? multiLine = StanzaRuleState.FindJudgingDeferral(rule, DiagnosticDescriptors.SeparateMultiLineConstructs, container.Kind);
+
+		if (container.RunOwnership is not { } ownership || multiLine is null || StanzaRuleState.IsRuleDisabled(container, container.Options, multiLine))
+			return [];
+
+		return ownership.GetDisplaced(
+			container,
+
+			reading =>
+			{
+				ImmutableArray<int> boundaries = ReadMultiLineBoundaries(reading, multiLine);
+				return ReadOwnerBoundaries(reading, boundaries, multiLine).Except(boundaries);
+			}
+		);
+	}
+
+	public static ImmutableHashSet<int> ReadAskedAnchors(ContainerContext container, StanzaRule keeper)
+	{
+		ImmutableHashSet<int> anchors = ReadAskedSeparatingBoundaries(container, keeper)
+			.Union(BlankLineBaseCalls.ReadAskedBaseCallBoundaries(container, keeper))
+			.Union(BlankLineCheckedStanzas.ReadAskedBoundaries(container, keeper))
+			.Union(BlankLineReceiverGroups.ReadAskedBoundaries(container, keeper));
+
+		int guard = BlankLineGuards.FindAskedGuardBoundary(container, keeper);
+		return guard >= 0 ? anchors.Add(guard) : anchors;
+	}
+
+	private static ImmutableHashSet<int> ReadOwnerBoundaries(ContainerContext container, ImmutableArray<int> boundaries, StanzaRule owner)
+	{
+		ImmutableArray<int> active =
+		[
+			.. boundaries.Where(boundary =>
+				!StanzaRuleState.IsOffAt(scope: container, options: container.Options, rule: owner, position: container.Siblings[boundary].SpanStart)
+			),
+		];
+
+		return
+		[
+			.. BlankLineKeptPairs
+				.ReadOuterBoundaries(container, active)
+				.Where(boundary =>
+					!StanzaRuleState.IsOffAt(
+						scope: container,
+						options: container.Options,
+						rule: owner,
+						position: container.Siblings[boundary].SpanStart
+					)
+				),
+		];
 	}
 
 	/// <summary>Whether the import section rule is on and owns the gap below the last import.</summary>
@@ -132,6 +272,10 @@ internal static class BlankLineOwnership
 		return false;
 	}
 
+	/// <summary>Whether the brace padding rule is on at the position, so it owns the gap above a brace.</summary>
+	public static bool IsBracePaddingOnAt(RuleScope scope, StanzaOptions options, StanzaRule rule, int position) =>
+		StanzaRuleState.IsDeferralOnAt(scope, options, rule, target: DiagnosticDescriptors.RemoveBracePadding, position);
+
 	/// <summary>Whether the two-unit rule owns the gap of a container of two units, so the asker defers.</summary>
 	public static bool IsGapOwnedByTwoUnitRule(ContainerContext container, StanzaRule rule)
 	{
@@ -173,17 +317,40 @@ internal static class BlankLineOwnership
 		ImmutableArray<SyntaxNode> siblings = container.Siblings;
 		CancellationToken cancellationToken = container.CancellationToken;
 
+		// Earlier run owners read the checked separator's edges even when that separator is asking.
+		if (rule.Descriptor == DiagnosticDescriptors.SeparateCheckedStanza)
+		{
+			gapOwners = gapOwners with
+			{
+				CheckedBoundaries =
+				[
+					.. BlankLineCheckedStanzas
+						.ReadBoundaries(container)
+						.Where(boundary =>
+							!StanzaRuleState.IsOffAt(
+								scope: container,
+								options: container.Options,
+								rule,
+								position: container.Siblings[boundary].SpanStart
+							)
+						),
+				],
+			};
+		}
+
 		ImmutableArray<BlankLineGrouping.RunBorder> borders = CollectOwnedRunBorders(
 			container,
 			rule,
-			reader: new FamilyReader(container, rule, gapOwners, gathered)
+			reader: new FamilyReader(container, rule, gapOwners, gathered),
+			projectsKeptGroups: true
 		);
 
 		borders = borders.AddRange(
 			ReadGroupBorders(
 				container,
 				owner: rule.GetDeferral(DiagnosticDescriptors.SeparateSameTypeDeclarationRuns),
-				readBorders: () => BlankLineGrouping.ReadSameTypeDeclarationBorders(siblings, gapOwners, gathered, cancellationToken)
+				readBorders: () => BlankLineGrouping.ReadSameTypeDeclarationBorders(siblings, gapOwners, gathered, cancellationToken),
+				projectsKeptGroups: true
 			)
 		);
 
@@ -193,7 +360,8 @@ internal static class BlankLineOwnership
 				ReadGroupBorders(
 					container,
 					owner: rule.GetDeferral(DiagnosticDescriptors.SeparateMemberGroups),
-					readBorders: () => BlankLineGrouping.ReadMemberGroupBorders(siblings, gapOwners, gathered, cancellationToken)
+					readBorders: () => BlankLineGrouping.ReadMemberGroupBorders(siblings, gapOwners, gathered, cancellationToken),
+					projectsKeptGroups: true
 				)
 			);
 		}
@@ -204,7 +372,8 @@ internal static class BlankLineOwnership
 				ReadGroupBorders(
 					container,
 					owner: rule.GetDeferral(DiagnosticDescriptors.SeparateModifierGroups),
-					readBorders: () => BlankLineGrouping.ReadModifierGroupBorders(siblings, gapOwners, gathered, cancellationToken)
+					readBorders: () => BlankLineGrouping.ReadModifierGroupBorders(siblings, gapOwners, gathered, cancellationToken),
+					projectsKeptGroups: true
 				)
 			);
 		}
@@ -216,12 +385,13 @@ internal static class BlankLineOwnership
 	private static ImmutableArray<BlankLineGrouping.RunBorder> ReadGroupBorders(
 		ContainerContext container,
 		StanzaRule owner,
-		Func<ImmutableArray<BlankLineGrouping.RunBorder>> readBorders
+		Func<ImmutableArray<BlankLineGrouping.RunBorder>> readBorders,
+		bool projectsKeptGroups = false
 	)
 	{
 		return StanzaRuleState.IsRuleDisabled(container, container.Options, owner)
 			? []
-			: ReadBordersNotSilencedByPragma(container, borders: readBorders(), ownerRuleId: owner.Descriptor.Id);
+			: ReadBordersNotSilencedByPragma(container, borders: readBorders(), ownerRuleId: owner.Descriptor.Id, projectsKeptGroups);
 	}
 
 	public static GapOwners ReadGapOwners(ContainerContext container, StanzaRule rule)
@@ -229,11 +399,10 @@ internal static class BlankLineOwnership
 		StanzaRule multiLine = rule.GetDeferral(DiagnosticDescriptors.SeparateMultiLineConstructs);
 		StanzaRule regionMarker = rule.GetDeferral(DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors);
 		StanzaRule conditionalBlock = rule.GetDeferral(DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors);
+		StanzaRule suppressionBlock = rule.GetDeferral(DiagnosticDescriptors.SeparateSuppressionBlock);
 		StanzaRule commentedSibling = rule.GetDeferral(DiagnosticDescriptors.SeparateCommentedSibling);
 
-		// The rules that read runs all read the await rule's state, so they agree on the kind of an await statement.
-		StanzaRule awaitRule =
-			rule.Descriptor == DiagnosticDescriptors.SeparateAwaitRuns ? rule : rule.GetDeferral(DiagnosticDescriptors.SeparateAwaitRuns);
+		Func<int, bool>? readsReceiver = FindReceiverReader(container, rule);
 
 		return new GapOwners(
 			MultiLineId: StanzaRuleState.IsRuleDisabled(container, container.Options, multiLine) ? null : multiLine.Descriptor.Id,
@@ -243,13 +412,78 @@ internal static class BlankLineOwnership
 				? null
 				: conditionalBlock.Descriptor.Id,
 
+			SuppressionBlockId: StanzaRuleState.IsRuleDisabled(container, container.Options, suppressionBlock)
+				? null
+				: suppressionBlock.Descriptor.Id,
+
 			CommentedSiblingId: StanzaRuleState.IsRuleDisabled(container, container.Options, commentedSibling)
 				? null
 				: commentedSibling.Descriptor.Id,
 
-			AwaitRuleEnabled: !StanzaRuleState.IsRuleDisabled(container, container.Options, awaitRule),
-			BaseCallBoundaries: BlankLineBaseCalls.ReadAskedBaseCallBoundaries(container, askingRule: rule)
+			AwaitRuleEnabled: IsKindRuleOn(container, rule, DiagnosticDescriptors.SeparateAwaitRuns),
+			YieldRuleEnabled: IsKindRuleOn(container, rule, DiagnosticDescriptors.SeparateYieldRuns),
+			LocalFunctionRuleEnabled: IsKindRuleOn(container, rule, DiagnosticDescriptors.SeparateLocalFunctionRuns),
+			BaseCallBoundaries: BlankLineBaseCalls.ReadAskedBaseCallBoundaries(container, askingRule: rule),
+			CheckedBoundaries: BlankLineCheckedStanzas.ReadAskedBoundaries(container, rule),
+			ReceiverBoundaries: BlankLineReceiverGroups.ReadAskedBoundaries(container, rule),
+			ReadsReceiverAt: readsReceiver,
+			ReceiverBarrier: readsReceiver is null ? null : boundary => IsReceiverBarrier(container, boundary, readsReceiver),
+
+			JoinedBoundaries: BlankLineDependentBindings
+				.GetJoined(container)
+				.Union(BlankLineKeptPairs.GetInitializationGaps(container))
+				.Union(BlankLineKeptPairs.GetJoinedBoundaries(container)),
+
+			DisplacedBoundaries: GetDisplacedMultiLineBoundaries(container, rule),
+			ProtectedSections: BlankLineDependentBindings.GetSections(container).Union(BlankLineReceiverGroups.GetSections(container))
 		);
+	}
+
+	/// <summary>Whether the rule of a statement kind is on, which the rules that read runs all read alike.</summary>
+	/// <remarks>
+	/// The rules agree on whether an await, a yield or a local function is a kind of run only through this state.
+	/// </remarks>
+	private static bool IsKindRuleOn(ContainerContext container, StanzaRule rule, DiagnosticDescriptor kindRule)
+	{
+		StanzaRule owner = rule.Descriptor == kindRule ? rule : rule.GetDeferral(kindRule);
+		return !StanzaRuleState.IsRuleDisabled(container, container.Options, owner);
+	}
+
+	private static bool IsReceiverBarrier(ContainerContext container, int boundary, Func<int, bool> readsReceiver)
+	{
+		SyntaxNode previous = container.Siblings[boundary - 1];
+		SyntaxNode next = container.Siblings[boundary];
+
+		return !BlankLineKeptPairs.IsWhitespaceGap(previous, next, container.CancellationToken)
+			&& (
+				BlankLineGrouping.IsReceiverCall(previous, container.Options, readsReceiver(previous.SpanStart))
+				|| BlankLineGrouping.IsReceiverCall(next, container.Options, readsReceiver(next.SpanStart))
+			);
+	}
+
+	private static Func<int, bool>? FindReceiverReader(ContainerContext container, StanzaRule rule)
+	{
+		if (container.Options.ReceiverRoots.IsEmpty)
+			return null;
+
+		DiagnosticDescriptor[] consumers =
+		[
+			DiagnosticDescriptors.SeparateInvocationRuns,
+			DiagnosticDescriptors.SeparateReceiverGroups,
+			DiagnosticDescriptors.KeepReceiverGroupTogether,
+		];
+
+		StanzaRule[] active =
+		[
+			.. consumers
+				.Select(target => target == rule.Descriptor ? rule : StanzaRuleState.FindJudgingDeferral(rule, target, container.Kind))
+				.Where(owner => owner is not null && !StanzaRuleState.IsRuleDisabled(container, container.Options, owner))
+				.Cast<StanzaRule>(),
+		];
+
+		return active.Length == 0
+			? null
+			: position => active.Any(owner => !StanzaRuleState.IsOffAt(scope: container, options: container.Options, rule: owner, position));
 	}
 
 	/// <summary>The boundaries the run rules ahead of the asking rule own in the container.</summary>
@@ -354,6 +588,7 @@ internal static class BlankLineOwnership
 		HashSet<int> ownerBoundaries = [.. BlankLineGrouping.ReadBorderBoundaries(borders)];
 
 		RemovePragmaSilencedBoundaries(container, boundaries: ownerBoundaries, ownerRuleId);
+		RemoveClaimedBoundaries(container, boundaries: ownerBoundaries);
 		owned.UnionWith(ownerBoundaries);
 	}
 
@@ -464,7 +699,8 @@ internal static class BlankLineOwnership
 	private static ImmutableArray<BlankLineGrouping.RunBorder> CollectOwnedRunBorders(
 		ContainerContext container,
 		StanzaRule rule,
-		FamilyReader reader
+		FamilyReader reader,
+		bool projectsKeptGroups = false
 	)
 	{
 		ImmutableArray<BlankLineGrouping.RunBorder>.Builder owned = ImmutableArray.CreateBuilder<BlankLineGrouping.RunBorder>();
@@ -484,7 +720,14 @@ internal static class BlankLineOwnership
 			if (StanzaRuleState.IsRuleDisabled(container, container.Options, runRule))
 				continue;
 
-			owned.AddRange(ReadBordersNotSilencedByPragma(container, borders: reader.ReadFamilyBorders(family), ownerRuleId: runRule.Descriptor.Id));
+			owned.AddRange(
+				ReadBordersNotSilencedByPragma(
+					container,
+					borders: reader.ReadFamilyBorders(family),
+					ownerRuleId: runRule.Descriptor.Id,
+					projectsKeptGroups
+				)
+			);
 		}
 
 		return owned.ToImmutable();
@@ -493,13 +736,41 @@ internal static class BlankLineOwnership
 	private static ImmutableArray<BlankLineGrouping.RunBorder> ReadBordersNotSilencedByPragma(
 		ContainerContext container,
 		ImmutableArray<BlankLineGrouping.RunBorder> borders,
-		string ownerRuleId
+		string ownerRuleId,
+		bool projectsKeptGroups = false
 	)
 	{
 		HashSet<int> boundaries = [.. borders.Select(static border => border.Boundary)];
 
 		RemovePragmaSilencedBoundaries(container, boundaries, ownerRuleId);
+
+		if (projectsKeptGroups && BlankLineKeptPairs.HasEnabledRule(container))
+		{
+			ImmutableArray<int> active = [.. borders.Select(static border => border.Boundary).Where(boundaries.Contains).Distinct()];
+			HashSet<int> projected = [.. BlankLineKeptPairs.ReadOuterBoundaries(container with { ReadsRuns = true }, active)];
+
+			RemovePragmaSilencedBoundaries(container, projected, ownerRuleId);
+
+			// A transferred edge has no raw run across it, so equal bounds keep it independent of other gathered gaps.
+			return
+			[
+				.. borders.Where(border => boundaries.Contains(border.Boundary) && projected.Contains(border.Boundary)),
+				.. projected.Except(boundaries).Select(boundary => new BlankLineGrouping.RunBorder(boundary, boundary, boundary)),
+			];
+		}
+
+		RemoveClaimedBoundaries(container, boundaries);
+
 		return [.. borders.Where(border => boundaries.Contains(border.Boundary))];
+	}
+
+	/// <summary>
+	/// Drops the boundaries whose gap a keep rule that is on claims, since no grouping rule asks for them then.
+	/// </summary>
+	private static void RemoveClaimedBoundaries(ContainerContext container, HashSet<int> boundaries)
+	{
+		if (boundaries.Count > 0)
+			boundaries.RemoveWhere(boundary => boundary > 0 && BlankLineKeptPairs.IsGapClaimed(container, boundary));
 	}
 
 	private static void RemovePragmaSilencedBoundaries(ContainerContext container, HashSet<int> boundaries, string ownerRuleId)

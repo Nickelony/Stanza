@@ -48,10 +48,10 @@ The example runs with [`separate-member-groups`](separate-member-groups.md) enab
 - A lone member between two sections is a section of one, so both its blank lines stay.
 - Two members on one line stand tight against each other, so two such lines with a blank line between are two sections.
 - It never removes a blank line another enabled rule asks for, so the blank lines around a run stay or are written.
-- The fix of any gap removes the blank lines of its whole run, so every fix order joins the run alike.
+- The first report of a run carries the fix that removes the blank lines of the whole run, so every fix order joins the run alike.
 - The rule judges the members of a class, an interface and a type literal.
   The statements of a block belong to [`keep-statement-runs-together`](keep-statement-runs-together.md).
-- A container of two members belongs to [`keep-two-units-together`](keep-two-units-together.md).
+- A container of two members belongs to [`keep-two-units-together`](keep-two-units-together.md) while enabled.
 - The rule is in no preset, because it removes blank lines an author wrote on purpose; enable it with an entry of its own.
 
 ## C# counterpart

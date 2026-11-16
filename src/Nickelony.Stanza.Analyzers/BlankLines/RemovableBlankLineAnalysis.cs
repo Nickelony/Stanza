@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -104,6 +105,42 @@ internal static class RemovableBlankLineAnalysis
 			}
 
 			ReportRemovableBoundary(context, previous, next, rule);
+		}
+	}
+
+	/// <summary>Reports the blank line of each gap a keep rule claims for the pair of units beside it.</summary>
+	/// <remarks>
+	/// A gap that a run rule already reports belongs to that rule, whose fix removes the blank line too.
+	/// </remarks>
+	public static void ReportClaimedBoundaries(
+		ContainerContext container,
+		StanzaRule rule,
+		Func<ImmutableHashSet<int>> readRunBoundaries,
+		ImmutableHashSet<int> connectedBoundaries
+	)
+	{
+		ImmutableArray<SyntaxNode> siblings = container.Siblings;
+		ImmutableHashSet<int>? runBoundaries = null;
+
+		for (int boundary = 1; boundary < siblings.Length; boundary++)
+		{
+			container.CancellationToken.ThrowIfCancellationRequested();
+
+			SyntaxNode previous = siblings[boundary - 1];
+			SyntaxNode next = siblings[boundary];
+
+			if (
+				!BlankLineGaps.HasBlankLineBetween(previous, next)
+				|| (!connectedBoundaries.Contains(boundary) && !BlankLineKeptPairs.Claims(container, boundary, rule))
+			)
+			{
+				continue;
+			}
+
+			runBoundaries ??= readRunBoundaries();
+
+			if (!runBoundaries.Contains(boundary))
+				ReportRemovableBoundary(context: container.Context, previous, next, rule);
 		}
 	}
 

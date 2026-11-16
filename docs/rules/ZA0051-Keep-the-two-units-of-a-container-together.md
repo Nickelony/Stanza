@@ -22,6 +22,9 @@ private static string Describe(object data)
 
 - With only two units, neither has a neighbor outside the pair to be separated from,
   so the [grouping rules](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#gaps-and-owners) ask for no blank line there and the one present is padding.
+- Where this rule is on at the gap, the rules that write or remove a blank line there, such as [`ZA0010`](https://github.com/Nickelony/Stanza/wiki/ZA0010-Separate-the-base-call), [`ZA0011`](https://github.com/Nickelony/Stanza/wiki/ZA0011-Separate-the-guard-clauses), [`ZA0012`](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-a-commented-sibling),
+  [`ZA0018`](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-a-checked-stanza) and the rules that gather or keep statements, leave a container of two units to it.
+  Where it is off, they judge the gap as usual.
 - A container is a block, a switch section, a type, an enum, a namespace or a file.
 - A comment or a directive between the two units keeps the blank line.
   Where this rule is on, [`ZA0012`](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-a-commented-sibling) adds none above that comment.

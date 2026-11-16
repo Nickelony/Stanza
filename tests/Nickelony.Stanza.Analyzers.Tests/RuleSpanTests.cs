@@ -21,6 +21,16 @@ public sealed class RuleSpanTests
 		StringComparer.Ordinal
 	)
 	{
+		[DiagnosticDescriptors.SeparateReceiverGroups.Id] = new Dictionary<string, string>
+		{
+			["stanza_receiver_roots"] = "item",
+		},
+
+		[DiagnosticDescriptors.KeepReceiverGroupTogether.Id] = new Dictionary<string, string>
+		{
+			["stanza_receiver_roots"] = "db",
+		},
+
 		[DiagnosticDescriptors.BreakExpressionOffSignatureLine.Id] = new Dictionary<string, string>
 		{
 			["stanza_max_line_length"] = "60",
@@ -42,6 +52,11 @@ public sealed class RuleSpanTests
 		StringComparer.Ordinal
 	)
 	{
+		[DiagnosticDescriptors.SeparateReceiverGroups.Id] =
+		[
+			DiagnosticDescriptors.SeparateInvocationRuns,
+		],
+
 		[DiagnosticDescriptors.SeparateCommentedSibling.Id] =
 		[
 			DiagnosticDescriptors.KeepSingleLineInitializerMembersTogether,
@@ -175,6 +190,44 @@ public sealed class RuleSpanTests
 				""",
 
 			"await@6:3+var value = 1;@5:3|return@8:3+_ = await Save();@7:3",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateYieldRuns.Id,
+
+			"""
+				class C
+				{
+					System.Collections.Generic.IEnumerable<int> M()
+					{
+						var value = 1;
+						yield return value;
+						yield return 2;
+						yield break;
+					}
+				}
+				""",
+
+			"yield@6:3+var value = 1;@5:3|yield@8:3+yield return 2;@7:3",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateLocalFunctionRuns.Id,
+
+			"""
+				class C
+				{
+					void M()
+					{
+						var value = 1;
+						int Twice(int number) => number * 2;
+						int Thrice(int number) => number * 3;
+						return;
+					}
+				}
+				""",
+
+			"int@6:3+var value = 1;@5:3|return@8:3+int Thrice(int number) => number * 3;@7:3",
 		],
 
 		[
@@ -330,6 +383,85 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.KeepChainOfGuardClausesTogether.Id,
+
+			"""
+				void M()
+				{
+					if (a) return;
+
+					if (b) return;
+				}
+				""",
+
+			"if@5:2+if (a) return;@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.KeepGuardWithBinding.Id,
+
+			"""
+				void M()
+				{
+					var item = Find();
+
+					if (item == null) return;
+				}
+				""",
+
+			"if@5:2+var item = Find();@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.KeepAccumulatorWithLoop.Id,
+
+			"""
+				void M()
+				{
+					int total = 0;
+
+					foreach (var item in items)
+						total += item;
+				}
+				""",
+
+			"foreach@5:2+int total = 0;@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.KeepJumpWithBinding.Id,
+
+			"""
+				int M()
+				{
+					Log();
+
+					int total = Sum();
+
+					return total;
+				}
+				""",
+
+			"return@7:2+int total = Sum();@5:2",
+		],
+
+		[
+			DiagnosticDescriptors.KeepNarrowingAssertionWithBinding.Id,
+
+			"""
+				void M()
+				{
+					var item = Find();
+
+					System.Diagnostics.Debug.Assert(item != null);
+					Use(item);
+				}
+				""",
+
+			"System@5:2+var item = Find();@3:2",
+		],
+
+		[
 			DiagnosticDescriptors.SeparateCommentedSibling.Id,
 
 			"""
@@ -391,6 +523,82 @@ public sealed class RuleSpanTests
 				""",
 
 			"a@4:2+if (x == 0) return;@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza.Id,
+
+			"""
+				void M(int x)
+				{
+					if (x == 0) return;
+					a = 1;
+					b = 2;
+				}
+				""",
+
+			"a@4:2+if (x == 0) return;@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.KeepInitializationWithCalls.Id,
+
+			"""
+				void M()
+				{
+					var item = Find();
+
+					item.Start();
+				}
+				""",
+
+			"item@5:2+var item = Find();@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateReceiverGroups.Id,
+
+			"""
+				void M()
+				{
+					item.A();
+					item.B();
+					other.A();
+					other.B();
+				}
+				""",
+
+			"other@5:2+item.B();@4:2",
+		],
+
+		[
+			DiagnosticDescriptors.KeepReceiverGroupTogether.Id,
+
+			"""
+				void M()
+				{
+					db.A();
+
+					db.B();
+				}
+				""",
+
+			"db@5:2+db.A();@3:2",
+		],
+
+		[
+			DiagnosticDescriptors.KeepDependentBindingsTogether.Id,
+
+			"""
+				void M()
+				{
+					int first = 1;
+
+					int second = first + 1;
+				}
+				""",
+
+			"int@5:2+int first = 1;@3:2",
 		],
 
 		[
@@ -915,6 +1123,30 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.RemoveSwitchLabelPadding.Id,
+
+			"""
+				class C
+				{
+					void M(int value)
+					{
+						switch (value)
+						{
+							case 1:
+
+							case 2:
+
+								Call(1, 2);
+								break;
+						}
+					}
+				}
+				""",
+
+			":@7:10+case@9:4|:@9:10+Call@11:5",
+		],
+
+		[
 			DiagnosticDescriptors.CollapseEmptyBlocks.Id,
 
 			"""
@@ -1126,6 +1358,26 @@ public sealed class RuleSpanTests
 				""",
 
 			"	#if TRACE@4:1+;@3:20|	private int _sum;@7:1+#endif@6:2",
+		],
+
+		[
+			DiagnosticDescriptors.SeparateSuppressionBlock.Id,
+
+			"""
+				class C
+				{
+					void M()
+					{
+						var options = Load();
+				#pragma warning disable CS0618
+						var legacy = options.OldSetting;
+				#pragma warning restore CS0618
+						Apply(legacy);
+					}
+				}
+				""",
+
+			"#pragma warning disable CS0618@6:1+;@5:23|\t\tApply(legacy);@9:1+#pragma warning restore CS0618@8:1",
 		],
 
 		[

@@ -78,6 +78,11 @@ public sealed class RulePageExampleGuardTests
 		["stanza_named_argument_min_arguments"] = "ZA0501",
 		["stanza_named_argument_literals"] = "ZA0502",
 		["stanza_assignment_targets"] = "ZA0008",
+		["stanza_declaration_shapes"] = "ZA0002",
+		["stanza_declaration_typing"] = "ZA0002",
+		["stanza_local_function_modifiers"] = "ZA0021",
+		["stanza_receiver_roots"] = "ZA0054",
+		["stanza_receiver_comparison"] = "ZA0019",
 	};
 
 	// An option an example needs beyond the defaults, keyed by its page and a part of its marker.
@@ -87,6 +92,45 @@ public sealed class RulePageExampleGuardTests
 		IReadOnlyDictionary<string, string> Options
 	)[] s_options =
 	[
+		(
+			"ZA0019",
+			string.Empty,
+
+			new Dictionary<string, string>
+			{
+				["stanza_receiver_roots"] = "item",
+				["stanza_receiver_comparison"] = "path",
+			}
+		),
+
+		(
+			"ZA0063",
+			string.Empty,
+			new Dictionary<string, string> { ["stanza_receiver_roots"] = "db" }
+		),
+
+		(
+			"stanza_receiver_comparison",
+			"with path",
+
+			new Dictionary<string, string>
+			{
+				["stanza_receiver_roots"] = "item",
+				["stanza_receiver_comparison"] = "path",
+			}
+		),
+
+		(
+			"stanza_receiver_comparison",
+			"with root",
+
+			new Dictionary<string, string>
+			{
+				["stanza_receiver_roots"] = "item",
+				["stanza_receiver_comparison"] = "root",
+			}
+		),
+
 		// The page sets the width to 60, because its member fits at the default.
 		(
 			"ZA0305",
@@ -175,6 +219,30 @@ public sealed class RulePageExampleGuardTests
 		),
 
 		(
+			"stanza_declaration_shapes",
+			"with split",
+			new Dictionary<string, string> { ["stanza_declaration_shapes"] = "split" }
+		),
+
+		(
+			"stanza_declaration_typing",
+			"with merge",
+			new Dictionary<string, string> { ["stanza_declaration_typing"] = "merge" }
+		),
+
+		(
+			"stanza_local_function_modifiers",
+			"with split",
+			new Dictionary<string, string> { ["stanza_local_function_modifiers"] = "split" }
+		),
+
+		(
+			"stanza_receiver_roots",
+			string.Empty,
+			new Dictionary<string, string> { ["stanza_receiver_roots"] = "db" }
+		),
+
+		(
 			"stanza_assignment_targets",
 			"with split",
 			new Dictionary<string, string> { ["stanza_assignment_targets"] = "split" }
@@ -196,6 +264,7 @@ public sealed class RulePageExampleGuardTests
 	// The other rules whose output an example shows, keyed by its page and a part of its marker.
 	private static readonly (string Page, string Marker, string[] Rules)[] s_alsoRun =
 	[
+		("stanza_receiver_roots", string.Empty, ["ZA0004", "ZA0006"]),
 		// ZA0002 writes the gap above the first property, and ZA0013 the one above the method.
 		("ZA0013", string.Empty, ["ZA0002"]),
 		// ZA0002 would pair the declaration that the comment splits off with the call below it.
@@ -208,6 +277,8 @@ public sealed class RulePageExampleGuardTests
 	// The rules that ship on and that an example runs with off, keyed by its page and a part of its marker.
 	private static readonly (string Page, string Marker, string[] Rules)[] s_alsoOff =
 	[
+		("ZA0019", string.Empty, ["ZA0004"]),
+		("stanza_receiver_comparison", string.Empty, ["ZA0004"]),
 		// ZA0133 owns the gaps of an initializer while it is on, so the list example shows this rule with it off.
 		("ZA0012", string.Empty, ["ZA0133"]),
 	];

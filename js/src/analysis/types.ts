@@ -41,6 +41,9 @@ export interface Gap {
 	/** The comments that stand directly above the next unit and travel with it. */
 	readonly leadingComments: readonly TSESTree.Comment[];
 
+	/** Every comment between the two units, a trailing one included. */
+	readonly comments: readonly TSESTree.Comment[];
+
 	/** True when any comment, a trailing one included, stands between the two units. */
 	readonly hasComment: boolean;
 

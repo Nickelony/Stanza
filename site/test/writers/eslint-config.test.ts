@@ -90,7 +90,8 @@ describe('the eslint.config.mjs the page writes', () => {
 		expect(lines).toContain("\t\t\t'stanza/separate-import-section': 'warn',");
 		expect(lines).toContain("\t\t\t'stanza/keep-single-line-elements-together': 'warn',");
 		expect(lines).toContain("\t\t\t'stanza/keep-single-line-switch-cases-together': 'warn',");
-		expect(lines.filter((line) => line.includes("'stanza/"))).toHaveLength(4);
+		expect(lines).toContain("\t\t\t'stanza/keep-stacked-case-labels-together': 'warn',");
+		expect(lines.filter((line) => line.includes("'stanza/"))).toHaveLength(5);
 	});
 
 	it('writes the tight half of a pair alone while the preset holds the separating half, because the plugin gives the gap to the tight half', () => {
@@ -117,10 +118,12 @@ describe('the eslint.config.mjs the page writes', () => {
 		expect(strong).toContain("\t\t\t'stanza/keep-multi-line-jsx-children-together': 'error',");
 	});
 
-	it('writes a separating half the visitor sets, and the entry that turns it off, as it does without the tight half', () => {
+	it('preserves an explicit separating half even when it matches the preset, and writes an explicit off', () => {
 		const tight = { 'keep-multi-line-switch-cases-together': 'error' } as const;
 
-		expect(written({ rules: { ...tight, 'separate-multi-line-switch-cases': 'error' } })).toBe(written({ rules: tight }));
+		expect(written({ rules: { ...tight, 'separate-multi-line-switch-cases': 'error' } })).toContain(
+			"'stanza/separate-multi-line-switch-cases': 'error',",
+		);
 
 		expect(written({ rules: { ...tight, 'separate-multi-line-switch-cases': 'none' } })).toContain(
 			"\t\t\t'stanza/separate-multi-line-switch-cases': 'off',",

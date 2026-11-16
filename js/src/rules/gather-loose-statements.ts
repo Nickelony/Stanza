@@ -6,4 +6,5 @@ export default createRemovalRule({
 	description: 'Remove the blank lines between the single-line statements of a run that holds more than the limit allows.',
 	message: 'Remove this blank line: the run it stands in holds too many statements to keep them apart.',
 	createRemoval: () => (container, context) => readLooseRuns(container, context, 'statements'),
+	hold: { read: (container, context) => readLooseRuns(container, context, 'statements').flat(), pinsBoundary: false },
 });

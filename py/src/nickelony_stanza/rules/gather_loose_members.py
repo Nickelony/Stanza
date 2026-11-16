@@ -13,5 +13,5 @@ RULE = Rule(
     message="Remove the blank line inside this run of loose members.",
     description="Remove the blank lines in a run of loose single-line class members longer than max-loose-run-size.",
     claim=claim_loose_run(MEMBER_KINDS),
-    role="keep-run",
+    role="gather",
 )

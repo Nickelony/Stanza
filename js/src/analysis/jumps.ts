@@ -68,3 +68,12 @@ export function readAskingJumps(container: Container, isSetApart: (gapIndex: num
 
 	return asks;
 }
+
+/**
+ * Reads the jumps `separate-jump-statements` asks above, as that rule reads them:
+ * a blank line a keep rule removes reads as gone already, and a gap another rule asks for ends the stanza.
+ */
+export function readJumpAsks(container: Container, isKept: (gapIndex: number) => boolean, isClaimed: (gapIndex: number) => boolean): boolean[] {
+	const kept = new Set(container.gaps.flatMap((gap, index) => (gap.isBlank && isKept(index) ? [index] : [])));
+	return readAskingJumps(container, (index) => (container.gaps[index]?.isBlank === true && !kept.has(index)) || isClaimed(index), kept);
+}

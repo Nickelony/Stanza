@@ -8,24 +8,35 @@ This page lists each place and the decision the rules take there.
 A fix writes or removes blank lines and nothing else, and never moves code.
 The [shared analysis](https://github.com/Nickelony/Stanza/blob/main/js/src/analysis/session.ts) reads each file once, caches the result by its `SourceCode`, and gives each gap to one rule.
 
-- A rule that adds a blank line asks for a gap from the shape of the syntax tree alone, never from a blank line that is already there.
-  Only `separate-jump-statements` reads one, because it ends its stanza at a blank line.
+- A rule that adds a blank line asks for a gap from the syntax tree, never from the blank line of that gap.
+- The blank lines of other gaps count in two places: `separate-jump-statements` ends its stanza at a blank line,
+  and a run ends at an authored section that a keep rule protects, as [Blank lines that go](#blank-lines-that-go) says.
 - A rule that removes a blank line reads the blank lines that stand, but removes none that an enabled rule of the owner order would write back.
   So a gap that the rules of the owner order ask for never holds a blank line that a removing rule takes away.
 - A blank line another rule's fix writes stands where `separate-jump-statements` already ends its stanza, so any fix order reaches one text.
 - The first enabled rule in the [owner order](Rule-map.md#one-owner-per-gap) that asks for a gap reports it, and the others stay silent.
 - A rule that is off asks for nothing, so the next rule that asks for the gap reports it.
-  A `// eslint-disable-next-line` for the owner of a gap does not hand the gap on,
-  because ESLint applies the directive after the rules report, so the gap gets no blank line.
-- The one rule that reads other rules, `separate-jump-statements`, ends its stanza at each gap that another enabled rule asks for.
-- A container of exactly two single-line units belongs to `keep-two-units-together`, as the [next section](#two-single-line-units) says,
-  and the rules that remove a blank line from a run, as [Blank lines that go](#blank-lines-that-go) says, leave it to that rule.
+- An `eslint-disable` comment that silences a rule of the owner order or a removal rule does not hand its gap on,
+  because ESLint applies the comment after the rules report, so the gap keeps what it holds.
+- An `eslint-disable` comment that silences a [keep rule](Rule-map.md#rules-that-keep-a-pair-together) at a gap hands the gap back,
+  so the other rules judge it as if the keep rule were off.
+- The comment silences a keep rule at a gap when it covers the unit below the gap,
+  or when it stands in the gap and covers its own line, as an `eslint-disable-line` comment after the unit above does.
+- A silenced keep rule protects no section at that gap, and no fix of its group removes that gap's blank line.
+- A silenced keep rule still reports the gap without a fix, blank or tight, where the comment covers it, so ESLint counts the comment as used.
+- A silenced keep rule reads a gap that holds only directives as if they were not there, so the comment does not end the pair it silences.
+- A silenced keep rule reports wherever its pair stands, even where the stanza around the pair or a section boundary keeps it from claiming the gap,
+  because the gap it hands back may change both.
+- With inline configuration turned off, a silenced report shows, says that a comment silences the rule there, and fixes nothing.
+- `separate-jump-statements` ends its stanza at each gap another enabled rule asks for.
+- A container of exactly two single-line units belongs to `keep-two-units-together`, as the [next section](#two-single-line-units) says.
 - A gap is satisfied when a blank line stands anywhere between the previous unit and the first line of the next unit's leading comments.
 
 ## Two single-line units
 
 `keep-two-units-together` removes the blank line between the only two units of a container when each spans a single line.
-The rules that add a blank line ask for nothing in such a container, so the two kinds of rule never meet.
+While that rule is enabled, no other rule asks for anything in such a container.
+While it is disabled, most rules still leave the container as written, and its [page](rules/keep-two-units-together.md) names the rules that judge it.
 
 | Quirk | Decision |
 | --- | --- |
@@ -46,12 +57,16 @@ Each removes only a blank line that holds nothing else, so a comment, a trailing
 | --- | --- |
 | A blank line some enabled rule asks for | Stays, and ends the run, so the run is counted up to that gap. |
 | A multi-line unit, an import, a directive or a shebang | Ends a run, because other rules own the gaps beside it. |
+| A blank line a keep rule removes | Reads as tight already, so the run is the one the keep rule leaves, whatever order the fixes run in. |
 | A unit tight against one neighbor and apart from the other | Out of the loose run, so the blank line that sets that group apart stays. A neighbor that a rule asks to set apart does not count as tight. |
 | The blank line above a `return`, `throw`, `break` or `continue` | Stays while `separate-jump-statements` is enabled and the stanza above the jump spans two or more lines once the run is gathered, because that rule would write it back. A jump below one line goes with the run. |
 | Several blank lines in a row, a line of whitespace or a CRLF file | All the blank lines go, and the file keeps its line ending. |
 | A list that Prettier would join once its blank line is gone | Left for Prettier, which joins a list that fits on one line. |
 | A blank line between two sections of a run | `keep-statement-runs-together` and `keep-member-runs-together` keep it when each side holds at least two units tight against each other, and a lone unit between two sections is a section. |
+| A blank line between two sections of tight units that `keep-receiver-groups-together` or `keep-dependent-bindings-together` keeps | Stays, and ends the runs of the run rules before any rule gathers or moves a boundary. |
 | A run rule that is off | Its runs are not read, so `keep-statement-runs-together` and `keep-member-runs-together` join only the runs of the rules that are enabled. |
+| A run or a group whose blank lines one fix removes | The first report of the run carries that fix, and the others carry none, so the fix is built once and every fix order writes one text. |
+| A gap a [keep rule](Rule-map.md#rules-that-keep-a-pair-together) keeps | Goes, and no rule that adds a blank line asks for it, so the keep rule wins over `separate-multi-line-constructs` and the others. A `return` below reads the kept pair as one stanza. |
 
 ## Comments
 

@@ -201,7 +201,16 @@ QUIRKS = [
         'x = 1\n\nif __name__ == "__main__":\n    main()\n',
     ),
     # Expressions inside statements.
-    Quirk("yield statements are no run", "def g():\n    yield a\n    yield b\n    print(1)\n"),
+    Quirk(
+        "yield statements are a run",
+        "def g():\n    yield a\n    yield from b\n    print(1)\n",
+        "def g():\n    yield a\n    yield from b\n\n    print(1)\n",
+    ),
+    Quirk(
+        "a yield in a declaration is a declaration",
+        "def g():\n    a = yield\n    b = yield\n    run()\n",
+        "def g():\n    a = yield\n    b = yield\n\n    run()\n",
+    ),
     Quirk(
         "lambdas, comprehensions and walrus are plain declarations",
         "f = lambda: 1\ng = [x for x in y]\nrun()\n",

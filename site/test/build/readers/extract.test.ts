@@ -157,9 +157,9 @@ describe('the real pages', () => {
 
 		expect(optionOf('stanza_assignment_targets')).toMatchObject({
 			kind: 'enum',
-			choices: ['mixed', 'split'],
+			choices: ['merge', 'split'],
 			csharp: { audience: 'analyzer' },
-			defaultValue: 'mixed',
+			defaultValue: 'merge',
 		});
 
 		expect(optionOf('stanza_doc_weak_line_end_words')).toMatchObject({ kind: 'list', defaultValue: 'none' });

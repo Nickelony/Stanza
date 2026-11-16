@@ -5,6 +5,9 @@ It keeps a blank line the author wrote between statements, members, the elements
 so the rules that add a blank line agree with it.
 The rules that remove one leave a list that fits on one line for Prettier to join.
 
+Prettier removes the blank line below a `case` label before its first statement and keeps the one between two stacked labels,
+so [`keep-stacked-case-labels-together`](rules/keep-stacked-case-labels-together.md) judges only the second.
+
 [`@ianvs/prettier-plugin-sort-imports`](https://github.com/IanVS/prettier-plugin-sort-imports) writes the blank lines between import groups and removes the others.
 It puts a blank line around every side-effect import, as [`separate-import-groups`](rules/separate-import-groups.md) does.
 It keeps `import type` with the value imports of its group unless `importOrder` holds a `<TYPES>` group between two `""` entries.

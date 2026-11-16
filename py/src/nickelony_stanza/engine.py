@@ -4,17 +4,18 @@ from __future__ import annotations
 
 import ast
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cache
 from pathlib import Path
 
 from nickelony_stanza.analysis.calls import ArgumentNames, CallCheck, NamedCall, find_named_calls
+from nickelony_stanza.analysis.model import Container
 from nickelony_stanza.analysis.projects import STDIN_PATH, Projects
 from nickelony_stanza.analysis.session import OwnedGap, analyze
 from nickelony_stanza.analysis.source import SourceFile, parse
 from nickelony_stanza.config import Config
 from nickelony_stanza.noqa import Noqa
-from nickelony_stanza.rules import CALL_RULES, KEEP_ORDER, OWNER_ORDER, PAIR_RULE
+from nickelony_stanza.rules import CALL_RULES, KEEP_ORDER, OWNER_ORDER, PAIR_RULE, TWO_UNIT_RULES
 from nickelony_stanza.rules.base import Rule
 
 MAX_PASSES = 10
@@ -99,8 +100,15 @@ def _create_gap_finding(source: SourceFile, rule: Rule, owned: OwnedGap) -> Find
     column = source.indent_width(owned.following.first_line) + 1
 
     if rule.role != "separate":
-        edit = Edit(line=gap.blank_lines.start, delete=len(gap.blank_lines), insert="")
-        return Finding(gap.blank_lines.start, column, rule, rule.message, (edit,))
+        indices = owned.group_indices or (owned.index,)
+
+        edits = tuple(
+            Edit(line=inner.blank_lines.start, delete=len(inner.blank_lines), insert="")
+            for index in indices
+            for inner in (owned.container.gaps[index],)
+        )
+
+        return Finding(gap.blank_lines.start, column, rule, rule.message, edits)
 
     edit = Edit(line=gap.insert_line, delete=0, insert=source.eol_before(gap.insert_line))
     return Finding(gap.insert_line, column, rule, rule.message, (edit,))
@@ -146,16 +154,40 @@ def find_findings(
 ) -> list[Finding]:
     """Reads the file once and lists a finding for each gap and call an enabled rule owns, silenced ones left out."""
     noqa = Noqa.read(source)
+
+    relationship_keepers = frozenset(rule.code for rule in TWO_UNIT_RULES)
+
+    # A relationship keeper a comment silences for the whole file is off, so the other rules judge the file as they do
+    # without it; any other rule silenced so only loses its findings.
+    config = replace(
+        config,
+        rules=tuple(
+            rule for rule in config.rules if rule.code not in relationship_keepers or not noqa.silences_file(rule.code)
+        ),
+    )
+
     rules = {rule.code: rule for rule in config.rules}
     enabled = [rule for rule in (*OWNER_ORDER, *KEEP_ORDER) if rule.code in rules]
 
     findings: list[Finding] = []
+
+    # A relationship keeper that a noqa comment silences at a gap leaves that gap to the other rules, blank or tight.
+    def silences(code: str, container: Container, index: int) -> bool:
+        if code not in relationship_keepers:
+            return False
+
+        blank = container.gaps[index].blank_lines
+        lines = (blank.start,) if blank else ()
+
+        return noqa.silences(code, *lines, container.units[index + 1].first_line)
 
     gaps_by_code = analyze(
         source,
         enabled,
         config.options,
         pair=PAIR_RULE if PAIR_RULE.code in rules else None,
+        two_unit_rules=[rule for rule in enabled if rule in TWO_UNIT_RULES],
+        silenced=silences,
     )
 
     for code, gaps in gaps_by_code.items():

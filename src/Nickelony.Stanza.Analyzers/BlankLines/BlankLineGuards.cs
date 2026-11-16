@@ -72,7 +72,7 @@ internal static class BlankLineGuards
 	{
 		StanzaRule jumpRule = guardRule.GetDeferral(DiagnosticDescriptors.SeparateJumpStatement);
 
-		if (!jumpRule.Kinds.Contains(container.Kind) || !BlankLineJumps.FindJudgedJumps(container, jumpRule).Contains(boundary))
+		if (!jumpRule.Kinds.Contains(container.Kind) || !BlankLineJumps.IsJudgedJump(container, jumpRule, boundary))
 			return false;
 
 		return !BlankLineJumps
@@ -86,7 +86,10 @@ internal static class BlankLineGuards
 			.IsEmpty;
 	}
 
-	private static bool IsGuard(SyntaxNode sibling, StanzaOptions options)
+	/// <summary>
+	/// Whether the sibling is a guard: an <c>if</c> with no <c>else</c> around a lone exit, or a throw helper call.
+	/// </summary>
+	public static bool IsGuard(SyntaxNode sibling, StanzaOptions options)
 	{
 		return sibling switch
 		{

@@ -110,10 +110,14 @@ The pairs of the JS and Python pages change no warning, because only the C# and 
 
 The Python build fails when the pair table and the `opposite` of the rule modules describe other pairs,
 or when the owner of a pair is not the half with the `keep` role.
-The JS build fails when the separating half of a pair does not ask `context.isEnabled` about its tight half in its source,
-or when a rule source asks about a rule that the pair table does not pair with it.
+The JS build fails when a separating rule's declared `opposite` disagrees with the pair table,
+or a source declares an opposite without a corresponding pair. Ownership queries do not declare pairs.
 
 Both fail when the default half of a pair is not the one half in a level.
+
+Each catalog records pair membership. Only JS and Python replace a preset half automatically;
+the C# analyzer ranks the halves that a file or the preset enables.
+A choice that sets both halves survives export and import, even when it matches the preset.
 
 A JS or Python rule may have the level opt-in: no preset holds it, so only an entry of the project's own turns it on.
 The JS reader fails the build when `optInRules` of `presets.ts` and the rule pages disagree.
@@ -242,8 +246,8 @@ and `a profile name` makes a dropdown of the profiles.
 - The `csharpier` formatter changes only the strong level, as the package does:
   it turns off the rules marked `csharpier-off` and turns on those marked `csharpier-on`.
   At every level it also hides the rules CSharpier undoes.
-- The summary beside the form, such as **Moderate plus 2 changes**, counts the rules and options that differ from the level and the defaults.
-  A rule set to what the level already gives is no change.
+- The summary beside the form, such as **Moderate plus 2 changes**, counts overrides and explicit pair choices.
+  A preset-equivalent rule setting is omitted unless both halves of its pair are explicit.
 
 ## What it writes
 
@@ -251,7 +255,8 @@ This is the C# page; the Markup page writes the second block alone.
 
 - The first block holds the MSBuild properties, without the ones at their default.
 - The second block is the `.editorconfig`.
-  A rule that is what the level gives writes no line, because the package applies the level.
+  A rule that is what the level gives writes no line unless both halves of its pair are explicit.
+  Keeping both lines keeps the owner the analyzer picks.
   A rule the level leaves off is enabled by a `dotnet_diagnostic.<id>.severity` line, as [Terms](https://github.com/Nickelony/Stanza/wiki/Terms) says.
 - A key writes a line only when its value differs from the default its page or the readme gives.
 - A page whose `Default:` line gives the tool another default, such as `stanza_markup_scope`, has no default in the markup section.
@@ -278,7 +283,8 @@ This is the C# page; the Markup page writes the second block alone.
 
 The **Import** button fills in the form from a file.
 It replaces the changed settings, after the visitor confirms, and reports what it skipped; it never stops on a file it cannot read.
-It keeps the pickers, and holds each line against the level they give, so a file the page wrote imports as no change.
+It keeps the pickers and compares each line with their level. Preset-equivalent lines import as no change,
+except that explicit pair choices retain both overrides.
 
 - A file over 1 MB or with a NUL character is refused whole, and the form stays as it was.
 - A section whose glob matches every C# file, such as `[*]`, `[*.cs]` and `[*.{cs,vb}]`, gives the analyzer settings,
@@ -294,8 +300,9 @@ It keeps the pickers, and holds each line against the level they give, so a file
 - The report lists the first 200 skipped lines and counts the rest.
 - The severity `refactoring` is read as `silent`, as Roslyn does.
 - A rule or key that the other of the two pages holds is skipped, and its note says to import the file there.
-- A rule set to `default`, a rule set to what the level gives and an option set to its default stay at the default.
-  A value in the C# section is held against the analyzer's default, so the `stanza_markup_scope = all` that **Every setting** writes is no change.
+- A rule set to `default` and an option set to its default stay at the default.
+  A rule set to what the level gives does too, unless both halves of its pair are explicit.
+- A value in the C# section is held against the analyzer's default, so the `stanza_markup_scope = all` that **Every setting** writes is no change.
 
 ## Conflict warnings
 

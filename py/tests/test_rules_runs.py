@@ -317,6 +317,12 @@ KEPT_RUNS = [
         "await a()\nawait b()\nawait c()\n",
     ),
     Case(
+        "kept statements: yields are one run",
+        ("ZA3020", "ZA3054"),
+        "def g():\n    yield a\n\n    yield from b\n\n    yield c\n    print(1)\n",
+        "def g():\n    yield a\n    yield from b\n    yield c\n\n    print(1)\n",
+    ),
+    Case(
         "kept statements: subscriptions are one run",
         ("ZA3007", "ZA3054"),
         "a.connect(x)\n\nb.connect(y)\n\nc.connect(z)\n",
@@ -445,3 +451,73 @@ def test_a_gather_rule_and_a_kept_run_rule_remove_the_same_blank_line_once() -> 
     config = Config.create("none", enable=["ZA3004", "ZA3052", "ZA3054"])
 
     assert fix(text, config).text == "print(a)\nprint(b)\nprint(c)\nprint(d)\n"
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "joins"),
+    [("a: int = 1", "b: int = 2", True), ("a: int = 1", "b: str = 'x'", False), ("a = 1", "b = 2", True)],
+)
+def test_typed_run_keeping_joins_two_declarations_of_one_type(first: str, second: str, joins: bool) -> None:
+    source = f"def f():\n    {first}\n\n    {second}\n\n    use(a, b)\n"
+    expected = source.replace(first + "\n\n", first + "\n") if joins else source
+
+    assert fix_with(source, "ZA3002", "ZA3003", "ZA3054") == expected
+
+
+def test_run_keeping_reads_no_declaration_run_while_only_the_typed_rule_groups_declarations() -> None:
+    source = "def f():\n    log()\n    cb = make()\n\n    items = build()\n    log()\n"
+    expected = "def f():\n    log()\n\n    cb = make()\n\n    items = build()\n\n    log()\n"
+
+    assert [finding.code for finding in findings_with(source, "ZA3003", "ZA3054")] == ["ZA3003", "ZA3003"]
+    assert fix_with(source, "ZA3003", "ZA3054") == expected
+
+
+@pytest.mark.parametrize("kind", ["global", "nonlocal"])
+@pytest.mark.parametrize("ordinary", [False, True])
+def test_typed_run_keeping_leaves_a_declaration_without_a_type_to_the_ordinary_runs(kind: str, ordinary: bool) -> None:
+    source = f"def outer():\n    a = 1\n    b = 2\n    def inner():\n        {kind} a\n\n        {kind} b\n        use(a, b)\n"
+
+    expected = (
+        source.replace(f"        {kind} a\n\n", f"        {kind} a\n").replace(
+            "        use(a, b)", "\n        use(a, b)"
+        )
+        if ordinary
+        else source
+    )
+
+    assert fix_with(source, "ZA3003", "ZA3054", *(["ZA3002"] if ordinary else [])) == expected
+
+
+def test_an_await_run_and_a_yield_run_are_two_runs() -> None:
+    source = "async def g():\n    await a()\n    await b()\n    yield c\n    yield d\n    print(1)\n"
+    expected = "async def g():\n    await a()\n    await b()\n\n    yield c\n    yield d\n\n    print(1)\n"
+
+    assert fix_with(source, "ZA3006", "ZA3020") == expected
+    assert fix_with(source, "ZA3006") == expected.replace("    yield d\n\n", "    yield d\n")
+    assert fix_with(source, "ZA3020") == expected
+
+
+def test_the_yield_rule_is_the_only_one_that_reads_a_yield_statement() -> None:
+    source = "def g():\n    yield a\n    yield b\n    print(1)\n"
+
+    assert fix_with(source, "ZA3004", "ZA3006", "ZA3052") == source
+    assert [finding.code for finding in findings_with(source, "ZA3020")] == ["ZA3020"]
+
+
+@pytest.mark.parametrize(
+    "rules", [("ZA3020", "ZA3009"), ("ZA3009", "ZA3020"), ("ZA3020", "ZA3009", "ZA3052", "ZA3054")]
+)
+def test_a_yield_run_and_a_jump_settle_in_one_pass_in_any_order(rules: tuple[str, ...]) -> None:
+    source = "def g():\n    first()\n    yield a\n    yield b\n    return\n"
+    expected = "def g():\n    first()\n\n    yield a\n    yield b\n\n    return\n"
+    result = fix(source, Config.create("none", enable=list(rules)))
+
+    assert result.text == expected
+    assert result.passes <= 1
+
+
+def test_a_gather_rule_leaves_a_yield_run_apart_from_its_neighbors() -> None:
+    source = "def g():\n    first()\n    second()\n    yield a\n    yield b\n    third()\n    fourth()\n"
+    expected = "def g():\n    first()\n    second()\n\n    yield a\n    yield b\n\n    third()\n    fourth()\n"
+
+    assert fix_with(source, "ZA3020", "ZA3052") == expected

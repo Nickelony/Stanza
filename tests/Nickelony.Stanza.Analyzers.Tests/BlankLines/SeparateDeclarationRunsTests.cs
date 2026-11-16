@@ -1622,4 +1622,253 @@ public sealed class SeparateDeclarationRunsTests
 
 		Assert.IsEmpty(off.Diagnostics);
 	}
+
+	[TestMethod]
+	[DataRow("split", true)]
+	[DataRow("merge", false)]
+	[DataRow("invalid", false)]
+	public async Task DeconstructionRunsSeparateByShapeOnlyWhenAsked(string shape, bool separates)
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					var (a, b) = (1, 2);
+					var (c, d) = (3, 4);
+					var value = 5;
+					var other = 6;
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M()
+				{
+					var (a, b) = (1, 2);
+					var (c, d) = (3, 4);
+
+					var value = 5;
+					var other = 6;
+				}
+			}
+			""";
+
+		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
+			DiagnosticDescriptors.SeparateDeclarationRuns,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether
+		);
+
+		var options = new Dictionary<string, string> { ["stanza_declaration_shapes"] = shape };
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+			rules,
+			options
+		);
+
+		RoslynTestHarness.AssertFixedText(separates ? fixedSource : source, result);
+	}
+
+	[TestMethod]
+	[DataRow(null, true)]
+	[DataRow("split", true)]
+	[DataRow("merge", false)]
+	[DataRow("invalid", true)]
+	public async Task VarAndExplicitlyTypedRunsSplitUnlessTheOptionMergesThem(string? typing, bool splits)
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					Prepare();
+					var first = 1;
+					var second = 2;
+					int third = 3;
+					string fourth = "";
+					Prepare();
+				}
+
+				void Prepare()
+				{
+				}
+			}
+			""";
+
+		const string splitSource = """
+			class C
+			{
+				void M()
+				{
+					Prepare();
+
+					var first = 1;
+					var second = 2;
+
+					int third = 3;
+					string fourth = "";
+
+					Prepare();
+				}
+
+				void Prepare()
+				{
+				}
+			}
+			""";
+
+		const string mergedSource = """
+			class C
+			{
+				void M()
+				{
+					Prepare();
+
+					var first = 1;
+					var second = 2;
+					int third = 3;
+					string fourth = "";
+
+					Prepare();
+				}
+
+				void Prepare()
+				{
+				}
+			}
+			""";
+
+		Dictionary<string, string>? options = typing is null
+			? null
+			: new() { ["stanza_declaration_typing"] = typing };
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<SeparateDeclarationRunsAnalyzer>(
+			source,
+			TestRuleSets.Only(DiagnosticDescriptors.SeparateDeclarationRuns),
+			options
+		);
+
+		Assert.HasCount(splits ? 3 : 2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(splits ? splitSource : mergedSource, result);
+	}
+
+	[TestMethod]
+	public async Task MergedTypingKeepsConstantsAndUsingDeclarationsAsKindsOfTheirOwn()
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					const int Limit = 1;
+					const int Retries = 2;
+					var first = 1;
+					int second = 2;
+					using var stream = Open();
+					using var other = Open();
+				}
+
+				System.IDisposable Open() => null;
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M()
+				{
+					const int Limit = 1;
+					const int Retries = 2;
+
+					var first = 1;
+					int second = 2;
+
+					using var stream = Open();
+					using var other = Open();
+				}
+
+				System.IDisposable Open() => null;
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<SeparateDeclarationRunsAnalyzer>(
+			source,
+			TestRuleSets.Only(DiagnosticDescriptors.SeparateDeclarationRuns),
+			new Dictionary<string, string> { ["stanza_declaration_typing"] = "merge" }
+		);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task MergedTypingJoinsATypedDeconstructionToARunOfVarDeclarations()
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					var first = 1;
+					(int second, int third) = (2, 3);
+					var fourth = 4;
+				}
+			}
+			""";
+
+		var options = new Dictionary<string, string> { ["stanza_declaration_typing"] = "merge" };
+
+		AnalyzerRunResult merged = await RoslynTestHarness.ReportAsync<SeparateDeclarationRunsAnalyzer>(
+			source,
+			TestRuleSets.Only(DiagnosticDescriptors.SeparateDeclarationRuns),
+			options
+		);
+
+		Assert.IsEmpty(merged.Diagnostics);
+	}
+
+	[TestMethod]
+	[DataRow("split", false)]
+	[DataRow("merge", true)]
+	public async Task TheKeepRuleJoinsAVarAndATypedDeclarationOnlyWhereTypingIsMerged(string typing, bool joins)
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					var first = 1;
+
+					int second = 2;
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M()
+				{
+					var first = 1;
+					int second = 2;
+				}
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			TestRuleSets.Only(
+				DiagnosticDescriptors.SeparateDeclarationRuns,
+				DiagnosticDescriptors.KeepRunOfStatementsTogether
+			),
+
+			new Dictionary<string, string> { ["stanza_declaration_typing"] = typing }
+		);
+
+		RoslynTestHarness.AssertFixedText(joins ? fixedSource : source, result);
+	}
 }

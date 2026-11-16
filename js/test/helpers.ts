@@ -1,10 +1,11 @@
+import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { parse } from '@typescript-eslint/parser';
-import { Linter, RuleTester } from 'eslint';
+import { Linter, RuleTester, type Rule } from 'eslint';
 import prettier from 'prettier';
 import tseslint from 'typescript-eslint';
 
@@ -45,6 +46,126 @@ export function createConfig(rules: Record<string, Linter.RuleEntry>, settings: 
 /** Fixes a source with the named rules until nothing is left to fix, as ESLint does. */
 export function fix(code: string, rules: Record<string, Linter.RuleEntry>, settings: Record<string, unknown> = {}, filename = 'file.ts'): string {
 	return new Linter().verifyAndFix(code, createConfig(rules, settings), { filename }).output;
+}
+
+/** Fixes a source as ESLint does, checking that one pass of fixes settles it, nothing is left to report and a second fix changes nothing. */
+export function stable(
+	source: string,
+	rules: Record<string, Linter.RuleEntry>,
+	settings: Record<string, unknown> = {},
+	filename = 'file.ts',
+): string {
+	const linter = new Linter();
+	const config = createConfig(rules, settings);
+	const options = { filename, stats: true };
+	const result = linter.verifyAndFix(source, config, options);
+
+	assert.deepEqual(result.messages, []);
+	assert.ok(linter.getFixPassCount() <= 1, `needed ${linter.getFixPassCount()} fix passes`);
+	assert.equal(linter.verifyAndFix(result.output, config, { filename }).output, result.output);
+
+	return result.output;
+}
+
+/** Fixes a source with the named rules enabled while applying the fixes of one of them only, as a per-rule fix in an editor does. */
+export function fixRule(source: string, rules: Record<string, Linter.RuleEntry>, name: string, settings: Record<string, unknown> = {}): string {
+	// ESLint takes a filter of the messages to fix, which its typings leave out.
+	const fixOne = ((message: Linter.LintMessage) => message.ruleId === `stanza/${name}`) as unknown as boolean;
+	return new Linter().verifyAndFix(source, createConfig(rules, settings), { filename: 'file.ts', fix: fixOne }).output;
+}
+
+/**
+ * Fixes a source one report at a time, always the first or always the last one that carries a fix, as an editor that applies a single fix does.
+ * `check` reads the text after each fix.
+ */
+export function fixOneByOne(source: string, config: Linter.Config[], pick: 'first' | 'last', check?: (text: string) => void): string {
+	const linter = new Linter();
+	let text = source;
+
+	for (let step = 0; step < 1000; step += 1) {
+		const fixes = linter.verify(text, config, { filename: 'file.ts' }).flatMap((message) => message.fix ?? []);
+		const chosen = pick === 'first' ? fixes[0] : fixes.at(-1);
+
+		if (chosen === undefined) {
+			return text;
+		}
+
+		text = applyFix(text, chosen);
+		check?.(text);
+	}
+
+	throw new Error('fixing one report at a time never settles');
+}
+
+/** Applies one fix to a source. */
+export function applyFix(source: string, fix: Rule.Fix): string {
+	return source.slice(0, fix.range[0]) + fix.text + source.slice(fix.range[1]);
+}
+
+/** Checks that the first of the reports of one group carries the fix that writes the expected text, and that the others carry none. */
+export function assertGroupFix(source: string, reports: readonly Linter.LintMessage[], expected: string): void {
+	const [first, ...others] = reports;
+
+	assert.ok(first?.fix, 'the first report of the group carries no fix');
+	assert.equal(applyFix(source, first.fix), expected);
+
+	assert.deepEqual(
+		others.map((report) => report.fix),
+		others.map(() => undefined),
+	);
+}
+
+/** Fixes a source as `stable` does, and checks that fixing one report at a time from the top and from the bottom writes the same text. */
+export function settled(source: string, rules: Record<string, Linter.RuleEntry>, settings: Record<string, unknown> = {}): string {
+	const output = stable(source, rules, settings);
+	const config = createConfig(rules, settings);
+
+	assert.equal(fixOneByOne(source, config, 'first'), output, 'fixing from the top writes another text');
+	assert.equal(fixOneByOne(source, config, 'last'), output, 'fixing from the bottom writes another text');
+
+	return output;
+}
+
+/** Lints a source and reads the rule IDs of the reports its `eslint-disable` comments silence. */
+export function readSilencedRuleIds(
+	code: string,
+	rules: Record<string, Linter.RuleEntry>,
+	settings: Record<string, unknown> = {},
+): (string | null)[] {
+	const linter = new Linter();
+
+	assert.deepEqual(linter.verify(code, createConfig(rules, settings), { filename: 'file.ts' }), []);
+
+	return readSuppressedMessages(linter).map((message) => message.ruleId);
+}
+
+/** Lints a source and checks that its `eslint-disable` comments silence a report of each of the given rules, and that none of those reports carries a fix. */
+export function assertSilencedWithoutFix(
+	code: string,
+	rules: Record<string, Linter.RuleEntry>,
+	ruleIds: readonly string[],
+	settings: Record<string, unknown> = {},
+): void {
+	const linter = new Linter();
+
+	linter.verify(code, createConfig(rules, settings), { filename: 'file.ts' });
+
+	const suppressed = readSuppressedMessages(linter);
+
+	assert.deepEqual(
+		suppressed.map((message) => message.ruleId),
+		ruleIds,
+	);
+
+	assert.deepEqual(
+		suppressed.map((message) => message.fix),
+		ruleIds.map(() => undefined),
+	);
+}
+
+/** Reads the reports of the last lint that `eslint-disable` comments silenced, which the typings of `Linter` leave out. */
+export function readSuppressedMessages(linter: Linter): Linter.LintMessage[] {
+	return (linter as Linter & { getSuppressedMessages: () => Linter.LintMessage[] }).getSuppressedMessages();
 }
 
 /** Converts a source to CRLF line endings; the carriage return is built from its code point. */
@@ -126,3 +247,25 @@ export function readShape(code: string): string {
 		return typeof value === 'bigint' ? String(value) : key === 'parent' || key === 'raw' || key === 'range' || key === 'loc' ? undefined : value;
 	});
 }
+
+/** The settings the corpus suites vary beside the defaults, each read by the receiver rules or by the declaration shapes of `separate-declaration-runs`. */
+export const settingVariants: [name: string, settings: Record<string, unknown>][] = [
+	['all receiver roots', { stanza: { receiverRoots: ['*'], receiverComparison: 'root' } }],
+	['all receiver paths', { stanza: { receiverRoots: ['*'], receiverComparison: 'path' } }],
+	['named receiver paths and split declarations', { stanza: { receiverRoots: ['db'], receiverComparison: 'path', declarationShapes: 'split' } }],
+];
+
+/**
+ * The runs of the suites that fix the corpus: each preset run with the default settings,
+ * and each setting variant with the opt-in rules, the run that enables every rule the variants steer.
+ */
+export const corpusRuns: { name: string; level: Level; withOptIn: boolean; settings: Record<string, unknown> }[] = [
+	...presetRuns.map(([name, level, withOptIn]) => ({ name, level, withOptIn, settings: {} })),
+
+	...settingVariants.map(([variant, settings]) => ({
+		name: `strong level with the opt-in rules and ${variant}`,
+		level: 'strong' as const,
+		withOptIn: true,
+		settings,
+	})),
+];

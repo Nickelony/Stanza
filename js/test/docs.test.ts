@@ -7,8 +7,11 @@ import type { Linter } from 'eslint';
 
 import {
 	defaultAssertionRoots,
+	defaultDeclarationShapes,
 	defaultGuardRoots,
 	defaultMaxLooseRunSize,
+	defaultReceiverComparison,
+	defaultReceiverRoots,
 	defaultTestRoots,
 	greatestMaxLooseRunSize,
 	leastMaxLooseRunSize,
@@ -40,17 +43,32 @@ const fenceEntries: Record<string, Linter.RuleEntry[]> = {
 	'separate-import-groups': ['error', ['error', { typeImports: true }]],
 };
 
+const fenceSettings: Record<string, Record<string, unknown>[]> = {
+	'separate-receiver-groups': [{ stanza: { receiverRoots: ['*'], receiverComparison: 'path' } }, { stanza: { receiverRoots: ['*'] } }],
+	'keep-receiver-groups-together': [{ stanza: { receiverRoots: ['db'] } }],
+};
+
 /** Reads the TypeScript fences of a page. */
 function readFences(page: string): string[] {
 	return [...page.matchAll(new RegExp(`^${fence}ts\n([\\s\\S]*?)\n${fence}$`, 'gm'))].map((match) => match[1] ?? '');
 }
 
-/** Splits a Before and After example into the source to fix, the text the fix writes and the texts it leaves as written. */
-function splitExample(example: string): { source: string; expected: string; unchanged: string[] } {
-	const [before = '', rest = ''] = example.split('\n\n// After\n');
+/** Splits a Before and After example into the source to fix, the text the fix writes and the texts it leaves as written; an example of only Unchanged texts has no source. */
+function splitExample(example: string): { source?: string; expected?: string; unchanged: string[] } {
+	if (example.startsWith('// Unchanged')) {
+		return {
+			unchanged: example.split(/^\/\/ Unchanged[^\n]*\n/m).flatMap((text) => (text === '' ? [] : [`${text.trimEnd()}\n`])),
+		};
+	}
+
+	const [before = '', rest = ''] = example.split(/\n\n\/\/ After(?: [^\n]+)?\n/);
 	const [after = '', ...unchanged] = rest.split(/\n\n\/\/ Unchanged[^\n]*\n/);
 
-	return { source: `${before.replace('// Before\n', '')}\n`, expected: `${after}\n`, unchanged: unchanged.map((text) => `${text}\n`) };
+	return {
+		source: `${before.replace(/^\/\/ Before(?: [^\n]+)?\n/, '')}\n`,
+		expected: `${after}\n`,
+		unchanged: unchanged.map((text) => `${text}\n`),
+	};
 }
 
 describe('the rule pages', () => {
@@ -65,15 +83,26 @@ describe('the rule pages', () => {
 
 			assert.ok(fences.length > 0, `${name} has no example`);
 
+			// A page that declares settings or entries for its examples declares one for each, so no example falls back to the defaults unseen.
+			for (const declared of [fenceSettings[name], fenceEntries[name]]) {
+				assert.ok(
+					declared === undefined || declared.length === fences.length,
+					`${name} declares ${declared?.length} entries for ${fences.length} examples`,
+				);
+			}
+
 			for (const [index, example] of fences.entries()) {
 				const { source, expected, unchanged } = splitExample(example);
 				const enabled: Record<string, Linter.RuleEntry> = { [name]: fenceEntries[name]?.[index] ?? 'error', ...companions[name] };
+				const settings = fenceSettings[name]?.[index] ?? {};
 
-				assert.equal(fix(source, enabled, {}, filenames[name]), expected);
+				if (source !== undefined) {
+					assert.equal(fix(source, enabled, settings, filenames[name]), expected);
+				}
 
 				for (const text of unchanged) {
 					assert.ok(text.trim() !== '', `${name} has an empty Unchanged example`);
-					assert.equal(fix(text, enabled, {}, filenames[name]), text);
+					assert.equal(fix(text, enabled, settings, filenames[name]), text);
 				}
 			}
 		});
@@ -132,6 +161,7 @@ describe('the readme', () => {
 		const { source, expected } = splitExample(fences[0] ?? '');
 
 		assert.equal(fences.length, 1);
+		assert.ok(source !== undefined);
 		assert.equal(fix(source, { 'separate-jump-statements': 'error' }), expected);
 	});
 });
@@ -144,21 +174,24 @@ function readSettingsSection(page: string): string {
 describe('the settings', () => {
 	const keys = Object.keys(readSharedSettings({})).sort();
 
-	const defaults: Record<string, readonly string[] | number> = {
+	const defaults: Record<string, readonly string[] | number | string> = {
 		assertionRoots: defaultAssertionRoots,
+		declarationShapes: defaultDeclarationShapes,
+		receiverRoots: defaultReceiverRoots,
+		receiverComparison: defaultReceiverComparison,
 		testRoots: defaultTestRoots,
 		guardRoots: defaultGuardRoots,
 		maxLooseRunSize: defaultMaxLooseRunSize,
 	};
 
 	/** Reads the keys a text shows as `key: ['name', ...]` or `key: 3`, with the names or the number each gives. */
-	function readSettingKeys(markdown: string): Map<string, string[] | number> {
-		const settings = [...markdown.matchAll(/\b(\w+): (?:\[([^\]]*)\]|(\d+))/g)];
+	function readSettingKeys(markdown: string): Map<string, string[] | number | string> {
+		const settings = [...markdown.matchAll(/\b(\w+): (?:\[([^\]]*)\]|(\d+)|'([^']*)')/g)];
 
 		return new Map(
 			settings.map((match) => [
 				match[1] ?? '',
-				match[3] === undefined ? [...(match[2] ?? '').matchAll(/'([^']+)'/g)].map((name) => name[1] ?? '') : Number(match[3]),
+				match[4] ?? (match[3] === undefined ? [...(match[2] ?? '').matchAll(/'([^']+)'/g)].map((name) => name[1] ?? '') : Number(match[3])),
 			]),
 		);
 	}

@@ -6,6 +6,8 @@ Default: `none`.
 Read by [`ZA0011`](https://github.com/Nickelony/Stanza/wiki/ZA0011-Separate-the-guard-clauses), which treats such a call as a guard clause.
 [`ZA0010`](https://github.com/Nickelony/Stanza/wiki/ZA0010-Separate-the-base-call), [`ZA0009`](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-a-jump-statement) and the rules that gather or keep a run (`ZA0052` to `ZA0055`)
 read it to find where the guards end.
+[`ZA0018`](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-a-checked-stanza), [`ZA0057`](https://github.com/Nickelony/Stanza/wiki/ZA0057-Keep-a-chain-of-guard-clauses-together) and [`ZA0058`](https://github.com/Nickelony/Stanza/wiki/ZA0058-Keep-a-guard-with-its-binding)
+read it to find the guards they separate or keep together.
 
 | Value                                     | Effect                                                                    |
 | ----------------------------------------- | ------------------------------------------------------------------------- |

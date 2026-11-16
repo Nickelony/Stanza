@@ -23,6 +23,12 @@ FENCE = "```"
 # The rules that keep a run read the runs of the rules that group it, so their examples run with one of those enabled.
 COMPANIONS = {"ZA3054": ("ZA3004",), "ZA3055": ("ZA3013",)}
 
+EXAMPLE_OPTIONS = {
+    "ZA3057": Options(guard_roots=("check_order",)),
+    "ZA3019": Options(receiver_roots=("*",), receiver_comparison="path"),
+    "ZA3063": Options(receiver_roots=("*",), receiver_comparison="path"),
+}
+
 # The keys that hold a long list of patterns, which the page states in a sentence of its own.
 PATTERN_KEYS = ("assertion-roots", "subscription-roots")
 
@@ -35,12 +41,12 @@ def _examples(page: str) -> list[tuple[str, str]]:
     examples = []
 
     for match in re.finditer(rf"{FENCE}python\n(.*?)\n{FENCE}", page, flags=re.DOTALL):
-        before, rest = match.group(1).split("\n\n# After\n")
+        before, rest = re.split(r"\n\n# After(?: - [^\n]+)?\n", match.group(1))
         after, *unchanged = re.split(r"\n\n# Unchanged[^\n]*\n", rest)
 
         assert all(text.strip() for text in unchanged), f"An Unchanged example is empty in:\n{match.group(1)}"
 
-        examples.append((before.removeprefix("# Before\n") + "\n", after + "\n"))
+        examples.append((re.sub(r"^# Before(?: - [^\n]+)?\n", "", before) + "\n", after + "\n"))
         examples.extend((text + "\n", text + "\n") for text in unchanged)
 
     return examples
@@ -60,8 +66,13 @@ def test_every_example_of_a_page_is_the_real_fix_of_its_rule(rule: Rule) -> None
     for before, after in examples:
         rules = (rule.code, *COMPANIONS.get(rule.code, ()))
 
-        assert fix_with(before, *rules) == after
-        assert fix_with(after, *rules) == after
+        assert fix_with(before, *rules, options=EXAMPLE_OPTIONS.get(rule.code)) == after
+        assert fix_with(after, *rules, options=EXAMPLE_OPTIONS.get(rule.code)) == after
+
+
+def _is_python_only(rule: Rule) -> bool:
+    """Tells whether a rule takes a code of `ZA38xx`, which the rules with no C# counterpart hold."""
+    return 3800 <= int(rule.code[2:]) <= 3899
 
 
 @pytest.mark.parametrize("rule", ALL_RULES, ids=lambda rule: rule.code)
@@ -70,21 +81,22 @@ def test_a_page_names_its_title_its_level_and_its_counterparts(rule: Rule) -> No
     csharp = f"ZA{int(rule.code[2:]) - 3000:04d}"
 
     assert page.startswith(f"# {rule.code} - {rule.name}\n\n**Level: {rule.level}.**\n")
-    assert f"## C# counterpart\n\n[{csharp} - " in page
-    assert f"https://github.com/Nickelony/Stanza/wiki/{csharp}-" in page
     assert "## JS counterpart\n\n" in page
+
+    if _is_python_only(rule):
+        assert "## C# counterpart\n\nNone." in page
+    else:
+        assert f"## C# counterpart\n\n[{csharp} - " in page
+        assert f"https://github.com/Nickelony/Stanza/wiki/{csharp}-" in page
 
 
 def test_a_code_is_a_csharp_code_plus_3000_with_a_page_or_is_python_only() -> None:
     csharp_pages = ROOT.parent / "docs" / "rules"
 
     for rule in ALL_RULES:
-        number = int(rule.code[2:])
-
-        if 3800 <= number <= 3899:
-            continue
-
-        assert list(csharp_pages.glob(f"ZA{number - 3000:04d}-*.md")), f"{rule.code} has no C# counterpart page"
+        if not _is_python_only(rule):
+            number = int(rule.code[2:]) - 3000
+            assert list(csharp_pages.glob(f"ZA{number:04d}-*.md")), f"{rule.code} has no C# counterpart page"
 
     assert not list(csharp_pages.glob("ZA08*.md")), "ZA08xx stays unused so that ZA38xx can hold the Python-only rules"
 
@@ -120,7 +132,7 @@ def test_the_readme_lists_each_rule_with_its_level_and_its_csharp_code() -> None
 
         assert f"`{rule.name}`" in row
         assert f"| {rule.level} |" in row
-        assert f"| `{csharp}` |" in row
+        assert row.endswith("| None |" if _is_python_only(rule) else f"| `{csharp}` |")
         assert f"docs/rules/{rule.code}-{rule.name}.md" in row
 
     assert sum(1 for line in readme.splitlines() if re.match(r"\| \[`ZA3\d+`\]", line)) == len(ALL_RULES)

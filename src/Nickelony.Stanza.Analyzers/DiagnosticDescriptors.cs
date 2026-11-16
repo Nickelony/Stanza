@@ -161,6 +161,60 @@ internal static class DiagnosticDescriptors
 		isEnabledByDefault: true
 	);
 
+	public static readonly DiagnosticDescriptor SeparateCheckedStanza = Describe(
+		id: "ZA0018",
+		title: "Separate a checked stanza",
+		messageFormat: "Add a blank line beside this checked stanza",
+		description: "Requires blank lines around a guard chain and the bindings it checks, with only the upper boundary for narrowing assertions.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor SeparateReceiverGroups = Describe(
+		id: "ZA0019",
+		title: "Separate receiver groups",
+		messageFormat: "Add a blank line beside this receiver group",
+		description: "Requires blank lines at the edges of consecutive selected receiver operations when a group holds two or more statements.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor SeparateYieldRuns = Describe(
+		id: "ZA0020",
+		title: "Separate yield runs",
+		messageFormat: "Add a blank line between yield runs",
+		description: "Requires blank lines around runs of two or more neighboring `yield return` statements.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor SeparateLocalFunctionRuns = Describe(
+		id: "ZA0021",
+		title: "Separate local function runs",
+		messageFormat: "Add a blank line between local function runs",
+		description: "Requires blank lines around runs of two or more neighboring single-line local functions.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor KeepReceiverGroupTogether = Describe(
+		id: "ZA0063",
+		title: "Keep a receiver group together",
+		messageFormat: "Remove the blank line inside this receiver group",
+		description: "Requires consecutive selected single-line calls and member writes through one receiver to stand together, preserving section breaks.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor KeepDependentBindingsTogether = Describe(
+		id: "ZA0064",
+		title: "Keep dependent bindings together",
+		messageFormat: "Remove the blank line inside this dependent binding chain",
+		description: "Requires consecutive single-line local declarations to stand together when each initializer reads the immediately preceding binding, preserving section breaks.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
 	public static readonly DiagnosticDescriptor KeepTwoUnitsOfContainerTogether = Describe(
 		id: "ZA0051",
 		title: "Keep the two units of a container together",
@@ -213,6 +267,60 @@ internal static class DiagnosticDescriptors
 		description: "Requires a run of blank lines in C# code to keep no more lines than `stanza_max_blank_lines` allows.",
 		severity: DiagnosticSeverity.Info,
 		isEnabledByDefault: true
+	);
+
+	public static readonly DiagnosticDescriptor KeepChainOfGuardClausesTogether = Describe(
+		id: "ZA0057",
+		title: "Keep a chain of guard clauses together",
+		messageFormat: "Remove the blank line inside this chain of guard clauses",
+		description: "Requires two neighboring guard clauses of a body to stand together, without a blank line between them.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor KeepGuardWithBinding = Describe(
+		id: "ZA0058",
+		title: "Keep a guard with its binding",
+		messageFormat: "Remove the blank line between this guard and the binding it tests",
+		description: "Requires a guard clause that tests a name to stand directly below the statement that binds that name, without a blank line between them.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor KeepAccumulatorWithLoop = Describe(
+		id: "ZA0059",
+		title: "Keep an accumulator with its loop",
+		messageFormat: "Remove the blank line between this loop and the accumulator it builds",
+		description: "Requires a loop that builds a name to stand directly below the single-line statement that seeds that name, without a blank line between them.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor KeepJumpWithBinding = Describe(
+		id: "ZA0060",
+		title: "Keep a jump with its binding",
+		messageFormat: "Remove the blank line between this jump and the binding it uses",
+		description: "Requires a return or a throw that uses a name to stand directly below the lone single-line statement that binds that name, without a blank line between them.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor KeepInitializationWithCalls = Describe(
+		id: "ZA0062",
+		title: "Keep an initialization with its calls",
+		messageFormat: "Remove the blank line between this initialization and its first call",
+		description: "Requires a single-line local initialization that opens a stanza to stay with the first single-line call on that local.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
+	);
+
+	public static readonly DiagnosticDescriptor KeepNarrowingAssertionWithBinding = Describe(
+		id: "ZA0061",
+		title: "Keep a narrowing assertion with its binding",
+		messageFormat: "Remove the blank line between this assertion and the binding it narrows",
+		description: "Requires a single-line assertion that narrows a name to stand directly below the statement that binds that name, without a blank line between them.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: false
 	);
 
 	public static readonly DiagnosticDescriptor SeparateMultiLineAccessors = Describe(
@@ -505,6 +613,15 @@ internal static class DiagnosticDescriptors
 		customTags: [WellKnownDiagnosticTags.Unnecessary]
 	);
 
+	public static readonly DiagnosticDescriptor RemoveSwitchLabelPadding = Describe(
+		id: "ZA0207",
+		title: "Remove switch label padding",
+		messageFormat: "Remove the blank line below this switch label",
+		description: "Requires that no blank line sits directly below a `case` or `default` label, before the next label or the first statement of its section.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: true
+	);
+
 	public static readonly DiagnosticDescriptor UseBlockBodyForMultiLineMember = Describe(
 		id: "ZA0301",
 		title: "Use a block body for a multi-line member",
@@ -612,6 +729,15 @@ internal static class DiagnosticDescriptors
 		severity: DiagnosticSeverity.Info,
 		isEnabledByDefault: true,
 		customTags: [WellKnownDiagnosticTags.Unnecessary]
+	);
+
+	public static readonly DiagnosticDescriptor SeparateSuppressionBlock = Describe(
+		id: "ZA0406",
+		title: "Separate a suppression block",
+		messageFormat: "Add a blank line next to this suppression directive",
+		description: "Requires a blank line above a `#pragma warning disable` directive and below its matching `#pragma warning restore` directive, except where the line beside it holds a brace of the block that holds it, a switch label above it or another directive.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: true
 	);
 
 	public static readonly DiagnosticDescriptor NameArgumentsOfCall = Describe(

@@ -9,14 +9,16 @@ This page lists each place and the decision the rules take there.
 A fix writes or removes blank lines, apart from the [parameter names](#calls) the call rules write, and never moves code.
 The [shared analysis](Architecture.md#shared-analysis) reads each file once and gives each gap to one rule.
 
-- A rule asks for a gap from the shape of the syntax tree and the comments alone, never from a blank line that is already there.
-  Three rules read one: `ZA3009` ends its stanza at it, and `ZA3052` and `ZA3053` find a loose run by it.
+- A rule asks for a gap from the syntax tree and the comments.
+  Some rules also read the blank lines a file has: to keep a section, to find a binding that opens a stanza,
+  or to find a loose run.
 - A rule that removes a blank line acts only on one that stands.
 - A blank line another rule's fix writes stands where `ZA3009` already ends its stanza, so any fix order reaches one text.
 - The first enabled rule in the [owner order](Rule-map.md#one-owner-per-gap) that asks for a gap reports it, and the others stay silent.
 - A rule that is off asks for nothing, so the next rule that asks for the gap reports it.
-- The one rule that reads other rules, `ZA3009`, ends its stanza at each gap that another enabled rule asks for.
-- A container of exactly two single-line units belongs to `ZA3051` alone, as the [next section](#two-single-line-units) says.
+- `ZA3009` ends its stanza at a blank line or at a gap another rule asks for,
+  and reads through a blank line that a keeper removes in the same fix.
+- A container of exactly two single-line units belongs to `ZA3051`, as the [next section](#two-single-line-units) says.
   A function docstring above them does not count as a unit.
 - A rule that keeps a pair apart wins a gap over the rules that write a blank line.
 - A rule that keeps a run yields every gap that a rule which writes a blank line asks for, as the [architecture](Architecture.md#roles) says.
@@ -25,7 +27,10 @@ The [shared analysis](Architecture.md#shared-analysis) reads each file once and 
 ## Two single-line units
 
 `ZA3051` removes the blank line between the only two units of a container when each spans one line.
-The rules that add a blank line ask for nothing in such a container, so the two kinds of rule never meet.
+The rules that add a blank line ask for nothing in such a container, whether `ZA3051` is on or off,
+so the two kinds of rule never meet.
+
+While `ZA3051` is off, the relationship keepers `ZA3057` to `ZA3064` judge the gap as they judge any other.
 A function docstring is documentation and no step of the code, so it does not count as a unit.
 
 | Quirk | Decision |
@@ -84,7 +89,7 @@ A function docstring is documentation and no step of the code, so it does not co
 | A call through `super()` | A base call, which `ZA3010` sets apart when it opens or closes a function body. Any other call through `super()` is an invocation. |
 | `signal.connect(handler)` | A subscription while `ZA3007` is enabled and `subscription-roots` matches the callee, else an invocation. |
 | `global` and `nonlocal` | Declarations of a kind each, so a run of `global` names stands apart from a run of assignments. |
-| `yield` and `yield from` | Plain statements, not a run. |
+| `yield` and `yield from` | A yield statement while `ZA3020` is enabled, else a plain statement. A `yield` that binds a name, as in `data = yield`, is a declaration. |
 | A walrus, a lambda or a comprehension inside a statement | Part of the statement. They never change which run it joins. |
 | `__all__ = [...]` | A declaration like any other. |
 | `if __name__ == "__main__":` | A multi-line statement like any other. |
@@ -160,6 +165,8 @@ A gap is joined, and the rules leave it as written, when a blank line would spli
 | A gap that a rule which writes a blank line asks for | It stays blank, and it ends the run. |
 | Two declarations of different types | One run for `ZA3054` while `ZA3003` is off, and two runs while it is enabled. |
 | A blank line between two sections of a run | `ZA3054` and `ZA3055` keep it when each side holds at least two units tight against each other, and a lone unit between two sections is a section. |
+| A blank line between two sections of a group that `ZA3063` or `ZA3064` keeps | It ends the runs of the grouping rules, so `ZA3052` and `ZA3054` keep it too. |
+| A blank line that a relationship keeper removes, such as `ZA3058` or `ZA3063` | It reads as tight, so no unit of the kept group joins a loose run. |
 
 ## Calls
 

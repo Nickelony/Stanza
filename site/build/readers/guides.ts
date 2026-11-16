@@ -414,18 +414,6 @@ export function buildGuideOption(input: GuideOptionInput): Option<SourceSnippet>
 	};
 }
 
-/** Gives each half of a pair the other as its `opposite`, which is how the page shows a half as off while a file enables the other. */
-export function markOpposites(rules: Rule<SourceSnippet>[], pairs: RulePair[]): void {
-	for (const pair of pairs) {
-		for (const [id, opposite] of [
-			[pair.first, pair.second],
-			[pair.second, pair.first],
-		] as const) {
-			rules.find((rule) => rule.id === id)!.opposite = opposite;
-		}
-	}
-}
-
 /** Fails when the default half of a pair is not the one half a level holds, because the default half is the one a level enables. */
 export function checkDefaultHalf(file: string, pair: RulePair, isInLevel: (id: string) => boolean): void {
 	const inLevel = [pair.first, pair.second].filter(isInLevel);

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypeVar, cast, get_args
 
+from nickelony_stanza.analysis.receivers import normalize_receiver_pattern
 from nickelony_stanza.formatter import DEFAULT_FORMATTER, FORMATTERS, FormatterName
 from nickelony_stanza.options import (
     DEFAULT_MAX_LOOSE_RUN_SIZE,
@@ -14,10 +15,12 @@ from nickelony_stanza.options import (
     MAX_LOOSE_RUN_SIZE_LIMIT,
     NAMED_ARGUMENT_MIN_ARGUMENTS_LIMIT,
     NAMED_ARGUMENT_SOURCES,
+    DeclarationShapes,
     NamedArgumentLiterals,
     NamedArgumentMatch,
     NamedArgumentMethods,
     Options,
+    ReceiverComparison,
 )
 from nickelony_stanza.paths import is_broad_directory
 from nickelony_stanza.rules import ALL_RULES, BY_CODE, resolve_rule, rules_of_level
@@ -34,6 +37,9 @@ _KEYS = {
     "formatter",
     "assertion-roots",
     "guard-roots",
+    "receiver-roots",
+    "receiver-comparison",
+    "declaration-shapes",
     "subscription-roots",
     "max-loose-run-size",
     "named-argument-min-arguments",
@@ -126,6 +132,19 @@ def _read_strings(table: dict[str, Any], key: str, default: tuple[str, ...] = ()
     return tuple(cast("list[str]", value))
 
 
+def _read_patterns(table: dict[str, Any], key: str, default: tuple[str, ...]) -> tuple[str, ...]:
+    """Reads a list of patterns, none of them blank once `self.` or `cls.` is dropped, since that matches nothing."""
+    patterns = _read_strings(table, key, default)
+
+    if any(not normalize_receiver_pattern(pattern).strip() for pattern in patterns):
+        raise ConfigError(
+            f"'{key}' in [tool.stanza] must be a list of patterns that are not blank "
+            "once a leading `self.` or `cls.` is dropped."
+        )
+
+    return patterns
+
+
 def _read_bounded(table: dict[str, Any], key: str, default: int, limit: int) -> int:
     """Reads a whole number from 0 to `limit`."""
     value = table.get(key, default)
@@ -190,6 +209,13 @@ def config_from_table(table: dict[str, Any], base: Path | None = None) -> Config
     options = Options(
         assertion_roots=_read_strings(table, "assertion-roots", defaults.assertion_roots),
         guard_roots=_read_strings(table, "guard-roots", defaults.guard_roots),
+        receiver_roots=_read_patterns(table, "receiver-roots", defaults.receiver_roots),
+        receiver_comparison=_read_word(
+            table, "receiver-comparison", get_args(ReceiverComparison), defaults.receiver_comparison
+        ),
+        declaration_shapes=_read_word(
+            table, "declaration-shapes", get_args(DeclarationShapes), defaults.declaration_shapes
+        ),
         subscription_roots=_read_strings(table, "subscription-roots", defaults.subscription_roots),
         max_loose_run_size=_read_bounded(
             table, "max-loose-run-size", DEFAULT_MAX_LOOSE_RUN_SIZE, MAX_LOOSE_RUN_SIZE_LIMIT

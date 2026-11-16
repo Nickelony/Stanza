@@ -1,8 +1,13 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Nickelony.Stanza.Analyzers.BlankLines;
 
 namespace Nickelony.Stanza.Analyzers.Tests.Harness;
 
@@ -32,6 +37,131 @@ internal static class LinearCost
 			largeBytes,
 			$"{smallBytes:N0} bytes grew to {largeBytes:N0}."
 		);
+	}
+
+	/// <summary>Asserts that four times the units cost a query under six times the bytes.</summary>
+	public static async Task<(int Small, int Large)> AssertQueryLinearAsync(
+		StanzaRule rule,
+		Func<int, string> buildSource,
+		int units,
+		IReadOnlyDictionary<string, ReportDiagnostic> rules,
+		Func<ContainerContext, int> query,
+		IReadOnlyDictionary<string, string>? options = null
+	)
+	{
+		// A query that reads the whole container once per unit, where a cache reads it once,
+		// grows with the square of the container.
+		(long smallBytes, int smallCount) = await MeasureQueryAsync(
+			rule,
+			source: buildSource(units),
+			rules,
+			query,
+			options
+		);
+
+		(long largeBytes, int largeCount) = await MeasureQueryAsync(
+			rule,
+			source: buildSource(units * 4),
+			rules,
+			query,
+			options
+		);
+
+		Assert.IsGreaterThan(0L, smallBytes);
+
+		Assert.IsLessThan(
+			smallBytes * AllowedGrowth,
+			largeBytes,
+			$"{smallBytes:N0} bytes grew to {largeBytes:N0}."
+		);
+
+		return (smallCount, largeCount);
+	}
+
+	/// <summary>Counts the gaps of the container the rule claims.</summary>
+	public static int CountClaims(ContainerContext container, StanzaRule rule)
+	{
+		int claimed = 0;
+
+		for (int boundary = 1; boundary < container.Siblings.Length; boundary++)
+		{
+			if (BlankLineKeptPairs.Claims(container, boundary, rule))
+				claimed++;
+		}
+
+		return claimed;
+	}
+
+	/// <summary>Asserts that four times the units allocate under six times the bytes.</summary>
+	public static async Task AssertAnalysisLinearAsync(Func<int, string> buildSource, int units, RunOptions options, string message)
+	{
+		// The analyzers run on threads of their own, so the bytes the whole process allocates stand for them,
+		// and a caller carries [DoNotParallelize], so no other test allocates during the run.
+		long small = await MeasureAnalysisAsync(buildSource(units), options);
+		long large = await MeasureAnalysisAsync(buildSource(units * 4), options);
+
+		Assert.IsLessThan(small * AllowedGrowth, large, $"{message}: {small:N0} bytes grew to {large:N0}.");
+	}
+
+	private static async Task<long> MeasureAnalysisAsync(string source, RunOptions options)
+	{
+		long lowest = long.MaxValue;
+
+		for (int run = 0; run < MeasuredRuns; run++)
+		{
+			long before = GC.GetTotalAllocatedBytes(precise: true);
+
+			_ = await RoslynTestHarness.ReportAsync(source, options);
+			lowest = Math.Min(lowest, GC.GetTotalAllocatedBytes(precise: true) - before);
+		}
+
+		return lowest;
+	}
+
+	// The analyzer runs the query on its own thread, so the thread's bytes count the query alone,
+	// and the lowest run of the largest container stands for it.
+	private static async Task<(long Bytes, int Count)> MeasureQueryAsync(
+		StanzaRule rule,
+		string source,
+		IReadOnlyDictionary<string, ReportDiagnostic> rules,
+		Func<ContainerContext, int> query,
+		IReadOnlyDictionary<string, string>? options
+	)
+	{
+		ConcurrentBag<(int Units, long Bytes, int Count)> measures = [];
+
+		var analyzer = new ContainerReadingAnalyzer(
+			rule,
+
+			container =>
+			{
+				long before = GC.GetAllocatedBytesForCurrentThread();
+
+				int count = query(container);
+
+				long bytes = GC.GetAllocatedBytesForCurrentThread() - before;
+
+				measures.Add((container.Siblings.Length, bytes, count));
+			}
+		);
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunOneAsync(
+			source,
+			analyzer,
+			diagnosticOptions: rules,
+			analyzerConfigOptions: options
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+		Assert.IsFalse(measures.IsEmpty);
+
+		int largest = measures.Max(static measure => measure.Units);
+
+		(int _, long bytes, int count) = measures
+			.Where(measure => measure.Units == largest)
+			.MinBy(static measure => measure.Bytes);
+
+		return (bytes, count);
 	}
 
 	/// <summary>Asserts that the fastest of a few walks ends within the limit.</summary>

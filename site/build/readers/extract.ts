@@ -4,7 +4,7 @@ import { parseLevels, type LevelRow } from './levels.ts';
 import { isMarkupRule, markupRuleIds } from './markup.ts';
 import { parseOptionPage, type ParsedOption } from './option-page.ts';
 import { literalDefault, parseReadme, type Readme } from './readme.ts';
-import { csharpierAnchor, parseMarkupProfiles, parseMarkupRuleIds, parsePairs, parseUndoneByCSharpier } from './references.ts';
+import { csharpierAnchor, markOpposites, parseMarkupProfiles, parseMarkupRuleIds, parsePairs, parseUndoneByCSharpier } from './references.ts';
 import { parseRulePage } from './rule-page.ts';
 import { byKey, ExtractionError, inFile, pageName, readFiles, readOne, sourcePaths, type ExtractionSources } from './source.ts';
 
@@ -267,6 +267,8 @@ export function extractFromSources(sources: ExtractionSources): SourceCatalog {
 	]);
 
 	const rules = buildRules(readme, parsedRules, levels, markupIds, undone);
+
+	markOpposites(rules, pairs);
 
 	return {
 		rules,

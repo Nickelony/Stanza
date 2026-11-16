@@ -252,8 +252,38 @@ internal static class BlankLineLooseRuns
 		int guardBoundary = BlankLineGuards.FindAskedGuardBoundary(container, askingRule: rule);
 
 		ImmutableHashSet<int> asked = ReadAllAskedBoundaries(container, rule, gapOwners, jumps, guardBoundary);
-		ImmutableHashSet<int> candidates = ReadCandidateBoundaries(siblings, unitRange, loose, asked);
+
+		ImmutableHashSet<int> candidates =
+		[
+			.. ReadCandidateBoundaries(siblings, unitRange, loose, asked, joined: gapOwners.JoinedBoundaries ?? [])
+				.Except(gapOwners.ProtectedSections ?? [])
+				.Where(boundary => !IsReceiverKept(container, rule, boundary) && !IsDependentBindingKept(container, rule, boundary)),
+		];
+
 		ImmutableHashSet<int> removable = candidates;
+
+		// A gap a keeper joins goes whoever else owns it, so it never stays.
+		int[] owned =
+		[
+			.. (gapOwners.BaseCallBoundaries ?? [])
+				.Union(gapOwners.CheckedBoundaries ?? [])
+				.Union(gapOwners.ReceiverBoundaries ?? [])
+				.Union(gapOwners.DisplacedBoundaries ?? [])
+				.Except(gapOwners.JoinedBoundaries ?? [])
+				.OrderBy(static boundary => boundary),
+		];
+
+		// A retry reads a stretch of a few siblings, so it reads only the owned gaps inside it.
+		IEnumerable<int> ReadOwnedIn(BlankLineGrouping.GatheredStretch gathered)
+		{
+			int at = Array.BinarySearch(owned, gathered.Start);
+
+			for (at = at < 0 ? ~at : at; at < owned.Length && owned[at] <= gathered.End; at++)
+			{
+				if (gathered.Boundaries.Contains(owned[at]))
+					yield return owned[at];
+			}
+		}
 
 		ImmutableHashSet<int> ReadStaying(BlankLineGrouping.GatheredStretch gathered)
 		{
@@ -281,7 +311,7 @@ internal static class BlankLineLooseRuns
 			if (guardBoundary >= 0 && gathered.Boundaries.Contains(guardBoundary))
 				staying = staying.Add(guardBoundary);
 
-			return gapOwners.BaseCallBoundaries is { Count: > 0 } baseCalls ? staying.Union(baseCalls.Intersect(gathered.Boundaries)) : staying;
+			return staying.Union(ReadOwnedIn(gathered));
 		}
 
 		ImmutableHashSet<int> ReadStayingAround(int boundary, ImmutableHashSet<int> gathered)
@@ -353,26 +383,39 @@ internal static class BlankLineLooseRuns
 		ImmutableArray<SyntaxNode> siblings,
 		UnitRange unitRange,
 		ImmutableHashSet<int> loose,
-		ImmutableHashSet<int> asked
+		ImmutableHashSet<int> asked,
+		ImmutableHashSet<int> joined
 	)
 	{
 		ImmutableHashSet<int>.Builder kept = ImmutableHashSet.CreateBuilder<int>();
 
 		foreach (int boundary in loose)
 		{
-			if (!IsTightGap(siblings, unitRange, asked, boundary: boundary - 1) && !IsTightGap(siblings, unitRange, asked, boundary: boundary + 1))
+			if (
+				!IsTightGap(siblings, unitRange, asked, joined, boundary: boundary - 1)
+				&& !IsTightGap(siblings, unitRange, asked, joined, boundary: boundary + 1)
+			)
+			{
 				kept.Add(boundary);
+			}
 		}
 
 		return kept.ToImmutable();
 	}
 
 	/// <summary>Whether the gap at the boundary has no blank line and no rule asks for one.</summary>
-	private static bool IsTightGap(ImmutableArray<SyntaxNode> siblings, UnitRange unitRange, ImmutableHashSet<int> asked, int boundary)
+	private static bool IsTightGap(
+		ImmutableArray<SyntaxNode> siblings,
+		UnitRange unitRange,
+		ImmutableHashSet<int> asked,
+		ImmutableHashSet<int> joined,
+		int boundary
+	)
 	{
+		// A gap a keeper joins is tight once it fixes it, so it reads tight before that fix too.
 		return unitRange.HoldsBoundary(boundary)
 			&& !asked.Contains(boundary)
-			&& !BlankLineGaps.HasBlankLineBetween(siblings[boundary - 1], siblings[boundary]);
+			&& (joined.Contains(boundary) || !BlankLineGaps.HasBlankLineBetween(siblings[boundary - 1], siblings[boundary]));
 	}
 
 	/// <summary>The boundaries where a rule asks for a blank line whatever is gathered.</summary>
@@ -429,6 +472,8 @@ internal static class BlankLineLooseRuns
 			// The import section rule asks for the blank line below the last import, whatever is gathered below it.
 			if (
 				BlankLineGrouping.IsGapKeptBlank(siblings, boundary, gapOwners, cancellationToken: container.CancellationToken)
+				|| IsReceiverKept(container, rule, boundary)
+				|| IsDependentBindingKept(container, rule, boundary)
 				|| BlankLineOwnership.IsImportSectionGap(
 					context: container.Context,
 					options: container.Options,
@@ -446,6 +491,28 @@ internal static class BlankLineLooseRuns
 			held.Add(guardBoundary);
 
 		return held.ToImmutable();
+	}
+
+	private static bool IsDependentBindingKept(ContainerContext container, StanzaRule rule, int boundary)
+	{
+		return StanzaRuleState.IsDeferralOnAt(
+				scope: container,
+				options: container.Options,
+				rule,
+				target: DiagnosticDescriptors.KeepDependentBindingsTogether,
+				position: container.Siblings[boundary].SpanStart
+			) && BlankLineDependentBindings.GetInner(container).Contains(boundary);
+	}
+
+	private static bool IsReceiverKept(ContainerContext container, StanzaRule rule, int boundary)
+	{
+		return StanzaRuleState.IsDeferralOnAt(
+				scope: container,
+				options: container.Options,
+				rule,
+				target: DiagnosticDescriptors.KeepReceiverGroupTogether,
+				position: container.Siblings[boundary].SpanStart
+			) && BlankLineKeptPairs.Claims(container, boundary, StanzaRules.KeepReceiverGroupTogether);
 	}
 
 	/// <summary>The jumps whose blank line the jump rule asks for, in a container that rule judges.</summary>

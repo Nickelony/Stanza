@@ -24,6 +24,9 @@ public sealed partial class ConvergenceTests
 	private static readonly DiagnosticDescriptor[][] s_looseRuleSets =
 	[
 		[
+			DiagnosticDescriptors.SeparateReceiverGroups,
+			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepDependentBindingsTogether,
 			DiagnosticDescriptors.GatherRunOfLooseStatements,
 			DiagnosticDescriptors.SeparateDeclarationRuns,
 			DiagnosticDescriptors.SeparateInvocationRuns,
@@ -311,6 +314,7 @@ public sealed partial class ConvergenceTests
 
 		Asking:
 		[
+			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.SeparateDeclarationRuns,
 			DiagnosticDescriptors.SeparateInvocationRuns,
 			DiagnosticDescriptors.SeparateAssertionRuns,

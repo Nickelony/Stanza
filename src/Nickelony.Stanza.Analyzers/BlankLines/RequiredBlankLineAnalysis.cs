@@ -21,6 +21,7 @@ internal static class RequiredBlankLineAnalysis
 		// The gap is judged at each boundary, not once per container,
 		// so a pragma silencing the owning half at one boundary hands only that boundary to this half.
 		StanzaOptions? options = null;
+		ImmutableArray<int>.Builder boundaries = ImmutableArray.CreateBuilder<int>();
 
 		for (int boundary = 1; boundary < siblings.Length; boundary++)
 		{
@@ -35,8 +36,16 @@ internal static class RequiredBlankLineAnalysis
 			if (!StanzaRuleState.IsTheOwningHalf(scope: context, options, rule, position: siblings[boundary].SpanStart))
 				continue;
 
-			ReportBoundary(new ContainerContext(context, options, siblings), boundary, rule);
+			boundaries.Add(boundary);
 		}
+
+		if (options is null)
+			return;
+
+		var container = new ContainerContext(context, options, siblings);
+
+		foreach (int boundary in BlankLineKeptPairs.ReadOuterBoundaries(container, boundaries.ToImmutable()))
+			ReportBoundary(container, boundary, rule);
 	}
 
 	/// <summary>
@@ -118,6 +127,9 @@ internal static class RequiredBlankLineAnalysis
 		ImmutableHashSet<int>? excludedBoundaries = null
 	)
 	{
+		boundaries = BlankLineKeptPairs.ReadOuterBoundaries(container, boundaries);
+		excludedBoundaries = (excludedBoundaries ?? []).Union(BlankLineOwnership.ReadAskedSeparatingBoundaries(container, rule));
+
 		ImmutableArray<SyntaxNode> siblings = container.Siblings;
 		HashSet<int> given = [.. boundaries];
 		ILookup<int, BlankLineGrouping.RunBorder>? asked = null;

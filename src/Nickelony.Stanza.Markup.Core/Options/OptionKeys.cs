@@ -35,6 +35,11 @@ internal static class OptionKeys
 	public const string AssertionRoots = "stanza_assertion_roots";
 	public const string GuardRoots = "stanza_guard_roots";
 	public const string AssignmentTargets = "stanza_assignment_targets";
+	public const string DeclarationShapes = "stanza_declaration_shapes";
+	public const string DeclarationTyping = "stanza_declaration_typing";
+	public const string LocalFunctionModifiers = "stanza_local_function_modifiers";
+	public const string ReceiverRoots = "stanza_receiver_roots";
+	public const string ReceiverComparison = "stanza_receiver_comparison";
 	public const string CommentBannerMinRun = "stanza_comment_banner_min_run";
 	public const string MaxBlankLines = "stanza_max_blank_lines";
 	public const string MaxElseIfBranches = "stanza_max_else_if_branches";
@@ -80,6 +85,11 @@ internal static class OptionKeys
 		AssertionRoots,
 		GuardRoots,
 		AssignmentTargets,
+		DeclarationShapes,
+		DeclarationTyping,
+		LocalFunctionModifiers,
+		ReceiverRoots,
+		ReceiverComparison,
 		CommentBannerMinRun,
 		MaxBlankLines,
 		MaxElseIfBranches,

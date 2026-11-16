@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { parseForESLint } from '@typescript-eslint/parser';
 import { Linter } from 'eslint';
+import tseslint from 'typescript-eslint';
 
-import { createConfig, fix, fixWithPreset, lines, lintWithPreset, readPresetRules, readShape } from './helpers.ts';
+import { createConfig, fix, fixWithPreset, lines, lintWithPreset, readPresetRules, readShape, stable } from './helpers.ts';
 
 describe('one owner per gap', () => {
 	it('reports a gap that several rules ask for once, under the first rule in the owner order', () => {
@@ -56,7 +58,41 @@ describe('a container of two single-line units', () => {
 		it(`asks for nothing between ${name}`, () => {
 			assert.deepEqual(lintWithPreset(code, 'strong'), []);
 		});
+
+		it(`asks for nothing between ${name} while keep-two-units-together is off`, () => {
+			const { 'keep-two-units-together': pair, ...rules } = readPresetRules('strong');
+
+			assert.ok(pair);
+			assert.equal(fix(code, rules), code);
+		});
 	}
+
+	it('separates a guard, a base call and a test block from a second statement once a third one stands in the body', () => {
+		const rules = { 'separate-guard-clauses': 'error', 'separate-base-call': 'error', 'separate-test-blocks': 'error' } as const;
+
+		assert.equal(
+			fix(lines('function f(a) {', '  if (!a) return;', '  run(a);', '  done();', '}'), rules),
+			lines('function f(a) {', '  if (!a) return;', '', '  run(a);', '  done();', '}'),
+		);
+
+		assert.equal(
+			fix(lines('class A extends B {', '  constructor() {', '    super();', '    this.x = 1;', '    this.y = 2;', '  }', '}'), rules),
+			lines('class A extends B {', '  constructor() {', '    super();', '', '    this.x = 1;', '    this.y = 2;', '  }', '}'),
+		);
+
+		assert.equal(
+			fix(lines('describe("a", () => {', '  it.todo("b");', '  it.todo("c");', '  it.todo("d");', '});'), rules),
+			lines('describe("a", () => {', '  it.todo("b");', '', '  it.todo("c");', '', '  it.todo("d");', '});'),
+		);
+	});
+
+	it('keeps the two units tight while keep-two-units-together is on, ahead of the rule that separates a base call', () => {
+		const source = lines('class A extends B {', ' constructor(a) {', '  super(a);', '  this.a = a;', ' }', '}');
+		const rules = { 'separate-base-call': 'error', 'keep-two-units-together': 'error' } as const;
+
+		assert.equal(fix(source, rules), source);
+		assert.equal(fix(source.replace('super(a);\n', 'super(a);\n\n'), rules), source);
+	});
 
 	it('removes the blank line that stands there, and keeps it once a comment or a long unit stands there', () => {
 		assert.equal(
@@ -193,5 +229,153 @@ describe('the quirks', () => {
 	it('keeps an empty case with the case it falls through to', () => {
 		const code = lines('switch (x) {', '  case 1:', '  case 2: {', '    run();', '    break;', '  }', '}');
 		assert.equal(fixWithPreset(code, 'strong'), code);
+	});
+});
+
+describe('value reads', () => {
+	const ruleOf = { guard: 'keep-guard-with-binding', jump: 'keep-jump-with-binding', checked: 'separate-checked-stanzas' } as const;
+
+	/** Builds a body where the kind of rule reads whether the expression reads `value`, the binding above it. */
+	function readBody(kind: keyof typeof ruleOf, expression: string): string {
+		const condition = 'if (' + expression + ') return;';
+
+		return kind === 'checked'
+			? lines('function f(items, source) {', 'audit();', 'let value = load();', condition, 'work();', '}')
+			: lines('function f(items, source) {', 'let value = load();', '', kind === 'guard' ? condition : 'return ' + expression + ';', '}');
+	}
+
+	const writesOrShadows = [
+		'items.map(value => value.id)',
+		'function value() { return value; }',
+		'function () { const value = 1; return value; }',
+		'function () { let value; return value; }',
+		'function () { var value; return value; }',
+		'function (value = 1) { return value; }',
+		'function () { class value {} return value; }',
+		'function () { try {} catch (value) { return value; } }',
+		'(value = 1)',
+		'(value! = 1)',
+		'((value as any) = 1)',
+		'({ x: value } = source)',
+		'([value!] = source)',
+		'({ value } = source)',
+		'({ x: value = 1 } = source)',
+		'function () { return 1 as typeof value; }',
+	];
+
+	for (const expression of writesOrShadows) {
+		for (const kind of ['guard', 'jump', 'checked'] as const) {
+			it(`${ruleOf[kind]} reads no outer value in ${expression}, which shadows or only writes it`, () => {
+				const source = readBody(kind, expression);
+				const condition = 'if (' + expression + ') return;';
+				const expected = kind === 'checked' ? source.replace(condition, '\n' + condition + '\n') : source;
+
+				assert.equal(stable(source, { [ruleOf[kind]]: 'error' }), expected);
+			});
+		}
+	}
+
+	const reads = [
+		'() => value',
+		'items.map(item => item === value)',
+		'(value += 1)',
+		'value++',
+		'({ [value]: other } = source)',
+		'({ x: other = value } = source)',
+		'([other = value] = source)',
+		'({ x: value!.child } = source)',
+		'([value[index]] = source)',
+		'function (item = value) { return item; }',
+		'function () { return value; }',
+		'class { [value]() {} }',
+		'class extends value {}',
+		'class { static item = value; }',
+	];
+
+	for (const expression of reads) {
+		for (const kind of ['guard', 'jump', 'checked'] as const) {
+			it(`${ruleOf[kind]} reads the outer value in ${expression}`, () => {
+				const source = readBody(kind, expression);
+				const condition = 'if (' + expression + ') return;';
+
+				const expected =
+					kind === 'checked' ? source.replace('let value', '\nlet value').replace(condition, condition + '\n') : source.replace('\n\n', '\n');
+
+				assert.equal(stable(source, { [ruleOf[kind]]: 'error' }), expected);
+			});
+		}
+	}
+
+	for (const [expression, joins] of [
+		['items.map(value => value.id)', false],
+		['function value() { return value; }', false],
+		['(value = 1)', false],
+		['({ x: value } = source)', false],
+		['() => value', true],
+		['(value += 1)', true],
+		['({ [value]: other } = source)', true],
+	] as const) {
+		it(`reads ${expression} with the scope analysis of ESLint's own parser`, () => {
+			const source = lines('function f(items, source) {', 'let value = load();', '', 'return ' + expression + ';', '}');
+			const first = createConfig({ 'keep-jump-with-binding': 'error' })[0];
+			const config = [{ ...first, languageOptions: { ecmaVersion: 'latest', sourceType: 'module' } }] as Linter.Config[];
+			const result = new Linter().verifyAndFix(source, config, { filename: 'file.js' });
+
+			assert.deepEqual(result.messages, []);
+			assert.equal(result.output, joins ? source.replace('\n\n', '\n') : source);
+		});
+	}
+
+	it('reads the scope analysis of a file once however many statements read values', () => {
+		const counts: number[] = [];
+
+		for (const size of [50, 100]) {
+			let scopeReads = 0;
+
+			const parser = {
+				...tseslint.parser,
+
+				parseForESLint(code: string, options: Parameters<typeof parseForESLint>[1]) {
+					const parsed = parseForESLint(code, options);
+					const { scopes } = parsed.scopeManager;
+
+					Object.defineProperty(parsed.scopeManager, 'scopes', {
+						get: () => {
+							scopeReads += 1;
+							return scopes;
+						},
+					});
+
+					return parsed;
+				},
+			};
+
+			const body = [
+				'let value = 0;',
+				'',
+				'for (const item of items) { value += item; }',
+				'',
+				'if (items.some(value => value.id)) return;',
+				'return value;',
+			];
+
+			const source = lines(...Array.from({ length: size }, (_, index) => lines('function f' + index + '(items) {', ...body, '}')));
+
+			const first = createConfig({
+				'keep-guard-with-binding': 'error',
+				'keep-jump-with-binding': 'error',
+				'separate-checked-stanzas': 'error',
+				'keep-accumulator-with-loop': 'error',
+				'keep-dependent-bindings-together': 'error',
+			})[0];
+
+			const reports = new Linter().verify(source, [{ ...first, languageOptions: { ...first?.languageOptions, parser } }], { filename: 'file.ts' });
+
+			assert.equal(reports.filter((report) => report.ruleId === 'stanza/keep-accumulator-with-loop').length, size);
+			counts.push(scopeReads);
+		}
+
+		assert.ok((counts[0] ?? 0) > 0);
+		assert.equal(counts[1], counts[0]);
 	});
 });

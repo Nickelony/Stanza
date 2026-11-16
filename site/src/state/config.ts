@@ -10,7 +10,7 @@ import {
 } from './levels.ts';
 import { audienceOf, optionId, wordsOf, type Catalog, type Option, type Rule, type RuleSetting, type Severity } from './model.ts';
 
-/** What the user chose: the level, the formatter and the severity, and only the rules and options that differ from them are stored. */
+/** The selected preset, formatter and severity, with explicit rule and option choices. */
 export interface Config {
 	/** The `StanzaLevel` the project sets: the rules the form starts from. */
 	level: Level;
@@ -21,7 +21,7 @@ export interface Config {
 	/** The `StanzaSeverity` the project sets: the severity of the rules the level enables. */
 	severity: PackageSeverity;
 
-	/** The rules the visitor set, by ID; one that says what the level already says counts as no change. */
+	/** Explicit rule settings, including both halves of a pair when a file or the rule list sets both. */
 	rules: Record<string, Severity>;
 
 	/** The options the visitor set, by `optionId`. */
@@ -101,6 +101,10 @@ function sameIn(a: EffectiveState, b: EffectiveState, context: Context): boolean
  * Where the tool replaces a half of a pair, a rule the level enables is off once the form enables its opposite.
  */
 export function replacedBy<S>(rule: Rule<S>, config: Config): string | null {
+	if (rule.csharp !== undefined) {
+		return null;
+	}
+
 	const named = rule.opposite === undefined ? undefined : config.rules[rule.opposite];
 	const replaced = named !== undefined && isReporting(named) && enabledAt(rule, config.level, config.formatter);
 
@@ -136,31 +140,32 @@ export function effectiveState<S>(rule: Rule<S>, config: Config): EffectiveState
 	return ruleStateIn(rule, config, 'analyzer');
 }
 
-/**
- * Whether the form's setting for the rule changes what a tool does from what the pickers give.
- * A setting that says what the level already says is no change, so an `.editorconfig` the page wrote imports as no change.
- */
+/** Whether a tool needs an override or an explicit pair choice instead of following the pickers. */
 export function isRuleChanged<S>(rule: Rule<S>, config: Config): boolean {
 	return contexts.some((context) => isRuleChangedIn(rule, config, context));
 }
 
-/** Whether the form's setting for the rule changes what the tool for the context does from what the pickers give. */
+/** Whether the tool needs this override or explicit pair choice. */
 export function isRuleChangedIn<S>(rule: Rule<S>, config: Config, context: Context): boolean {
 	return (
 		config.rules[rule.id] !== undefined &&
 		readsRule(rule, context) &&
-		!sameIn(ruleStateIn(rule, config, context), levelState(rule, config, context), context)
+		(hasExplicitPairSetting(rule, config) || !sameIn(ruleStateIn(rule, config, context), levelState(rule, config, context), context))
 	);
 }
 
 /**
  * The severity the rule's line has in the section of a tool, or `null` when the section needs no line.
- * The analyzer gets the level from the package, so its section holds only what differs from the level, and every markup rule that is on, which no level holds.
+ * Explicit pair choices retain both lines; otherwise the analyzer needs only differences from the package and enabled markup rules.
  * `stanza-markup` reads only the file, so its section holds whatever differs from the tool's own default, the rules of the level included.
  */
 export function ruleDeltaIn<S>(rule: Rule<S>, config: Config, context: Context): Severity | null {
 	if (!readsRule(rule, context)) {
 		return null;
+	}
+
+	if (hasExplicitPairSetting(rule, config)) {
+		return config.rules[rule.id]!;
 	}
 
 	const state = ruleStateIn(rule, config, context);
@@ -171,6 +176,11 @@ export function ruleDeltaIn<S>(rule: Rule<S>, config: Config, context: Context):
 	}
 
 	return state === 'off' ? 'none' : state;
+}
+
+/** Whether both halves of the rule's pair are set explicitly, so both lines are written and read back. */
+export function hasExplicitPairSetting(rule: { id: string; opposite?: string }, config: Config): boolean {
+	return rule.opposite !== undefined && config.rules[rule.id] !== undefined && config.rules[rule.opposite] !== undefined;
 }
 
 /** Whether a file enables the rule in the sense of the terms page: a line of the file, or the preset file, sets it to something but `none`. */
@@ -193,8 +203,12 @@ export function checkOption<S>(option: Option<S>, raw: string): OptionCheck {
 	}
 
 	// A tab, a line separator or another control character would end the line or the value in some readers of an .editorconfig.
-	if (/[\p{Cc}\p{Zl}\p{Zp}#;]/u.test(value)) {
-		return { ok: false, reason: 'A value cannot hold a control character, a line break, "#" or ";".' };
+	if (/[\p{Cc}\p{Zl}\p{Zp}]/u.test(value)) {
+		return { ok: false, reason: 'A value cannot hold a control character or a line break.' };
+	}
+
+	if (option.csharp !== undefined && /[#;]/u.test(value)) {
+		return { ok: false, reason: 'An .editorconfig value cannot hold "#" or ";".' };
 	}
 
 	switch (option.kind) {

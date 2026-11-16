@@ -250,6 +250,30 @@ CASES = [
         "await a()\nawait b()\nassert_ok()\nawait c()\n",
         "await a()\nawait b()\n\nassert_ok()\nawait c()\n",
     ),
+    # ZA3020 separate-yield-runs
+    case(
+        "yields: a run of yield statements",
+        "ZA3020",
+        "def g():\n    yield a\n    yield from b\n    print(1)\n",
+        "def g():\n    yield a\n    yield from b\n\n    print(1)\n",
+    ),
+    case(
+        "yields: a run that follows a stanza",
+        "ZA3020",
+        "def g():\n    print(1)\n    yield a\n    yield\n",
+        "def g():\n    print(1)\n\n    yield a\n    yield\n",
+    ),
+    case("yields: one yield is no run", "ZA3020", "def g():\n    print(1)\n    yield a\n    print(2)\n"),
+    case(
+        "yields: a yield that binds a name is a declaration",
+        "ZA3020",
+        "def g():\n    a = yield\n    b = yield\n    print(1)\n",
+    ),
+    case(
+        "yields: a noqa on the statement below the gap silences the finding",
+        "ZA3020",
+        "def g():\n    yield a\n    yield b\n    print(1)  # noqa: ZA3020\n",
+    ),
     # ZA3009 separate-jump-statements
     case(
         "jumps: a return below a stanza",
@@ -487,6 +511,343 @@ CASES = [
         "if a:\n    pass\nelse:\n    b = 1\n    c = 2\n",
     ),
     case("pair: joined statements", "ZA3051", "a = 1; b = 2\n"),
+    # ZA3061 keep-assertion-with-binding
+    case(
+        "binding assert: the assert checks the name just bound",
+        "ZA3061",
+        "def f():\n    a()\n    x = load()\n\n    assert x is not None\n    use(x)\n",
+        "def f():\n    a()\n    x = load()\n    assert x is not None\n    use(x)\n",
+    ),
+    case(
+        "binding assert: a multi-line binding",
+        "ZA3061",
+        "def f():\n    a()\n    x = load(\n        1,\n    )\n\n    assert x\n    use(x)\n",
+        "def f():\n    a()\n    x = load(\n        1,\n    )\n    assert x\n    use(x)\n",
+    ),
+    case(
+        "binding assert: an annotated binding and an isinstance check",
+        "ZA3061",
+        "def f():\n    a()\n    x: object = load()\n\n    assert isinstance(x, int)\n    use(x)\n",
+        "def f():\n    a()\n    x: object = load()\n    assert isinstance(x, int)\n    use(x)\n",
+    ),
+    case(
+        "binding assert: one name of a tuple target",
+        "ZA3061",
+        "def f():\n    a()\n    x, y = load()\n\n    assert y\n    use(x)\n",
+        "def f():\n    a()\n    x, y = load()\n    assert y\n    use(x)\n",
+    ),
+    case(
+        "binding assert: an assert of another name",
+        "ZA3061",
+        "def f():\n    a()\n    x = load()\n\n    assert y\n    use(x)\n",
+    ),
+    case(
+        "binding assert: a none check joined by and",
+        "ZA3061",
+        "def f():\n    a()\n    x = load()\n\n    assert x is not None and y\n    use(x)\n",
+        "def f():\n    a()\n    x = load()\n    assert x is not None and y\n    use(x)\n",
+    ),
+    case(
+        "binding assert: an assert that leads a run of assertions stays with the run",
+        "ZA3061",
+        "def test_f():\n    a()\n    product = get()\n\n    assert product is not None\n    assert product.id == 1\n",
+    ),
+    case(
+        "binding assert: an assertion helper below also makes a run",
+        "ZA3061",
+        "def test_f():\n    a()\n    node = get()\n\n    assert node is not None\n    assert_tls(node)\n",
+    ),
+    case(
+        "binding assert: an assert about an attribute is the assert phase of a test",
+        "ZA3061",
+        "def test_f():\n    a()\n    response = get()\n\n    assert response.status == 200\n    stop()\n",
+    ),
+    case(
+        "binding assert: a comparison with a value narrows nothing",
+        "ZA3061",
+        "def test_f():\n    a()\n    total = add(1, 2)\n\n    assert total == 3\n    stop()\n",
+    ),
+    case(
+        "binding assert: an attribute target binds no name",
+        "ZA3061",
+        "def f():\n    a()\n    self.x = load()\n\n    assert x\n    use(x)\n",
+    ),
+    case(
+        "binding assert: a comment keeps the blank line",
+        "ZA3061",
+        "def f():\n    a()\n    x = load()\n\n    # sanity\n    assert x\n    use(x)\n",
+    ),
+    case(
+        "binding assert: a multi-line assert keeps the blank line",
+        "ZA3061",
+        "def f():\n    a()\n    x = load()\n\n    assert x, (\n        'msg'\n    )\n    use(x)\n",
+    ),
+    case(
+        "binding assert: an annotation without a value binds nothing",
+        "ZA3061",
+        "def f():\n    a()\n    x: int\n\n    assert x\n    use(x)\n",
+    ),
+    case(
+        "binding assert: an assert that does not follow the binding",
+        "ZA3061",
+        "def f():\n    x = load()\n    use(x)\n\n    assert x\n    stop()\n",
+    ),
+    # ZA3057 keep-guard-clauses-together
+    case(
+        "guard chain: two if guards",
+        "ZA3057",
+        "def f(a, b):\n    if a is None:\n        raise ValueError\n\n    if b is None:\n        return\n    use(a)\n",
+        "def f(a, b):\n    if a is None:\n        raise ValueError\n    if b is None:\n        return\n    use(a)\n",
+    ),
+    case(
+        "guard chain: a chain in the middle of a body",
+        "ZA3057",
+        "def f(a):\n    x = load(a)\n\n    if x is None:\n        return\n\n    if not x.items:\n        raise E\n\n    use(x)\n",
+        "def f(a):\n    x = load(a)\n\n    if x is None:\n        return\n    if not x.items:\n        raise E\n\n    use(x)\n",
+    ),
+    case(
+        "guard chain: an assert and an if guard",
+        "ZA3057",
+        "for x in y:\n    assert x\n\n    if x.skip:\n        continue\n    use(x)\n",
+        "for x in y:\n    assert x\n    if x.skip:\n        continue\n    use(x)\n",
+    ),
+    case(
+        "guard chain: helper guards",
+        "ZA3057",
+        "def f(a):\n    check(a)\n\n    check(a.b)\n    use(a)\n",
+        "def f(a):\n    check(a)\n    check(a.b)\n    use(a)\n",
+        Options(guard_roots=("check",)),
+    ),
+    case(
+        "guard chain: an if with an else is no guard",
+        "ZA3057",
+        "def f(a):\n    if a:\n        return 1\n    else:\n        return 2\n\n    if a:\n        return\n    x()\n",
+    ),
+    case(
+        "guard chain: an if that does more than jump is no guard",
+        "ZA3057",
+        "def f(a):\n    if a:\n        log(a)\n        return\n\n    if a.b:\n        return\n    x()\n",
+    ),
+    case(
+        "guard chain: a comment keeps the blank line",
+        "ZA3057",
+        "def f(a):\n    if a:\n        return\n\n    # second\n    if a.b:\n        return\n    x()\n",
+    ),
+    case("guard chain: a module is no block", "ZA3057", "if a:\n    raise E\n\nif b:\n    raise E\nuse(a)\n"),
+    # ZA3060 keep-jump-with-binding
+    case(
+        "binding jump: a lone binding and the return that uses it",
+        "ZA3060",
+        "def f():\n    a()\n\n    x = load()\n\n    return x.id\n",
+        "def f():\n    a()\n\n    x = load()\n    return x.id\n",
+    ),
+    case(
+        "binding jump: a raise of the bound error",
+        "ZA3060",
+        "def f():\n    a()\n\n    error = Error(1)\n\n    raise error\n",
+        "def f():\n    a()\n\n    error = Error(1)\n    raise error\n",
+    ),
+    case(
+        "binding jump: a raise from the bound cause",
+        "ZA3060",
+        "def f():\n    a()\n\n    cause = find()\n\n    raise Error from cause\n",
+        "def f():\n    a()\n\n    cause = find()\n    raise Error from cause\n",
+    ),
+    case(
+        "binding jump: a binding inside a stanza keeps the blank line",
+        "ZA3060",
+        "def f():\n    a()\n    x = load()\n\n    return x\n",
+    ),
+    case(
+        "binding jump: a return of another name",
+        "ZA3060",
+        "def f():\n    a()\n\n    x = load()\n\n    return y\n",
+    ),
+    case(
+        "binding jump: a bare return",
+        "ZA3060",
+        "def f():\n    a()\n\n    x = load()\n\n    return\n",
+    ),
+    case(
+        "binding jump: a multi-line return keeps the blank line",
+        "ZA3060",
+        "def f():\n    a()\n\n    x = load()\n\n    return wrap(\n        x,\n    )\n",
+    ),
+    case(
+        "binding jump: a multi-line binding keeps the blank line",
+        "ZA3060",
+        "def f():\n    a()\n\n    x = load(\n        1,\n    )\n\n    return x\n",
+    ),
+    case(
+        "binding jump: a comment keeps the blank line",
+        "ZA3060",
+        "def f():\n    a()\n\n    x = load()\n\n    # done\n    return x\n",
+    ),
+    # ZA3058 keep-guard-with-binding
+    case(
+        "binding guard: the guard tests the name just bound",
+        "ZA3058",
+        "def f(i):\n    a()\n    customer = load(i)\n\n    if not customer:\n        raise E\n    use(customer)\n",
+        "def f(i):\n    a()\n    customer = load(i)\n    if not customer:\n        raise E\n    use(customer)\n",
+    ),
+    case(
+        "binding guard: a multi-line binding and a guard that reads one name of many",
+        "ZA3058",
+        "def f():\n    a()\n    x, y = load(\n        1,\n    )\n\n    if y > 3:\n        return\n    use(x)\n",
+        "def f():\n    a()\n    x, y = load(\n        1,\n    )\n    if y > 3:\n        return\n    use(x)\n",
+    ),
+    case(
+        "binding guard: a guard of another name",
+        "ZA3058",
+        "def f(i):\n    a()\n    customer = load(i)\n\n    if not i:\n        raise E\n    use(customer)\n",
+    ),
+    case(
+        "binding guard: an if that does more than jump is no guard",
+        "ZA3058",
+        "def f(i):\n    a()\n    x = load(i)\n\n    if not x:\n        log(i)\n        raise E\n    use(x)\n",
+    ),
+    case(
+        "binding guard: an assert belongs to ZA3061",
+        "ZA3058",
+        "def f(i):\n    a()\n    x = load(i)\n\n    assert x\n    use(x)\n",
+    ),
+    case(
+        "binding guard: a comment keeps the blank line",
+        "ZA3058",
+        "def f(i):\n    a()\n    x = load(i)\n\n    # missing\n    if not x:\n        raise E\n    use(x)\n",
+    ),
+    case(
+        "binding guard: a module is no block",
+        "ZA3058",
+        "a()\nx = load()\n\nif not x:\n    raise E\nuse(x)\n",
+    ),
+    # ZA3059 keep-accumulator-with-loop
+    case(
+        "accumulator: a total that the loop augments",
+        "ZA3059",
+        'def f(items):\n    a()\n    total = Decimal("0.00")\n\n    for item in items:\n        total += item.price\n    return total\n',
+        'def f(items):\n    a()\n    total = Decimal("0.00")\n    for item in items:\n        total += item.price\n    return total\n',
+    ),
+    case(
+        "accumulator: a list that the loop appends to",
+        "ZA3059",
+        "def f(xs):\n    a()\n    found = []\n\n    for x in xs:\n        if x:\n            found.append(x)\n    return found\n",
+        "def f(xs):\n    a()\n    found = []\n    for x in xs:\n        if x:\n            found.append(x)\n    return found\n",
+    ),
+    case(
+        "accumulator: a search result that the loop assigns",
+        "ZA3059",
+        "def f(xs):\n    a()\n    match = None\n\n    while xs:\n        match = xs.pop()\n    return match\n",
+        "def f(xs):\n    a()\n    match = None\n    while xs:\n        match = xs.pop()\n    return match\n",
+    ),
+    case(
+        "accumulator: a method that only uses the object builds nothing",
+        "ZA3059",
+        "def f(xs):\n    a()\n    client = Client()\n\n    for x in xs:\n        client.send(x)\n    return client\n",
+    ),
+    case(
+        "accumulator: a seed that reads a variable is no seed",
+        "ZA3059",
+        "def f(xs, n):\n    a()\n    total = n\n\n    for x in xs:\n        total += x\n    return total\n",
+    ),
+    case(
+        "accumulator: a loop that does not build the name",
+        "ZA3059",
+        "def f(xs):\n    a()\n    total = 0\n\n    for x in xs:\n        use(x)\n    return total\n",
+    ),
+    case(
+        "accumulator: a comment keeps the blank line",
+        "ZA3059",
+        "def f(xs):\n    a()\n    total = 0\n\n    # sum\n    for x in xs:\n        total += x\n    return total\n",
+    ),
+    # ZA3018 separate-checked-stanzas
+    case(
+        "checked binding: a guarded binding below another statement",
+        "ZA3018",
+        "async def f(s, i):\n    service = Service(s)\n    cart = await service.get(i)\n    if cart is None:\n        return None\n    use(cart)\n",
+        "async def f(s, i):\n    service = Service(s)\n\n    cart = await service.get(i)\n    if cart is None:\n        return None\n\n    use(cart)\n",
+    ),
+    case(
+        "checked binding: a group of bindings the guard reads",
+        "ZA3018",
+        "def f():\n    log()\n    a = load()\n    b = load()\n    if a is None or b is None:\n        return\n    use(a, b)\n",
+        "def f():\n    log()\n\n    a = load()\n    b = load()\n    if a is None or b is None:\n        return\n\n    use(a, b)\n",
+    ),
+    case(
+        "checked binding: a binding the guard does not read stays above the group",
+        "ZA3018",
+        "def f():\n    a = load()\n    b = load()\n    cart = load()\n    if cart is None:\n        return\n    use(a, b)\n",
+        "def f():\n    a = load()\n    b = load()\n\n    cart = load()\n    if cart is None:\n        return\n\n    use(a, b)\n",
+    ),
+    case(
+        "checked binding: a narrowing assert",
+        "ZA3018",
+        "def f():\n    log()\n    event = find()\n    assert event is not None\n    use(event)\n",
+        "def f():\n    log()\n\n    event = find()\n    assert event is not None\n    use(event)\n",
+    ),
+    case(
+        "checked binding: an assert that leads a run of assertions checks nothing",
+        "ZA3018",
+        "def test_f():\n    log()\n    product = get()\n    assert product is not None\n    assert product.id == 1\n",
+    ),
+    case(
+        "checked binding: a group that opens the body",
+        "ZA3018",
+        "def f(i):\n    cart = load(i)\n    if cart is None:\n        return\n    use(cart)\n",
+        "def f(i):\n    cart = load(i)\n    if cart is None:\n        return\n\n    use(cart)\n",
+    ),
+    case(
+        "checked binding: a guard that reads no binding above it",
+        "ZA3018",
+        "def f(i):\n    log()\n    cart = load(i)\n    if i is None:\n        return\n    use(cart)\n",
+        "def f(i):\n    log()\n    cart = load(i)\n\n    if i is None:\n        return\n\n    use(cart)\n",
+    ),
+    case(
+        "checked binding: a comment above the binding gets the blank line above it",
+        "ZA3018",
+        "def f(i):\n    log()\n    # the cart\n    cart = load(i)\n    if cart is None:\n        return\n    use(cart)\n",
+        "def f(i):\n    log()\n\n    # the cart\n    cart = load(i)\n    if cart is None:\n        return\n\n    use(cart)\n",
+    ),
+]
+
+# The relationship keepers win the gaps that the separating rules ask for.
+CASES += [
+    Case(
+        "checked binding: with the keep rules and the run rules, the checked step stands on its own",
+        ("ZA3018", "ZA3058", "ZA3057", "ZA3001", "ZA3002", "ZA3011", "ZA3054"),
+        "async def f(s, i):\n    service = Service(s)\n    cart = await service.get(i)\n\n    if cart is None:\n        return None\n\n    if not cart.items:\n        raise E\n\n    use(cart)\n",
+        "async def f(s, i):\n    service = Service(s)\n\n    cart = await service.get(i)\n    if cart is None:\n        return None\n    if not cart.items:\n        raise E\n\n    use(cart)\n",
+    ),
+    Case(
+        "binding guard: wins over the multi-line rule and joins the guard chain below",
+        ("ZA3058", "ZA3057", "ZA3001", "ZA3011"),
+        "def f(i):\n    a()\n    cart = load(i)\n\n    if cart is None:\n        return\n\n    if not cart.items:\n        raise E\n\n    use(cart)\n",
+        "def f(i):\n    a()\n\n    cart = load(i)\n    if cart is None:\n        return\n    if not cart.items:\n        raise E\n\n    use(cart)\n",
+    ),
+    Case(
+        "binding jump: wins over the declaration run",
+        ("ZA3060", "ZA3002"),
+        "def f():\n    a = 1\n\n    b = load(a)\n\n    return b\n",
+        "def f():\n    a = 1\n\n    b = load(a)\n    return b\n",
+    ),
+    Case(
+        "binding jump: a binding that a kept run joins to the stanza above is not lone",
+        ("ZA3060", "ZA3002", "ZA3009", "ZA3054"),
+        "def f():\n    a = 1\n\n    b = load(a)\n\n    return b\n",
+        "def f():\n    a = 1\n    b = load(a)\n\n    return b\n",
+    ),
+    Case(
+        "binding assert: wins over the declaration run",
+        ("ZA3061", "ZA3001", "ZA3002"),
+        "def f():\n    a = publish(\n        1,\n    )\n\n    b = load(a)\n\n    assert b is not None\n\n    return b\n",
+        "def f():\n    a = publish(\n        1,\n    )\n\n    b = load(a)\n    assert b is not None\n\n    return b\n",
+    ),
+    Case(
+        "guard chain: wins over the multi-line rule and keeps the gap below the guards",
+        ("ZA3057", "ZA3001", "ZA3011"),
+        "def f(a, b):\n    if a is None:\n        raise ValueError\n\n    if b is None:\n        raise ValueError\n    use(a)\n    use(b)\n",
+        "def f(a, b):\n    if a is None:\n        raise ValueError\n    if b is None:\n        raise ValueError\n\n    use(a)\n    use(b)\n",
+    ),
 ]
 
 

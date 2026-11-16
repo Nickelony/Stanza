@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace Nickelony.Stanza.Analyzers.Tests.Harness;
 
@@ -488,6 +489,39 @@ internal static class SourceGenerators
 			],
 	];
 
+	internal static string CreateReceiverSource(Random random)
+	{
+		string[] statements =
+		[
+			"var (left, right) = Read();",
+			"var (top, bottom) = Read();",
+			"int first = 1;",
+			"int second = 2;",
+			"string text = second.ToString();",
+			"byte[] bytes = System.Text.Encoding.UTF8.GetBytes(text);",
+			"var stream = new System.IO.MemoryStream(bytes);",
+			"this.db.Fetch();",
+			"await db.FetchAsync();",
+			"db.Items.Value = 1;",
+			"db.Items.DoThing();",
+			"cache.Fetch();",
+			"db.Value++;",
+			"db.DoThing();",
+		];
+
+		List<string> lines = [];
+
+		foreach (string statement in statements)
+		{
+			lines.AddRange(StatementGap(random));
+			lines.Add("\t\t" + statement);
+		}
+
+		return "internal sealed class ReceiverSample\n{\n\tprivate readonly Stage db = new();\n\tprivate readonly Stage cache = new();\n\tpublic async System.Threading.Tasks.Task Run()\n\t{\n"
+			+ string.Join("\n", lines)
+			+ "\n\t}\n}\n";
+	}
+
 	internal static string CreateStatementSource(Random random, int looseRun) =>
 		WrapStatements(CreateStatementLines(random, looseRun));
 
@@ -738,5 +772,72 @@ internal static class SourceGenerators
 				_ => 2,
 			}
 		);
+	}
+
+	// The steps a generated kept-group body draws from, where {0} is a name of the step's own and {1} a string in scope.
+	// A bar parts the statements of one step, and a step that binds a string hands its name to the steps below.
+	private static readonly (string Template, bool BindsText)[] s_keptGroupSteps =
+	[
+		("Audit();", false),
+		("var {0} = Find({1});", true),
+		("string {0} = {1} + text;", true),
+		("var {0} = Parse({1});", true),
+		("if ({1} == null) return null;", false),
+		("if ({1} == null)\n{\n\treturn null;\n}", false),
+		("Guard.NotNull({1});", false),
+		("Debug.Assert({1} != null);", false),
+		("ArgumentNullException.ThrowIfNull({1});", false),
+		("db.Count = 1;", false),
+		("db.Write({1});", false),
+		("var {0} = new Svc();|{0}.Write(id);|{0}.Close();", false),
+		("int {0} = 0;|foreach (char item in {1})\n\t{0} += item;", false),
+		("int {0} = 0;|int {0}m = 1;|foreach (char item in {1})\n{\n\t{0} += item;\n\t{0}m += {0};\n}", false),
+		("var {0} = Find({1});|int {0}n = 0;|int {0}m = 1;|foreach (char item in {0})\n{\n\t{0}n += item;\n\t{0}m += {0}n;\n}", true),
+		("string {0} = {1} + text;|var {0}a = Find({1});|var {0}b = Parse({0}a);|if ({0}b == null)\n{\n\treturn null;\n}", true),
+		("_total = {1};", false),
+	];
+
+	// Bindings, guards, assertions, calls through receivers, accumulator loops and lone declarations above kept groups,
+	// with a blank line above some statements.
+	internal static string CreateKeptGroupBody(Random random)
+	{
+		List<string> texts = ["text", "id"];
+		StringBuilder body = new();
+		int count = random.Next(4, 11);
+
+		for (int index = 0; index <= count; index++)
+		{
+			string text = random.Next(2) == 0 ? texts[^1] : texts[random.Next(texts.Count)];
+			string name = $"v{index}";
+
+			(string template, bool bindsText) =
+				index == count ? ("return {1};", false) : s_keptGroupSteps[random.Next(s_keptGroupSteps.Length)];
+
+			foreach (string line in template.Replace("{0}", name).Replace("{1}", text).Split('|'))
+			{
+				if (body.Length > 0 && random.Next(3) == 0)
+					body.Append('\n');
+
+				body.Append(line).Append('\n');
+			}
+
+			if (bindsText)
+				texts.Add(name);
+		}
+
+		return body.ToString().TrimEnd('\n');
+	}
+
+	// A method body among the helpers the kept-group sources call, which stand tight so no run of members is loose.
+	internal static string WrapKeptGroupBody(string body)
+	{
+		string indented = string.Join(
+			"\n",
+			body.Split('\n').Select(line => line.Length == 0 ? line : "\t\t" + line)
+		);
+
+		return "using System.Diagnostics;\n\nclass C\n{\n\tstring _total;\n\tSvc db = new();\n\n\tobject M(string id, string text)\n\t{\n"
+			+ indented
+			+ "\n\t}\n\n\tvoid Audit() { }\n\tstring Find(string id) => id;\n\tstring Parse(string text) => text;\n}\n\nclass Svc\n{\n\tpublic int Count { get; set; }\n\n\tpublic void Write(string id) { }\n\tpublic void Close() { }\n}\n";
 	}
 }

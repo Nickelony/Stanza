@@ -30,8 +30,8 @@ The call rules read the file through the [call walker](#call-rules) instead.
   A decorated definition starts at its first decorator.
 - A **gap** is the space between two units.
   It records the comments that lead the next unit, whether a blank line stands in it, whether it is joined, and why it is restricted.
-- A **claim** is the question a rule asks of a gap. It reads the tree and the comments, so the answer survives any fix;
-  only `ZA3009` and the rules that gather a loose run also read whether a blank line already stands in a gap.
+- A **claim** is the question a rule asks of a gap. It reads the tree and the comments,
+  and a claim that keeps a section, opens a stanza or finds a loose run reads the blank lines and the other claims too.
 
 The session in `analysis/session.py` asks every enabled gap rule about every gap,
 and gives the gap to the first rule in the [owner order](Rule-map.md#one-owner-per-gap) that says yes.
@@ -44,15 +44,33 @@ A rule writes a blank line or removes one, and the role decides what it owns and
 | Role | Rules | Owns | Against a rule that writes |
 | --- | --- | --- | --- |
 | `separate` | The rules that add a blank line. | A gap with no blank line. | Reports the gap in the owner order. |
-| `keep` | The rules that keep two units apart: `ZA3202`, `ZA3203`, `ZA3112` and `ZA3113`. | A gap that holds only blank lines. | Wins, so no `separate` rule sees the gap as asked for. |
-| `keep-run` | The rules that keep or gather a run: `ZA3052` to `ZA3055`. | A gap that holds only blank lines. | Yields every gap that a `separate` rule asks for. |
+| `keep` | The rules that keep a pair or a group tight. | A gap that holds only blank lines. | Wins, so no `separate` rule sees the gap as asked for. |
+| `keep-run` | The rules that keep a run, `ZA3054` and `ZA3055`. | A gap that holds only blank lines. | Yields every gap a `separate` rule asks for, and holds its gap against a moved separation. |
+| `gather` | The rules that gather a loose run, `ZA3052` and `ZA3053`. | A gap that holds only blank lines. | Yields every gap a `separate` rule asks for, a moved separation included. |
 
 - `ZA3202` and `ZA3112` are the tight halves of the [pairs](Rule-map.md#pairs-and-their-default-halves), and `ZA3113` and `ZA3203` are in no pair.
 - Naming one half of a pair in `enable` replaces the other half at a level where `Rule.opposite` links them.
-- A `keep-run` rule reads the claims of the `separate` rules, and a gap they ask for is a gap it leaves blank.
-- The claims of a `separate` rule are shape-only except for `ZA3009`,
-  so removing the blank lines inside a run changes no answer of the rules that write the lines at its ends.
+- `_read_claims` asks the roles in phases, each reading the claims before it: the keepers that read no rule,
+  the separating rules, the keepers that read them, the `keep-run` rules, the displaced separations, then `gather`.
+- `ZA3009` reads through the joins the keepers make in the same fix. While `ZA3009` or `ZA3018` is enabled,
+  `ZA3060` and `ZA3062` are asked once early, with a memo of their own, so that early answer leaves their final one alone.
+- `ZA3018` and `ZA3009` read the separating rules, so they are asked after the others, in owner order:
+  `ZA3018` yields the gap above a jump only where `ZA3009` asks for it once every other separator has asked.
+- `ZA3060` and `ZA3062` keep a binding only while the blank line above it stays.
+  They preview `ZA3054` without the separation a kept binding displaces.
+- `ZA3052` and `ZA3053` read a gap any keeper joins as tight, so a unit beside it is no loose unit.
+- A separation a keeper displaces moves as [the rule map](Rule-map.md#separation-a-keeper-displaces) says.
+  The session finds the upper gap of each kept group once, so a long chain stays linear.
+- A `# noqa` that silences a relationship keeper drops its claim before any separation moves,
+  so the gap is judged as if the keeper were off there and the next rule may own it.
+- The engine reads that `# noqa` from `Noqa`, and turns off before analysis a relationship keeper a file-wide comment silences.
+- `ZA3018`, `ZA3058` and `ZA3061` share one reading of the checked stanzas of a container.
+- The guard and jump rules read the values of an expression through `read_value_names`:
+  a lambda or comprehension local reads nothing outside, while a free capture, a default or the first iterable does.
+- The session reads the receiver groups and the dependent-binding chains of a container once.
+  While `ZA3063` or `ZA3064` is enabled, the sections of its groups end the runs the grouping rules read.
 - `ZA3051` is a `keep` rule that the session handles on its own, because it judges a whole container.
+  While it is off, only the relationship keepers judge such a container.
 
 ## Restricted gaps
 
@@ -72,8 +90,9 @@ so `ZA3051` judges the two statements as a pair and the other rules ask for noth
 
 ## Fixes
 
-- A gap finding carries one line edit: insert a line ending above the first line of the next unit's leading comments,
-  or delete the blank lines of a gap.
+- A gap finding inserts a line ending above the next unit's leading comments or deletes blank lines.
+- A finding of `ZA3063` or `ZA3064` deletes the blank lines of every gap of its group,
+  so fixing one finding cannot leave a section that changes the others; a gap a `# noqa` silences is no part of the group.
 - A call finding carries one insertion for each argument it names, and an insertion writes `name=` at a column of a line.
 - The edits of one pass never overlap, because each gap and each call has one owner, so the engine applies them together,
   last place first, so the lines and columns above stay true.
@@ -89,7 +108,9 @@ so `ZA3051` judges the two statements as a pair and the other rules ask for noth
   on the first line of the unit below the gap or on the line the blank would go above.
 - A call finding is dropped when the comment stands on the first line of the call's statement, on the line where the call starts
   or on the line of the `(` that opens its arguments.
-- The gap or the call keeps its owner, so no other rule reports it.
+- The gap or the call keeps its owner, so no other rule reports it, except at a gap of a relationship keeper,
+  which the session hands on before ownership is settled.
+- A file-wide comment turns the rules it names off for the file instead.
 
 ## Call rules
 
@@ -112,7 +133,7 @@ A call rule writes the name of a parameter before an argument, and it claims no 
 ### The owner of a call
 
 The walker asks the call rules in `CALL_RULES` order, and the first rule that plans names for a call owns it.
-A `# noqa` that silences the owner leaves the call as written, and the other rule does not take it over.
+A line `# noqa` that silences the owner leaves the call as written, and the other rule does not take it over.
 `named-argument-ignore` removes a call before any rule judges it.
 
 ### The resolver

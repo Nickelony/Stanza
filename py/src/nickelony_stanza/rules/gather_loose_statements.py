@@ -13,5 +13,5 @@ RULE = Rule(
     message="Remove the blank line inside this run of loose statements.",
     description="Remove the blank lines in a run of loose single-line statements longer than max-loose-run-size.",
     claim=claim_loose_run(STATEMENT_KINDS),
-    role="keep-run",
+    role="gather",
 )

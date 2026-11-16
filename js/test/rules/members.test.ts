@@ -15,7 +15,7 @@ tester.run('separate-base-call', baseCall as never, {
 
 		{
 			code: lines('class A extends B {', '  constructor(a) {', '    super(a);', '    this.a = a;', '  }', '}'),
-			name: 'a body of two statements stays tight',
+			name: 'a body of two statements stays tight while the two-unit keeper is off',
 		},
 
 		{

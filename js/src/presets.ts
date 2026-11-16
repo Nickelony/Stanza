@@ -16,6 +16,7 @@ const additions = {
 		'separate-import-section': 'error',
 		'keep-single-line-elements-together': 'error',
 		'keep-single-line-switch-cases-together': 'error',
+		'keep-stacked-case-labels-together': 'error',
 	},
 
 	moderate: {
@@ -32,6 +33,7 @@ const additions = {
 	strong: {
 		'separate-import-groups': 'error',
 		'separate-await-runs': 'error',
+		'separate-yield-runs': 'error',
 		'separate-assignment-runs': 'error',
 		'separate-guard-clauses': 'error',
 		'separate-base-call': 'error',
@@ -49,10 +51,20 @@ const additions = {
 
 /** The rules that belong to no preset, so only an entry of a project's own enables one. */
 export const optInRules = [
+	'separate-checked-stanzas',
 	'keep-statement-runs-together',
 	'keep-member-runs-together',
 	'keep-multi-line-switch-cases-together',
 	'keep-multi-line-jsx-children-together',
+	'keep-guard-clauses-together',
+	'keep-guard-with-binding',
+	'keep-accumulator-with-loop',
+	'keep-jump-with-binding',
+	'keep-assertion-with-binding',
+	'keep-initialization-with-calls',
+	'separate-receiver-groups',
+	'keep-receiver-groups-together',
+	'keep-dependent-bindings-together',
 ] as const;
 
 /** Reads the rules of a level: those of every level up to it, with the later level's entry winning. */

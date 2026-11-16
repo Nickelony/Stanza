@@ -1,5 +1,6 @@
 import keepMultiLine from '../../src/rules/keep-multi-line-switch-cases-together.ts';
 import keepSingleLine from '../../src/rules/keep-single-line-switch-cases-together.ts';
+import keepStackedLabels from '../../src/rules/keep-stacked-case-labels-together.ts';
 import separateMultiLine from '../../src/rules/separate-multi-line-switch-cases.ts';
 import { createRuleTester, crlf, lines } from '../helpers.ts';
 
@@ -160,5 +161,67 @@ tester.run('keep-single-line-switch-cases-together', keepSingleLine as never, {
 		},
 
 		{ code: crlf(singleApart), output: crlf(singleTight), errors: 1 },
+	],
+});
+
+const stackedApart = lines('switch (x) {', '  case 1:', '', '  case 2:', '    foo();', '}');
+const stackedTight = lines('switch (x) {', '  case 1:', '  case 2:', '    foo();', '}');
+
+tester.run('keep-stacked-case-labels-together', keepStackedLabels as never, {
+	valid: [
+		{ code: stackedTight },
+		{ code: apart, name: 'a case with a body is no stacked label' },
+		{ code: singleApart, name: 'two cases with bodies belong to the case rules' },
+		{ code: lines('switch (x) {', '  case 1:', '  // note', '', '  case 2:', '    foo();', '}'), name: 'a comment keeps the blank line' },
+		{ code: lines('switch (x) {', '  case 1: // first', '', '  case 2:', '    foo();', '}'), name: 'a trailing comment keeps the blank line' },
+
+		{
+			code: lines('switch (x) {', '  case 1:', '', '    foo();', '    break;', '', '  case 2:', '    bar();', '}'),
+			name: "the blank line below a label is Prettier's",
+		},
+
+		{ code: lines('switch (x) {', '  case 1: {}', '', '  case 2:', '    foo();', '}'), name: 'a case with a block is no empty case' },
+		{ code: lines('foo();', '', 'if (a) {', '  bar();', '}'), name: 'statements are no cases' },
+	],
+
+	invalid: [
+		{ code: stackedApart, output: stackedTight, errors: 1 },
+
+		{
+			code: lines('switch (x) {', '  case 1:', '', '  case 2:', '', '  case 3:', '    foo();', '}'),
+			output: lines('switch (x) {', '  case 1:', '  case 2:', '  case 3:', '    foo();', '}'),
+			errors: 2,
+			name: 'a stack of three labels',
+		},
+
+		{
+			code: lines('switch (x) {', '  case 1:', '', '  default:', '    foo();', '}'),
+			output: lines('switch (x) {', '  case 1:', '  default:', '    foo();', '}'),
+			errors: 1,
+			name: 'a default label joins the stack',
+		},
+
+		{
+			code: lines('switch (x) {', '  case 1:', '', '', '  case 2:', '    foo();', '}'),
+			output: stackedTight,
+			errors: 1,
+			name: 'several blank lines in a row all go',
+		},
+
+		{
+			code: lines('switch (x) {', '  case 1:', '  ', '  case 2:', '    foo();', '}'),
+			output: stackedTight,
+			errors: 1,
+			name: 'a line of whitespace is a blank line',
+		},
+
+		{
+			code: lines('switch (x) {', '  case 1: return a;', '', '  case 2:', '', '  case 3:', '    foo();', '}'),
+			output: lines('switch (x) {', '  case 1: return a;', '', '  case 2:', '  case 3:', '    foo();', '}'),
+			errors: 1,
+			name: 'only the gap below the empty case goes',
+		},
+
+		{ code: crlf(stackedApart), output: crlf(stackedTight), errors: 1 },
 	],
 });

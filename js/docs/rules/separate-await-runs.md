@@ -23,9 +23,11 @@ log('Sent.');
 - `const data = await load();` is a declaration and `data = await load();` an assignment, so this rule leaves both.
 - An awaited assertion stays an assertion, and an awaited test call stays a test block.
 - A lone await statement stays tight.
-- Where this rule is enabled, an awaited call is an await statement whatever it calls,
+- Where this rule is enabled, an awaited call normally belongs to its await run,
   so [`separate-invocation-runs`](separate-invocation-runs.md) leaves it out of its runs.
 - A `for await` loop and an `await using` declaration are no await statements.
+- A selected [receiver](separate-invocation-runs.md#settings) belongs to its invocation run across `await`
+  while a receiver consumer is enabled. Selectors alone leave this rule unchanged.
 
 ## C# counterpart
 

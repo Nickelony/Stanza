@@ -58,6 +58,10 @@ internal static class StanzaCommentCache
 	public static ImmutableArray<SyntaxTrivia> GetRegionMarkers(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
 		GetTriviaSnapshot(syntaxTree, cancellationToken).RegionMarkers;
 
+	/// <summary>The <c>#pragma warning</c> directives of a tree.</summary>
+	public static ImmutableArray<SyntaxTrivia> GetPragmaMarkers(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
+		GetTriviaSnapshot(syntaxTree, cancellationToken).PragmaMarkers;
+
 	/// <summary>The <c>#if</c> and <c>#endif</c> directives of a tree, in active and inactive code.</summary>
 	public static ImmutableArray<SyntaxTrivia> GetConditionalBlockMarkers(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
 		GetTriviaSnapshot(syntaxTree, cancellationToken).ConditionalBlockMarkers;
@@ -72,12 +76,13 @@ internal static class StanzaCommentCache
 		// Whether a file has a comment is read from its text without a walk, and Roslyn keeps a flag for directives,
 		// so a file that carries neither is answered with no walk at all.
 		if (!root.ContainsDirectives && !ReadTriviaMarkers(syntaxTree, cancellationToken).HasComment)
-			return new TriviaSnapshot(Comments: [], DocumentationComments: [], RegionMarkers: [], ConditionalBlockMarkers: []);
+			return new TriviaSnapshot(Comments: [], DocumentationComments: [], RegionMarkers: [], ConditionalBlockMarkers: [], PragmaMarkers: []);
 
 		ImmutableArray<SyntaxTrivia>.Builder comments = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 		ImmutableArray<SyntaxTrivia>.Builder documentationComments = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 		ImmutableArray<SyntaxTrivia>.Builder regionMarkers = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 		ImmutableArray<SyntaxTrivia>.Builder conditionalBlockMarkers = ImmutableArray.CreateBuilder<SyntaxTrivia>();
+		ImmutableArray<SyntaxTrivia>.Builder pragmaMarkers = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 
 		foreach (SyntaxTrivia trivia in root.DescendantTrivia())
 		{
@@ -101,6 +106,9 @@ internal static class StanzaCommentCache
 			if (structure is IfDirectiveTriviaSyntax or EndIfDirectiveTriviaSyntax)
 				conditionalBlockMarkers.Add(trivia);
 
+			if (structure is PragmaWarningDirectiveTriviaSyntax)
+				pragmaMarkers.Add(trivia);
+
 			if (structure is DirectiveTriviaSyntax directive && !CarriesAMessage(directive))
 				CollectDirectiveComments(directive, comments);
 		}
@@ -109,7 +117,8 @@ internal static class StanzaCommentCache
 			Comments: comments.ToImmutable(),
 			DocumentationComments: documentationComments.ToImmutable(),
 			RegionMarkers: regionMarkers.ToImmutable(),
-			ConditionalBlockMarkers: conditionalBlockMarkers.ToImmutable()
+			ConditionalBlockMarkers: conditionalBlockMarkers.ToImmutable(),
+			PragmaMarkers: pragmaMarkers.ToImmutable()
 		);
 	}
 
@@ -136,6 +145,7 @@ internal static class StanzaCommentCache
 		ImmutableArray<SyntaxTrivia> Comments,
 		ImmutableArray<SyntaxTrivia> DocumentationComments,
 		ImmutableArray<SyntaxTrivia> RegionMarkers,
-		ImmutableArray<SyntaxTrivia> ConditionalBlockMarkers
+		ImmutableArray<SyntaxTrivia> ConditionalBlockMarkers,
+		ImmutableArray<SyntaxTrivia> PragmaMarkers
 	);
 }

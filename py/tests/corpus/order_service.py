@@ -99,6 +99,18 @@ class OrderService:
         yield total
         yield from self.extra()
 
+    def stream(self, orders: Sequence[Order]) -> Iterator[object]:
+        header = self.header()
+        yield header
+        yield from self.extra()
+        self.store.flush()
+        received = yield
+        yield received
+        logger.info("streamed %s", len(orders))
+        yield len(orders)
+        yield from orders
+        return
+
 
 async def fetch(session, urls):
     first = await session.get(urls[0])

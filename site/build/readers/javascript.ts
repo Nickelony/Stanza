@@ -7,7 +7,6 @@ import {
 	checkDefaultHalf,
 	joinRules,
 	listOfStrings,
-	markOpposites,
 	parseGuideReadme,
 	parseGuideRule,
 	tableOf,
@@ -16,7 +15,7 @@ import {
 	type GuideRule,
 } from './guides.ts';
 import type { GuideLevel } from './levels.ts';
-import { parseTightPairs } from './references.ts';
+import { markOpposites, parseTightPairs } from './references.ts';
 import { byKey, ExtractionError, jsSourcePaths, normalize, readFiles, readOne, type SourceFile } from './source.ts';
 
 export interface JsSources {
@@ -164,6 +163,25 @@ function parseSettingNumbers(file: string, text: string): Map<string, DeclaredNu
 	return numbers;
 }
 
+/** Reads quoted shared defaults with the literal union their Environment property accepts. */
+function parseSettingWords(file: string, text: string): Map<string, { value: string; choices: string[] }> {
+	const words = new Map<string, { value: string; choices: string[] }>();
+
+	for (const [, name, value] of text.matchAll(/^export const default(\w+) = '([a-z-]+)';$/gm)) {
+		const key = `${name![0]!.toLowerCase()}${name!.slice(1)}`;
+		const type = new RegExp(`readonly ${key}: ([^;]+);`).exec(text)?.[1] ?? '';
+		const choices = [...type.matchAll(/'([^']+)'/g)].map((match) => match[1]!);
+
+		if (!choices.includes(value!)) {
+			throw new ExtractionError(file, `default${name} has no matching literal union on Environment.${key}`);
+		}
+
+		words.set(key, { value: value!, choices });
+	}
+
+	return words;
+}
+
 const proseOf = (section: string | undefined): string =>
 	parseBlocks(section ?? '')
 		.flatMap((block) => (block.kind === 'p' ? [block.text] : []))
@@ -232,24 +250,30 @@ function readSettingOptions(pages: GuideRule[], sources: JsSources): Option<Sour
 	const { file, text } = sources.environment;
 	const lists = parseSettingDefaults(file, text);
 	const numbers = parseSettingNumbers(file, text);
+	const words = parseSettingWords(file, text);
 	const options: Option<SourceSnippet>[] = [];
 
 	for (const page of pages) {
 		const fences = page.settingFences;
 
 		const shown = new Map(
-			fences.flatMap((fence) => [...fence.code.matchAll(/\b(\w+): (\[|\d+\b)/g)].map((match) => [match[1]!, match[2]!] as const)),
+			fences.flatMap((fence) => [...fence.code.matchAll(/\b(\w+): (\[|\d+\b|'[^']+'|"[^"]+")/g)].map((match) => [match[1]!, match[2]!] as const)),
 		);
 
 		for (const [key, example] of shown) {
 			const items = lists.get(key);
 			const number = numbers.get(key);
+			const word = words.get(key);
 
-			if (example === '[' ? items === undefined : number === undefined) {
+			if (example === '[' ? items === undefined : /^\d+$/.test(example) ? number === undefined : word === undefined) {
 				throw new ExtractionError(
 					page.file,
 					`the setting ${key} has no default exported as default${key[0]!.toUpperCase()}${key.slice(1)} by environment.ts`,
 				);
+			}
+
+			if (word !== undefined && !word.choices.includes(example.slice(1, -1))) {
+				throw new ExtractionError(page.file, `the example of ${key} names a value outside its literal union`);
 			}
 
 			const effect = proseOf(page.sections.get('Settings'));
@@ -270,13 +294,14 @@ function readSettingOptions(pages: GuideRule[], sources: JsSources): Option<Sour
 				buildGuideOption({
 					key,
 					file: page.file,
-					defaultCell: `\`${number === undefined ? JSON.stringify(items) : number.value}\``,
+					defaultCell: `\`${word === undefined ? (number === undefined ? JSON.stringify(items) : number.value) : JSON.stringify(word.value)}\``,
 					effect,
 					readBy: 'Set in `settings.stanza`, which the rules share.',
 					pageUrl: `${page.pageUrl}#settings`,
 					global: true,
 					examples: fences,
 					...(number === undefined ? {} : { bounds: number }),
+					...(word === undefined ? {} : { choices: word.choices }),
 				}),
 			);
 		}
@@ -285,9 +310,9 @@ function readSettingOptions(pages: GuideRule[], sources: JsSources): Option<Sour
 	return options;
 }
 
-/** The rules a rule source asks about through `context.isEnabled`, which is how the separating half of a pair yields to its tight half. */
-function askedAbout(text: string): string[] {
-	return [...new Set([...text.matchAll(/\bcontext\.isEnabled\('([a-z]+(?:-[a-z]+)*)'\)/g)].map((match) => match[1]!))];
+/** Reads the opposite declared by a separating rule; ownership queries alone never declare a pair. */
+function declaredOpposite(text: string): string | null {
+	return /^\t+opposite: '([a-z]+(?:-[a-z]+)*)',$/m.exec(normalize(text))?.[1] ?? null;
 }
 
 /** Fails when the pair table of the rule map and the rule sources do not describe the same pairs, or a pair does not split the levels as the table says. */
@@ -303,24 +328,18 @@ function checkPairs(file: string, pairs: RulePair[], rules: Rule<SourceSnippet>[
 
 		checkDefaultHalf(file, pair, (id) => levelOf.get(id) !== 'opt-in');
 
-		const asked = askedAbout(code.get(pair.first)!.text);
+		const opposite = declaredOpposite(code.get(pair.first)!.text);
 
-		if (asked.length !== 1 || asked[0] !== pair.second) {
-			throw new ExtractionError(
-				file,
-				`the pair table pairs ${pair.first} with ${pair.second}, but its source asks context.isEnabled about ${asked.join(' and ') || 'no rule'}`,
-			);
+		if (opposite !== pair.second) {
+			throw new ExtractionError(file, `the pair table pairs ${pair.first} with ${pair.second}, but its source declares ${opposite ?? 'no opposite'}`);
 		}
 	}
 
 	for (const [id, source] of code) {
-		const asked = askedAbout(source.text);
+		const opposite = declaredOpposite(source.text);
 
-		if (asked.length > 0 && !pairs.some((pair) => pair.first === id)) {
-			throw new ExtractionError(
-				file,
-				`${id} asks context.isEnabled about ${asked.join(' and ')} in its source, but the pair table has no row that separates with it`,
-			);
+		if (opposite !== null && !pairs.some((pair) => pair.first === id)) {
+			throw new ExtractionError(file, `${id} declares ${opposite} as its opposite, but the pair table has no row that separates with it`);
 		}
 	}
 }

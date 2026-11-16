@@ -21,7 +21,7 @@ def close(order):
 ```
 
 - A guard is an `if` with no `else` whose body is a lone `return`, `raise`, `break` or `continue`.
-  An `assert` statement is a guard too, and so is a bare call of a helper that `guard-roots` lists.
+  An `assert` statement is a guard too, and so is a bare call of a helper that `guard-roots` lists, awaited or not.
 - Only the guards that open the block count, after the docstring of a function, so a guard below another statement gets no blank line from this rule.
 - A chain of guards stays together: the blank line goes below the last guard.
 - A comment directly above the statement below moves with it, so the blank line goes above the comment.

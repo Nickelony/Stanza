@@ -1,9 +1,20 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import type { Linter } from 'eslint';
+import { Linter } from 'eslint';
 
-import { fix, fixWithPreset, formatWithPrettier, lines, lintWithPreset, presetRuns, readCorpus, readShape } from './helpers.ts';
+import {
+	corpusRuns,
+	createConfig,
+	fix,
+	fixWithPreset,
+	formatWithPrettier,
+	lines,
+	lintWithPreset,
+	readCorpus,
+	readPresetRules,
+	readShape,
+} from './helpers.ts';
 
 /** Drops every second blank line, so the round trip also starts from sources a team would not format. */
 function dropEveryOtherBlankLine(text: string): string {
@@ -15,18 +26,24 @@ function dropEveryOtherBlankLine(text: string): string {
 		.join('\n');
 }
 
-for (const [name, level, withOptIn] of presetRuns) {
+for (const { name, level, withOptIn, settings } of corpusRuns) {
 	describe(`the Prettier round trip at the ${name}`, () => {
 		for (const file of readCorpus()) {
 			it(`leaves the fixed ${file.name} as Prettier writes it, and the same code`, async () => {
 				const formatted = await formatWithPrettier(file.text, file.path);
 
 				for (const input of [formatted, await formatWithPrettier(dropEveryOtherBlankLine(formatted), file.path)]) {
-					const fixed = fixWithPreset(input, level, file.name, withOptIn);
+					const fixed = fix(input, readPresetRules(level, withOptIn), settings, file.name);
 					const reformatted = await formatWithPrettier(fixed, file.path);
 
 					assert.equal(reformatted, fixed, 'Prettier rewrites the fixed text');
-					assert.deepEqual(lintWithPreset(reformatted, level, file.name, withOptIn), [], 'the rules report on the text Prettier writes');
+
+					assert.deepEqual(
+						new Linter().verify(reformatted, createConfig(readPresetRules(level, withOptIn), settings), { filename: file.name }),
+						[],
+						'the rules report on the text Prettier writes',
+					);
+
 					assert.equal(readShape(fixed), readShape(input), 'the fix changed code and not only blank lines');
 				}
 			});

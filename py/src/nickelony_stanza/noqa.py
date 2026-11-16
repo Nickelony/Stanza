@@ -51,9 +51,13 @@ class Noqa:
 
         return cls(lines, whole_file)
 
+    def silences_file(self, code: str) -> bool:
+        """Tells whether a comment silences a rule for the whole file."""
+        return any(_covers(codes, code) for codes in self.whole_file)
+
     def silences(self, code: str, *line_numbers: int) -> bool:
         """Tells whether a comment silences a rule for a finding on any of the lines."""
-        if any(_covers(codes, code) for codes in self.whole_file):
+        if self.silences_file(code):
             return True
 
         return any(number in self.lines and _covers(self.lines[number], code) for number in line_numbers)

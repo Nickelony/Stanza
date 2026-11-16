@@ -169,6 +169,62 @@ public sealed class KeepRunOfStatementsTogetherTests
 		],
 
 		[
+			"two yield returns",
+			new[] { DiagnosticDescriptors.SeparateYieldRuns },
+
+			"""
+				class C
+				{
+					System.Collections.Generic.IEnumerable<int> M()
+					{
+						yield return 1;
+
+						yield return 2;
+					}
+				}
+				""",
+
+			"""
+				class C
+				{
+					System.Collections.Generic.IEnumerable<int> M()
+					{
+						yield return 1;
+						yield return 2;
+					}
+				}
+				""",
+		],
+
+		[
+			"two single-line local functions",
+			new[] { DiagnosticDescriptors.SeparateLocalFunctionRuns },
+
+			"""
+				class C
+				{
+					void M()
+					{
+						int Twice(int value) => value * 2;
+
+						int Thrice(int value) => value * 3;
+					}
+				}
+				""",
+
+			"""
+				class C
+				{
+					void M()
+					{
+						int Twice(int value) => value * 2;
+						int Thrice(int value) => value * 3;
+					}
+				}
+				""",
+		],
+
+		[
 			"two event subscriptions",
 			new[] { DiagnosticDescriptors.SeparateEventSubscriptionRuns },
 
@@ -698,6 +754,38 @@ public sealed class KeepRunOfStatementsTogetherTests
 		],
 
 		[
+			"yield returns, while the yield rule is off",
+
+			"""
+				class C
+				{
+					System.Collections.Generic.IEnumerable<int> M()
+					{
+						yield return 1;
+
+						yield return 2;
+					}
+				}
+				""",
+		],
+
+		[
+			"single-line local functions, while the local function rule is off",
+
+			"""
+				class C
+				{
+					void M()
+					{
+						int Twice(int value) => value * 2;
+
+						int Thrice(int value) => value * 3;
+					}
+				}
+				""",
+		],
+
+		[
 			"members, which the member rule judges",
 
 			"""
@@ -1135,7 +1223,7 @@ public sealed class KeepRunOfStatementsTogetherTests
 			""";
 
 		Dictionary<string, string> split = new() { ["stanza_assignment_targets"] = "split" };
-		Dictionary<string, string> mixed = new() { ["stanza_assignment_targets"] = "mixed" };
+		Dictionary<string, string> merged = new() { ["stanza_assignment_targets"] = "merge" };
 
 		AnalyzerRunResult apart = await RunAsync(
 			source,
@@ -1146,7 +1234,7 @@ public sealed class KeepRunOfStatementsTogetherTests
 		AnalyzerRunResult together = await RunAsync(
 			source,
 			[DiagnosticDescriptors.SeparateAssignmentRuns],
-			mixed
+			merged
 		);
 
 		Assert.IsEmpty(apart.Diagnostics);

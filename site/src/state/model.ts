@@ -109,7 +109,7 @@ export interface Rule<S> {
 	/** The `optionId` of each option the page names. */
 	options: string[];
 
-	/** The other half of the pair the rule belongs to, where the tool takes a rule the level enables out of it once a file names this half; absent elsewhere. */
+	/** The other half of a catalogued pair; native preset replacement is a separate policy. */
 	opposite?: string;
 
 	/** Where the full page of the rule lives: the wiki for C#, GitHub for the other languages. */

@@ -48,7 +48,7 @@ class Panel extends Widget {
 - The closing call is the last statement of the body.
   A body that opens and closes with a base call gets both blank lines, and a base call alone in its body has no gap to set apart.
 - `return super.load();` is a jump, so [`separate-jump-statements`](separate-jump-statements.md) judges the gap above it.
-- A body of two single-line statements stays tight, because [`keep-two-units-together`](keep-two-units-together.md) owns it.
+- A body of two single-line statements stays tight whether or not [`keep-two-units-together`](keep-two-units-together.md) is enabled, as its page says.
 - A comment directly above the statement below the call moves with it, so the blank line goes above the comment.
 - The guards are read as `separate-guard-clauses` reads them, by the [`guardRoots`](separate-guard-clauses.md#settings) setting, whether or not that rule is enabled.
 - The rule has no tight counterpart; leave it disabled to keep base calls tight.

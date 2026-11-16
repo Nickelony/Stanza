@@ -22,6 +22,72 @@ namespace Nickelony.Stanza.Analyzers.Tests;
 [TestClass]
 public sealed partial class RuleRegistryTests
 {
+	// Each pair reads the other's state, until one map of gap owners replaces the deferrals:
+	// a run rule reads a later run rule, ZA0063's receivers and the ZA0018 and ZA0019 gaps,
+	// which yield to its runs; ZA0009 and ZA0011 end each other's stanza; ZA0052 and ZA0054
+	// hold the ZA0018 gaps that ZA0018 skips; ZA2002 and ZA2003 are the halves of a pair.
+	private static readonly string[] s_twoSidedReads =
+	[
+		"ZA0002 ZA0004",
+		"ZA0002 ZA0006",
+		"ZA0002 ZA0018",
+		"ZA0002 ZA0019",
+		"ZA0002 ZA0020",
+		"ZA0002 ZA0021",
+		"ZA0002 ZA0063",
+		"ZA0003 ZA0018",
+		"ZA0003 ZA0019",
+		"ZA0003 ZA0063",
+		"ZA0004 ZA0006",
+		"ZA0004 ZA0018",
+		"ZA0004 ZA0019",
+		"ZA0004 ZA0020",
+		"ZA0004 ZA0021",
+		"ZA0004 ZA0063",
+		"ZA0005 ZA0006",
+		"ZA0005 ZA0018",
+		"ZA0005 ZA0019",
+		"ZA0005 ZA0020",
+		"ZA0005 ZA0021",
+		"ZA0005 ZA0063",
+		"ZA0006 ZA0018",
+		"ZA0006 ZA0019",
+		"ZA0006 ZA0020",
+		"ZA0006 ZA0021",
+		"ZA0006 ZA0063",
+		"ZA0007 ZA0018",
+		"ZA0007 ZA0019",
+		"ZA0007 ZA0020",
+		"ZA0007 ZA0021",
+		"ZA0007 ZA0063",
+		"ZA0008 ZA0018",
+		"ZA0008 ZA0019",
+		"ZA0008 ZA0020",
+		"ZA0008 ZA0021",
+		"ZA0008 ZA0063",
+		"ZA0009 ZA0011",
+		"ZA0009 ZA0018",
+		"ZA0009 ZA0019",
+		"ZA0009 ZA0063",
+		"ZA0010 ZA0018",
+		"ZA0011 ZA0018",
+		"ZA0011 ZA0019",
+		"ZA0011 ZA0063",
+		"ZA0018 ZA0019",
+		"ZA0018 ZA0020",
+		"ZA0018 ZA0021",
+		"ZA0018 ZA0052",
+		"ZA0018 ZA0054",
+		"ZA0018 ZA0063",
+		"ZA0019 ZA0020",
+		"ZA0019 ZA0021",
+		"ZA0019 ZA0063",
+		"ZA0020 ZA0021",
+		"ZA0020 ZA0063",
+		"ZA0021 ZA0063",
+		"ZA2002 ZA2003",
+	];
+
 	// The codes only the tool reports, so no descriptor of the analyzer backs them.
 	private static readonly string[] s_toolOnlyIds = ["ZA2901", "ZA2902"];
 
@@ -483,6 +549,76 @@ public sealed partial class RuleRegistryTests
 				+ string.Join(Environment.NewLine, orphans)
 		);
 	}
+
+	[TestMethod]
+	public void EverySeparatingRuleOfAFileLeavesTheGapBelowTheImportsToTheImportSectionRule()
+	{
+		// The import section rule asks for the gap below the last import, so a rule that also writes blank lines
+		// at the top level of a file defers to it, and one gap has one claimant.
+		StanzaRule[] separators = [.. StanzaRules.All.Where(IsTopLevelSeparator)];
+
+		string[] claimants =
+		[
+			.. separators
+				.Where(static rule => !rule.Defers(DiagnosticDescriptors.SeparateImportSection))
+				.Select(static rule => rule.Descriptor.Id),
+		];
+
+		Assert.IsNotEmpty(separators, "No rule writes blank lines at the top level of a file, so the check reads nothing.");
+
+		Assert.IsEmpty(
+			claimants,
+			$"These rules claim the gap below the imports too: {string.Join(", ", claimants)}."
+		);
+	}
+
+	[TestMethod]
+	public void NoTwoRulesDeferToEachOtherBeyondTheKnownTwoSidedReads()
+	{
+		string[] mutual =
+		[
+			.. StanzaRules
+				.All.Where(static rule => !rule.DefersTo.IsDefault)
+				.SelectMany(static rule =>
+					rule
+						.DefersTo.Where(target => IsMutual(rule, target))
+						.Select(target => JoinPair(rule.Descriptor.Id, target.Id))
+				)
+				.Distinct()
+				.Order(StringComparer.Ordinal),
+		];
+
+		Assert.AreSequenceEqual(
+			s_twoSidedReads,
+			mutual,
+
+			"A new pair of rules defers each to the other, so neither owns the gap; "
+				+ "let one rule yield, or record why both read the other's state."
+		);
+	}
+
+	// The import rules themselves, and a rule the import section rule defers to, are no claimants.
+	private static bool IsTopLevelSeparator(StanzaRule rule)
+	{
+		StanzaRule imports = StanzaRules.SeparateImportSection;
+
+		bool judgesFiles =
+			!rule.Kinds.IsDefault && rule.Kinds.Contains(Microsoft.CodeAnalysis.CSharp.SyntaxKind.CompilationUnit);
+
+		bool isImportRule =
+			rule == imports || rule.Descriptor == DiagnosticDescriptors.SeparateImportDirectiveGroups;
+
+		return rule.Fix == GapFix.SiblingInsertion
+			&& judgesFiles
+			&& !isImportRule
+			&& !imports.Defers(rule.Descriptor);
+	}
+
+	private static bool IsMutual(StanzaRule rule, DiagnosticDescriptor target) =>
+		target != rule.Descriptor && StanzaRules.Get(target).Defers(rule.Descriptor);
+
+	private static string JoinPair(string first, string second) =>
+		string.CompareOrdinal(first, second) < 0 ? $"{first} {second}" : $"{second} {first}";
 
 	private static string Describe(
 		DiagnosticDescriptor separate,

@@ -43,6 +43,9 @@ The [`ZA3501` page](rules/ZA3501-name-call-arguments.md#options) owns the effect
 | `exclude` | `[]` | Globs for the paths to skip, read from the working directory. `**` crosses directories and `dir/**` skips a tree. |
 | `formatter` | `"auto"` | The formatter that `stanza-py format` runs first: `auto` detects it, and `ruff`, `black` or `none` name it. The other commands ignore it. |
 | `assertion-roots` | see below | The patterns that make a call an assertion. |
+| `receiver-roots` | `[]` | The patterns that select the receivers whose direct operations form groups, as [Receiver groups](#receiver-groups) says. |
+| `receiver-comparison` | `"root"` | What an owner is compared by: `root` for its first name or `path` for the whole owner. |
+| `declaration-shapes` | `"merge"` | Whether tuple and list unpacking share the ordinary declaration runs: `merge` or `split`. |
 | `guard-roots` | `[]` | The patterns that make a bare call a guard, for `ZA3011` and for the guards `ZA3010` skips. |
 | `subscription-roots` | see below | The patterns that make a call a subscription. |
 | `max-loose-run-size` | `3` | The most statements or members a loose run holds before `ZA3052` and `ZA3053` join it. `0` turns both off. |
@@ -75,6 +78,33 @@ Python test frameworks name assertions by family, such as `assertEqual`, `assert
 An explicit empty list means no roots,
 so `assertion-roots = []` makes no call an assertion and `subscription-roots = []` makes no call a subscription.
 The C# analyzers read an empty value as the defaults and spell no roots as `none`. A key left out keeps its default.
+
+## Receiver groups
+
+`receiver-roots` selects the receivers whose direct operations form groups for `ZA3004`, `ZA3019` and `ZA3063`.
+A pattern is a case-sensitive glob, matched against the dotted owner of an operation or against any one name of it.
+`"*"` selects every receiver, an empty list selects none, and a pattern that is blank, or blank once `self.` or `cls.` is dropped, is refused.
+
+- A leading `self` or `cls` is dropped from the owner and from a pattern, so `"db"` and `"self.db"` select `self.db`.
+- `"*.db"` selects `object.db` but not `self.db`, whose owner is `db` once `self` is dropped.
+- `"self"` selects only a member named `self`, such as `object.self`.
+- An operation is a single-line call, awaited or not, or a write to a member, an augmented one included.
+  Its owner is its written path without the method or the member,
+  so `object.child.save()` and `object.child.name = name` share `object.child`.
+- Only a written path of names has an owner. An indexed, computed or call-produced receiver, `super()`,
+  and a call directly on `self` or `cls` have none.
+- `receiver-comparison = "root"` compares the first name of the owner, so `db.items.add(x)` and `db.flush()` share `db`.
+  `"path"` compares the whole owner, so they form two groups.
+- A multi-line operation, a comment, a directive or a gap a formatter owns ends a group. A class body has no groups.
+- An assertion and a guard helper are no operations. A subscription call on the receiver joins its group,
+  and the other grouping rules still read it as a subscription.
+- The calls on a selected receiver form one run for `ZA3004`, awaited or not, only while `ZA3004`, `ZA3019` or `ZA3063`
+  is enabled. Otherwise `ZA3006` reads an awaited call as it reads any other.
+
+## Declaration shapes
+
+`declaration-shapes = "split"` gives tuple and list unpacking their own declaration runs for `ZA3002`, `ZA3003` and `ZA3054`.
+`merge` lets an unpacking assignment share a run with an ordinary one.
 
 ## Opt-in rules
 
@@ -122,6 +152,8 @@ stanza-py rules
   `named-argument-ignore` takes a call away from both call rules, while a `# noqa` silences only the rule that owns the call.
 - `# ruff: noqa: ZA3001` and `# flake8: noqa` on a line of their own silence the named codes, or every code, for the file.
 - A silenced finding is not handed to another rule: the gap or the call stays as written.
+- A relationship keeper, `ZA3057` to `ZA3064`, hands its gaps on: a line `# noqa` leaves its gap judged as if it were off there.
+  A file-wide one turns it off, so the other rules judge the file as they do without it.
 
 ## flake8 and pre-commit
 

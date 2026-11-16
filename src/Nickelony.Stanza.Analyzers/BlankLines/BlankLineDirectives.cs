@@ -37,6 +37,21 @@ internal static class BlankLineDirectives
 		);
 	}
 
+	/// <summary>Whether ZA0406 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <remarks>
+	/// ZA0406 separates a <c>disable</c> from the unit above it and its <c>restore</c> from the unit below it.
+	/// </remarks>
+	public static bool IsSuppressionBlockGap(SyntaxNode next, string? ownerId, CancellationToken cancellationToken)
+	{
+		return IsDirectiveGapKept(
+			next,
+			ownerId,
+			isKeptFirst: static first => SuppressionBlocks.IsOpener(first),
+			isKeptLast: static last => SuppressionBlocks.IsCloser(last),
+			cancellationToken
+		);
+	}
+
 	private static bool IsDirectiveGapKept(
 		SyntaxNode next,
 		string? ownerId,

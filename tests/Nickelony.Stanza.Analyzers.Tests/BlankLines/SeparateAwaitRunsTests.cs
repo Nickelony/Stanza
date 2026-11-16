@@ -626,4 +626,63 @@ public sealed class SeparateAwaitRunsTests
 				+ "\tstatic class Expect\n\t{\n\t\tpublic static Task Async(int value) => Task.CompletedTask;\n\t}\n\n"
 		);
 	}
+
+	[TestMethod]
+	[DataRow("ZA0006")]
+	[DataRow("ZA0052")]
+	[DataRow("ZA0054")]
+	public async Task ReceiverSelectorsDoNotSuppressAnAwaitRunWithoutAConsumer(string companion)
+	{
+		const string source = """
+			class C
+			{
+				async System.Threading.Tasks.Task M(C db)
+				{
+					Start();
+					await db.Flush();
+					await db.Refresh();
+					Finish();
+				}
+				void Start() { }
+				void Finish() { }
+				System.Threading.Tasks.Task Flush() => System.Threading.Tasks.Task.CompletedTask;
+				System.Threading.Tasks.Task Refresh() => System.Threading.Tasks.Task.CompletedTask;
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				async System.Threading.Tasks.Task M(C db)
+				{
+					Start();
+
+					await db.Flush();
+					await db.Refresh();
+
+					Finish();
+				}
+				void Start() { }
+				void Finish() { }
+				System.Threading.Tasks.Task Flush() => System.Threading.Tasks.Task.CompletedTask;
+				System.Threading.Tasks.Task Refresh() => System.Threading.Tasks.Task.CompletedTask;
+			}
+			""";
+
+		var options = new Dictionary<string, string> { ["stanza_receiver_roots"] = "db" };
+
+		Dictionary<string, ReportDiagnostic> rules = TestRuleSets.OnSuppressingAllOthers([
+			DiagnosticDescriptors.SeparateAwaitRuns,
+		]);
+
+		rules[companion] = ReportDiagnostic.Warn;
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<SeparateAwaitRunsAnalyzer>(
+			source,
+			rules,
+			options
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
 }

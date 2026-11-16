@@ -1,17 +1,17 @@
 # stanza_assignment_targets
 
 Controls whether [`ZA0008`](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-assignment-runs) splits a run of assignments by target kind, which is what each one writes: a field, a property, a local or an element.
-Default: `mixed`.
+Default: `merge`.
 Read by [`ZA0008`](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-assignment-runs), and by [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) where `ZA0008` is on.
 
 | Value         | Effect                                                                      |
 | ------------- | --------------------------------------------------------------------------- |
-| `mixed`       | a run of assignments does not split by target kind                          |
+| `merge`       | a run of assignments does not split by target kind                          |
 | `split`       | a run of assignments splits between fields, properties, locals and elements |
-| anything else | as `mixed`                                                                  |
+| anything else | as `merge`                                                                  |
 
 ```csharp
-// Before - mixed leaves it as written
+// Before - merge leaves it as written
 var total = 0;
 
 _count = 0;
@@ -76,7 +76,7 @@ _end.Movement = AnchorMovement.AfterInsertion;
   One of several kinds, such as `(_total, count) = Read();`, stands alone, so it ends the run above it and the run below it.
 - A target that does not bind, as in code that does not compile, a member of a `dynamic` value, a discard such as `_ = value;`
   and a [subscription](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-assignment-runs) have no kind.
-- A target with no kind joins the runs on both sides, as it would under `mixed`, so code that stops compiling asks for no new blank line.
+- A target with no kind joins the runs on both sides, as it would under `merge`, so code that stops compiling asks for no new blank line.
   So `_a = 1; _b = 2; _ = x; Count = 3; Count = 4;` with the fields `_a` and `_b` and the property `Count` is one run, with no split.
 - A null-conditional assignment such as `item?.Name = name;` takes the kind of its member in C# 14.
   A Roslyn without C# 14 binds neither it nor `field`, so there they have no kind.
@@ -86,4 +86,4 @@ _end.Movement = AnchorMovement.AfterInsertion;
   including the ones the split adds.
 - Only `split` reads a semantic model, once for each assignment statement,
   and only while `ZA0008` is on, whether it or a rule that reads its runs asks.
-  So `mixed` reads syntax alone.
+  So `merge` reads syntax alone.

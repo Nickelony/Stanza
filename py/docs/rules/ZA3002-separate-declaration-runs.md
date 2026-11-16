@@ -20,9 +20,12 @@ log(limit)
   an assignment whose targets are names or a tuple of names, an annotated assignment to a name,
   a `global` or `nonlocal` statement, or a `type` alias.
 - Declarations group by kind, so a run of `global` names stands apart from a run of assignments. An annotation does not make a kind.
+- With `declaration-shapes` set to `split`, an unpacking assignment never shares a run with an ordinary declaration,
+  as the [configuration page](../Configuration.md#declaration-shapes) says.
 - An assignment to an attribute or an item is an assignment, and [`ZA3008`](ZA3008-separate-assignment-runs.md) owns it.
 - A lone declaration stays tight against the statement below it, unless that statement starts a run of another rule.
-- A declaration that awaits, such as `data = await load()`, is a declaration, and [`ZA3006`](ZA3006-separate-await-runs.md) leaves it alone.
+- A declaration that awaits or yields, such as `data = await load()` or `line = yield`, is a declaration,
+  and [`ZA3006`](ZA3006-separate-await-runs.md) and [`ZA3020`](ZA3020-separate-yield-runs.md) leave it alone.
 - A class body is judged by [`ZA3013`](ZA3013-separate-member-groups.md), which reads fields and attributes.
 
 ## C# counterpart

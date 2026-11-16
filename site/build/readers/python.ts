@@ -1,8 +1,8 @@
 import type { RulePair, SourceCatalog } from '../../src/state/model.ts';
 
-import { assembleGuideCatalog, checkDefaultHalf, joinRules, markOpposites, parseGuideReadme, parseGuideRule, type GuideFlavor } from './guides.ts';
+import { assembleGuideCatalog, checkDefaultHalf, joinRules, parseGuideReadme, parseGuideRule, type GuideFlavor } from './guides.ts';
 import { parseKnownKeys, readConfigurationOptions } from './python-config.ts';
-import { parsePairs } from './references.ts';
+import { markOpposites, parsePairs } from './references.ts';
 import { ExtractionError, normalize, pythonSourcePaths, readFiles, readOne, type SourceFile } from './source.ts';
 
 export interface PythonSources {

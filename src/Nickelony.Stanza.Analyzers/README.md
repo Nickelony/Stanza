@@ -90,12 +90,24 @@ The **Level** column names the first [level](#presets) that enables the rule, an
 | `ZA0015` | [Adds a blank line between the import section and the first member](https://github.com/Nickelony/Stanza/wiki/ZA0015-Separate-the-import-section) | Suggestion | Minimal |
 | `ZA0016` | [Adds a blank line between import directives of different kinds](https://github.com/Nickelony/Stanza/wiki/ZA0016-Separate-the-import-directive-groups) | Suggestion, off by default | Strong |
 | `ZA0017` | [Adds a blank line between a file-scoped namespace declaration and its first member](https://github.com/Nickelony/Stanza/wiki/ZA0017-Separate-a-file-scoped-namespace-declaration-from-its-first-member) | Suggestion | Minimal |
+| `ZA0018` | [Adds blank lines around a guard chain and the bindings it checks](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-a-checked-stanza) | Suggestion, off by default | Opt-in |
+| `ZA0019` | [Adds blank lines around a group of operations through a selected receiver](https://github.com/Nickelony/Stanza/wiki/ZA0019-Separate-receiver-groups) | Suggestion, off by default | Opt-in |
+| `ZA0020` | [Adds a blank line between a run of `yield return` statements and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0020-Separate-yield-runs) | Suggestion, off by default | Strong |
+| `ZA0021` | [Adds a blank line between a run of single-line local functions and its neighbors](https://github.com/Nickelony/Stanza/wiki/ZA0021-Separate-local-function-runs) | Suggestion, off by default | Strong |
 | `ZA0051` | [Removes the blank line between the only two single-line units of a container](https://github.com/Nickelony/Stanza/wiki/ZA0051-Keep-the-two-units-of-a-container-together) | Suggestion, off by default | Strong |
 | `ZA0052` | [Removes the blank lines between the statements of a loose run that holds more than `stanza_max_loose_run_size` statements](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) | Suggestion, off by default | Strong |
 | `ZA0053` | [Removes the blank lines between the members of a loose run that holds more than `stanza_max_loose_run_size` members](https://github.com/Nickelony/Stanza/wiki/ZA0053-Gather-a-run-of-loose-members) | Suggestion, off by default | Strong |
 | `ZA0054` | [Removes the blank lines inside a run of statements that the grouping rules read as one, and adds those they then ask for](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) | Suggestion, off by default | Opt-in |
 | `ZA0055` | [Removes the blank lines inside a run of members that the member group rules read as one, and adds those they then ask for](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-members-together) | Suggestion, off by default | Opt-in |
 | `ZA0056` | [Removes the blank lines of a run past `stanza_max_blank_lines`](https://github.com/Nickelony/Stanza/wiki/ZA0056-Collapse-extra-blank-lines) | Suggestion | Minimal |
+| `ZA0057` | [Removes the blank line between two neighboring guard clauses](https://github.com/Nickelony/Stanza/wiki/ZA0057-Keep-a-chain-of-guard-clauses-together) | Suggestion, off by default | Opt-in |
+| `ZA0058` | [Removes the blank line between a statement that binds a name and the guard clause below it that tests that name](https://github.com/Nickelony/Stanza/wiki/ZA0058-Keep-a-guard-with-its-binding) | Suggestion, off by default | Opt-in |
+| `ZA0059` | [Removes the blank lines between the single-line seeds of a name and the loop below them that builds it](https://github.com/Nickelony/Stanza/wiki/ZA0059-Keep-an-accumulator-with-its-loop) | Suggestion, off by default | Opt-in |
+| `ZA0060` | [Removes the blank line between a lone single-line binding and the `return` or `throw` below it that uses what it binds](https://github.com/Nickelony/Stanza/wiki/ZA0060-Keep-a-jump-with-its-binding) | Suggestion, off by default | Opt-in |
+| `ZA0061` | [Removes the blank line between a statement that binds a name and the assertion below it that narrows that name](https://github.com/Nickelony/Stanza/wiki/ZA0061-Keep-a-narrowing-assertion-with-its-binding) | Suggestion, off by default | Opt-in |
+| `ZA0062` | [Removes the blank line between a stanza-opening initialization and its first single-line call on that local](https://github.com/Nickelony/Stanza/wiki/ZA0062-Keep-an-initialization-with-its-calls) | Suggestion, off by default | Opt-in |
+| `ZA0063` | [Removes eligible blank lines within a selected receiver group](https://github.com/Nickelony/Stanza/wiki/ZA0063-Keep-a-receiver-group-together) | Suggestion, off by default | Opt-in |
+| `ZA0064` | [Removes the blank lines between neighboring single-line bindings that each read the binding above](https://github.com/Nickelony/Stanza/wiki/ZA0064-Keep-dependent-bindings-together) | Suggestion, off by default | Opt-in |
 
 ### Delimited lists
 
@@ -138,6 +150,7 @@ The **Level** column names the first [level](#presets) that enables the rule, an
 | `ZA0204` | [Joins an empty pair of braces that sit on separate lines](https://github.com/Nickelony/Stanza/wiki/ZA0204-Collapse-empty-blocks) | Suggestion | Minimal |
 | `ZA0205` | [Braces of a chain or a body](https://github.com/Nickelony/Stanza/wiki/ZA0205-Use-braces-consistently) | Suggestion | Moderate |
 | `ZA0206` | [Redundant braces](https://github.com/Nickelony/Stanza/wiki/ZA0206-Remove-redundant-braces) | Suggestion, off by default | Strong |
+| `ZA0207` | [Removes the blank line below a `case` or `default` label](https://github.com/Nickelony/Stanza/wiki/ZA0207-Remove-switch-label-padding) | Suggestion | Minimal |
 
 ### Member bodies
 
@@ -160,6 +173,7 @@ The **Level** column names the first [level](#presets) that enables the rule, an
 | `ZA0403` | [The closing region marker from the name of its region](https://github.com/Nickelony/Stanza/wiki/ZA0403-Name-the-closing-region-directive) | Suggestion, off by default | Strong |
 | `ZA0404` | [The closing `#endif` of a long conditional block from the condition of its `#if`](https://github.com/Nickelony/Stanza/wiki/ZA0404-Name-the-closing-conditional-directive) | Suggestion, off by default | Strong |
 | `ZA0405` | [An empty region from the two markers that bound it](https://github.com/Nickelony/Stanza/wiki/ZA0405-Remove-empty-regions) | Suggestion | Moderate |
+| `ZA0406` | [Adds a blank line above a `#pragma warning disable` and below its `restore`](https://github.com/Nickelony/Stanza/wiki/ZA0406-Separate-a-suppression-block) | Suggestion | Moderate |
 
 ### Argument names
 
@@ -314,7 +328,12 @@ Each key links to its own page, which says what the key controls and lists the v
 | --- | --- |
 | [`stanza_assertion_roots`](https://github.com/Nickelony/Stanza/wiki/stanza_assertion_roots) | `Assert`, `Expect`, `Should` |
 | [`stanza_guard_roots`](https://github.com/Nickelony/Stanza/wiki/stanza_guard_roots) | `none` |
-| [`stanza_assignment_targets`](https://github.com/Nickelony/Stanza/wiki/stanza_assignment_targets) | `mixed` |
+| [`stanza_assignment_targets`](https://github.com/Nickelony/Stanza/wiki/stanza_assignment_targets) | `merge` |
+| [`stanza_declaration_shapes`](https://github.com/Nickelony/Stanza/wiki/stanza_declaration_shapes) | `merge` |
+| [`stanza_declaration_typing`](https://github.com/Nickelony/Stanza/wiki/stanza_declaration_typing) | `split` |
+| [`stanza_local_function_modifiers`](https://github.com/Nickelony/Stanza/wiki/stanza_local_function_modifiers) | `merge` |
+| [`stanza_receiver_comparison`](https://github.com/Nickelony/Stanza/wiki/stanza_receiver_comparison) | `root` |
+| [`stanza_receiver_roots`](https://github.com/Nickelony/Stanza/wiki/stanza_receiver_roots) | `none` |
 | [`stanza_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_max_line_length) | `max_line_length`, then `100` |
 | [`stanza_doc_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_max_line_length) | `stanza_max_line_length`, then `max_line_length`, then `100` |
 | [`stanza_named_argument_min_arguments`](https://github.com/Nickelony/Stanza/wiki/stanza_named_argument_min_arguments) | `4` |

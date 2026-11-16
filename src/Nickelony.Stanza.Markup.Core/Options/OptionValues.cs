@@ -59,5 +59,17 @@ internal static class OptionValues
 	);
 
 	/// <summary>Whether <see cref="OptionKeys.AssignmentTargets"/> splits a run by target kind.</summary>
-	public static readonly OptionChoice<bool> AssignmentTargets = new(("mixed", false), ("split", true));
+	public static readonly OptionChoice<bool> AssignmentTargets = new(("merge", false), ("split", true));
+
+	/// <summary>Whether <see cref="OptionKeys.DeclarationShapes"/> splits a run by deconstruction.</summary>
+	public static readonly OptionChoice<bool> DeclarationShapes = new(("merge", false), ("split", true));
+
+	/// <summary>Whether <see cref="OptionKeys.DeclarationTyping"/> splits a run by its typing.</summary>
+	public static readonly OptionChoice<bool> DeclarationTyping = new(("merge", false), ("split", true));
+
+	/// <summary>Whether <see cref="OptionKeys.LocalFunctionModifiers"/> splits a run by <c>static</c>.</summary>
+	public static readonly OptionChoice<bool> LocalFunctionModifiers = new(("merge", false), ("split", true));
+
+	/// <summary>Whether <see cref="OptionKeys.ReceiverComparison"/> compares the whole direct receiver path.</summary>
+	public static readonly OptionChoice<bool> ReceiverComparison = new(("root", false), ("path", true));
 }

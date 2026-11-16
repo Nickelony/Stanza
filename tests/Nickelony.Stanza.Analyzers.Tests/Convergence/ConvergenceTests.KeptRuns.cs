@@ -20,9 +20,9 @@ public sealed partial class ConvergenceTests
 	// The statements read assignments as one kind or by their target, which splits the runs of fields and properties.
 	public static IEnumerable<object[]> ViewsAndTargets { get; } =
 	[
-		["a file without the conditional view, assignments of one kind", "", "mixed"],
+		["a file without the conditional view, assignments of one kind", "", "merge"],
 		["a file without the conditional view, assignments by target", "", "split"],
-		["a file with the conditional view, assignments of one kind", "#define VIEW\n", "mixed"],
+		["a file with the conditional view, assignments of one kind", "#define VIEW\n", "merge"],
 		["a file with the conditional view, assignments by target", "#define VIEW\n", "split"],
 	];
 
@@ -311,7 +311,7 @@ public sealed partial class ConvergenceTests
 			readers: s_keptDeclarationAndCallReaders,
 			keep: DiagnosticDescriptors.KeepRunOfStatementsTogether,
 			beside: [],
-			targets: "mixed",
+			targets: "merge",
 			name
 		);
 	}
@@ -347,7 +347,7 @@ public sealed partial class ConvergenceTests
 			readers: s_keptGuardJumpAndBaseCallReaders,
 			keep: DiagnosticDescriptors.KeepRunOfStatementsTogether,
 			beside: [],
-			targets: "mixed"
+			targets: "merge"
 		);
 	}
 
@@ -412,7 +412,7 @@ public sealed partial class ConvergenceTests
 			readers: s_keptMemberReaders,
 			keep: DiagnosticDescriptors.KeepRunOfMembersTogether,
 			beside: [],
-			targets: "mixed",
+			targets: "merge",
 			name
 		);
 	}
@@ -425,7 +425,7 @@ public sealed partial class ConvergenceTests
 			readers: s_keptMemberReaders,
 			keep: DiagnosticDescriptors.KeepRunOfMembersTogether,
 			beside: [],
-			targets: "mixed"
+			targets: "merge"
 		);
 	}
 
@@ -439,7 +439,7 @@ public sealed partial class ConvergenceTests
 			readers: s_keptMemberReaders,
 			keep: DiagnosticDescriptors.KeepRunOfMembersTogether,
 			beside: [],
-			targets: "mixed"
+			targets: "merge"
 		);
 	}
 
@@ -456,7 +456,7 @@ public sealed partial class ConvergenceTests
 			readers: s_keptMemberReaders,
 			keep: DiagnosticDescriptors.KeepRunOfMembersTogether,
 			beside: s_keptBesideMembers,
-			targets: "mixed",
+			targets: "merge",
 			name
 		);
 	}

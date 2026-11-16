@@ -113,6 +113,7 @@ internal static class TestRuleSets
 		DiagnosticDescriptors.SeparateAssertionRuns,
 		DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
 		DiagnosticDescriptors.SeparateMultiLineConstructs,
+		DiagnosticDescriptors.SeparateSuppressionBlock,
 	];
 
 	/// <summary>The rules that separate a run of statements, one for each kind of run.</summary>
@@ -124,6 +125,8 @@ internal static class TestRuleSets
 		DiagnosticDescriptors.SeparateAwaitRuns,
 		DiagnosticDescriptors.SeparateEventSubscriptionRuns,
 		DiagnosticDescriptors.SeparateAssignmentRuns,
+		DiagnosticDescriptors.SeparateYieldRuns,
+		DiagnosticDescriptors.SeparateLocalFunctionRuns,
 	];
 
 	/// <summary>The rules at warn, and every other rule at its default.</summary>
@@ -289,6 +292,15 @@ internal static class TestRuleSets
 
 	internal static string JoinSortedIds(IEnumerable<DiagnosticDescriptor> descriptors) =>
 		string.Join(",", descriptors.Select(descriptor => descriptor.Id).OrderBy(id => id));
+
+	/// <summary>Builds a row for each subset of the rules, named by the IDs it enables.</summary>
+	internal static IEnumerable<object[]> SubsetRows(params DiagnosticDescriptor[] candidates)
+	{
+		return Enumerable
+			.Range(0, 1 << candidates.Length)
+			.Select(mask => candidates.Where((_, index) => (mask & (1 << index)) != 0).ToArray())
+			.Select(subset => new object[] { subset.Length == 0 ? "none" : JoinSortedIds(subset), subset });
+	}
 
 	private static bool IsMarkupFix(GapFix fix) =>
 		fix is GapFix.MarkupInsertion or GapFix.MarkupCapRemoval or GapFix.MarkupSurplusRemoval;

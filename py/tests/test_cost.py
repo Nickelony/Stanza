@@ -1,4 +1,4 @@
-"""The cost of the call rules on a project: each module is parsed once, scanned in one walk and given one scope table."""
+"""The cost of a run: each module is parsed, scanned and given a scope table once, and each container read once."""
 
 from __future__ import annotations
 
@@ -9,9 +9,10 @@ from typing import Any
 
 import pytest
 
-from nickelony_stanza import Config, lint
-from nickelony_stanza.analysis import binding, module_index, scopes
+from nickelony_stanza import Config, Options, lint
+from nickelony_stanza.analysis import binding, dependent_bindings, module_index, receivers, scopes, session, syntax
 from nickelony_stanza.analysis.projects import Projects
+from nickelony_stanza.rules import claims
 
 MODULES = 120
 
@@ -120,3 +121,64 @@ def test_a_one_file_check_scans_every_module_once_and_builds_one_scope_table(
     assert counts.tables == 1
     assert counts.scans == MODULES
     assert counts.adopts == 1
+
+
+def test_a_blank_line_run_reads_each_container_once_for_each_relationship_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: dict[str, list[int]] = {"receivers": [], "bindings": [], "checked": []}
+
+    def counted(name: str, read: Any) -> Any:
+        def counting(container: Any, *args: Any) -> Any:
+            seen[name].append(id(container))
+            return read(container, *args)
+
+        return counting
+
+    monkeypatch.setattr(session, "find_receiver_groups", counted("receivers", receivers.find_receiver_groups))
+
+    monkeypatch.setattr(
+        session, "find_dependent_binding_groups", counted("bindings", dependent_bindings.find_dependent_binding_groups)
+    )
+
+    monkeypatch.setattr(claims, "read_checked_stanza_gaps", counted("checked", claims.read_checked_stanza_gaps))
+
+    body = "".join(f"    a{i} = use(a{i - 1})\n\n    db.child{i // 2}.save()\n" for i in range(1, 100))
+    source = f"async def f(a0):\n{body}    item = Item()\n\n    item.check()\n    return item\n"
+
+    rules = ["ZA3004", "ZA3009", "ZA3018", "ZA3019", "ZA3054", "ZA3060", "ZA3062", "ZA3063", "ZA3064"]
+    options = Options(receiver_roots=("db",), receiver_comparison="path", guard_roots=("check",))
+
+    lint(source, Config.create("none", enable=rules, options=options))
+
+    assert all(ids and len(ids) == len(set(ids)) for ids in seen.values()), seen
+
+
+@pytest.mark.parametrize("depth", [0, 24])
+def test_reading_the_values_of_an_expression_visits_each_node_at_most_twice(
+    monkeypatch: pytest.MonkeyPatch, depth: int
+) -> None:
+    text = (
+        "(lambda x: (lambda y=x: [y + z for z in values]))(), "
+        "[(lambda y=x: y) for item in values], lambda: (lambda y=(local := 1): local), "
+        "[1 for x.value in values]"
+    )
+
+    for _ in range(depth):
+        text = f"lambda: (lambda argument=({text}): argument)"
+
+    expression = ast.parse(text, mode="eval").body
+
+    visits: collections.Counter[int] = collections.Counter()
+    children = ast.iter_child_nodes
+
+    def counted(node: ast.AST) -> list[ast.AST]:
+        if isinstance(node, ast.expr):
+            visits[id(node)] += 1
+
+        return list(children(node))
+
+    monkeypatch.setattr(ast, "iter_child_nodes", counted)
+
+    assert syntax.read_value_names(expression) == {"values", "x"}
+    assert max(visits.values()) <= 2

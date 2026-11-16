@@ -197,6 +197,7 @@ function createGap(sourceCode: SourceCode, container: Container, previous: Unit,
 
 	return {
 		leadingComments,
+		comments: between,
 		hasComment: between.length > 0,
 		isBlank,
 		isJoined: leadLine - previousEnd <= 0 || isGluedPair(container, previous, next),

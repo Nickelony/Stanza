@@ -588,7 +588,7 @@ public sealed class SeparateAssignmentRunsTests
 
 	[TestMethod]
 	[DataRow(null)]
-	[DataRow("mixed")]
+	[DataRow("merge")]
 	[DataRow("other")]
 	public async Task EveryValueButSplitKeepsFieldsAndPropertiesInOneRun(string? value)
 	{

@@ -25,6 +25,14 @@ MAX_LOOSE_RUN_SIZE_LIMIT = 1000
 DEFAULT_NAMED_ARGUMENT_MIN_ARGUMENTS = 4
 NAMED_ARGUMENT_MIN_ARGUMENTS_LIMIT = 1000
 
+ReceiverComparison = Literal["root", "path"]
+
+DEFAULT_RECEIVER_COMPARISON: ReceiverComparison = "root"
+
+DeclarationShapes = Literal["merge", "split"]
+
+DEFAULT_DECLARATION_SHAPES: DeclarationShapes = "merge"
+
 # Whether an identifier that carries its parameter's name may stay unnamed.
 NamedArgumentMatch = Literal["allow", "require"]
 
@@ -61,3 +69,6 @@ class Options:
 
     # The directories the resolver reads as the project, absolute once loaded; empty detects them from each file.
     source_roots: tuple[str, ...] = ()
+    receiver_roots: tuple[str, ...] = ()
+    declaration_shapes: DeclarationShapes = DEFAULT_DECLARATION_SHAPES
+    receiver_comparison: ReceiverComparison = DEFAULT_RECEIVER_COMPARISON

@@ -454,13 +454,13 @@ describe('the .editorconfig of the Markup page', () => {
 		expect(text).toBe(['[*.cs]', ...on.map((id) => `dotnet_diagnostic.${id}.severity = suggestion`), ''].join('\n'));
 	});
 
-	it('writes a rule that is turned on in both sections, and one turned off as none in the tool alone', () => {
+	it('retains both explicit pair settings in the analyzer and markup sections', () => {
 		const text = generateEditorConfig(realMarkup, markupConfig({ rules: { ZA2002: 'suggestion', ZA2001: 'none' } }));
 
-		expect(idsOf(analyzerPart(text))).toEqual(['ZA2002', 'ZA2006', 'ZA2007']);
+		expect(idsOf(analyzerPart(text))).toEqual(['ZA2001', 'ZA2002', 'ZA2006', 'ZA2007']);
 		expect(markupPart(text)).toContain('dotnet_diagnostic.ZA2001.severity = none');
 		expect(markupPart(text)).toContain('dotnet_diagnostic.ZA2002.severity = suggestion');
-		expect(analyzerPart(text)).not.toContain('ZA2001');
+		expect(analyzerPart(text)).toContain('dotnet_diagnostic.ZA2001.severity = none');
 	});
 
 	it('writes a raised severity in the section of the analyzer, and a rule the tool applies by default once without it in the tool', () => {
@@ -471,9 +471,13 @@ describe('the .editorconfig of the Markup page', () => {
 		expect(markupPart(text)).toContain('dotnet_diagnostic.ZA2005.severity = warning');
 	});
 
-	it('writes a rule the visitor sets to the default as it writes the default', () => {
+	it('retains both lines of an explicit pair even when they match the defaults', () => {
 		const set = generateEditorConfig(realMarkup, markupConfig({ rules: { ZA2001: 'suggestion', ZA2002: 'none' } }));
-		expect(set).toBe(generateEditorConfig(realMarkup, markupConfig({})));
+
+		expect(analyzerPart(set)).toContain('dotnet_diagnostic.ZA2001.severity = suggestion');
+		expect(analyzerPart(set)).toContain('dotnet_diagnostic.ZA2002.severity = none');
+		expect(markupPart(set)).toContain('dotnet_diagnostic.ZA2001.severity = suggestion');
+		expect(markupPart(set)).toContain('dotnet_diagnostic.ZA2002.severity = none');
 	});
 
 	it('writes every rule under every setting: on at its severity, off as a comment, and none where the tool applies it', () => {

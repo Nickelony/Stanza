@@ -7,6 +7,7 @@ of `format` instead.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,8 @@ from nickelony_stanza.formatter import Formatter
 from nickelony_stanza.pipeline import run_pipeline
 from tests.helpers import (
     CONFIGS,
+    CORPUS,
+    OPTION_VARIANTS,
     add_blank_lines,
     corpus_files,
     drop_blank_lines,
@@ -39,6 +42,20 @@ def test_a_formatted_file_stays_formatted_after_the_fix(tool: str, name: str, pa
     text = path.read_text(encoding="utf-8")
 
     for mutant in _mutants(text):
+        formatted = run_formatter(tool, mutant)
+        assert formatted is not None
+
+        fixed = fix(formatted, config).text
+
+        assert run_formatter(tool, fixed) == fixed, f"{tool} rewrites what Stanza wrote"
+
+
+@pytest.mark.parametrize("variant", OPTION_VARIANTS)
+@pytest.mark.parametrize("tool", TOOLS)
+def test_a_formatter_keeps_what_the_relationship_rules_write_under_each_option_variant(tool: str, variant: str) -> None:
+    config = without_call_rules(replace(CONFIGS["everything"], options=OPTION_VARIANTS[variant]))
+
+    for mutant in _mutants((CORPUS / "receiver_groups.py").read_text(encoding="utf-8")):
         formatted = run_formatter(tool, mutant)
         assert formatted is not None
 

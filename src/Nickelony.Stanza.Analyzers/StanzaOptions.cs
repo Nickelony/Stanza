@@ -15,6 +15,8 @@ namespace Nickelony.Stanza.Analyzers;
 internal sealed record StanzaOptions(
 	ImmutableHashSet<string> AssertionRoots,
 	ImmutableHashSet<string> GuardRoots,
+	ImmutableHashSet<string> ReceiverRoots,
+	bool ComparesReceiverPaths,
 	MarkupOptions Markup,
 	MarkupLiteralReading MarkupLiterals,
 	bool? PreferBraces,
@@ -39,6 +41,9 @@ internal sealed record StanzaOptions(
 	int MinBannerRun,
 	int MinLinesToNameEndif,
 	bool SplitsAssignmentTargets,
+	bool SplitsDeclarationShapes,
+	bool SplitsDeclarationTyping,
+	bool SplitsLocalFunctionModifiers,
 	ImmutableHashSet<string> RulesDisabledUnlessEnabled
 )
 {
@@ -79,6 +84,8 @@ internal sealed record StanzaOptions(
 		return new StanzaOptions(
 			AssertionRoots: ReadRoots(options, OptionKeys.AssertionRoots, s_defaultAssertionRoots),
 			GuardRoots: ReadRoots(options, OptionKeys.GuardRoots, []),
+			ReceiverRoots: ReadRoots(options, OptionKeys.ReceiverRoots, []),
+			ComparesReceiverPaths: OptionValues.ReceiverComparison.Read(ReadKey(OptionKeys.ReceiverComparison), fallback: false),
 			// A scope other than `containers` reads as `all`.
 			Markup: MarkupOptionReader.ReadOptions(ReadKey, fallbackPolicy: new MarkupPolicy(ContainersOnly: false)),
 			MarkupLiterals: OptionValues.MarkupLiterals.Read(ReadKey(OptionKeys.MarkupLiterals), fallback: MarkupLiteralReading.Marked),
@@ -104,6 +111,9 @@ internal sealed record StanzaOptions(
 			MinBannerRun: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.CommentBannerMinRun, DefaultMinBannerRun),
 			MinLinesToNameEndif: MarkupOptionReader.ReadCount(ReadKey, OptionKeys.MinLinesToNameEndif, DefaultMinLinesToNameEndif),
 			SplitsAssignmentTargets: OptionValues.AssignmentTargets.Read(ReadKey(OptionKeys.AssignmentTargets), fallback: false),
+			SplitsDeclarationShapes: OptionValues.DeclarationShapes.Read(ReadKey(OptionKeys.DeclarationShapes), fallback: false),
+			SplitsDeclarationTyping: OptionValues.DeclarationTyping.Read(ReadKey(OptionKeys.DeclarationTyping), fallback: true),
+			SplitsLocalFunctionModifiers: OptionValues.LocalFunctionModifiers.Read(ReadKey(OptionKeys.LocalFunctionModifiers), fallback: false),
 			RulesDisabledUnlessEnabled: ReadRulesDisabledUnlessEnabled(options)
 		);
 	}

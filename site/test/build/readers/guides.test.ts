@@ -54,6 +54,7 @@ describe('the catalog of JS Stanza', () => {
 			'assertionRoots',
 			'keep-single-line-elements-together.callArguments',
 			'separate-multi-line-elements.callArguments',
+			'declarationShapes',
 			'keep-single-line-elements-together.enumMembers',
 			'separate-multi-line-elements.enumMembers',
 			'guardRoots',
@@ -62,6 +63,8 @@ describe('the catalog of JS Stanza', () => {
 			'separate-multi-line-elements.objectMembers',
 			'keep-single-line-elements-together.parameters',
 			'separate-multi-line-elements.parameters',
+			'receiverComparison',
+			'receiverRoots',
 			'testRoots',
 			'separate-import-groups.typeImports',
 		]);
@@ -78,9 +81,19 @@ describe('the catalog of JS Stanza', () => {
 			kind: 'list',
 			defaultValue: 'assert, invariant',
 			global: true,
-			rules: ['separate-guard-clauses', 'separate-base-call'],
+
+			rules: [
+				'separate-guard-clauses',
+				'separate-base-call',
+				'separate-checked-stanzas',
+				'keep-guard-clauses-together',
+				'keep-guard-with-binding',
+				'keep-assertion-with-binding',
+			],
 		});
 
+		expect(options.get('declarationShapes')).toMatchObject({ kind: 'enum', defaultValue: 'merge', choices: ['merge', 'split'], global: true });
+		expect(options.get('receiverRoots')).toMatchObject({ kind: 'list', defaultValue: null, global: true });
 		expect(options.get('assertionRoots')).toMatchObject({ kind: 'list', defaultValue: 'assert, expect, expectTypeOf, t', global: true });
 		expect(options.get('testRoots')?.defaultValue).toMatch(/^describe, it, test, /);
 		expect(options.get('assertionRoots')?.examples).toHaveLength(1);
@@ -102,10 +115,20 @@ describe('the catalog of JS Stanza', () => {
 		const optIn = realJavascript.rules.filter((rule) => rule.level === 'opt-in');
 
 		expect(optIn.map((rule) => rule.id)).toEqual([
+			'separate-checked-stanzas',
 			'keep-statement-runs-together',
 			'keep-member-runs-together',
 			'keep-multi-line-switch-cases-together',
 			'keep-multi-line-jsx-children-together',
+			'keep-guard-clauses-together',
+			'keep-guard-with-binding',
+			'keep-accumulator-with-loop',
+			'keep-jump-with-binding',
+			'keep-assertion-with-binding',
+			'keep-initialization-with-calls',
+			'separate-receiver-groups',
+			'keep-receiver-groups-together',
+			'keep-dependent-bindings-together',
 		]);
 
 		expect(optIn.every((rule) => rule.group === 'Opt-in' && !rule.onByDefault && rule.tierText === 'Level: opt-in')).toBe(true);
@@ -136,7 +159,7 @@ describe('the catalog of JS Stanza', () => {
 		expect(byId.get('separate-import-groups')?.options).toEqual(['separate-import-groups.typeImports']);
 		expect(byId.get('separate-multi-line-constructs')?.options).toEqual([]);
 		expect(byId.get('separate-multi-line-jsx-children')?.options).toEqual([]);
-		expect(byId.get('separate-declaration-runs')?.options).toEqual([]);
+		expect(byId.get('separate-declaration-runs')?.options).toEqual(['declarationShapes']);
 		expect(byId.get('separate-assertion-runs')?.options).toEqual(['assertionRoots']);
 		expect(byId.get('separate-guard-clauses')?.options).toEqual(['guardRoots']);
 		expect(byId.get('separate-base-call')?.options).toEqual(['guardRoots']);
@@ -209,6 +232,19 @@ describe('the catalog of JS Stanza', () => {
 		]);
 
 		expect(realJavascript.rules.find((rule) => rule.id === 'separate-directives')?.opposite).toBeUndefined();
+		expect(realJavascript.rules.find((rule) => rule.id === 'separate-checked-stanzas')?.opposite).toBeUndefined();
+	});
+
+	it('keeps separator ownership dependencies out of the opposite-pair table', () => {
+		const sources = readJavascript(repositoryRoot);
+		const checked = sources.ruleCode.find((source) => source.file.endsWith('/separate-checked-stanzas.ts'))!;
+
+		checked.text +=
+			"\ncontext.isEnabled('separate-guard-clauses');\ncontext.isEnabled('separate-jump-statements');\ncontext.isEnabled('keep-receiver-groups-together');";
+
+		const catalog = extractJavascript(sources);
+
+		expect(catalog.rules.find((rule) => rule.id === 'separate-checked-stanzas')?.opposite).toBeUndefined();
 	});
 
 	it('fails with the file when the pair table and the rule sources describe other pairs', () => {
@@ -230,22 +266,19 @@ describe('the catalog of JS Stanza', () => {
 		failsOnJavascript(
 			'ruleMap',
 			(text) => text.replace(/^\| Two cases of a `switch` statement.*\n/m, ''),
-			/Rule-map\.md: separate-multi-line-switch-cases asks context\.isEnabled about keep-multi-line-switch-cases-together in its source, but the pair table has no row that separates with it/,
+			/Rule-map\.md: separate-multi-line-switch-cases declares keep-multi-line-switch-cases-together as its opposite, but the pair table has no row that separates with it/,
 		);
 
 		failsOnJavascript(
 			'ruleCode:separate-multi-line-switch-cases.ts',
-
-			(text) =>
-				text.replace("context.isEnabled('keep-multi-line-switch-cases-together')", "context.isEnabled('keep-multi-line-jsx-children-together')"),
-
-			/Rule-map\.md: the pair table pairs separate-multi-line-switch-cases with keep-multi-line-switch-cases-together, but its source asks context\.isEnabled about keep-multi-line-jsx-children-together/,
+			(text) => text.replace("opposite: 'keep-multi-line-switch-cases-together'", "opposite: 'keep-multi-line-jsx-children-together'"),
+			/Rule-map\.md: the pair table pairs separate-multi-line-switch-cases with keep-multi-line-switch-cases-together, but its source declares keep-multi-line-jsx-children-together/,
 		);
 
 		failsOnJavascript(
 			'ruleCode:separate-multi-line-jsx-children.ts',
-			(text) => text.replace(/ \|\| context\.isEnabled\('keep-multi-line-jsx-children-together'\)/, ''),
-			/Rule-map\.md: the pair table pairs separate-multi-line-jsx-children with keep-multi-line-jsx-children-together, but its source asks context\.isEnabled about no rule/,
+			(text) => text.replace(/\t+opposite: 'keep-multi-line-jsx-children-together',\n/, ''),
+			/Rule-map\.md: the pair table pairs separate-multi-line-jsx-children with keep-multi-line-jsx-children-together, but its source declares no opposite/,
 		);
 	});
 
@@ -293,6 +326,18 @@ describe('the catalog of JS Stanza', () => {
 			'ruleCode:separate-import-groups.ts',
 			(text) => text.replace('typeImports: false', 'typeImports: true'),
 			/separate-import-groups\.md: .*typeImports.*default/,
+		);
+
+		failsOnJavascript(
+			'environment',
+			(text) => text.replace("defaultDeclarationShapes = 'merge'", "defaultDeclarationShapes = 'other'"),
+			/environment\.ts: defaultDeclarationShapes has no matching literal union/,
+		);
+
+		failsOnJavascript(
+			'rules:separate-declaration-runs.md',
+			(text) => text.replace("declarationShapes: 'merge'", "declarationShapes: 'other'"),
+			/separate-declaration-runs\.md: the example of declarationShapes names a value outside its literal union/,
 		);
 
 		failsOnJavascript(
@@ -387,6 +432,7 @@ describe('the catalog of Python Stanza', () => {
 
 		expect([...options.keys()]).toEqual([
 			'assertion-roots',
+			'declaration-shapes',
 			'exclude',
 			'formatter',
 			'guard-roots',
@@ -397,6 +443,8 @@ describe('the catalog of Python Stanza', () => {
 			'named-argument-methods',
 			'named-argument-min-arguments',
 			'named-argument-sources',
+			'receiver-comparison',
+			'receiver-roots',
 			'source-roots',
 			'subscription-roots',
 		]);
@@ -408,7 +456,7 @@ describe('the catalog of Python Stanza', () => {
 		});
 
 		expect(options.get('exclude')).toMatchObject({ kind: 'list', defaultValue: null });
-		expect(options.get('guard-roots')?.rules).toEqual(['ZA3010', 'ZA3011']);
+		expect(options.get('guard-roots')?.rules).toEqual(['ZA3010', 'ZA3011', 'ZA3018', 'ZA3057', 'ZA3058']);
 
 		expect(options.get('formatter')).toMatchObject({
 			kind: 'enum',
@@ -481,7 +529,23 @@ describe('the catalog of Python Stanza', () => {
 	it('lists the rules no level enables as opt-in, which the tool does not apply by default', () => {
 		const optIn = realPython.rules.filter((rule) => rule.level === 'opt-in');
 
-		expect(optIn.map((rule) => rule.id)).toEqual(['ZA3054', 'ZA3055', 'ZA3112', 'ZA3201']);
+		expect(optIn.map((rule) => rule.id)).toEqual([
+			'ZA3018',
+			'ZA3019',
+			'ZA3054',
+			'ZA3055',
+			'ZA3057',
+			'ZA3058',
+			'ZA3059',
+			'ZA3060',
+			'ZA3061',
+			'ZA3062',
+			'ZA3063',
+			'ZA3064',
+			'ZA3112',
+			'ZA3201',
+		]);
+
 		expect(optIn.every((rule) => rule.group === 'Opt-in' && !rule.onByDefault && rule.tierText === 'Level: opt-in')).toBe(true);
 	});
 

@@ -2,12 +2,13 @@ import type { TSESTree } from '@typescript-eslint/utils';
 
 import type { Environment } from './environment.ts';
 import { memberKinds } from './kinds.ts';
-import { isAssignment, readStatementCall, unwrapExport } from './syntax.ts';
+import { isReceiverEdge, readReceiverKey, type ReceiverGroupReader } from './receivers.ts';
+import { isAssignment, isYieldStatement, readStatementCall, unwrapExport } from './syntax.ts';
 import type { Container } from './types.ts';
 
 type Node = TSESTree.Node;
 
-export type Family = 'declaration' | 'invocation' | 'assertion' | 'await' | 'assignment' | 'test' | 'member' | 'modifier';
+export type Family = 'declaration' | 'invocation' | 'assertion' | 'await' | 'yield' | 'assignment' | 'test' | 'member' | 'modifier';
 
 /** What a unit is for a run: neighbors with the same id are one run. */
 export interface RunKey {
@@ -43,6 +44,12 @@ function classifyCall(statement: Node, environment: Environment): RunKey | undef
 		return createKey('assertion', assertionRoot);
 	}
 
+	const receiver = environment.receiverEnabled ? readReceiverKey(statement, environment) : undefined;
+
+	if (receiver !== undefined) {
+		return createKey('invocation', `receiver:${receiver}`);
+	}
+
 	if (call.isAwaited && environment.awaitEnabled) {
 		return createKey('await', 'await');
 	}
@@ -56,11 +63,19 @@ function classifyStatement(node: Node, environment: Environment): RunKey | undef
 	const prefix = target === node ? '' : 'export ';
 
 	if (target.type === 'VariableDeclaration') {
-		return createKey('declaration', `${prefix}${target.declare ? 'declare ' : ''}${target.kind}`);
+		const shapes = new Set(target.declarations.map((declaration) => declaration.id.type));
+		const shape = shapes.size === 1 ? [...shapes][0] : `mixed:${target.range[0]}`;
+		const suffix = environment.declarationShapes === 'split' ? `:${shape}` : '';
+
+		return createKey('declaration', `${prefix}${target.declare ? 'declare ' : ''}${target.kind}${suffix}`);
 	}
 
 	if (target.type === 'TSTypeAliasDeclaration') {
 		return createKey('declaration', `${prefix}type`);
+	}
+
+	if (isYieldStatement(target)) {
+		return createKey('yield', 'yield');
 	}
 
 	if (isAssignment(target)) {
@@ -155,16 +170,35 @@ export interface Runs {
 }
 
 /** Splits the units of a container into runs of neighbors that share a key; `byModifiers` reads the members by their modifiers too. */
-export function readRuns(container: Container, environment: Environment, byModifiers = false): Runs {
+export function readRuns(
+	container: Container,
+	environment: Environment,
+	receiverGroupsOf: ReceiverGroupReader,
+	byModifiers = false,
+	sectionsOf?: (container: Container) => ReadonlySet<number>,
+): Runs {
 	const classify = !memberKinds.has(container.kind) ? classifyStatement : byModifiers ? classifyModifierGroup : classifyMember;
 	const keys = container.units.map((unit) => (unit.isShebang ? undefined : classify(unit.node, environment)));
 	const starts: number[] = [];
 	const ends: number[] = [];
+	const sections = sectionsOf?.(container);
 
 	for (let index = 0; index < keys.length; index += 1) {
 		const key = keys[index];
 		const previousStart = starts[index - 1];
-		const continuesRun = key !== undefined && previousStart !== undefined && keys[index - 1]?.id === key.id;
+
+		// A receiver key is read from a single-line statement only, so a comment or a shared line is what ends its run.
+		const receiverBoundary =
+			key?.id.startsWith('invocation:receiver:') === true &&
+			(container.gaps[index - 1]?.hasComment === true || container.gaps[index - 1]?.isJoined === true);
+
+		const continuesRun =
+			key !== undefined &&
+			previousStart !== undefined &&
+			keys[index - 1]?.id === key.id &&
+			!receiverBoundary &&
+			sections?.has(index - 1) !== true &&
+			!isReceiverEdge(container, index - 1, environment, receiverGroupsOf);
 
 		starts.push(continuesRun ? previousStart : index);
 	}
@@ -184,7 +218,7 @@ export function readBoundaryFamilies(runs: Runs, gapIndex: number): Family[] {
 	const before = runs.keys[gapIndex];
 	const after = runs.keys[gapIndex + 1];
 
-	if (before !== undefined && before.id === after?.id) {
+	if (before !== undefined && before.id === after?.id && runs.starts[gapIndex] === runs.starts[gapIndex + 1]) {
 		return [];
 	}
 

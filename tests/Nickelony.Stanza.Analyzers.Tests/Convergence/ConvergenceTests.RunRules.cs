@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -146,6 +147,12 @@ public sealed partial class ConvergenceTests
 		["stanza_guard_roots"] = "Guard",
 	};
 
+	// The source below holds no yield and no local function, so the rules of those kinds would only repeat each state.
+	private static readonly DiagnosticDescriptor[] s_statementRunRules =
+	[
+		.. TestRuleSets.RunRules.Except([DiagnosticDescriptors.SeparateYieldRuns, DiagnosticDescriptors.SeparateLocalFunctionRuns]),
+	];
+
 	// The run rules alone, so each state of the matrix below stays cheap while the rows below run every analyzer.
 	private static readonly ImmutableArray<DiagnosticAnalyzer> s_runRuleAnalyzers =
 	[
@@ -210,7 +217,7 @@ public sealed partial class ConvergenceTests
 
 		await RoslynTestHarness.AssertEveryStateSettlesAsync(
 			source,
-			toggled: TestRuleSets.RunRules,
+			toggled: s_statementRunRules,
 			analyzers: s_runRuleAnalyzers,
 			analyzerConfigOptions: s_splitOptions
 		);

@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import { Linter } from 'eslint';
 
-import { createConfig, fix, fixWithPreset, lines, lintWithPreset, readPresetRules } from './helpers.ts';
+import { createConfig, fix, fixOneByOne, fixWithPreset, lines, lintWithPreset, readPresetRules, readSuppressedMessages, settled } from './helpers.ts';
 
 /** Lists the rules that report a source, one entry for each message. */
 function reporters(
@@ -1105,5 +1105,260 @@ describe('the JSX child rules', () => {
 			assert.equal(fixWithPreset(code, 'strong', file, true), code);
 			assert.equal(fix(code, { [keepMulti]: 'error', [keepSingle]: 'error' }, {}, file), code);
 		}
+	});
+});
+
+describe('the keep rules under a directive', () => {
+	/** Fixes a source under the linter options ESLint gives by default, which report an unused directive and remove it, checking that one pass settles it in any fix order. */
+	function settleUnderDefaults(source: string, rules: Record<string, Linter.RuleEntry>, settings: Record<string, unknown>): string {
+		const config = createConfig(rules, settings).map((entry) => ({ ...entry, linterOptions: {} }));
+		const linter = new Linter();
+		const options = { filename: 'file.ts', stats: true };
+		const result = linter.verifyAndFix(source, config, options);
+
+		assert.deepEqual(result.messages, []);
+		assert.ok(linter.getFixPassCount() <= 1, 'needed ' + linter.getFixPassCount() + ' fix passes');
+		assert.equal(fixOneByOne(source, config, 'first'), result.output);
+		assert.equal(fixOneByOne(source, config, 'last'), result.output);
+
+		linter.verify(source, config, { filename: 'file.ts' });
+
+		// Each sample silences one keeper, so every report a directive silences is that keeper's.
+		const silenced = readSuppressedMessages(linter);
+
+		assert.ok(silenced.length > 0, 'no report is silenced');
+		assert.ok(silenced.every((message) => message.fix === undefined));
+
+		return result.output;
+	}
+
+	/** For each keep rule, the units above and below a gap it keeps, the settings it needs, and what sets the sample apart from another of the rule. */
+	const samples: [rule: string, above: string[], below: string[], settings?: Record<string, unknown>, label?: string][] = [
+		['keep-guard-clauses-together', ['run(a);', 'if (!a) return;'], ['if (!b) return;', 'go(a, b);']],
+		['keep-guard-with-binding', ['audit(id);', 'const order = find(id);'], ['if (!order) return null;', 'send(order);', 'return order;']],
+		['keep-accumulator-with-loop', ['check(items);', 'let total = 0;'], ['for (const item of items) {', '  total += item;', '}', 'use(total);']],
+		['keep-jump-with-binding', ['log(a);', '', 'const b = load(a);'], ['return b;']],
+
+		[
+			'keep-jump-with-binding',
+			['check(a);', 'const c = load(a);', '', 'const d = load(c);', '', 'const e = load(d);'],
+			['return e;'],
+			{ stanza: { maxLooseRunSize: 2 } },
+			' over a binding a loose run then takes',
+		],
+
+		['keep-assertion-with-binding', ['audit(id);', 'const order = load(id);'], ['assert(order);', 'ship(order);']],
+		['keep-initialization-with-calls', ['audit();', '', 'const svc = new Service(id);'], ['svc.start();', 'svc.stop();']],
+		['keep-receiver-groups-together', ['prepare();', 'db.add(a);'], ['db.save();', 'done();'], { stanza: { receiverRoots: ['db'] } }],
+		['keep-dependent-bindings-together', ['run();', 'const first = load();'], ['const second = build(first);', 'use(second);']],
+	];
+
+	for (const [rule, above, below, settings = {}, label = ''] of samples) {
+		const directives: [form: string, body: string[]][] = [
+			['eslint-disable-next-line above the unit below', [...above, '', '// eslint-disable-next-line stanza/' + rule, ...below]],
+			['eslint-disable-line after the unit above', [...above.slice(0, -1), above.at(-1) + ' // eslint-disable-line stanza/' + rule, '', ...below]],
+			['eslint-disable over the file', ['/* eslint-disable stanza/' + rule + ' */', ...above, '', ...below]],
+		];
+
+		for (const [form, body] of directives) {
+			it(rule + label + ' silenced by ' + form + ' writes the text it writes when off, and the directive stays', () => {
+				const source = lines('function f(id, items, a, b) {', ...body, '}');
+				const strong = readPresetRules('strong');
+
+				assert.equal(settleUnderDefaults(source, { ...strong, [rule]: 'error' }, settings), fix(source, strong, settings));
+			});
+		}
+	}
+
+	for (const [rule, settings, open, close, apart] of [
+		[
+			'keep-receiver-groups-together',
+			{ stanza: { receiverRoots: ['db'] } },
+			['db.add(a);', 'db.flush();'],
+			['db.count += 1;', 'db.count += 2;'],
+			'prepare();',
+		],
+
+		[
+			'keep-dependent-bindings-together',
+			{},
+			['const a1 = load();', 'const a2 = build(a1);'],
+			['const a3 = build(a2);', 'const a4 = build(a3);'],
+			'run();',
+		],
+	] as const) {
+		it(rule + ' keeps a directive whose gap the fix of the rest of the group makes a section boundary', () => {
+			const directive = '// eslint-disable-next-line stanza/' + rule;
+			const source = lines('function f(a) {', apart, '', open[0], '', open[1], '', directive, close[0], '', close[1], 'done();', '}');
+			const expected = lines('function f(a) {', apart, '', open[0], open[1], '', directive, close[0], close[1], '', 'done();', '}');
+
+			assert.equal(settleUnderDefaults(source, { ...readPresetRules('strong'), [rule]: 'error' }, settings), expected);
+		});
+	}
+});
+
+describe('the yield runs', () => {
+	const yieldRuns = 'separate-yield-runs';
+	const strong = readPresetRules('strong');
+	const generator = (...body: string[]): string => lines('function* f() {', ...body, '}');
+	const tight = generator('  start();', '  yield a;', '  yield b;', '  stop();');
+	const apart = generator('  start();', '', '  yield a;', '  yield b;', '', '  stop();');
+
+	it('is enabled at the strong level and not below it', () => {
+		assert.equal(fixWithPreset(tight, 'strong'), apart);
+		assert.equal(fixWithPreset(tight, 'moderate'), tight);
+		assert.equal(fixWithPreset(apart, 'strong'), apart);
+	});
+
+	it('writes one text in one pass in every order of the rules, beside the rules that read the same statements', () => {
+		const sources = [
+			tight,
+			generator('  const a = 1;', '  yield a;', '  yield* b;', '  later();', '  yield c;', '  return a;'),
+			generator('  yield a;', '', '  yield b;', '', '  yield c;', '', '  yield d;', '', '  yield e;'),
+			generator('  start();', '  yield a;', '', '  yield b;', '  stop();'),
+		];
+
+		for (const source of sources) {
+			const entries = Object.entries({ ...strong, 'keep-statement-runs-together': 'error' } as Record<string, Linter.RuleEntry>);
+			const forward = settled(source, Object.fromEntries(entries));
+
+			assert.equal(settled(source, Object.fromEntries(entries.toReversed())), forward);
+		}
+	});
+
+	it('is read by the rule that keeps a run together, which joins the run while the rule is enabled', () => {
+		const spaced = generator('  start();', '  yield a;', '', '  yield b;', '  stop();');
+		const keep: Entries = { [yieldRuns]: 'error', 'keep-statement-runs-together': 'error' };
+
+		assert.equal(settled(spaced, keep), apart);
+		assert.equal(settled(spaced, { [yieldRuns]: 'error' }), generator('  start();', '', '  yield a;', '', '  yield b;', '', '  stop();'));
+		assert.equal(fix(spaced, { 'keep-statement-runs-together': 'error' }), spaced);
+	});
+
+	it('leaves a gap to the first rule of the owner order that asks for it, as the other run rules do', () => {
+		const code = generator('  start();', '  yield a;', '  yield b;', '  stop({', '    c,', '  });');
+
+		assert.deepEqual(reporters(code, { [yieldRuns]: 'error' }), [`stanza/${yieldRuns}`, `stanza/${yieldRuns}`]);
+
+		assert.deepEqual(reporters(code, { [yieldRuns]: 'error', 'separate-multi-line-constructs': 'error' }), [
+			`stanza/${yieldRuns}`,
+			'stanza/separate-multi-line-constructs',
+		]);
+	});
+
+	it('is silenced by an eslint-disable comment, which leaves the gap as written', () => {
+		const directive = `// eslint-disable-next-line stanza/${yieldRuns}`;
+		const rules: Entries = { [yieldRuns]: 'error' };
+		const silenced = generator('  start();', `  ${directive}`, '  yield a;', '  yield b;', '  stop();');
+		const linter = new Linter();
+
+		linter.verify(silenced, createConfig(rules), { filename: 'file.ts' });
+
+		assert.deepEqual(
+			readSuppressedMessages(linter).map((message) => message.ruleId),
+			[`stanza/${yieldRuns}`],
+		);
+
+		assert.equal(fix(silenced, rules), generator('  start();', `  ${directive}`, '  yield a;', '  yield b;', '', '  stop();'));
+
+		const everywhere = lines(
+			`/* eslint-disable stanza/${yieldRuns} */`,
+			'function* f() {',
+			'  start();',
+			'  yield a;',
+			'  yield b;',
+			'  stop();',
+			'}',
+		);
+
+		assert.equal(fix(everywhere, rules), everywhere);
+		assert.deepEqual(new Linter().verify(everywhere, createConfig(rules), { filename: 'file.ts' }), []);
+	});
+});
+
+describe('the stacked case labels', () => {
+	const rule = 'keep-stacked-case-labels-together';
+	const strong = readPresetRules('strong');
+	const withBody = lines('switch (x) {', '  case 1:', '', '  case 2:', '    foo();', '    break;', '', '  default:', '    bar();', '}');
+	const stacked = lines('switch (x) {', '  case 1:', '  case 2:', '    foo();', '    break;', '', '  default:', '    bar();', '}');
+
+	it('is enabled from the minimal level up', () => {
+		for (const level of ['minimal', 'moderate', 'strong'] as const) {
+			assert.equal(fixWithPreset(withBody, level), stacked, level);
+		}
+
+		assert.equal(fixWithPreset(withBody, 'none'), withBody);
+	});
+
+	it('writes one text in one pass in every order of the rules, with the case rules and the rest of the strong level on', () => {
+		const sources = [
+			withBody,
+
+			lines(
+				'switch (x) {',
+				'  case 1:',
+				'',
+				'  case 2:',
+				'',
+				'  case 3: return a;',
+				'',
+				'  default:',
+				'',
+				'  case 4:',
+				'    bar();',
+				'    break;',
+				'}',
+			),
+
+			lines('switch (x) {', '  case 1:', '', '  case 2:', '  // note', '', '  case 3:', '    foo();', '}'),
+			lines('switch (x) {', '  case 1:', '', '  case 2:', '    foo();', '    foo();', '', '  case 3:', '', '  case 4:', '    bar();', '}'),
+		];
+
+		for (const source of sources) {
+			const entries = Object.entries({
+				...strong,
+				'keep-multi-line-switch-cases-together': 'error',
+				'keep-statement-runs-together': 'error',
+			} as Record<string, Linter.RuleEntry>);
+
+			assert.equal(settled(source, Object.fromEntries(entries)), settled(source, Object.fromEntries(entries.toReversed())));
+			assert.equal(settled(source, strong), fix(source, strong));
+		}
+	});
+
+	it('shares no gap with the case rules, whichever of them is enabled beside it', () => {
+		const code = lines('switch (x) {', '  case 1:', '', '  case 2:', '    foo();', '    bar();', '', '  case 3:', '    baz();', '    qux();', '}');
+		const keepMulti = 'keep-multi-line-switch-cases-together';
+
+		assert.deepEqual(reporters(code, { [rule]: 'error', 'separate-multi-line-switch-cases': 'error' }), [`stanza/${rule}`]);
+		assert.deepEqual(reporters(code, { [rule]: 'error', [keepMulti]: 'error' }), [`stanza/${rule}`, `stanza/${keepMulti}`]);
+		assert.deepEqual(reporters(code, { [rule]: 'error', 'keep-single-line-switch-cases-together': 'error' }), [`stanza/${rule}`]);
+		assert.deepEqual(reporters(code, { [rule]: 'error', 'keep-two-units-together': 'error' }), [`stanza/${rule}`]);
+	});
+
+	it('leaves the blank line Prettier keeps below a label, whatever the rules write', () => {
+		const code = lines('switch (x) {', '  case 1:', '', '    foo();', '    break;', '', '  case 2:', '    bar();', '}');
+		assert.equal(fix(code, { ...strong, [rule]: 'error' }), code);
+	});
+
+	it('is silenced by an eslint-disable comment, which leaves the gap as written', () => {
+		const rules: Entries = { [rule]: 'error' };
+		const next = lines('switch (x) {', '  case 1:', `  // eslint-disable-next-line stanza/${rule}`, '', '  case 2:', '    foo();', '}');
+		const everywhere = lines(`/* eslint-disable stanza/${rule} */`, 'switch (x) {', '  case 1:', '', '  case 2:', '    foo();', '}');
+		const trailing = lines('switch (x) {', `  case 1: // eslint-disable-line stanza/${rule}`, '', '  case 2:', '    foo();', '}');
+
+		for (const source of [next, everywhere, trailing]) {
+			assert.equal(fix(source, rules), source);
+			assert.deepEqual(new Linter().verify(source, createConfig(rules), { filename: 'file.ts' }), []);
+		}
+
+		const linter = new Linter();
+
+		linter.verify(everywhere, createConfig(rules), { filename: 'file.ts' });
+
+		assert.deepEqual(
+			readSuppressedMessages(linter).map((message) => message.ruleId),
+			[`stanza/${rule}`],
+		);
 	});
 });

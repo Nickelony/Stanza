@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The rules lay out blank lines, delimited lists, braces, member bodies, regions, conditional blocks, argument names,
   comments and the markup in raw string literals, simplify statements, write null checks in one style, and report code past a limit.
   A build on a compiler older than Roslyn 4.11, which loads no rule, warns `STANZA002`.
+  The opt-in rules `ZA0018`, `ZA0019` and `ZA0057` to `ZA0064` separate checked stanzas and receiver groups from their neighbors.
+  They also keep a binding with the guard, loop, jump or assertion that reads it, a chain of guards, and the operations of one receiver together.
+  The rules `ZA0020` and `ZA0021` separate runs of `yield return` statements and of single-line local functions from their neighbors,
+  `ZA0207` removes the blank line below a switch label, and `ZA0406` separates a `#pragma warning` suppression block from its neighbors.
+  The options `stanza_receiver_roots`, `stanza_receiver_comparison`, `stanza_declaration_shapes`, `stanza_declaration_typing`
+  and `stanza_local_function_modifiers` choose which receivers, declarations and local functions they group.
 - Presets: `<StanzaLevel>` picks the `minimal`, `moderate` or `strong` level of analyzer rules, or `none`,
   and `<StanzaSeverity>` sets their severity.
   `<StanzaFormatter>csharpier</StanzaFormatter>` keeps the strong level clear of the layout CSharpier undoes.

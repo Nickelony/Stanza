@@ -1,4 +1,4 @@
-import { isOptionChanged, listItems, replacedBy, ruleStateIn, type Config, type EffectiveState } from '../state/config.ts';
+import { hasExplicitPairSetting, isOptionChanged, listItems, replacedBy, ruleStateIn, type Config, type EffectiveState } from '../state/config.ts';
 import { enabledAt } from '../state/levels.ts';
 import { optionId, type Catalog, type Option, type Rule } from '../state/model.ts';
 
@@ -7,9 +7,13 @@ const presetSeverity = 'error';
 const eslintSeverity: Partial<Record<EffectiveState, string>> = { error: 'error', warning: 'warn' };
 const quote = (text: string): string => `'${text.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
 
-/** Writes a value of an option as JavaScript: `true`, `false`, or a list of strings. */
+/** Quotes word values and lists of strings, leaving booleans and numbers as JavaScript literals. */
 function literal<S>(option: Option<S>, value: string): string {
-	return option.kind === 'list' ? `[${listItems(value).map(quote).join(', ')}]` : value;
+	if (option.kind === 'list') {
+		return `[${listItems(value).map(quote).join(', ')}]`;
+	}
+
+	return option.kind === 'enum' && value !== 'true' && value !== 'false' ? quote(value) : value;
 }
 
 /** The options an entry of the rule carries: those a rule's own page lists, which are not in `settings.stanza`. */
@@ -17,7 +21,7 @@ const ruleOptions = <S>(catalog: Catalog<S>, rule: Rule<S>): Option<S>[] =>
 	catalog.options.filter((option) => !option.global && option.rules.includes(rule.id));
 
 /**
- * The entry the configuration writes for a rule, or `null` when the preset of the level already gives it.
+ * The entry the configuration writes for a difference or an explicit pair choice, or `null` when no line is needed.
  * An entry with options names each one that is not its default, and an entry of a rule that is off names none.
  */
 function ruleEntry<S>(catalog: Catalog<S>, rule: Rule<S>, config: Config): string | null {
@@ -28,7 +32,7 @@ function ruleEntry<S>(catalog: Catalog<S>, rule: Rule<S>, config: Config): strin
 	const preset = enabledAt(rule, config.level, config.formatter) ? presetSeverity : 'off';
 	const changed = severity === 'off' ? [] : ruleOptions(catalog, rule).filter((option) => isOptionChanged(option, config));
 
-	if (severity === preset && changed.length === 0) {
+	if (severity === preset && changed.length === 0 && !hasExplicitPairSetting(rule, config)) {
 		return null;
 	}
 

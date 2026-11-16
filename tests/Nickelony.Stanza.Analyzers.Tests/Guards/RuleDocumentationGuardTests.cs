@@ -865,7 +865,19 @@ public sealed partial class RuleDocumentationGuardTests
 				? "keywords"
 				: "bool",
 
-			["stanza_assignment_targets"] = options.SplitsAssignmentTargets ? "split" : "mixed",
+			["stanza_assignment_targets"] = options.SplitsAssignmentTargets ? "split" : "merge",
+			["stanza_declaration_shapes"] = options.SplitsDeclarationShapes ? "split" : "merge",
+			["stanza_declaration_typing"] = options.SplitsDeclarationTyping ? "split" : "merge",
+			["stanza_local_function_modifiers"] = options.SplitsLocalFunctionModifiers ? "split" : "merge",
+			["stanza_receiver_comparison"] = options.ComparesReceiverPaths ? "path" : "root",
+
+			["stanza_receiver_roots"] = options.ReceiverRoots.IsEmpty
+				? "none"
+				: string.Join(
+					",",
+					options.ReceiverRoots.OrderBy(root => root, StringComparer.Ordinal)
+				),
+
 			["stanza_multi_line_member_part"] = ReadMultiLineMemberPart(options),
 			["stanza_markup_scope"] = options.Markup.Policy.ContainersOnly ? "containers" : "all",
 			["stanza_markup_max_blank_lines"] = $"{options.Markup.MaxBlankLines}",

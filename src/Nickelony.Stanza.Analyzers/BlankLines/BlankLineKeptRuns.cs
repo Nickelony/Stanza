@@ -4,7 +4,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
 
 namespace Nickelony.Stanza.Analyzers.BlankLines;
 
@@ -29,16 +28,6 @@ internal static class BlankLineKeptRuns
 		ImmutableHashSet<int> Standing
 	);
 
-	/// <summary>What the judgment of a section reads of its container.</summary>
-	private readonly record struct SectionReading(
-		ContainerContext Container,
-		SourceText Text,
-		BlankLineLooseRuns.UnitRange UnitRange,
-		ImmutableHashSet<int> Held,
-		ImmutableHashSet<int> Inside,
-		Judge Judge
-	);
-
 	private static readonly KeptRuns s_none = new(Runs: [], Written: []);
 
 	/// <summary>The boundaries beyond the written ones that a container may try, each costing a read of it.</summary>
@@ -46,9 +35,6 @@ internal static class BlankLineKeptRuns
 
 	/// <summary>The rounds that decline the runs which only move a blank line.</summary>
 	private const int MaxRounds = 4;
-
-	/// <summary>The units a run holds on each side of a gap for the gap to set two sections apart.</summary>
-	private const int MinSectionUnits = 2;
 
 	/// <summary>Reads the runs of a container, a gap being inside one when no rule asks for its blank line.</summary>
 	/// <remarks>
@@ -71,16 +57,13 @@ internal static class BlankLineKeptRuns
 		ImmutableHashSet<int> inside = [.. loose.Where(boundary => !held.Contains(boundary) && judge.IsInsideRun(boundary))];
 
 		// A blank line between two blocks of units is a section break, which the rule leaves as written.
-		var sectionReading = new SectionReading(
-			Container: container,
-			Text: container.Node.SyntaxTree.GetText(container.CancellationToken),
-			UnitRange: unitRange,
-			Held: held,
-			Inside: inside,
-			Judge: judge
-		);
+		bool IsInside(int boundary) => unitRange.HoldsBoundary(boundary) && !held.Contains(boundary) && judge.IsInsideRun(boundary);
 
-		ImmutableHashSet<int> sectionBreaks = [.. inside.Where(boundary => IsSectionBreak(sectionReading, boundary))];
+		ImmutableHashSet<int> sectionBreaks =
+		[
+			.. inside.Where(boundary => BlankLineSections.IsSectionBreak(container, boundary, isInside: IsInside, isLoose: inside.Contains)),
+		];
+
 		ImmutableHashSet<int> kept = inside.Except(sectionBreaks);
 
 		if (kept.IsEmpty)
@@ -116,7 +99,11 @@ internal static class BlankLineKeptRuns
 			ImmutableHashSet<int> moving = round <= MaxRounds ? ReadMovingBoundaries(reading, settled, runs, alone: round < MaxRounds) : [];
 
 			if (moving.IsEmpty)
-				return new KeptRuns(Runs: runs, Written: [.. settled.Written.OrderBy(static boundary => boundary)]);
+			{
+				// The grouping rules read a keeper's gaps as joined already, so a boundary they ask for is theirs to write.
+				ImmutableHashSet<int> written = BlankLineKeptPairs.IsKeeper(rule) ? settled.Written.Except(standing) : settled.Written;
+				return new KeptRuns(Runs: runs, Written: [.. written.OrderBy(static boundary => boundary)]);
+			}
 
 			kept = kept.Except(moving);
 		}
@@ -138,6 +125,20 @@ internal static class BlankLineKeptRuns
 
 		foreach (BlankLineLooseRuns.LooseRun run in runs)
 		{
+			// Configured receivers explicitly group one operation, even when joining it relocates a boundary.
+			if (
+				reading.Rule.Descriptor == DiagnosticDescriptors.KeepReceiverGroupTogether
+				|| reading.Rule.Descriptor == DiagnosticDescriptors.KeepDependentBindingsTogether
+				|| BlankLineGrouping.IsReceiverPair(
+					reading.Container.Siblings[run.Start],
+					reading.Container.Siblings[run.Start + 1],
+					reading.Container.Options
+				)
+			)
+			{
+				continue;
+			}
+
 			(int Start, int End) window = ReadWindow(reading, settled.Kept, run);
 
 			// A run beside a declined one reads again once that one stays blank, as it may then keep its gain.
@@ -266,50 +267,6 @@ internal static class BlankLineKeptRuns
 		return new Settlement(kept, written);
 	}
 
-	/// <summary>Whether a kept gap sets sections apart, a lone unit between two sections being one.</summary>
-	/// <remarks>
-	/// A section is the units of one run tight against each other; a lone unit beside one is absorbed.
-	/// </remarks>
-	private static bool IsSectionBreak(SectionReading reading, int boundary)
-	{
-		ImmutableArray<SyntaxNode> siblings = reading.Container.Siblings;
-
-		bool IsTightlyJoined(int candidate)
-		{
-			return reading.UnitRange.HoldsBoundary(candidate)
-				&& !reading.Held.Contains(candidate)
-				&& !BlankLineGaps.HasBlankLineBetween(siblings[candidate - 1], siblings[candidate])
-				&& BlankLineLooseRuns.IsPlainGap(reading.Text, previous: siblings[candidate - 1], next: siblings[candidate])
-				&& reading.Judge.IsInsideRun(candidate);
-		}
-
-		// The units tight against the unit, itself included, up to the smallest section, counting away from it by the step.
-		int CountBlock(int unit, int step)
-		{
-			int count = 1;
-
-			for (int candidate = step < 0 ? unit : unit + 1; count < MinSectionUnits && IsTightlyJoined(candidate); candidate += step)
-				count++;
-
-			return count;
-		}
-
-		int before = CountBlock(boundary - 1, step: -1);
-		int after = CountBlock(boundary, step: 1);
-
-		if (before >= MinSectionUnits && after >= MinSectionUnits)
-			return true;
-
-		// The lone unit has a blank line on its other side too, which sets it apart from a second section.
-		if (before >= MinSectionUnits && after == 1)
-			return reading.Inside.Contains(boundary + 1) && CountBlock(boundary + 1, step: 1) >= MinSectionUnits;
-
-		return after >= MinSectionUnits
-			&& before == 1
-			&& reading.Inside.Contains(boundary - 1)
-			&& CountBlock(boundary - 2, step: -1) >= MinSectionUnits;
-	}
-
 	/// <summary>Finds the lowest boundary the read asks for that is neither written nor tried, or -1.</summary>
 	private static int FindUntriedBoundary(ImmutableArray<int> boundaries, ImmutableHashSet<int> written, ImmutableHashSet<int> tried)
 	{
@@ -364,6 +321,12 @@ internal static class BlankLineKeptRuns
 
 		public bool IsInsideRun(int boundary)
 		{
+			if (rule.Descriptor == DiagnosticDescriptors.KeepDependentBindingsTogether)
+				return BlankLineDependentBindings.GetInner(container).Contains(boundary);
+
+			if (rule.Descriptor == DiagnosticDescriptors.KeepReceiverGroupTogether)
+				return BlankLineReceiverGroups.GetGroups(container).Inner.Contains(boundary);
+
 			container.CancellationToken.ThrowIfCancellationRequested();
 
 			bool together = false;

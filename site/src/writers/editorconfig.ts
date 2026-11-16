@@ -161,8 +161,8 @@ function leavesOutMarkup<S>(catalog: Catalog<S>, config: Config): boolean {
 
 /**
  * Writes the `.editorconfig` text for a configuration.
- * A rule that is what the level gives and an option left at its default write nothing, unless the configuration asks for every setting,
- * which writes each rule of the level and each key. The markup section repeats the level's rules that `stanza-markup` reads, because the tool cannot see the package.
+ * Explicit pair choices retain both severity lines; other preset-equivalent choices write nothing unless every setting is requested.
+ * The markup section repeats the level's rules that `stanza-markup` reads, because the tool cannot see the package.
  */
 export function generateEditorConfig<S>(catalog: Catalog<S>, config: Config): string {
 	const analyzer = section('[*.cs]', null, ruleLines(catalog, config, 'analyzer'), optionLines(catalog, config, 'analyzer'));

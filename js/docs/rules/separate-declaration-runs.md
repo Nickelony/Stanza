@@ -23,6 +23,23 @@ log(attempts);
 - A lone declaration stays tight against the statement below it, unless that statement starts a run of another rule.
 - A declaration that awaits, such as `const data = await load();`, is a declaration, and [`separate-await-runs`](separate-await-runs.md) leaves it alone.
 
+## Settings
+
+`declarationShapes` defaults to `'merge'`, where every declaration of one kind can share a run.
+`'split'` gives three shapes a run key each: an array pattern as in `const [a, b] = pair;`,
+an object pattern as in `const { a, b } = pair;`, and a plain name.
+The C# and Python settings split two ways, destructuring from ordinary declarations, where this rule tells array patterns from object patterns too.
+
+- A React hook such as `const [state, setState] = useState();` is an array pattern.
+- A declaration whose declarators mix shapes forms no run with its neighbors.
+- The keyword distinguishes `const`, `let` and `var`, and a type annotation makes no kind,
+  so `const a: number = 1;` and `const b = 2;` share a run.
+- The keep-run rule reads the same keys.
+
+```js
+export default [{ settings: { stanza: { declarationShapes: 'merge' } } }];
+```
+
 ## C# counterpart
 
 [ZA0002 - Separate declaration runs](https://github.com/Nickelony/Stanza/wiki/ZA0002-Separate-declaration-runs)

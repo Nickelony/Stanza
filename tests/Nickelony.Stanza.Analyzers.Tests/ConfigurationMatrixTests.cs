@@ -19,6 +19,17 @@ public sealed class ConfigurationMatrixTests
 	private const string Repros = """
 		internal sealed class Repros
 		{
+			void DependentPipeline()
+			{
+				int first = 1;
+
+				string second = first.ToString();
+
+				byte[] bytes = System.Text.Encoding.UTF8.GetBytes(second);
+
+				var stream = new System.IO.MemoryStream(bytes);
+			}
+
 			void Standalone()
 			{
 				Helpers.DoThing();
@@ -598,6 +609,32 @@ public sealed class ConfigurationMatrixTests
 		AssertSameText(unset, set, nameof(ASeverityOfDefaultFixesAsNoSeverityLineDoes));
 	}
 
+	[TestMethod]
+	[DataRow("*", "root")]
+	[DataRow("*", "path")]
+	[DataRow("db", "root")]
+	[DataRow("db", "path")]
+	public async Task EveryAnalyzerSettlesWithConfiguredReceiverAndDeclarationShapes(
+		string roots,
+		string comparison
+	)
+	{
+		var options = new Dictionary<string, string>(s_options)
+		{
+			["stanza_receiver_roots"] = roots,
+			["stanza_receiver_comparison"] = comparison,
+			["stanza_declaration_shapes"] = "split",
+		};
+
+		_ = await SettleAsync(
+			new Configuration(
+				Rules: AllEnabled(),
+				Source: SourceGenerators.CreateReceiverSource(new Random(1)),
+				Options: options
+			)
+		);
+	}
+
 	// The corpus has so many runs that, with the rules on, one fix a round needs more rounds than the default allows.
 	private const int CorpusFixRounds = 100;
 
@@ -612,7 +649,7 @@ public sealed class ConfigurationMatrixTests
 			new RunOptions(RoslynTestHarness.AllAnalyzers)
 			{
 				DiagnosticOptions = configuration.Rules,
-				AnalyzerConfigOptions = s_options,
+				AnalyzerConfigOptions = configuration.Options ?? s_options,
 				GlobalOptions = configuration.GlobalOptions,
 				TreeOptions = configuration.TreeOptions,
 				MaxFixRounds = CorpusFixRounds,
@@ -632,7 +669,7 @@ public sealed class ConfigurationMatrixTests
 			new RunOptions(RoslynTestHarness.AllAnalyzers)
 			{
 				DiagnosticOptions = configuration.Rules,
-				AnalyzerConfigOptions = s_options,
+				AnalyzerConfigOptions = configuration.Options ?? s_options,
 				GlobalOptions = configuration.GlobalOptions,
 				TreeOptions = configuration.TreeOptions,
 				MaxFixRounds = CorpusFixRounds,
@@ -655,6 +692,7 @@ public sealed class ConfigurationMatrixTests
 		IReadOnlyDictionary<string, ReportDiagnostic>? Rules = null,
 		IReadOnlyDictionary<string, ReportDiagnostic>? GlobalOptions = null,
 		IReadOnlyDictionary<string, ReportDiagnostic>? TreeOptions = null,
-		string? Source = null
+		string? Source = null,
+		IReadOnlyDictionary<string, string>? Options = null
 	);
 }

@@ -10,7 +10,7 @@ import pytest
 
 from nickelony_stanza import Config, FixError, engine, fix, lint
 from nickelony_stanza.rules import ALL_RULES
-from tests.helpers import CONFIGS, add_blank_lines, corpus_files, drop_blank_lines, run_formatter, same_tree
+from tests.helpers import SETTLING_CONFIGS, add_blank_lines, corpus_files, drop_blank_lines, run_formatter, same_tree
 
 
 def _inputs(path: Path) -> list[str]:
@@ -42,10 +42,10 @@ def _orders(config: Config) -> dict[str, Config]:
     return {name: Config(tuple(ordered), config.options) for name, ordered in variants.items()}
 
 
-@pytest.mark.parametrize("name", CONFIGS)
+@pytest.mark.parametrize("name", SETTLING_CONFIGS)
 @pytest.mark.parametrize("path", corpus_files(), ids=lambda path: path.name)
 def test_every_rule_order_settles_to_one_text(name: str, path: Path) -> None:
-    base = CONFIGS[name]
+    base = SETTLING_CONFIGS[name]
 
     for text in _inputs(path):
         outputs = {}
@@ -102,6 +102,8 @@ SINGLE_LINE_UNITS = [
     "print(x)",
     "assert x",
     "await run()",
+    "yield x",
+    "yield from run()",
     "return x",
     "raise E",
     "pass",

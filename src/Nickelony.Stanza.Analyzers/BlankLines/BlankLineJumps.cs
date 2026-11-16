@@ -47,6 +47,17 @@ internal static class BlankLineJumps
 		return jumps.ToImmutable();
 	}
 
+	/// <summary>Whether the sibling at the index is a jump the jump rule is on for.</summary>
+	public static bool IsJudgedJump(ContainerContext container, StanzaRule jumpRule, int index)
+	{
+		SyntaxNode sibling = container.Siblings[index];
+
+		return index >= 1
+			&& IsJump(sibling)
+			&& !IsSectionEndBreak(sibling)
+			&& !StanzaRuleState.IsOffAt(scope: container, options: container.Options, rule: jumpRule, position: sibling.SpanStart);
+	}
+
 	/// <summary>Reads the boundaries above the jumps whose stanza spans two or more lines.</summary>
 	/// <remarks>
 	/// It reads the text as written, and a boundary another rule asks for ends a stanza as if its blank line stood.
@@ -217,7 +228,13 @@ internal static class BlankLineJumps
 			if (siblings[boundary - 1] is UsingDirectiveSyntax or ExternAliasDirectiveSyntax)
 				return true;
 
-			return (!gathered.Contains(boundary) && BlankLineGaps.HasBlankLineBetween(siblings[boundary - 1], siblings[boundary]))
+			// A prospective join also erases a raw checked edge inside the kept group.
+			if (gapOwners.JoinedBoundaries?.Contains(boundary) == true)
+				return false;
+
+			bool written = !gathered.Contains(boundary) && BlankLineGaps.HasBlankLineBetween(siblings[boundary - 1], siblings[boundary]);
+
+			return written
 				|| standing.Contains(boundary)
 				|| BlankLineGrouping.IsGapKeptBlank(siblings, boundary, gapOwners, cancellationToken)
 				|| BlankLineGaps.HasDirectiveBefore(siblings[boundary]);

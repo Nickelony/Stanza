@@ -66,6 +66,8 @@ internal static partial class RoslynTestHarness
 			new SeparateAwaitRunsAnalyzer(),
 			new SeparateEventSubscriptionRunsAnalyzer(),
 			new SeparateAssignmentRunsAnalyzer(),
+			new SeparateYieldRunsAnalyzer(),
+			new SeparateLocalFunctionRunsAnalyzer(),
 		];
 
 		return new RunOptions(analyzers)

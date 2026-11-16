@@ -25,7 +25,7 @@ show(title)
 
 - The type of a declaration is its annotation, compared by syntax, so `dict[str, int]` and `dict[str,int]` match.
 - An assignment to names with no annotation, such as `limit = 3` or `a, b = 1, 2`, has no written type.
-  Two of them always match, as two `var` declarations do in C#.
+  Two of them match, as two `var` declarations do in C#, unless `declaration-shapes` is `split` and one of them unpacks.
 - A `global`, `nonlocal` or `type` statement and an assignment to an attribute or an item declare no type and join no run.
 - A declaration with no neighbor of its type forms no run of its own,
   so it gets a blank line only where a neighboring run begins or ends.

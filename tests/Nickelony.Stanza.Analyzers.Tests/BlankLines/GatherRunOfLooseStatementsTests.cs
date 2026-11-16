@@ -1216,6 +1216,137 @@ public sealed partial class GatherRunOfLooseStatementsTests
 		);
 	}
 
+	// The rule of a kind of run that is on keeps the gaps around its runs, and with it off the kind is no run to keep.
+	[TestMethod]
+	[DataRow(true)]
+	[DataRow(false)]
+	public async Task AGatheredRunKeepsTheGapsAroundARunOfYieldsWhereTheYieldRuleIsOn(bool on)
+	{
+		const string source = """
+			class C
+			{
+				System.Collections.Generic.IEnumerable<int> M()
+				{
+					DoThing();
+
+					yield return 1;
+
+					yield return 2;
+
+					DoThing();
+				}
+			}
+			""";
+
+		const string keptSource = """
+			class C
+			{
+				System.Collections.Generic.IEnumerable<int> M()
+				{
+					DoThing();
+
+					yield return 1;
+					yield return 2;
+
+					DoThing();
+				}
+			}
+			""";
+
+		const string gatheredSource = """
+			class C
+			{
+				System.Collections.Generic.IEnumerable<int> M()
+				{
+					DoThing();
+					yield return 1;
+					yield return 2;
+					DoThing();
+				}
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			diagnosticOptions: on
+				? TestRuleSets.Only(
+					DiagnosticDescriptors.GatherRunOfLooseStatements,
+					DiagnosticDescriptors.SeparateYieldRuns
+				)
+				: TestRuleSets.Only(DiagnosticDescriptors.GatherRunOfLooseStatements),
+
+			analyzerConfigOptions: new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		RoslynTestHarness.AssertFixedText(on ? keptSource : gatheredSource, result);
+	}
+
+	[TestMethod]
+	[DataRow(true)]
+	[DataRow(false)]
+	public async Task AGatheredRunKeepsTheGapsAroundARunOfLocalFunctionsWhereTheirRuleIsOn(bool on)
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					DoThing();
+
+					int Twice(int value) => value * 2;
+
+					int Thrice(int value) => value * 3;
+
+					DoThing();
+				}
+			}
+			""";
+
+		const string keptSource = """
+			class C
+			{
+				void M()
+				{
+					DoThing();
+
+					int Twice(int value) => value * 2;
+					int Thrice(int value) => value * 3;
+
+					DoThing();
+				}
+			}
+			""";
+
+		const string gatheredSource = """
+			class C
+			{
+				void M()
+				{
+					DoThing();
+					int Twice(int value) => value * 2;
+					int Thrice(int value) => value * 3;
+					DoThing();
+				}
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+
+			diagnosticOptions: on
+				? TestRuleSets.Only(
+					DiagnosticDescriptors.GatherRunOfLooseStatements,
+					DiagnosticDescriptors.SeparateLocalFunctionRuns
+				)
+				: TestRuleSets.Only(DiagnosticDescriptors.GatherRunOfLooseStatements),
+
+			analyzerConfigOptions: new Dictionary<string, string> { [LimitKey] = "1" }
+		);
+
+		RoslynTestHarness.AssertFixedText(on ? keptSource : gatheredSource, result);
+	}
+
 	// A conditional statement gives each view runs of its own, so gathering for one view would fight ZA0002 in the other.
 	[TestMethod]
 	[DataRow("")]

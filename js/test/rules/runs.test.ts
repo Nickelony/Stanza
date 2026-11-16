@@ -3,7 +3,8 @@ import assignmentRuns from '../../src/rules/separate-assignment-runs.ts';
 import awaitRuns from '../../src/rules/separate-await-runs.ts';
 import declarationRuns from '../../src/rules/separate-declaration-runs.ts';
 import invocationRuns from '../../src/rules/separate-invocation-runs.ts';
-import { createRuleTester, lines } from '../helpers.ts';
+import yieldRuns from '../../src/rules/separate-yield-runs.ts';
+import { createRuleTester, crlf, lines } from '../helpers.ts';
 
 const tester = createRuleTester();
 
@@ -177,6 +178,76 @@ tester.run('separate-await-runs', awaitRuns as never, {
 			code: lines('start();', 'await a;', 'await b;', 'stop();'),
 			output: lines('start();', '', 'await a;', 'await b;', '', 'stop();'),
 			errors: 2,
+		},
+	],
+});
+
+tester.run('separate-yield-runs', yieldRuns as never, {
+	valid: [
+		{ code: lines('function* f() {', '  start();', '  yield a;', '  stop();', '}'), name: 'a lone yield stays tight' },
+		{ code: lines('function* f() {', '  start();', '', '  yield a;', '  yield b;', '', '  stop();', '}'), name: 'a run set apart stays' },
+
+		{
+			code: lines('function* f() {', '  const a = yield load();', '  const b = yield read(a);', '  log(b);', '}'),
+			name: 'a declaration that yields is no yield statement',
+		},
+
+		{
+			code: lines('function* f() {', '  a = yield load();', '  b = yield read(a);', '  log(b);', '}'),
+			name: 'an assignment that yields is no yield statement',
+		},
+
+		{
+			code: lines('function* f() {', '  yield a;', '', '  yield* b;', '  yield c;', '}'),
+			name: 'a blank line inside the run is no concern of this rule',
+		},
+
+		{
+			code: lines('async function f() {', '  start();', '  await a();', '  await b();', '  stop();', '}'),
+			name: 'await statements are no yield statements',
+		},
+	],
+
+	invalid: [
+		{
+			code: lines('function* f() {', '  start();', '  yield a;', '  yield b;', '  stop();', '}'),
+			output: lines('function* f() {', '  start();', '', '  yield a;', '  yield b;', '', '  stop();', '}'),
+			errors: 2,
+		},
+
+		{
+			code: lines('function* f() {', '  start();', '  yield* a;', '  yield b;', '  yield* c;', '}'),
+			output: lines('function* f() {', '  start();', '', '  yield* a;', '  yield b;', '  yield* c;', '}'),
+			errors: 1,
+			name: 'yield* joins the run of yield',
+		},
+
+		{
+			code: lines('function* f() {', '  start();', '  yield call(a);', '  yield call(b);', '  stop();', '}'),
+			output: lines('function* f() {', '  start();', '', '  yield call(a);', '  yield call(b);', '', '  stop();', '}'),
+			errors: 2,
+			name: 'a yielded call is a yield statement whatever it calls',
+		},
+
+		{
+			code: lines('function* f() {', '  start();', '  yield;', '  yield;', '}'),
+			output: lines('function* f() {', '  start();', '', '  yield;', '  yield;', '}'),
+			errors: 1,
+			name: 'a bare yield counts',
+		},
+
+		{
+			code: lines('class A {', '  *items() {', '    start();', '    yield a;', '    yield b;', '  }', '}'),
+			output: lines('class A {', '  *items() {', '    start();', '', '    yield a;', '    yield b;', '  }', '}'),
+			errors: 1,
+			name: 'a generator method',
+		},
+
+		{
+			code: crlf(lines('function* f() {', '  start();', '  yield a;', '  yield b;', '  stop();', '}')),
+			output: crlf(lines('function* f() {', '  start();', '', '  yield a;', '  yield b;', '', '  stop();', '}')),
+			errors: 2,
+			name: 'a CRLF file keeps its line ending',
 		},
 	],
 });

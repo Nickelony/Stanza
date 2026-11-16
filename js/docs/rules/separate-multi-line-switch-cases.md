@@ -28,7 +28,8 @@ switch (state) {
 
 - Two single-line cases stay as written, and [`keep-single-line-switch-cases-together`](keep-single-line-switch-cases-together.md) judges them.
 - A comment directly above a case moves with it, so the blank line goes above the comment.
-- An empty `case` that falls through to the next one stays with it, so a list of labels stays one stanza.
+- An empty `case` that falls through to the next one stays with it, so a list of labels stays one stanza,
+  and [`keep-stacked-case-labels-together`](keep-stacked-case-labels-together.md) removes a blank line between two of the labels.
 - The rule is the separating half of the pair with [`keep-multi-line-switch-cases-together`](keep-multi-line-switch-cases-together.md).
   While the tight half is enabled it owns the gaps it judges, and this rule asks for none of them.
 - Leave the rule disabled to keep the cases tight, and enable the tight half to remove the blank lines that stand.

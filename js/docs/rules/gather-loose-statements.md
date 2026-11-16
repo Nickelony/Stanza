@@ -22,7 +22,7 @@ const label = name(total);
 ```
 
 - A loose run is a chain of single-line statements that only a blank line separates and no other rule asks to separate.
-  The rule reports every blank line of a run past the limit, and the fix removes the blank lines of the whole run.
+  The rule reports every blank line of a run past the limit, and the fix of the first report removes the blank lines of the whole run.
 - A multi-line statement, a comment, a trailing comment, an import, a directive, a shebang or a gap with no blank line ends a run.
 - A statement that sits tight against its other neighbor stays out of the run, so the blank line that sets that group apart stays.
   A neighbor that a rule asks to set apart, as `separate-multi-line-constructs` does beside a multi-line statement, is not tight.
@@ -32,7 +32,6 @@ const label = name(total);
 - Where [`separate-jump-statements`](separate-jump-statements.md) is enabled, the blank line above a jump stays when the stanza above it spans two lines once the run is gathered.
   The jump then ends the run, and a run that holds no more statements than the limit is left as written.
 - A jump below a single line joins the run, because `separate-jump-statements` asks for nothing there.
-- The fix of any gap removes the blank lines of its whole run, so every fix order gathers the run alike.
 - The rule judges the statements of a block, a switch case, a static block, a module block and a file.
   The members of a class, an interface and a type literal belong to [`gather-loose-members`](gather-loose-members.md).
 - A container of two statements belongs to [`keep-two-units-together`](keep-two-units-together.md), and the elements of a list keep their blank lines.

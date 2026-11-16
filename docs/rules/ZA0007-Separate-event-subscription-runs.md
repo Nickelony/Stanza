@@ -39,5 +39,5 @@ Start();
 - Where both rules are on, this rule owns the gap at each end of its run, and `ZA0008` leaves it.
   So `count = 1;` above `Saved += OnSaved;` and `Closed += OnClosed;` gets a blank line below the assignment.
 - Where this rule is off, `ZA0008` reads the subscriptions as assignments,
-  and under its default `mixed` it sets that whole run apart from its neighbors.
+  and under its default `merge` it sets that whole run apart from its neighbors.
 - [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) removes the blank lines inside a run of event subscriptions where it is on.

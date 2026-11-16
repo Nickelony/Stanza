@@ -3,7 +3,7 @@ import type { TSESTree } from '@typescript-eslint/utils';
 type Node = TSESTree.Node;
 
 /** Strips the wrappers that change a type or a chain but not what a statement does. */
-function unwrapExpression(node: Node): Node {
+export function unwrapExpression(node: Node): Node {
 	let current = node;
 
 	while (
@@ -101,6 +101,11 @@ export function readStatementCall(statement: Node): StatementCall | 'await' | un
 	return names === undefined ? (isAwaited ? 'await' : undefined) : { names, isAwaited };
 }
 
+/** Tells whether a statement is a yield statement: `yield value;`, `yield* values;` or a bare `yield;`. */
+export function isYieldStatement(node: Node): boolean {
+	return node.type === 'ExpressionStatement' && unwrapExpression(node.expression).type === 'YieldExpression';
+}
+
 /** Tells whether a statement is a call, awaited or not, through a chain that starts at `super`, such as `super(a)` and `super.load()`. */
 export function isSuperCall(node: Node | undefined): boolean {
 	const call = node === undefined ? undefined : readStatementCall(node);
@@ -167,4 +172,67 @@ export function unwrapExport(node: Node): Node {
 	}
 
 	return node;
+}
+
+/** Reads the owner path of a direct call or, when requested, a member write. */
+export function readDirectReceiver(statement: Node, includeWrites = false): readonly string[] | undefined {
+	if (statement.type !== 'ExpressionStatement') {
+		return undefined;
+	}
+
+	let expression = unwrapExpression(statement.expression);
+
+	if (expression.type === 'AwaitExpression') {
+		expression = unwrapExpression(expression.argument);
+	}
+
+	let target: Node;
+
+	if (expression.type === 'CallExpression' && !expression.optional) {
+		target = unwrapExpression(expression.callee);
+	} else if (includeWrites && expression.type === 'AssignmentExpression') {
+		target = unwrapExpression(expression.left);
+	} else if (includeWrites && expression.type === 'UpdateExpression') {
+		target = unwrapExpression(expression.argument);
+	} else {
+		return undefined;
+	}
+
+	if (target.type !== 'MemberExpression' || target.computed || target.optional) {
+		return undefined;
+	}
+
+	let receiver: Node = target.object;
+	const names: string[] = [];
+
+	for (;;) {
+		receiver = unwrapExpression(receiver);
+
+		if (receiver.type !== 'MemberExpression') {
+			break;
+		}
+
+		if (receiver.computed || receiver.optional) {
+			return undefined;
+		}
+
+		const name = readKeyName(receiver.property, false);
+
+		if (name === undefined) {
+			return undefined;
+		}
+
+		names.push(name);
+		receiver = receiver.object;
+	}
+
+	if (receiver.type === 'Identifier') {
+		names.push(receiver.name);
+	} else if (receiver.type === 'ThisExpression' || receiver.type === 'Super') {
+		names.push(receiver.type === 'ThisExpression' ? 'this' : 'super');
+	} else {
+		return undefined;
+	}
+
+	return names.reverse();
 }

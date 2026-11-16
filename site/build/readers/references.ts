@@ -1,7 +1,19 @@
-import type { RulePair } from '../../src/state/model.ts';
+import type { Rule, RulePair, SourceSnippet } from '../../src/state/model.ts';
 import { findTables } from '../render/markdown.ts';
 
 import { ExtractionError, normalize, withFile } from './source.ts';
+
+/** Records pair membership independently of how a native tool replaces preset rules. */
+export function markOpposites(rules: Rule<SourceSnippet>[], pairs: RulePair[]): void {
+	for (const pair of pairs) {
+		for (const [id, opposite] of [
+			[pair.first, pair.second],
+			[pair.second, pair.first],
+		] as const) {
+			rules.find((rule) => rule.id === id)!.opposite = opposite;
+		}
+	}
+}
 
 /** The line range under the `## <heading>` line of a page, up to the next `##` heading, or fails when the page has none. */
 function sectionOf(file: string, lines: readonly string[], heading: string): { from: number; to: number } {

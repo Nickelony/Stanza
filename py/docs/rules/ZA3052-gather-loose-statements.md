@@ -27,6 +27,8 @@ limit = 3
   A statement tight against a neighbor that a rule asks to set apart, as [`ZA3001`](ZA3001-separate-multi-line-constructs.md) does beside a multi-line statement, still joins.
 - The rule never removes a blank line that another rule would write back.
   A gap that an enabled separating rule asks for ends a run, and a run that then holds no more than the limit is left as written.
+- A gap that a relationship keeper joins, such as the one [`ZA3058`](ZA3058-keep-guard-with-binding.md) removes above a guard,
+  reads as tight, so the statements beside it are no part of a run.
 - A jump statement, an import, a function and a class are no part of a run.
   The gap above a jump stays blank, and the gap that [`ZA3015`](ZA3015-separate-import-section.md) asks for below the imports stays too.
 - The rule judges the statements of a module, a function and a block.

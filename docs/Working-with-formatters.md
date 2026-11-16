@@ -90,9 +90,10 @@ var handlers = new IHandler[]
 ## Layout that agrees with CSharpier
 
 - **[Tight rules](https://github.com/Nickelony/Stanza/wiki/Terms) of a list**: they agree with CSharpier, so they can be [enabled](https://github.com/Nickelony/Stanza/wiki/Terms) without their separating rules.
-- **Switch sections, switch expression arms, object initializer members, region markers, conditional blocks and jump statements**:
+- **Switch sections, switch expression arms, object initializer members, region markers, conditional blocks, suppression blocks and jump statements**:
   CSharpier keeps the blank lines the separating rules write.
 - **Brace padding and empty blocks**: CSharpier already writes what these rules ask for.
+- **Switch label padding** ([`ZA0207`](https://github.com/Nickelony/Stanza/wiki/ZA0207-Remove-switch-label-padding)): CSharpier keeps a blank line below a label as written, so it leaves the removal in place.
 - **The trailing comma** ([`ZA0198`](https://github.com/Nickelony/Stanza/wiki/ZA0198-Add-a-trailing-comma)):
   CSharpier writes the comma after the last element of every list it breaks across lines, apart from a property pattern, which it keeps as written,
   and drops it from a list it joins on one line.

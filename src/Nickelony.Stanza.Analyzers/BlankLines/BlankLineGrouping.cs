@@ -22,6 +22,8 @@ internal static class BlankLineGrouping
 		Await,
 		Subscription,
 		Assignment,
+		Yield,
+		LocalFunction,
 	}
 
 	/// <summary>How the key of a rule reads the gap between two siblings, whatever blank line stands there.</summary>
@@ -60,6 +62,12 @@ internal static class BlankLineGrouping
 
 	/// <summary>The key name of a deconstruction of several kinds, which no run continues through.</summary>
 	private const string SeveralTargets = nameof(AssignmentKind.Several);
+
+	/// <summary>The key name of a deconstruction declaration, which the shapes option splits off.</summary>
+	private const string DeconstructionDeclaration = "deconstruction";
+
+	/// <summary>The key name of a <c>static</c> local function, which the modifiers option splits off.</summary>
+	private const string StaticLocalFunction = "static";
 
 	/// <summary>A border of a repeated run: its boundary, and the run's start and its end, one past the last.</summary>
 	/// <remarks>
@@ -218,20 +226,30 @@ internal static class BlankLineGrouping
 
 			RunFamily? family = (mode & WalkMode.TagsFamily) != 0 ? FindFamily(run.Kind) : null;
 
+			// A declaration a keeper joins to the unit above it belongs to that kept group, so it is no lone one.
 			bool followsLoneDeclaration =
 				(mode & WalkMode.LoneVariableBoundary) != 0
 				&& !run.ContinuesAbove
 				&& run.Start >= 2
-				&& IsVariableLikeDeclaration(siblings[run.Start - 1]);
+				&& IsVariableLikeDeclaration(siblings[run.Start - 1])
+				&& !gapOwners.IsJoined(run.Start - 1);
 
 			// A declaration on its own is set apart only while it stands directly above the run.
-			// A caller that gathers some gaps keeps that boundary once a blank line stands below the declaration too,
-			// since the rule writes that blank line and a fix order that wrote it first would otherwise judge the gap alone.
-			// With no gap gathered the text is read as it stands, so a blank line below the declaration keeps the boundary from being asked.
-			if (
+			// A blank line below it that a gathering caller writes, or that another rule keeps, as ZA0001 does above a kept group,
+			// keeps the boundary asked, or the fix order that writes that blank line first would choose the text.
+			// Any other blank line below the declaration is read as it stands and keeps the boundary from being asked.
+			bool readsGapBelowOpen =
 				followsLoneDeclaration
+				&& (
+					gathered is { Boundaries.IsEmpty: false }
+					|| gapOwners.IsJoined(run.Start)
+					|| !HasBlankLineBefore(siblings, run.Start, gathered: null)
+					|| IsGapKeptBlank(siblings, boundary: run.Start, gapOwners, cancellationToken)
+				);
+
+			if (
+				readsGapBelowOpen
 				&& !IsRepeatedAboveLoneDeclaration(runs, index, keys, siblings, gapOwners, gathered, cancellationToken)
-				&& (gathered is { Boundaries.IsEmpty: false } || !HasBlankLineBefore(siblings, run.Start, gathered: null))
 				&& !IsCommentedSiblingGap(siblings, boundary: run.Start, commentedSiblingOwnerId: gapOwners.CommentedSiblingId, cancellationToken)
 			)
 			{
@@ -314,13 +332,26 @@ internal static class BlankLineGrouping
 	}
 
 	/// <summary>Whether an owning rule keeps the gap blank, so a run ends there.</summary>
+	/// <remarks>
+	/// A gap a keeper joins is kept by none, whatever neighbors it has.
+	/// </remarks>
 	public static bool IsGapKeptBlank(ImmutableArray<SyntaxNode> siblings, int boundary, GapOwners gapOwners, CancellationToken cancellationToken)
 	{
+		if (gapOwners.IsJoined(boundary))
+			return false;
+
 		return gapOwners.Owns(boundary)
 			|| IsMultiLineGap(siblings, boundary, multiLineGapOwnerId: gapOwners.MultiLineId, cancellationToken)
-			|| BlankLineDirectives.IsRegionMarkerGap(siblings[boundary], gapOwners.RegionMarkerId, cancellationToken)
-			|| BlankLineDirectives.IsConditionalBlockGap(siblings[boundary], gapOwners.ConditionalBlockId, cancellationToken)
+			|| IsDirectiveGapKept(siblings[boundary], gapOwners, cancellationToken)
 			|| IsCommentedSiblingGap(siblings, boundary, commentedSiblingOwnerId: gapOwners.CommentedSiblingId, cancellationToken);
+	}
+
+	/// <summary>Whether a rule of a directive beside the unit keeps the gap blank.</summary>
+	private static bool IsDirectiveGapKept(SyntaxNode next, GapOwners gapOwners, CancellationToken cancellationToken)
+	{
+		return BlankLineDirectives.IsRegionMarkerGap(next, gapOwners.RegionMarkerId, cancellationToken)
+			|| BlankLineDirectives.IsConditionalBlockGap(next, gapOwners.ConditionalBlockId, cancellationToken)
+			|| BlankLineDirectives.IsSuppressionBlockGap(next, gapOwners.SuppressionBlockId, cancellationToken);
 	}
 
 	private static ImmutableArray<Run> WalkRuns(
@@ -399,13 +430,20 @@ internal static class BlankLineGrouping
 	}
 
 	/// <summary>Whether no blank line stands above the sibling at the boundary and no rule keeps one there.</summary>
+	/// <remarks>
+	/// A gap a keeper joins reads open, so a run reads the same before and after the keeper's fix.
+	/// </remarks>
 	private static bool IsOpenGap(
 		ImmutableArray<SyntaxNode> siblings,
 		int boundary,
 		GapOwners gapOwners,
 		GatheredStretch? gathered,
 		CancellationToken cancellationToken
-	) => !HasBlankLineBefore(siblings, boundary, gathered) && !IsGapKeptBlank(siblings, boundary, gapOwners, cancellationToken);
+	)
+	{
+		return gapOwners.IsJoined(boundary)
+			|| (!HasBlankLineBefore(siblings, boundary, gathered) && !IsGapKeptBlank(siblings, boundary, gapOwners, cancellationToken));
+	}
 
 	/// <summary>Reads the gap by the keys of the declaration, call, assertion, await and assignment runs.</summary>
 	/// <remarks>
@@ -554,8 +592,19 @@ internal static class BlankLineGrouping
 			return IsOpenGap(siblings, boundary: candidate, gapOwners, gathered: read, cancellationToken)
 				&& (
 					ContinuesRun(
-						GetDeclarationRunKey(siblings[candidate - 1], options, gapOwners.AwaitRuleEnabled),
-						GetDeclarationRunKey(siblings[candidate], options, gapOwners.AwaitRuleEnabled)
+						GetDeclarationRunKey(
+							node: siblings[candidate - 1],
+							options,
+							gapOwners,
+							readsReceiver: gapOwners.ReadsReceiverAt?.Invoke(siblings[candidate - 1].SpanStart) == true
+						),
+
+						GetDeclarationRunKey(
+							node: siblings[candidate],
+							options,
+							gapOwners,
+							readsReceiver: gapOwners.ReadsReceiverAt?.Invoke(siblings[candidate].SpanStart) == true
+						)
 					)
 					|| ContinuesRun(GetTypeKey(siblings[candidate - 1]), GetTypeKey(siblings[candidate]))
 					|| ContinuesRun(GetMemberGroupKey(siblings[candidate - 1]), GetMemberGroupKey(siblings[candidate]))
@@ -601,27 +650,49 @@ internal static class BlankLineGrouping
 		StanzaOptions options,
 		GapOwners gapOwners,
 		Func<SyntaxNode, AssignmentTarget>? readTarget
-	) => node => GetSplitRunKey(node, options, awaitRuleEnabled: gapOwners.AwaitRuleEnabled, readTarget);
+	)
+	{
+		return node =>
+			GetSplitRunKey(
+				node,
+				options,
+				gapOwners,
+				readTarget,
+				readsReceiver: gapOwners.ReadsReceiverAt?.Invoke(node.SpanStart) == true
+			);
+	}
 
 	/// <summary>Builds the reader of the keys that form the runs of subscriptions.</summary>
 	private static Func<SyntaxNode, RunKey> BuildSubscriptionKeyReader(
 		StanzaOptions options,
 		GapOwners gapOwners,
 		Func<SyntaxNode, bool> isSubscription
-	) => node => isSubscription(node) ? new RunKey(RunKind.Subscription) : GetDeclarationRunKey(node, options, gapOwners.AwaitRuleEnabled);
+	)
+	{
+		return node =>
+			isSubscription(node)
+				? new RunKey(RunKind.Subscription)
+				: GetDeclarationRunKey(
+					node,
+					options,
+					gapOwners,
+					readsReceiver: gapOwners.ReadsReceiverAt?.Invoke(node.SpanStart) == true
+				);
+	}
 
 	/// <summary>Reads the run kind of a statement, where a target reader names what an assignment writes.</summary>
 	/// <remarks>
-	/// Without a reader every assignment is one kind, as the setting <c>mixed</c> asks.
+	/// Without a reader every assignment is one kind, as the setting <c>merge</c> asks.
 	/// </remarks>
 	private static RunKey GetSplitRunKey(
 		SyntaxNode node,
 		StanzaOptions options,
-		bool awaitRuleEnabled,
-		Func<SyntaxNode, AssignmentTarget>? readTarget
+		GapOwners gapOwners,
+		Func<SyntaxNode, AssignmentTarget>? readTarget,
+		bool readsReceiver
 	)
 	{
-		RunKey key = GetDeclarationRunKey(node, options, awaitRuleEnabled);
+		RunKey key = GetDeclarationRunKey(node, options, gapOwners, readsReceiver);
 
 		if (key.Kind != RunKind.Assignment || readTarget is null)
 			return key;
@@ -643,26 +714,60 @@ internal static class BlankLineGrouping
 		};
 	}
 
-	/// <summary>Reads the run kind of a statement, where an await is a kind of its own while ZA0006 is on.</summary>
-	private static RunKey GetDeclarationRunKey(SyntaxNode node, StanzaOptions options, bool awaitRuleEnabled)
+	/// <summary>Reads the run kind of a statement, including the await, yield and local function kinds.</summary>
+	private static RunKey GetDeclarationRunKey(SyntaxNode node, StanzaOptions options, GapOwners gapOwners, bool readsReceiver = true)
 	{
 		RunKey variableKey = GetVariableLikeKey(node);
 
 		if (variableKey.Kind != RunKind.None)
-			return variableKey;
+		{
+			// Where typing is merged, a declaration with a type written joins a run of `var` ones.
+			if (!options.SplitsDeclarationTyping && variableKey.Kind == RunKind.ExplicitDeclaration)
+				variableKey = new RunKey(RunKind.Variable);
+
+			return options.SplitsDeclarationShapes && node is ExpressionStatementSyntax
+				? variableKey with { Name = DeconstructionDeclaration }
+				: variableKey;
+		}
+
+		if (gapOwners.YieldRuleEnabled && node.IsKind(SyntaxKind.YieldReturnStatement))
+			return new RunKey(RunKind.Yield);
+
+		if (gapOwners.LocalFunctionRuleEnabled && node is LocalFunctionStatementSyntax localFunction)
+			return ReadLocalFunctionKey(localFunction, options);
 
 		if (node is not ExpressionStatementSyntax expressionStatement)
 			return default;
 
-		RunKey expressionKey = GetExpressionRunKey(expressionStatement.Expression, options);
+		RunKey expressionKey = GetExpressionRunKey(
+			expressionStatement.Expression,
+			options,
+			readsReceiver && !BlankLineGuards.IsGuard(node, options) && !BlankLineReceiverCalls.IsJoinedStatement(node)
+		);
 
 		// An awaited assertion stays an assertion, since checking a result is the more specific intent.
-		return awaitRuleEnabled && expressionKey.Kind != RunKind.Assertion && BlankLineExpressions.IsAwaitStatement(expressionStatement.Expression)
+		return
+			gapOwners.AwaitRuleEnabled
+			&& expressionKey.Kind is not (RunKind.Assertion or RunKind.ReceiverCall)
+			&& BlankLineExpressions.IsAwaitStatement(expressionStatement.Expression)
 			? new RunKey(RunKind.Await)
 			: expressionKey;
 	}
 
-	private static RunKey GetExpressionRunKey(ExpressionSyntax expression, StanzaOptions options)
+	/// <summary>Reads the key of a local function, which only a single-line one has.</summary>
+	/// <remarks>
+	/// A multi-line local function has no kind, since ZA0001 owns the gaps around it.
+	/// </remarks>
+	private static RunKey ReadLocalFunctionKey(LocalFunctionStatementSyntax localFunction, StanzaOptions options)
+	{
+		if (StanzaSyntax.IsMultiLine(localFunction))
+			return default;
+
+		bool splitsStatic = options.SplitsLocalFunctionModifiers && localFunction.Modifiers.Any(SyntaxKind.StaticKeyword);
+		return new RunKey(RunKind.LocalFunction, Name: splitsStatic ? StaticLocalFunction : null);
+	}
+
+	private static RunKey GetExpressionRunKey(ExpressionSyntax expression, StanzaOptions options, bool readsReceiver)
 	{
 		if (BlankLineExpressions.FindInvocation(expression) is not { } invocation)
 			return BlankLineExpressions.FindAssignment(expression) is not null ? new RunKey(RunKind.Assignment) : default;
@@ -677,7 +782,27 @@ internal static class BlankLineGrouping
 
 		string? receiverName = BlankLineExpressions.FindRoot(rootInvocation.Expression, options.AssertionRoots);
 
-		return receiverName is null ? new RunKey(RunKind.Call, Name: rootName) : new RunKey(RunKind.Assertion, Name: receiverName);
+		if (receiverName is not null)
+			return new RunKey(RunKind.Assertion, Name: receiverName);
+
+		return
+			readsReceiver
+			&& !StanzaSyntax.IsMultiLine(expression)
+			&& BlankLineReceiverCalls.FindConfiguredReceiver(expression, options) is { } receiver
+			? new RunKey(RunKind.ReceiverCall, Name: receiver)
+			: new RunKey(RunKind.Call, Name: rootName);
+	}
+
+	public static bool IsReceiverCall(SyntaxNode node, StanzaOptions options, bool readsReceiver) =>
+		readsReceiver && GetDeclarationRunKey(node, options, gapOwners: default, readsReceiver).Kind == RunKind.ReceiverCall;
+
+	/// <summary>Whether two statements belong to one explicitly configured receiver run.</summary>
+	public static bool IsReceiverPair(SyntaxNode previous, SyntaxNode next, StanzaOptions options)
+	{
+		RunKey first = GetDeclarationRunKey(previous, options, gapOwners: default);
+		RunKey second = GetDeclarationRunKey(next, options, gapOwners: default);
+
+		return first.Kind == RunKind.ReceiverCall && ContinuesRun(first, second);
 	}
 
 	/// <summary>Finds the family that owns a run of this kind, or none for a kind of member or type.</summary>
@@ -686,11 +811,13 @@ internal static class BlankLineGrouping
 		return kind switch
 		{
 			RunKind.Constant or RunKind.Variable or RunKind.ExplicitDeclaration or RunKind.UsingDeclaration => RunFamily.Declaration,
-			RunKind.Call => RunFamily.Invocation,
+			RunKind.Call or RunKind.ReceiverCall => RunFamily.Invocation,
 			RunKind.Assertion => RunFamily.Assertion,
 			RunKind.Await => RunFamily.Await,
 			RunKind.Subscription => RunFamily.Subscription,
 			RunKind.Assignment => RunFamily.Assignment,
+			RunKind.Yield => RunFamily.Yield,
+			RunKind.LocalFunction => RunFamily.LocalFunction,
 			_ => null,
 		};
 	}
@@ -959,10 +1086,13 @@ internal static class BlankLineGrouping
 		TypeDeclaration,
 		Namespace,
 		Call,
+		ReceiverCall,
 		Assertion,
 		Await,
 		Subscription,
 		Assignment,
+		Yield,
+		LocalFunction,
 	}
 
 	private static readonly WeakCache<SyntaxNode, Dictionary<(SyntaxKind Kind, string Name, int Arity), string>> s_partAccesses = new();

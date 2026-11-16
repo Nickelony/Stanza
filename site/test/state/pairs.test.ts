@@ -74,8 +74,8 @@ describe('the table the page writes for a pair', () => {
 		);
 	});
 
-	it('writes no line for the replaced half, and disable for a default half the visitor turns off', () => {
-		expect(written({ rules: { ZA3112: 'error', ZA3111: 'none' } })).toBe('[tool.stanza]\nenable = ["ZA3112"]\n');
+	it('preserves an explicit disable alongside the opposite, and leaves an implicit replaced half alone', () => {
+		expect(written({ rules: { ZA3112: 'error', ZA3111: 'none' } })).toBe('[tool.stanza]\nenable = ["ZA3112"]\ndisable = ["ZA3111"]\n');
 		expect(written({ rules: { ZA3111: 'none' } })).toBe('[tool.stanza]\ndisable = ["ZA3111"]\n');
 		expect(written({ rules: { ZA3112: 'none' } })).toBe('[tool.stanza]\n');
 	});

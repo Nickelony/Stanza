@@ -39,6 +39,12 @@ class Rule:
     # What the rule does at a gap it owns: write a blank line, or remove one.
     role: Role = "separate"
 
+    # A kept pair projects a separating claim above its group when that edge is free.
+    transfers_separation: bool = False
+
+    # A finding removes every eligible blank gap of its contiguous owned component.
+    removes_group: bool = False
+
     # The family of runs the rule groups, so a statement is read as a member of that run only while the rule is enabled.
     family: Family | None = None
 

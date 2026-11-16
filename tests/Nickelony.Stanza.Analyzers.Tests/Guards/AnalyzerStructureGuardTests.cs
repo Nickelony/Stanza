@@ -229,8 +229,20 @@ public sealed partial class AnalyzerStructureGuardTests
 
 		// The subscription reader serves ZA0007, and the target reader serves ZA0008 where its setting is `split`;
 		// both hold their answers in StatementReads, which only they use.
+		// The accumulator reader binds a ZA0059 seed and the bindings its loop builds,
+		// and the kept pairs bind the names a guard, a jump or an assertion reads.
 		Assert.AreSequenceEqual(
-			["BlankLineAssignmentTargets.cs", "BlankLineSubscriptions.cs", "StatementReads.cs"],
+			[
+				"BlankLineAccumulators.cs",
+				"BlankLineAssignmentTargets.cs",
+				"BlankLineCheckedStanzas.cs",
+				"BlankLineDependentBindings.cs",
+				"BlankLineKeptPairs.cs",
+				"BlankLineReceiverGroups.cs",
+				"BlankLineSubscriptions.cs",
+				"StatementReads.cs",
+			],
+
 			binding
 		);
 	}

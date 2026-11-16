@@ -1,7 +1,9 @@
 import type { Family } from './classify.ts';
-import { isJudgedJump, readAskingJumps } from './jumps.ts';
+import { isJudgedJump, readJumpAsks } from './jumps.ts';
 import { memberKinds, statementKinds } from './kinds.ts';
+import { isReceiverEdge } from './receivers.ts';
 import type { AddRuleName } from './ruleNames.ts';
+import { isSectionBoundary } from './sections.ts';
 import type { RemovalContext } from './session.ts';
 import { isDirective, isImport } from './syntax.ts';
 import type { Container, ContainerKind, Unit } from './types.ts';
@@ -17,6 +19,7 @@ const runRules: Partial<Record<Family, AddRuleName>> = {
 	invocation: 'separate-invocation-runs',
 	assertion: 'separate-assertion-runs',
 	await: 'separate-await-runs',
+	yield: 'separate-yield-runs',
 	assignment: 'separate-assignment-runs',
 	member: 'separate-member-groups',
 	modifier: 'separate-modifier-groups',
@@ -41,13 +44,29 @@ function isLooseGap(container: Container, gapIndex: number, context: RemovalCont
 		return false;
 	}
 
-	return !context.isClaimed(gapIndex);
+	// A kept gap reads as tight already, since its keeper removes the blank line whatever order the fixes run in.
+	return (
+		!context.isKept(gapIndex) &&
+		!context.isClaimed(gapIndex) &&
+		!isReceiverEdge(container, gapIndex, context.environment, context.receiverGroupsOf) &&
+		!context.protectedSectionsOf(container).has(gapIndex)
+	);
 }
 
-/** Tells whether a gap holds no blank line and no rule asks for one, so the unit below it is tight against the unit above. */
+/** Tells whether a gap holds no blank line, or one a keeper removes, and no rule asks for one, so the unit below it is tight against the unit above. */
 function isTightGap(container: Container, gapIndex: number, context: RemovalContext): boolean {
 	const gap = container.gaps[gapIndex];
-	return gap !== undefined && !gap.isBlank && (gap.isJoined || !context.isClaimed(gapIndex));
+
+	if (gap === undefined) {
+		return false;
+	}
+
+	return (
+		context.isKept(gapIndex) ||
+		(!gap.isBlank &&
+			!isReceiverEdge(container, gapIndex, context.environment, context.receiverGroupsOf) &&
+			(gap.isJoined || !context.isClaimed(gapIndex)))
+	);
 }
 
 /**
@@ -69,14 +88,10 @@ function settleJumpGaps(
 			return groups;
 		}
 
-		const gathered = new Set(groups.flat());
-
-		const asks = readAskingJumps(
-			container,
-			(index) => (container.gaps[index]?.isBlank === true && !gathered.has(index)) || context.isClaimed(index),
-			gathered,
-		);
-
+		// A blank line a keep rule removes goes in the same pass, so it counts as gathered too.
+		const kept = container.gaps.flatMap((gap, index) => (gap.isBlank && context.isKept(index) ? [index] : []));
+		const gathered = new Set([...groups.flat(), ...kept]);
+		const asks = readJumpAsks(container, (index) => gathered.has(index), context.isClaimed);
 		const staying = [...gathered].filter((gapIndex) => isJudgedJump(container, gapIndex) && asks[gapIndex + 1] === true);
 
 		if (staying.length === 0) {
@@ -155,51 +170,67 @@ function isTightInRun(container: Container, span: RunSpan, gapIndex: number, con
 
 /** Tells whether the blank line of a gap sets two sections apart, a section being the tight units of one run and a lone unit between two being one. */
 function isSectionBreak(container: Container, span: RunSpan, gapIndex: number, context: RemovalContext): boolean {
-	const isTight = (index: number): boolean => isTightInRun(container, span, index, context);
-	const before = isTight(gapIndex - 1);
-	const after = isTight(gapIndex + 1);
-
-	if (before && after) {
-		return true;
-	}
-
-	// A lone unit has a blank line on its other side too, which sets it apart from a second section.
-	if (before) {
-		return isInsideRun(container, span, gapIndex + 1, context) && isTight(gapIndex + 2);
-	}
-
-	return after && isInsideRun(container, span, gapIndex - 1, context) && isTight(gapIndex - 2);
+	return isSectionBoundary(
+		gapIndex,
+		(index) => isInsideRun(container, span, index, context),
+		(index) => isTightInRun(container, span, index, context),
+	);
 }
 
-/** Reads the gaps inside the runs that the enabled run rules read as one, as one group for each run, for the keep rules of one kind of unit. */
-export function readKeptRuns(container: Container, context: RemovalContext, units: RunUnits): readonly (readonly number[])[] {
+/** Reads the runs of two or more units that an enabled run rule reads as one. */
+function readEnabledRunSpans(container: Container, context: RemovalContext, units: RunUnits): RunSpan[] {
 	if (!containersOf[units].has(container.kind)) {
 		return [];
 	}
 
 	// A modifier group is the finer reading of a member run, so it wins where both rules are enabled.
 	const runs = units === 'members' && context.isEnabled('separate-modifier-groups') ? context.modifierRunsOf(container) : context.runsOf(container);
-	const groups: number[][] = [];
+	const spans: RunSpan[] = [];
 
 	for (let start = 0; start < container.units.length; start = (runs.ends[start] ?? start) + 1) {
 		const end = runs.ends[start] ?? start;
 		const family = runs.keys[start]?.family;
 		const rule = family === undefined ? undefined : runRules[family];
 
-		if (rule === undefined || !context.isEnabled(rule) || end === start) {
-			continue;
-		}
-
-		const span: RunSpan = { start, end };
-
-		const gaps = Array.from({ length: end - start }, (_, offset) => start + offset).filter(
-			(index) => isLooseGap(container, index, context) && !isSectionBreak(container, span, index, context),
-		);
-
-		if (gaps.length > 0) {
-			groups.push(gaps);
+		if (rule !== undefined && context.isEnabled(rule) && end > start) {
+			spans.push({ start, end });
 		}
 	}
 
-	return groups;
+	return spans;
+}
+
+/** Reads the gaps inside the runs that the enabled run rules read as one, as one group for each run, for the keep rules of one kind of unit. */
+export function readKeptRuns(container: Container, context: RemovalContext, units: RunUnits): readonly (readonly number[])[] {
+	return readEnabledRunSpans(container, context, units).flatMap((span) => {
+		const gaps = Array.from({ length: span.end - span.start }, (_, offset) => span.start + offset).filter(
+			(index) => isLooseGap(container, index, context) && !isSectionBreak(container, span, index, context),
+		);
+
+		return gaps.length > 0 ? [gaps] : [];
+	});
+}
+
+/** Reads the gaps inside the runs that the enabled run rules read as one whatever blank lines stand, so no section break splits a run yet. */
+export function readRunGaps(container: Container, context: RemovalContext, units: RunUnits): readonly number[] {
+	return readEnabledRunSpans(container, context, units).flatMap((span) =>
+		Array.from({ length: span.end - span.start }, (_, offset) => span.start + offset).filter((index) => {
+			const gap = container.gaps[index];
+			const previous = container.units[index];
+			const next = container.units[index + 1];
+
+			return (
+				gap !== undefined &&
+				previous !== undefined &&
+				next !== undefined &&
+				!gap.hasComment &&
+				!gap.isJoined &&
+				isLooseUnit(previous) &&
+				isLooseUnit(next) &&
+				!context.isClaimed(index) &&
+				!isReceiverEdge(container, index, context.environment, context.receiverGroupsOf) &&
+				!context.protectedSectionsOf(container).has(index)
+			);
+		}),
+	);
 }

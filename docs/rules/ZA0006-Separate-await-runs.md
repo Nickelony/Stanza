@@ -29,6 +29,7 @@ Log("Sent.");
 - Where this rule is on, an awaited call is an await statement whatever method it calls,
   so [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-invocation-runs) leaves it out of the runs of calls of that method.
   Where this rule is [off](https://github.com/Nickelony/Stanza/wiki/Terms), `ZA0004` groups awaited calls by the method they call.
+- An awaited call on a receiver that [`stanza_receiver_roots`](https://github.com/Nickelony/Stanza/wiki/stanza_receiver_roots) selects is no await statement: it groups by that receiver, as [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-invocation-runs) reads it.
 - A lone await statement stays tight, as a lone call does.
 - A declaration on its own, directly above a run of await statements, takes its blank line from this rule,
   and stays tight against the run while this rule is [off](https://github.com/Nickelony/Stanza/wiki/Terms).

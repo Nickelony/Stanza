@@ -21,6 +21,8 @@ save(first)
 - A chain such as `session.get().json()` is part of the path, so only an identical chain repeats.
 - A call with no callee path, such as `(a or b)()`, joins no run.
 - An awaited call is an invocation of its callee while [`ZA3006`](ZA3006-separate-await-runs.md) is off, and an await statement when it is on.
+- With `receiver-roots`, the calls on one selected receiver form one run, awaited or not,
+  as [Receiver groups](../Configuration.md#receiver-groups) says.
 - A call that matches `assertion-roots` is an assertion, and [`ZA3005`](ZA3005-separate-assertion-runs.md) owns it.
 
 ## C# counterpart

@@ -41,9 +41,8 @@ The example runs with [`ZA3013`](ZA3013-separate-member-groups.md) enabled, whic
   A lone member beside a section is absorbed, and so are two lone members.
 - A lone member between two sections is a section of one, so both its blank lines stay.
 - Two members on one line stand tight against each other, so two such lines with a blank line between are two sections.
-- The rules that write a blank line at the ends of a run read the tree and not the text,
-  so removing the blank lines inside a run changes none of their answers.
-  The fix writes no blank line of its own.
+- Removing the blank lines inside a run moves none of the blank lines the other rules ask for at its ends,
+  so one fix settles the run. The fix writes no blank line of its own.
 - The rule judges nothing while `ZA3013` is off.
 - A method and a nested class are definitions, and the formatters own the gaps beside them.
 - A class body of exactly two single-line members belongs to [`ZA3051`](ZA3051-keep-two-units-together.md).

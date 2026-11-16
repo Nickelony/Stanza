@@ -37,7 +37,19 @@ internal static class ConditionalBlocks
 	}
 
 	/// <summary>Whether the token opens a unit, ends a container or opens a switch section.</summary>
-	private static bool IsUnitBoundary(SyntaxToken token) => StartsUnit(token) || EndsContainer(token) || StartsSection(token);
+	private static bool IsUnitBoundary(SyntaxToken token) => FindUnitContainer(token) is not null;
+
+	/// <summary>Finds the container whose units the token opens or ends, or none inside a unit.</summary>
+	public static SyntaxNode? FindUnitContainer(SyntaxToken token)
+	{
+		if (FindContainerOfUnitStartedBy(token) is { } container)
+			return container;
+
+		if (EndsContainer(token))
+			return token.Parent;
+
+		return StartsSection(token) ? token.Parent?.Parent?.Parent : null;
+	}
 
 	/// <summary>Whether the <c>#if</c> stands at a unit boundary or at a comma that opens an enum member.</summary>
 	private static bool IsBlockStart(DirectiveTriviaSyntax opener)
@@ -309,7 +321,7 @@ internal static class ConditionalBlocks
 			);
 	}
 
-	private static bool StartsUnit(SyntaxToken token)
+	private static SyntaxNode? FindContainerOfUnitStartedBy(SyntaxToken token)
 	{
 		for (SyntaxNode? node = token.Parent; node?.GetFirstToken(includeZeroWidth: true) == token; node = node.Parent)
 		{
@@ -319,11 +331,11 @@ internal static class ConditionalBlocks
 				&& StanzaKinds.ContainerKinds.Contains(parent.Kind())
 			)
 			{
-				return true;
+				return parent;
 			}
 		}
 
-		return false;
+		return null;
 	}
 
 	/// <summary>Reads each run of touching blocks once per tree, so a run costs time in step with its length.</summary>

@@ -247,6 +247,8 @@ public sealed class FixLoopFuzzTests
 			_ => SourceGenerators.CreateFileSource(random, looseRun: limit + 1),
 		};
 
+		source += SourceGenerators.CreateReceiverSource(new Random(seed ^ 0x5A17));
+
 		return new FuzzCase(
 			Source: WithUnicodeBreaks(source, seed),
 			Rules: PickRules(random),
@@ -257,7 +259,10 @@ public sealed class FixLoopFuzzTests
 			{
 				["stanza_max_loose_run_size"] = $"{limit}",
 				["stanza_guard_roots"] = "Guard",
-				["stanza_assignment_targets"] = random.Next(2) == 0 ? "mixed" : "split",
+				["stanza_assignment_targets"] = random.Next(2) == 0 ? "merge" : "split",
+				["stanza_receiver_roots"] = random.Next(2) == 0 ? "*" : "db",
+				["stanza_receiver_comparison"] = random.Next(2) == 0 ? "root" : "path",
+				["stanza_declaration_shapes"] = random.Next(2) == 0 ? "merge" : "split",
 			}
 		);
 	}

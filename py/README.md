@@ -68,11 +68,14 @@ into `draw(width=640, height=480, smooth=True, path="image.png")` when it reads 
 | `none` | Enables no rule. |
 | `minimal` | The file header and the imports, and the padding below a block header, before a clause keyword or between single-line `case` clauses. |
 | `moderate` | `minimal`, plus the multi-line, run, member and two-unit rules. This is the default. |
-| `strong` | `moderate`, plus the await, assignment, guard, jump, comment, type, subscription and base call rules, the rules that gather loose runs, and the rules that name call arguments. |
+| `strong` | `moderate`, plus the await, yield, assignment, guard, jump, comment, type, subscription and base call rules, the rules that gather loose runs, and the rules that name call arguments. |
 
 An opt-in rule belongs to no preset, and `enable` adds it.
 
 ## Rules
+
+A rule page shows the fix of its rule alone, with any options and companion rules the page names.
+A level runs its other rules too, and they may write more.
 
 | Rule | Level | What it does | C# rule |
 | --- | --- | --- | --- |
@@ -96,12 +99,23 @@ An opt-in rule belongs to no preset, and `enable` adds it.
 | [`ZA3010`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3010-separate-base-call.md) `separate-base-call` | strong | Separates a `super()` call that opens or closes a function body. | `ZA0010` |
 | [`ZA3011`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3011-separate-guard-clauses.md) `separate-guard-clauses` | strong | Separates the guard clauses that open a block. | `ZA0011` |
 | [`ZA3012`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3012-separate-commented-siblings.md) `separate-commented-siblings` | strong | Separates a comment that leads a single-line statement. | `ZA0012` |
+| [`ZA3020`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3020-separate-yield-runs.md) `separate-yield-runs` | strong | Separates a run of yield statements. | `ZA0020` |
 | [`ZA3052`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3052-gather-loose-statements.md) `gather-loose-statements` | strong | Removes the blank lines of a loose run of statements that is too long. | `ZA0052` |
 | [`ZA3053`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3053-gather-loose-members.md) `gather-loose-members` | strong | Removes the blank lines of a loose run of class members that is too long. | `ZA0053` |
 | [`ZA3501`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3501-name-call-arguments.md) `name-call-arguments` | strong | Writes the parameter name before the arguments of a call that passes at least `named-argument-min-arguments` arguments, when the callee is read from source. | `ZA0501` |
 | [`ZA3502`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3502-name-literal-arguments.md) `name-literal-arguments` | strong | Writes the parameter name before a `True`, `False` or `None` argument of a call, when the callee is read from source. | `ZA0502` |
+| [`ZA3018`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3018-separate-checked-stanzas.md) `separate-checked-stanzas` | opt-in | Separates a guard chain and the bindings it checks from neighboring statements. | `ZA0018` |
+| [`ZA3019`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3019-separate-receiver-groups.md) `separate-receiver-groups` | opt-in | Separates selected direct receiver groups by root or owner path. | `ZA0019` |
 | [`ZA3054`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3054-keep-statement-runs-together.md) `keep-statement-runs-together` | opt-in | Removes the blank lines inside a run of statements that a grouping rule reads as one. | `ZA0054` |
 | [`ZA3055`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3055-keep-member-runs-together.md) `keep-member-runs-together` | opt-in | Removes the blank lines inside a run of fields or attributes that `ZA3013` reads as one. | `ZA0055` |
+| [`ZA3057`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3057-keep-guard-clauses-together.md) `keep-guard-clauses-together` | opt-in | Removes the blank lines between neighboring guard clauses. | `ZA0057` |
+| [`ZA3058`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3058-keep-guard-with-binding.md) `keep-guard-with-binding` | opt-in | Removes the blank line between a binding and the guard clause that tests it. | `ZA0058` |
+| [`ZA3059`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3059-keep-accumulator-with-loop.md) `keep-accumulator-with-loop` | opt-in | Removes the blank line between a binding that seeds a name and the loop that builds it. | `ZA0059` |
+| [`ZA3060`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3060-keep-jump-with-binding.md) `keep-jump-with-binding` | opt-in | Removes the blank line between a lone binding and the return or raise that uses it. | `ZA0060` |
+| [`ZA3061`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3061-keep-assertion-with-binding.md) `keep-assertion-with-binding` | opt-in | Removes the blank line between a statement that binds a name and the assert that narrows its type. | `ZA0061` |
+| [`ZA3062`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3062-keep-initialization-with-calls.md) `keep-initialization-with-calls` | opt-in | Removes the blank line between a standalone initialization and the single-line call on that name directly below it. | `ZA0062` |
+| [`ZA3063`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3063-keep-receiver-groups-together.md) `keep-receiver-groups-together` | opt-in | Removes the blank lines inside a group of direct operations on a selected receiver, except between sections. | `ZA0063` |
+| [`ZA3064`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3064-keep-dependent-bindings-together.md) `keep-dependent-bindings-together` | opt-in | Removes the blank lines between consecutive single-line bindings that each read the name bound above. | `ZA0064` |
 | [`ZA3112`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3112-keep-multi-line-cases-together.md) `keep-multi-line-cases-together` | opt-in | Removes the blank line between two `case` clauses when either spans several lines. | `ZA0112` |
 | [`ZA3201`](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3201-separate-clause-keywords.md) `separate-clause-keywords` | opt-in | Separates an `elif`, `else`, `except` or `finally` from the block above it. | `ZA0201` |
 

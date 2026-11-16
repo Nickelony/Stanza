@@ -45,6 +45,11 @@ string name = "";
   Where `ZA0003` is on, declarations of two types are two runs, and the blank line between them stays.
   Where it is off, they are one run of declarations while `ZA0002` is on.
 - Where [`stanza_assignment_targets`](https://github.com/Nickelony/Stanza/wiki/stanza_assignment_targets) is `split`, the assignments it sets apart are two runs.
+- Where [`stanza_declaration_shapes`](https://github.com/Nickelony/Stanza/wiki/stanza_declaration_shapes) is `split`, a deconstruction and an ordinary declaration are two runs.
+- Where [`stanza_declaration_typing`](https://github.com/Nickelony/Stanza/wiki/stanza_declaration_typing) is `merge`, a declaration that writes `var` and one that writes a type are one run.
+- Where [`stanza_local_function_modifiers`](https://github.com/Nickelony/Stanza/wiki/stanza_local_function_modifiers) is `split`, a `static` local function and a non-`static` one are two runs.
+- Where [`stanza_receiver_roots`](https://github.com/Nickelony/Stanza/wiki/stanza_receiver_roots) selects the receivers of calls, the calls on one receiver are one run, whatever methods they call,
+  while `ZA0004`, `ZA0019` or `ZA0063` is on.
 - The rule removes a blank line only from a gap between two single-line statements that holds nothing else.
   A comment, a trailing comment, a directive or a multi-line statement ends the run, so the blank line that
   [`ZA0012`](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-a-commented-sibling) or [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-multi-line-constructs) asks for stays.

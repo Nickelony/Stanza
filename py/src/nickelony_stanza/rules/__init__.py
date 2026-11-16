@@ -5,9 +5,17 @@ from __future__ import annotations
 from nickelony_stanza.rules import (
     gather_loose_members,
     gather_loose_statements,
+    keep_accumulator_with_loop,
+    keep_assertion_with_binding,
     keep_clause_keywords_adjacent,
+    keep_dependent_bindings_together,
+    keep_guard_clauses_together,
+    keep_guard_with_binding,
+    keep_initialization_with_calls,
+    keep_jump_with_binding,
     keep_member_runs_together,
     keep_multi_line_cases_together,
+    keep_receiver_groups_together,
     keep_single_line_cases_together,
     keep_statement_runs_together,
     keep_two_units_together,
@@ -18,6 +26,7 @@ from nickelony_stanza.rules import (
     separate_assignment_runs,
     separate_await_runs,
     separate_base_call,
+    separate_checked_stanzas,
     separate_clause_keywords,
     separate_commented_siblings,
     separate_declaration_runs,
@@ -29,8 +38,10 @@ from nickelony_stanza.rules import (
     separate_member_groups,
     separate_multi_line_cases,
     separate_multi_line_constructs,
+    separate_receiver_groups,
     separate_same_type_declaration_runs,
     separate_subscription_runs,
+    separate_yield_runs,
 )
 from nickelony_stanza.rules.base import LEVELS, Level, Rule
 
@@ -46,6 +57,7 @@ OWNER_ORDER: tuple[Rule, ...] = (
     separate_clause_keywords.RULE,
     separate_base_call.RULE,
     separate_guard_clauses.RULE,
+    separate_checked_stanzas.RULE,
     separate_jump_statements.RULE,
     separate_member_groups.RULE,
     separate_declaration_runs.RULE,
@@ -53,8 +65,10 @@ OWNER_ORDER: tuple[Rule, ...] = (
     separate_assignment_runs.RULE,
     separate_assertion_runs.RULE,
     separate_await_runs.RULE,
+    separate_yield_runs.RULE,
     separate_subscription_runs.RULE,
     separate_invocation_runs.RULE,
+    separate_receiver_groups.RULE,
 )
 
 # The rules that remove a blank line, in the order that decides which of them reports a gap several of them ask for.
@@ -64,10 +78,30 @@ KEEP_ORDER: tuple[Rule, ...] = (
     remove_block_padding.RULE,
     keep_multi_line_cases_together.RULE,
     keep_single_line_cases_together.RULE,
+    keep_assertion_with_binding.RULE,
+    keep_guard_clauses_together.RULE,
+    keep_jump_with_binding.RULE,
+    keep_guard_with_binding.RULE,
+    keep_accumulator_with_loop.RULE,
+    keep_initialization_with_calls.RULE,
+    keep_receiver_groups_together.RULE,
+    keep_dependent_bindings_together.RULE,
     keep_statement_runs_together.RULE,
     keep_member_runs_together.RULE,
     gather_loose_statements.RULE,
     gather_loose_members.RULE,
+)
+
+# The relationship rules, which alone judge a container of two single-line units while ZA3051 is off.
+TWO_UNIT_RULES: tuple[Rule, ...] = (
+    keep_assertion_with_binding.RULE,
+    keep_guard_clauses_together.RULE,
+    keep_jump_with_binding.RULE,
+    keep_guard_with_binding.RULE,
+    keep_accumulator_with_loop.RULE,
+    keep_initialization_with_calls.RULE,
+    keep_receiver_groups_together.RULE,
+    keep_dependent_bindings_together.RULE,
 )
 
 # The rules that name the arguments of a call, in the order that decides which of them reports a call both ask for.

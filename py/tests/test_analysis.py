@@ -168,8 +168,18 @@ def test_the_levels_hold_the_levels_below_them() -> None:
     assert {rule.code for rule in ALL_RULES if rule.level == "opt-in"} == {
         "ZA3054",
         "ZA3055",
+        "ZA3057",
+        "ZA3058",
+        "ZA3059",
+        "ZA3060",
+        "ZA3061",
+        "ZA3062",
         "ZA3112",
         "ZA3201",
+        "ZA3018",
+        "ZA3019",
+        "ZA3063",
+        "ZA3064",
     }
 
     assert {rule.code for rule in ALL_RULES if rule.level != "opt-in"} == {rule.code for rule in strong}

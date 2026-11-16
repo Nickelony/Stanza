@@ -24,17 +24,13 @@ internal static class BlankLineExpressions
 		return expression;
 	}
 
-	/// <summary>Strips the awaits, the parentheses and the null-forgiving <c>!</c> of an expression.</summary>
-	public static ExpressionSyntax UnwrapAwaitParenthesesAndSuppression(ExpressionSyntax expression)
+	/// <summary>Strips the parentheses and the null-forgiving <c>!</c> of an expression.</summary>
+	public static ExpressionSyntax UnwrapParenthesesAndSuppression(ExpressionSyntax expression)
 	{
 		while (true)
 		{
 			switch (expression)
 			{
-				case AwaitExpressionSyntax awaitExpression:
-					expression = awaitExpression.Expression;
-					continue;
-
 				case ParenthesizedExpressionSyntax parenthesizedExpression:
 					expression = parenthesizedExpression.Expression;
 					continue;
@@ -48,6 +44,17 @@ internal static class BlankLineExpressions
 					return expression;
 			}
 		}
+	}
+
+	/// <summary>Strips the awaits, the parentheses and the null-forgiving <c>!</c> of an expression.</summary>
+	public static ExpressionSyntax UnwrapAwaitParenthesesAndSuppression(ExpressionSyntax expression)
+	{
+		expression = UnwrapParenthesesAndSuppression(expression);
+
+		while (expression is AwaitExpressionSyntax awaited)
+			expression = UnwrapParenthesesAndSuppression(awaited.Expression);
+
+		return expression;
 	}
 
 	/// <summary>Reads the value a discard such as <c>_ = Read();</c> assigns, or the expression as it is.</summary>

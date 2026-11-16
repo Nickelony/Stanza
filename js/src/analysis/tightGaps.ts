@@ -27,3 +27,24 @@ export function readTightGaps(container: Container, context: RemovalContext, sco
 		return isMultiLine === (scope === 'multi-line') && !context.isClaimed(index) ? [[index]] : [];
 	});
 }
+
+/**
+ * Reads the gaps whose blank line stands between two stacked labels of a switch statement: an empty case above another case, which share one body.
+ * Each is a group of its own, and a gap that holds a comment keeps its blank line.
+ */
+export function readStackedLabelGaps(container: Container): readonly (readonly number[])[] {
+	if (container.kind !== 'switch') {
+		return [];
+	}
+
+	return container.gaps.flatMap((gap, index) => {
+		const previous = container.units[index]?.node;
+
+		if (previous?.type !== 'SwitchCase' || previous.consequent.length > 0 || !gap.isBlank || gap.blankRange === undefined || gap.hasComment) {
+			return [];
+		}
+
+		// The gap is joined, so no rule can write a blank line there, whatever a claim of a case rule says.
+		return [[index]];
+	});
+}

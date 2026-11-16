@@ -29,6 +29,16 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 		),
 
 		FixRow.For(
+			DiagnosticDescriptors.SeparateSuppressionBlock,
+			"Add the blank line",
+
+			FromCarriedChange(
+				static (document, cancellationToken) =>
+					RegionEdits.CreateSuppressionBlockGapEdits(document.Root.SyntaxTree, document.Text, cancellationToken)
+			)
+		),
+
+		FixRow.For(
 			DiagnosticDescriptors.NameClosingRegionDirective,
 			"Write the region name",
 

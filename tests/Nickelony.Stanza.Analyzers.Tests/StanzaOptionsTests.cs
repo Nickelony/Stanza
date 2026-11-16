@@ -188,4 +188,72 @@ public sealed class StanzaOptionsTests
 			_ => throw new AssertFailedException($"No reader for {key}."),
 		};
 	}
+
+	[TestMethod]
+	[DataRow(null, false)]
+	[DataRow("root", false)]
+	[DataRow("path", true)]
+	[DataRow("PATH", true)]
+	[DataRow("unknown", false)]
+	public void ReceiverComparisonUsesRootUnlessPathIsSelected(string? value, bool expected)
+	{
+		var values = new Dictionary<string, string>();
+
+		if (value is not null)
+			values["stanza_receiver_comparison"] = value;
+
+		Assert.AreEqual(
+			expected,
+			StanzaOptions.From(new FixedConfigOptions(values)).ComparesReceiverPaths
+		);
+	}
+
+	[TestMethod]
+	[DataRow(null, false)]
+	[DataRow("merge", false)]
+	[DataRow("split", true)]
+	[DataRow("SPLIT", true)]
+	[DataRow("mixed", false)]
+	[DataRow("unknown", false)]
+	public void AssignmentTargetsMergeUnlessSplitIsSelected(string? value, bool expected)
+	{
+		var values = new Dictionary<string, string>();
+
+		if (value is not null)
+			values["stanza_assignment_targets"] = value;
+
+		Assert.AreEqual(expected, StanzaOptions.From(new FixedConfigOptions(values)).SplitsAssignmentTargets);
+	}
+
+	[TestMethod]
+	[DataRow(null, true)]
+	[DataRow("split", true)]
+	[DataRow("merge", false)]
+	[DataRow("MERGE", false)]
+	[DataRow("unknown", true)]
+	public void DeclarationTypingSplitsUnlessMergeIsSelected(string? value, bool expected)
+	{
+		var values = new Dictionary<string, string>();
+
+		if (value is not null)
+			values["stanza_declaration_typing"] = value;
+
+		Assert.AreEqual(expected, StanzaOptions.From(new FixedConfigOptions(values)).SplitsDeclarationTyping);
+	}
+
+	[TestMethod]
+	[DataRow(null, false)]
+	[DataRow("merge", false)]
+	[DataRow("split", true)]
+	[DataRow("SPLIT", true)]
+	[DataRow("unknown", false)]
+	public void LocalFunctionModifiersMergeUnlessSplitIsSelected(string? value, bool expected)
+	{
+		var values = new Dictionary<string, string>();
+
+		if (value is not null)
+			values["stanza_local_function_modifiers"] = value;
+
+		Assert.AreEqual(expected, StanzaOptions.From(new FixedConfigOptions(values)).SplitsLocalFunctionModifiers);
+	}
 }

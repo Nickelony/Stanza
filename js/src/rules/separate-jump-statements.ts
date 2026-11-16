@@ -1,4 +1,4 @@
-import { readAskingJumps } from '../analysis/jumps.ts';
+import { readJumpAsks } from '../analysis/jumps.ts';
 import type { Container } from '../analysis/types.ts';
 import { createGapRule } from '../createGapRule.ts';
 
@@ -15,7 +15,8 @@ export default createGapRule({
 			let asks = asking.get(container);
 
 			if (asks === undefined) {
-				asks = readAskingJumps(container, (index) => container.gaps[index]?.isBlank === true || context.isClaimedByOthers(index), new Set());
+				// A blank line a keep rule removes is read as gone already, so the stanza above a jump is the one the fixed text holds.
+				asks = readJumpAsks(container, context.isKept, context.isClaimedByOthers);
 				asking.set(container, asks);
 			}
 

@@ -228,7 +228,7 @@ describe('the options', () => {
 	it('shows a refused value and keeps the last valid one until the box loses the focus', async () => {
 		const store = renderPage({ selection: { kind: 'option', id: 'stanza_max_line_length' } });
 		const box = screen.getByLabelText('Value of stanza_max_line_length') as HTMLInputElement;
-		const message = document.getElementById('error-stanza_max_line_length')!;
+		const message = document.getElementById(box.getAttribute('aria-describedby')!)!;
 
 		box.focus();
 		fireEvent.input(box, { target: { value: '120' } });
@@ -257,7 +257,7 @@ describe('a list option whose page closes the set of words', () => {
 	it('refuses a word outside the set and keeps the last valid list', async () => {
 		const store = renderPage({ selection: { kind: 'option', id: 'stanza_sources' } }, csharp, catalog(rules, [...options, sources]));
 		const box = screen.getByLabelText('Value of stanza_sources') as HTMLInputElement;
-		const message = document.getElementById('error-stanza_sources')!;
+		const message = document.getElementById(box.getAttribute('aria-describedby')!)!;
 
 		box.focus();
 		fireEvent.input(box, { target: { value: 'stdlib' } });
@@ -348,12 +348,13 @@ describe('the pages of the other languages', () => {
 	});
 
 	it('show the half of a pair that its opposite replaces as off, and write both halves when the visitor enables both', () => {
-		const pair = catalog(
-			[rule('ZA3111', { opposite: 'ZA3112' }), rule('ZA3112', { onByDefault: false, opposite: 'ZA3111' })],
-			[],
-			[{ first: 'ZA3111', second: 'ZA3112', defaultHalf: 'ZA3111', ownerWhenBothEnabled: 'ZA3112' }],
-		);
+		const pairRules = [rule('ZA3111', { opposite: 'ZA3112' }), rule('ZA3112', { onByDefault: false, opposite: 'ZA3111' })];
 
+		for (const entry of pairRules) {
+			delete entry.csharp;
+		}
+
+		const pair = catalog(pairRules, [], [{ first: 'ZA3111', second: 'ZA3112', defaultHalf: 'ZA3111', ownerWhenBothEnabled: 'ZA3112' }]);
 		const table = (): string => screen.getByRole('region', { name: 'Generated [tool.stanza] table' }).textContent ?? '';
 		const choose = (id: string, value: string): void => void fireEvent.change(screen.getByLabelText(`Severity of ${id}`), { target: { value } });
 		const store = renderPage({ selection: { kind: 'rule', id: 'ZA3111' } }, python, pair);
@@ -376,13 +377,13 @@ describe('the pages of the other languages', () => {
 	it('show the separating half of a JS pair as off once the tight half is enabled, and write the tight half alone', async () => {
 		const separating = 'separate-multi-line-switch-cases';
 		const tight = 'keep-multi-line-switch-cases-together';
+		const pairRules = [rule(separating, { opposite: tight }), rule(tight, { level: 'opt-in', onByDefault: false, opposite: separating })];
 
-		const pair = catalog(
-			[rule(separating, { opposite: tight }), rule(tight, { level: 'opt-in', onByDefault: false, opposite: separating })],
-			[],
-			[{ first: separating, second: tight, defaultHalf: separating, ownerWhenBothEnabled: tight }],
-		);
+		for (const entry of pairRules) {
+			delete entry.csharp;
+		}
 
+		const pair = catalog(pairRules, [], [{ first: separating, second: tight, defaultHalf: separating, ownerWhenBothEnabled: tight }]);
 		const config = (): string => screen.getByRole('region', { name: 'Generated eslint.config.mjs' }).textContent ?? '';
 		const choose = (id: string, value: string): void => void fireEvent.change(screen.getByLabelText(`Severity of ${id}`), { target: { value } });
 		const store = renderPage({ selection: { kind: 'rule', id: separating } }, javascript, pair);

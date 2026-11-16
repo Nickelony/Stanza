@@ -34,6 +34,17 @@ internal static class RegionEdits
 		);
 	}
 
+	/// <summary>Builds the edits that write a blank line around each <c>disable</c> and <c>restore</c> pair.</summary>
+	public static List<RegionEdit> CreateSuppressionBlockGapEdits(SyntaxTree syntaxTree, SourceText sourceText, CancellationToken cancellationToken)
+	{
+		return CreateGapEdits(
+			markers: StanzaCommentCache.GetPragmaMarkers(syntaxTree, cancellationToken),
+			sourceText,
+			readSides: ReadSuppressionBlockSides,
+			cancellationToken
+		);
+	}
+
 	private static List<RegionEdit> CreateGapEdits(
 		ImmutableArray<SyntaxTrivia> markers,
 		SourceText sourceText,
@@ -75,6 +86,17 @@ internal static class RegionEdits
 		}
 
 		return edits;
+	}
+
+	private static MarkerSides ReadSuppressionBlockSides(SyntaxTrivia trivia)
+	{
+		if (trivia.GetStructure() is not DirectiveTriviaSyntax directive)
+			return MarkerSides.None;
+
+		if (SuppressionBlocks.IsOpener(directive))
+			return MarkerSides.Above;
+
+		return SuppressionBlocks.IsCloser(directive) ? MarkerSides.Below : MarkerSides.None;
 	}
 
 	private static MarkerSides ReadConditionalBlockSides(SyntaxTrivia trivia)

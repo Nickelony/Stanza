@@ -23,7 +23,7 @@ switch (state) {
 - The rule never shares a gap with the pair [`separate-multi-line-switch-cases`](separate-multi-line-switch-cases.md)
   and [`keep-multi-line-switch-cases-together`](keep-multi-line-switch-cases-together.md), which judge a gap beside a case of several lines.
 - A comment in the gap, a trailing comment included, keeps the blank line.
-- An empty `case` that falls through to the next one is joined already, and a blank line there is left as written.
+- An empty `case` that falls through to the next one is joined already, and a blank line there is left to [`keep-stacked-case-labels-together`](keep-stacked-case-labels-together.md).
 
 ## C# counterpart
 

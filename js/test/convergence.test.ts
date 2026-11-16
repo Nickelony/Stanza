@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import { Linter } from 'eslint';
 
-import { createConfig, formatWithPrettier, presetRuns, readCorpus, readPresetRules } from './helpers.ts';
+import { corpusRuns, createConfig, formatWithPrettier, readCorpus, readPresetRules } from './helpers.ts';
 
 type Entries = [string, Linter.RuleEntry][];
 
@@ -48,7 +48,7 @@ function dropBlankLines(text: string, seed: number): string {
 		.join('\n');
 }
 
-for (const [name, level, withOptIn] of presetRuns) {
+for (const { name, level, withOptIn, settings } of corpusRuns) {
 	describe(`convergence at the ${name}`, () => {
 		for (const file of readCorpus()) {
 			it(`settles ${file.name} to one text in every rule order, and a second fix changes nothing`, async () => {
@@ -62,7 +62,7 @@ for (const [name, level, withOptIn] of presetRuns) {
 					const outputs = new Map<string, string>();
 
 					for (const [orderName, order] of Object.entries(orders)) {
-						const config = createConfig(Object.fromEntries(order(entries)));
+						const config = createConfig(Object.fromEntries(order(entries)), settings);
 						const first = linter.verifyAndFix(input, config, { filename });
 						const second = linter.verifyAndFix(first.output, config, { filename });
 

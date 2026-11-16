@@ -37,9 +37,8 @@ The examples run with [`ZA3004`](ZA3004-separate-invocation-runs.md) enabled, wh
 - A lone statement between two sections is a section of one, so both its blank lines stay.
 - Two statements on one line stand tight against each other, so two such lines with a blank line between are two sections.
 - The rule never removes a blank line that another rule would write back, such as the one [`ZA3011`](ZA3011-separate-guard-clauses.md) asks for below the guards.
-- The rules that write a blank line at the ends of a run read the tree and not the text,
-  so removing the blank lines inside a run changes none of their answers.
-  The fix writes no blank line of its own.
+- Removing the blank lines inside a run moves none of the blank lines the other rules ask for at its ends,
+  so one fix settles the run. The fix writes no blank line of its own.
 - A container of exactly two statements belongs to [`ZA3051`](ZA3051-keep-two-units-together.md).
 - The members of a class body belong to [`ZA3055`](ZA3055-keep-member-runs-together.md).
 - A formatter that joins a statement onto one line can leave a blank line this rule removes on the next run,

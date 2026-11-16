@@ -1,4 +1,13 @@
-import { checkOption, differsFromDefaultIn, isRuleChanged, isRuleChangedIn, readsOption, severities, type Config } from '../state/config.ts';
+import {
+	checkOption,
+	differsFromDefaultIn,
+	hasExplicitPairSetting,
+	isRuleChanged,
+	isRuleChangedIn,
+	readsOption,
+	severities,
+	type Config,
+} from '../state/config.ts';
 import type { Catalog, Option, Severity } from '../state/model.ts';
 import { counted } from '../util/counted.ts';
 
@@ -410,20 +419,26 @@ function resolveReading<S>(catalog: Catalog<S>, reading: Reading, current: Confi
 	const { collected, skipped } = reading;
 	const rules: Record<string, Severity> = {};
 	const options: Record<string, string> = {};
+	const resolved = new Map(catalog.rules.map((rule) => [rule.id, resolve(collected.rules, rule.id, skipped)]));
+
+	const explicit = Object.fromEntries(
+		[...resolved].flatMap(([id, value]) => (value === undefined || value.value === 'default' ? [] : [[id, value.value as Severity]])),
+	);
+
+	const trial: Config = { ...current, rules: explicit };
 
 	for (const rule of catalog.rules) {
-		const value = resolve(collected.rules, rule.id, skipped);
+		const value = resolved.get(rule.id);
 
 		if (value === undefined || value.value === 'default') {
 			continue;
 		}
 
-		// A line that says what the level gives is no change, so a file the page wrote comes back as none.
+		// Resolve pair settings together: an explicit default half can decide ownership when both halves are enabled.
 		// A markup line alone says nothing about the analyzer, so it is held against the markup state of the level only.
-		const trial: Config = { ...current, rules: { [rule.id]: value.value as Severity } };
 		const changed = value.from === 'markup' ? isRuleChangedIn(rule, trial, 'markup') : isRuleChanged(rule, trial);
 
-		if (changed) {
+		if (changed || hasExplicitPairSetting(rule, trial)) {
 			rules[rule.id] = value.value as Severity;
 		}
 	}

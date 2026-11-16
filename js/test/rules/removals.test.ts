@@ -1,6 +1,11 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+
+import { Linter } from 'eslint';
+
 import gatherLooseMembers from '../../src/rules/gather-loose-members.ts';
 import gatherLooseStatements from '../../src/rules/gather-loose-statements.ts';
-import { createRuleTester, crlf, lines } from '../helpers.ts';
+import { assertGroupFix, createConfig, createRuleTester, crlf, lines, readSuppressedMessages, stable } from '../helpers.ts';
 
 const tester = createRuleTester();
 
@@ -218,4 +223,30 @@ tester.run('gather-loose-members', gatherLooseMembers as never, {
 			name: 'a trailing comment ends the run',
 		},
 	],
+});
+
+describe('the fix of a gathered run', () => {
+	const gather = { 'gather-loose-statements': 'error' } as const;
+
+	it('stands on the first report of the run, and the others carry none', () => {
+		const source = lines(...spaced('a();', 'b();', 'c();', 'd();'));
+		const reports = new Linter().verify(source, createConfig(gather), { filename: 'file.ts' });
+
+		assert.equal(reports.length, 3);
+		assertGroupFix(source, reports, lines('a();', 'b();', 'c();', 'd();'));
+	});
+
+	it('moves to the next report where a directive silences the first, so the run still gathers in one fix', () => {
+		const source = lines(...spaced('a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();'));
+		const linter = new Linter();
+		const reports = linter.verify(source, createConfig(gather), { filename: 'file.ts' });
+
+		assert.deepEqual(
+			readSuppressedMessages(linter).map((message) => message.fix),
+			[undefined],
+		);
+
+		assertGroupFix(source, reports, lines('a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();'));
+		assert.equal(stable(source, gather), lines('a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();'));
+	});
 });

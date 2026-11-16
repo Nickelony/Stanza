@@ -20,7 +20,7 @@ The entries sit under headings by topic.
 - **tight rule**: a rule that removes that blank line.
 - **single-line tight rule**: a `Keep single-line ... together` rule, a tight rule in no pair that judges the gaps between the elements
   of one construct, such as arguments or accessors, only when neither element spans more than one line.
-  [`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Keep-the-two-units-of-a-container-together) to `ZA0056` also remove blank lines, but none of them is one.
+  [`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Keep-the-two-units-of-a-container-together) to `ZA0064` also remove blank lines, but none of them is one.
 - **pair**: two rules that judge one gap or one construct in opposite ways, such as a separating rule and its tight rule.
 - **owner**: the rule, or the half of a pair, that decides whether a gap holds a blank line. A gap has at most one,
   and [Which rule owns which gap](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap) maps each gap to its owner.
@@ -40,7 +40,8 @@ The entries sit under headings by topic.
 ## Runs of units
 
 - **run** of units: two or more neighboring lines or units of one kind, such as declarations, `//` comment lines or blank lines.
-  The grouping rules treat a run of declarations, invocations, assertions, await statements, event subscriptions, assignments or members as one block.
+  The grouping rules treat a run of declarations, invocations, assertions, await statements, event subscriptions, assignments,
+  yield statements, local functions or members as one block.
 - **loose run**: neighboring single-line statements or members, each set apart by a blank line and nothing else,
   where no other rule asks for it.
   A unit tight against a neighbor stays out.
@@ -54,6 +55,8 @@ The entries sit under headings by topic.
 - **move**: a join of a kept run that removes no more blank lines than it writes beyond those the grouping rules already ask for,
   so it only moves a blank line.
 - **decline**: a keep rule declines a move, so it reports nothing and leaves the blank lines of that run as written.
+- **kept group**: the neighboring statements that one of [`ZA0057`](https://github.com/Nickelony/Stanza/wiki/ZA0057-Keep-a-chain-of-guard-clauses-together) to [`ZA0064`](https://github.com/Nickelony/Stanza/wiki/ZA0064-Keep-dependent-bindings-together) holds together, such as a binding and the guard that tests it.
+  A chain of overlapping pairs is one group, and the rule claims the gaps inside it.
 
 ## Configuration
 

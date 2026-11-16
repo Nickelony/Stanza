@@ -21,6 +21,8 @@ log(first)
 - An awaited call of an assertion root stays an assertion.
 - An `async with` or `async for` statement is a block, and [`ZA3001`](ZA3001-separate-multi-line-constructs.md) owns its gaps.
 - While this rule is off, an awaited call is an invocation of its callee, so [`ZA3004`](ZA3004-separate-invocation-runs.md) groups it by name.
+- While `ZA3004`, `ZA3019` or `ZA3063` is enabled, an awaited call on a receiver that `receiver-roots` selects
+  joins the calls on that receiver instead, as [Receiver groups](../Configuration.md#receiver-groups) says.
 
 ## C# counterpart
 

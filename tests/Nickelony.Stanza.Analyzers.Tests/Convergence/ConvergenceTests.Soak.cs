@@ -129,7 +129,7 @@ public sealed partial class ConvergenceTests
 	}
 
 	// The limit takes the seed's last two bits, so the setting takes the next one and meets every limit in both values.
-	private static string ReadAssignmentTargets(int seed) => seed / 4 % 2 == 0 ? "mixed" : "split";
+	private static string ReadAssignmentTargets(int seed) => seed / 4 % 2 == 0 ? "merge" : "split";
 
 	private static Task<int> AssertLooseRunsSettleAsync(int seed)
 	{
@@ -144,7 +144,8 @@ public sealed partial class ConvergenceTests
 			source,
 			limit,
 			label: $"seed {seed}:",
-			targets: ReadAssignmentTargets(seed)
+			targets: ReadAssignmentTargets(seed),
+			receiverSeed: seed
 		);
 	}
 
@@ -157,7 +158,8 @@ public sealed partial class ConvergenceTests
 			source,
 			limit,
 			label: $"seed {seed}:",
-			targets: ReadAssignmentTargets(seed)
+			targets: ReadAssignmentTargets(seed),
+			receiverSeed: seed
 		);
 	}
 
@@ -171,7 +173,8 @@ public sealed partial class ConvergenceTests
 			limit,
 			label: $"seed {seed}:",
 			corpus: s_memberCorpus,
-			targets: ReadAssignmentTargets(seed)
+			targets: ReadAssignmentTargets(seed),
+			receiverSeed: seed
 		);
 	}
 
@@ -185,7 +188,8 @@ public sealed partial class ConvergenceTests
 			limit,
 			label: $"seed {seed}:",
 			corpus: s_fileCorpus,
-			targets: ReadAssignmentTargets(seed)
+			targets: ReadAssignmentTargets(seed),
+			receiverSeed: seed
 		);
 	}
 
@@ -196,16 +200,21 @@ public sealed partial class ConvergenceTests
 		int limit,
 		string label,
 		LooseCorpus? corpus = null,
-		string targets = "mixed"
+		string targets = "merge",
+		int receiverSeed = 0
 	)
 	{
 		corpus ??= s_statementCorpus;
+		source += SourceGenerators.CreateReceiverSource(new Random(receiverSeed ^ 0x5A17));
 
 		Dictionary<string, string> options = new()
 		{
 			["stanza_max_loose_run_size"] = $"{limit}",
 			["stanza_guard_roots"] = "Guard",
 			["stanza_assignment_targets"] = targets,
+			["stanza_receiver_roots"] = receiverSeed % 2 == 0 ? "*" : "db",
+			["stanza_receiver_comparison"] = receiverSeed / 2 % 2 == 0 ? "root" : "path",
+			["stanza_declaration_shapes"] = receiverSeed / 4 % 2 == 0 ? "merge" : "split",
 		};
 
 		int findings = 0;

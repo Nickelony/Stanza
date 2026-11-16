@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.BlankLines;
 
@@ -744,5 +746,241 @@ public sealed class SeparateInvocationRunsTests
 
 		Assert.IsEmpty(result.Diagnostics, $"View [{view.Trim()}].");
 		Assert.HasCount(1, handedOver.Diagnostics, $"View [{view.Trim()}], with ZA0401 off.");
+	}
+
+	[TestMethod]
+	public async Task ConfiguredReceiverCallsStayTogetherAcrossAwaitBoundaries()
+	{
+		const string source = """
+			class C
+			{
+				async System.Threading.Tasks.Task M(C db)
+				{
+					Start();
+					db.Add();
+
+					await db.Flush();
+					await db.Refresh();
+					Finish();
+				}
+
+				void Start() { }
+				void Finish() { }
+				void Add() { }
+				System.Threading.Tasks.Task Flush() => System.Threading.Tasks.Task.CompletedTask;
+				System.Threading.Tasks.Task Refresh() => System.Threading.Tasks.Task.CompletedTask;
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				async System.Threading.Tasks.Task M(C db)
+				{
+					Start();
+
+					db.Add();
+					await db.Flush();
+					await db.Refresh();
+
+					Finish();
+				}
+
+				void Start() { }
+				void Finish() { }
+				void Add() { }
+				System.Threading.Tasks.Task Flush() => System.Threading.Tasks.Task.CompletedTask;
+				System.Threading.Tasks.Task Refresh() => System.Threading.Tasks.Task.CompletedTask;
+			}
+			""";
+
+		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
+			DiagnosticDescriptors.SeparateInvocationRuns,
+			DiagnosticDescriptors.SeparateAwaitRuns,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether
+		);
+
+		var options = new System.Collections.Generic.Dictionary<string, string>
+		{
+			["stanza_receiver_roots"] = "db",
+		};
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+			rules,
+			options
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+
+		AnalyzerRunResult settled = await RoslynTestHarness.ReportAllAsync(
+			fixedSource,
+			rules,
+			options
+		);
+
+		Assert.IsEmpty(settled.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task AConfiguredNameDoesNotJoinDifferentReceiverPaths()
+	{
+		const string source = """
+			class C
+			{
+				async System.Threading.Tasks.Task M(C left, C right)
+				{
+					left.Add();
+					await right.Flush();
+					left.Refresh();
+				}
+
+				void Add() { }
+				System.Threading.Tasks.Task Flush() => System.Threading.Tasks.Task.CompletedTask;
+				void Refresh() { }
+			}
+			""";
+
+		var options = new System.Collections.Generic.Dictionary<string, string>
+		{
+			["stanza_receiver_roots"] = "left, right",
+		};
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<SeparateInvocationRunsAnalyzer>(
+			source,
+			analyzerConfigOptions: options
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	[DataRow("db")]
+	[DataRow("*")]
+	public async Task AnInstanceMarkerIsIgnoredWhenCallsShareAConcreteRoot(string roots)
+	{
+		const string source = """
+			class C
+			{
+				C db;
+				C Items => this;
+
+				async System.Threading.Tasks.Task M()
+				{
+					Start();
+					this.db.Items.Add();
+					await db.Flush();
+					Finish();
+				}
+
+				void Start() { }
+				void Finish() { }
+				void Add() { }
+				System.Threading.Tasks.Task Flush() => System.Threading.Tasks.Task.CompletedTask;
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				C db;
+				C Items => this;
+
+				async System.Threading.Tasks.Task M()
+				{
+					Start();
+
+					this.db.Items.Add();
+					await db.Flush();
+
+					Finish();
+				}
+
+				void Start() { }
+				void Finish() { }
+				void Add() { }
+				System.Threading.Tasks.Task Flush() => System.Threading.Tasks.Task.CompletedTask;
+			}
+			""";
+
+		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.OnSuppressingAllOthers([
+			DiagnosticDescriptors.SeparateInvocationRuns,
+			DiagnosticDescriptors.SeparateAwaitRuns,
+		]);
+
+		var options = new System.Collections.Generic.Dictionary<string, string>
+		{
+			["stanza_receiver_roots"] = roots,
+		};
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(
+			source,
+			rules,
+			options
+		);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task ADirectInstanceCallHasNoConcreteReceiverRoot()
+	{
+		const string source = """
+			class C
+			{
+				async System.Threading.Tasks.Task M()
+				{
+					this.Add();
+					await this.Flush();
+					this.Refresh();
+				}
+
+				void Add() { }
+				System.Threading.Tasks.Task Flush() => System.Threading.Tasks.Task.CompletedTask;
+				void Refresh() { }
+			}
+			""";
+
+		var options = new System.Collections.Generic.Dictionary<string, string>
+		{
+			["stanza_receiver_roots"] = "*",
+		};
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<SeparateInvocationRunsAnalyzer>(
+			source,
+			analyzerConfigOptions: options
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task ACommentEndsAConfiguredReceiverRunWithoutTheCommentRule()
+	{
+		const string source = """
+			class C
+			{
+				void M(C db)
+				{
+					Start();
+					db.Add();
+					// Another phase.
+					db.Save();
+					Finish();
+				}
+				void Start() { }
+				void Finish() { }
+				void Add() { }
+				void Save() { }
+			}
+			""";
+
+		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<SeparateInvocationRunsAnalyzer>(
+			source,
+			TestRuleSets.OnSuppressingAllOthers([DiagnosticDescriptors.SeparateInvocationRuns]),
+			new Dictionary<string, string> { ["stanza_receiver_roots"] = "db" }
+		);
+
+		Assert.IsEmpty(result.Diagnostics);
 	}
 }

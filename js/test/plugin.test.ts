@@ -196,7 +196,7 @@ describe('the shared settings', () => {
 	});
 
 	it('reject an unknown key, and name the keys that exist', () => {
-		const known = 'the settings are assertionRoots, guardRoots, maxLooseRunSize and testRoots.';
+		const known = 'the settings are assertionRoots, declarationShapes, guardRoots, maxLooseRunSize, receiverComparison, receiverRoots and testRoots.';
 
 		assert.throws(
 			() => readSharedSettings({ stanza: { maxLooseRunsize: 5 } }),
@@ -207,7 +207,7 @@ describe('the shared settings', () => {
 	});
 
 	it('reject a list that is no array, and name the key and the value', () => {
-		for (const key of ['assertionRoots', 'testRoots', 'guardRoots']) {
+		for (const key of ['assertionRoots', 'testRoots', 'guardRoots', 'receiverRoots']) {
 			assert.throws(
 				() => readSharedSettings({ stanza: { [key]: 'expect' } }),
 				new Error(`Stanza: setting "${key}" must be an array of strings, but is "expect".`),
@@ -226,6 +226,23 @@ describe('the shared settings', () => {
 		);
 
 		assert.throws(() => readSharedSettings({ stanza: { guardRoots: [null] } }), /but item 0 is null./);
+	});
+
+	it('reject a name that is blank or has spaces around it, which would match nothing, and name the item', () => {
+		assert.throws(
+			() => readSharedSettings({ stanza: { receiverRoots: ['db', ''] } }),
+			new Error('Stanza: setting "receiverRoots" must list names that are not blank and have no spaces around them, but item 1 is "".'),
+		);
+
+		for (const key of ['assertionRoots', 'testRoots', 'guardRoots', 'receiverRoots']) {
+			for (const name of [' ', ' logger ', 'logger\t']) {
+				assert.throws(
+					() => readSharedSettings({ stanza: { [key]: [name] } }),
+					/must list names that are not blank and have no spaces around them/,
+					name,
+				);
+			}
+		}
 	});
 
 	it('reject a limit that is no whole number from the least to the greatest, and name the value', () => {
@@ -260,7 +277,7 @@ describe('the shared settings', () => {
 		for (const value of ['strict', 3, null, true, ['guardRoots']]) {
 			assert.throws(
 				() => readSharedSettings({ stanza: value }),
-				/^Error: Stanza: settings.stanza must be an object of settings, but is .*; the settings are assertionRoots, guardRoots, maxLooseRunSize and testRoots.$/,
+				/^Error: Stanza: settings.stanza must be an object of settings, but is .*; the settings are assertionRoots, declarationShapes, guardRoots, maxLooseRunSize, receiverComparison, receiverRoots and testRoots.$/,
 				String(value),
 			);
 		}
@@ -270,7 +287,7 @@ describe('the shared settings', () => {
 		const code = lines('run();');
 
 		const message =
-			/Stanza: unknown setting "maxLooseRunsize" in settings.stanza; the settings are assertionRoots, guardRoots, maxLooseRunSize and testRoots./;
+			/Stanza: unknown setting "maxLooseRunsize" in settings.stanza; the settings are assertionRoots, declarationShapes, guardRoots, maxLooseRunSize, receiverComparison, receiverRoots and testRoots./;
 
 		for (const name of Object.keys(rules)) {
 			assert.throws(() => new Linter().verify(code, createConfig({ [name]: 'error' }, { stanza: { maxLooseRunsize: 5 } })), message, name);
