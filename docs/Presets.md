@@ -28,7 +28,7 @@ A value that names nothing fails the build with `STANZA001`, which lists the val
   A rule marked *Opt-in* or *No level* is in no level, so only its own line enables it.
 - `StanzaSeverity` sets the severity of each rule the level enables. A build reports only `warning` and `error`,
   and under `TreatWarningsAsErrors` a warning fails it, so run the [fixes](https://github.com/Nickelony/Stanza/wiki/Adopting-the-analyzers) first.
-  A new rule may join the `moderate` or `strong` level in a minor release, so pin the package version, as the
+- A new rule may join the `moderate` or `strong` level in a minor release, so pin the package version, as the
   [1.x policy](https://github.com/Nickelony/Stanza/blob/main/CONTRIBUTING.md#what-a-1x-release-may-change) says.
 - No level enables both halves of a [pair](https://github.com/Nickelony/Stanza/wiki/Terms).
 
