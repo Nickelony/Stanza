@@ -1,7 +1,11 @@
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.BlankLines;
 using Nickelony.Stanza.Tests.Shared;
@@ -582,6 +586,46 @@ public sealed class KeepDependentBindingsTogetherTests
 		// Each binding of the chain reads the one above it, so the rule claims every gap of the chain.
 		Assert.AreEqual(50, small);
 		Assert.AreEqual(200, large);
+	}
+
+	// A search of the block for each declarator allocates nothing, so the bytes of a walk cannot see it: its time can.
+	// A linear read of 30000 locals takes milliseconds, and a search of the locals for each one takes seconds.
+	[TestMethod]
+	[DoNotParallelize]
+	public void ReadingTheLocalOfEveryDeclaratorOfALongBlockIsLinear()
+	{
+		const int locals = 30_000;
+		const double limitMilliseconds = 750;
+
+		string source = "class C\n{\n\tvoid M()\n\t{\n" + string.Concat(Enumerable.Range(0, locals).Select(index => $"\t\tint v{index} = {index};\n")) + "\t}\n}\n";
+
+		SyntaxTree tree = CSharpSyntaxTree.ParseText(source);
+
+		var compilation = CSharpCompilation.Create(
+			assemblyName: "Locals",
+			syntaxTrees: [tree],
+			references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]
+		);
+
+		VariableDeclaratorSyntax[] declarators = [.. tree.GetRoot().DescendantNodes().OfType<VariableDeclaratorSyntax>()];
+		double fastest = double.MaxValue;
+
+		for (int run = 0; run < 3; run++)
+		{
+			SemanticModel semanticModel = compilation.GetSemanticModel(tree);
+
+			// The first read binds the block once, which is not what the pin measures.
+			Assert.IsNotNull(BlankLineKeptPairs.FindDeclaredLocal(semanticModel, declarators[0], default));
+
+			var clock = Stopwatch.StartNew();
+
+			foreach (VariableDeclaratorSyntax declarator in declarators)
+				Assert.IsNotNull(BlankLineKeptPairs.FindDeclaredLocal(semanticModel, declarator, default));
+
+			fastest = Math.Min(fastest, clock.Elapsed.TotalMilliseconds);
+		}
+
+		Assert.IsLessThan(limitMilliseconds, fastest, $"Reading {locals:N0} locals took {fastest:N0} ms.");
 	}
 
 	private static string BuildSource(string body, bool exits = false)
