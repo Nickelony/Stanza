@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Immutable;
 
 namespace Nickelony.Stanza.Format.Planning;
@@ -18,6 +19,9 @@ internal sealed record FormatStep(
 	/// <summary>The files a check reports, or every file when unset.</summary>
 	public ImmutableArray<string> Scope { get; init; }
 
-	/// <summary>The command that starts the CSharpier server a source layout check formats the sources with.</summary>
+	/// <summary>The command that starts the CSharpier server of a source layout check; a test seam.</summary>
 	public ImmutableArray<string> Server { get; init; } = ["csharpier", "server"];
+
+	/// <summary>How long the server may take to answer for one source before the run fails; a test seam.</summary>
+	public TimeSpan ServerTimeout { get; init; } = TimeSpan.FromMinutes(2);
 }

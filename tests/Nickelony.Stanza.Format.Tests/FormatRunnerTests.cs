@@ -428,6 +428,31 @@ public sealed class FormatRunnerTests
 	}
 
 	[TestMethod]
+	public void AServerThatNeverAnswersIsARunFailureThatSaysSoAndNotACancellation()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		_ = directory.Write("Wrong.cs", "class B { wrong }\n");
+		_ = directory.Write("Server.cs", FakeCSharpierServer.StallingProgram);
+
+		FormatStep layout = BuildSourceLayoutStep(directory, ["Wrong.cs"]) with
+		{
+			ServerTimeout = TimeSpan.FromSeconds(1),
+		};
+
+		using StringWriter output = new();
+		using StringWriter error = new();
+
+		FormatRunException exception = Assert.ThrowsExactly<FormatRunException>(() =>
+			_ = Run(root: directory.Root, output, error, steps: [layout], check: true)
+		);
+
+		Assert.Contains("did not answer", exception.Message);
+		Assert.Contains("Wrong.cs", exception.Message);
+		Assert.Contains("within 1 second", exception.Message);
+	}
+
+	[TestMethod]
 	public void AServerThatExitsBeforeItStartsIsARunFailureThatSaysSo()
 	{
 		using TempDirectory directory = new(editorConfig: false);

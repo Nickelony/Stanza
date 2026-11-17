@@ -63,4 +63,17 @@ internal static class FakeCSharpierServer
 			stream.Write(reply.ToArray());
 		}
 		""";
+
+	/// <summary>Starts, takes a request and never answers it.</summary>
+	public const string StallingProgram = """
+		using System.Net;
+		using System.Net.Sockets;
+
+		TcpListener listener = new(IPAddress.Loopback, 0);
+		listener.Start();
+		Console.WriteLine($"Started on {((IPEndPoint)listener.LocalEndpoint).Port}");
+
+		using TcpClient client = listener.AcceptTcpClient();
+		Thread.Sleep(Timeout.Infinite);
+		""";
 }

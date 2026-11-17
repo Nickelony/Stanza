@@ -152,7 +152,12 @@ internal sealed class FormatRunner(string root, TextWriter output, TextWriter er
 		// The sources share one server, as a host for each costs most of a second,
 		// and a formatted repository can have hundreds that differ only in blank lines.
 		using CSharpierServer? server = unformatted.Any(FormatPlanner.IsSource)
-			? CSharpierServer.Start(step.Server, workingDirectory, cancellationToken)
+			? CSharpierServer.Start(
+				command: step.Server,
+				workingDirectory,
+				requestTimeout: step.ServerTimeout,
+				cancellationToken
+			)
 			: null;
 
 		ImmutableArray<bool> drifts = ProcessRunner.RunEach(

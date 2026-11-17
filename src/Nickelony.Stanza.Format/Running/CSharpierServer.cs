@@ -24,12 +24,17 @@ internal sealed partial class CSharpierServer : IDisposable
 	private readonly CancellationToken _cancellationToken;
 	private readonly CancellationTokenRegistration _registration;
 
-	private CSharpierServer(Process process, int port, CancellationToken cancellationToken)
+	private CSharpierServer(Process process, int port, TimeSpan requestTimeout, CancellationToken cancellationToken)
 	{
 		_process = process;
 
 		// The server is on this machine, so no proxy of the environment may carry the sources it is sent.
-		_client = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { BaseAddress = new Uri($"http://127.0.0.1:{port}/") };
+		_client = new HttpClient(new SocketsHttpHandler { UseProxy = false })
+		{
+			BaseAddress = new Uri($"http://127.0.0.1:{port}/"),
+			Timeout = requestTimeout,
+		};
+
 		_cancellationToken = cancellationToken;
 
 		// A canceled run stops the server too, so no host outlives the tool.
@@ -40,7 +45,12 @@ internal sealed partial class CSharpierServer : IDisposable
 	private static partial Regex StartedLine();
 
 	/// <summary>Starts the server and waits for its port, and ends the run if it exits or is silent first.</summary>
-	public static CSharpierServer Start(ImmutableArray<string> command, string workingDirectory, CancellationToken cancellationToken)
+	public static CSharpierServer Start(
+		ImmutableArray<string> command,
+		string workingDirectory,
+		TimeSpan requestTimeout,
+		CancellationToken cancellationToken
+	)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
 
@@ -102,7 +112,7 @@ internal sealed partial class CSharpierServer : IDisposable
 			if (Task.WaitAny([port.Task], (int)s_startTimeout.TotalMilliseconds, cancellationToken) < 0)
 				throw new FormatRunException($"The CSharpier server printed no port within {s_startTimeout.TotalSeconds:0} seconds.");
 
-			return new CSharpierServer(process, port.Task.GetAwaiter().GetResult(), cancellationToken);
+			return new CSharpierServer(process, port: port.Task.GetAwaiter().GetResult(), requestTimeout, cancellationToken);
 		}
 		catch
 		{
@@ -138,6 +148,12 @@ internal sealed partial class CSharpierServer : IDisposable
 
 			string? reason = root.TryGetProperty("errorMessage", out JsonElement message) ? message.GetString() : null;
 			throw new FormatRunException($"CSharpier could not format '{fullPath}' ({status ?? "no status"}): {reason}".TrimEnd(' ', ':'));
+		}
+		catch (OperationCanceledException exception) when (!_cancellationToken.IsCancellationRequested)
+		{
+			// The client's own time limit raises a cancellation, which the tool would otherwise report as Ctrl+C.
+			string waited = _client.Timeout.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
+			throw new FormatRunException($"The CSharpier server did not answer for '{fullPath}' within {waited} seconds.", exception);
 		}
 		catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException)
 		{
