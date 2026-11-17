@@ -15,7 +15,7 @@ import {
 	withRule,
 } from '../../src/state/config.ts';
 import { optionId } from '../../src/state/model.ts';
-import { catalog, markupConfig, option, realMarkup, sample } from '../fixtures.ts';
+import { catalog, markupConfig, option, realJavascript, realMarkup, realPython, sample } from '../fixtures.ts';
 
 describe('a rule setting', () => {
 	const two = sample.rules[0]!;
@@ -136,6 +136,22 @@ describe('an option value', () => {
 		expect(checkOption(sample.options[3]!, 'anything, goes')).toEqual({ ok: true, value: 'anything, goes' });
 	});
 
+	it('refuses a colon in a C# value, which the readers cut as a severity suffix', () => {
+		for (const raw of ['logger:warning', 'a, b:suggestion', ':']) {
+			const checked = checkOption(sample.options[3]!, raw);
+
+			expect(checked.ok, raw).toBe(false);
+			expect(checked).toMatchObject({ reason: expect.stringContaining(':') });
+		}
+
+		expect(checkOption(sample.options[1]!, 'body:x').ok).toBe(false);
+	});
+
+	it('accepts a colon where no .editorconfig reads the value', () => {
+		const roots = realPython.options.find((candidate) => candidate.key === 'exclude')!;
+		expect(checkOption(roots, 'a:b')).toEqual({ ok: true, value: 'a:b' });
+	});
+
 	it('refuses a tab, a line separator and any other control character inside a value', () => {
 		const controls = [0x09, 0x0b, 0x1b, 0x7f, 0x85, 0x2028, 0x2029].map((code) => `a${String.fromCharCode(code)}b`);
 
@@ -208,5 +224,34 @@ describe('a change to the configuration', () => {
 
 		expect(withoutChanges(before)).toEqual(base);
 		expect(before.rules).toEqual({ ZA0001: 'none' });
+	});
+});
+
+describe('an explicit empty list', () => {
+	const pythonRoots = realPython.options.find((candidate) => candidate.key === 'assertion-roots')!;
+	const closed = realPython.options.find((candidate) => candidate.key === 'named-argument-sources')!;
+	const scriptRoots = realJavascript.options.find((candidate) => candidate.key === 'assertionRoots')!;
+
+	it.each(['[]', ' [] ', '[ ]'])('is a value of its own for a list of Python or JS, typed as "%s"', (raw) => {
+		for (const target of [pythonRoots, closed, scriptRoots]) {
+			expect(checkOption(target, raw), target.key).toEqual({ ok: true, value: '[]' });
+		}
+	});
+
+	it('stays apart from blank input, which resets the option to its default', () => {
+		expect(checkOption(pythonRoots, '')).toEqual({ ok: true, value: null });
+		expect(checkOption(pythonRoots, ' , ')).toEqual({ ok: true, value: null });
+	});
+
+	it('counts as a change from a default that lists names, and from one that lists none', () => {
+		const none = realPython.options.find((candidate) => candidate.key === 'guard-roots')!;
+
+		expect(isOptionChanged(pythonRoots, { ...emptyConfig(), options: { 'assertion-roots': '[]' } })).toBe(true);
+		expect(isOptionChanged(none, { ...emptyConfig(), options: { 'guard-roots': '[]' } })).toBe(true);
+	});
+
+	it('is no empty list of a C# option, whose readers have the word none for it', () => {
+		const closed = option('stanza_sources', { kind: 'list', choices: ['project', 'stdlib'], defaultValue: 'project, stdlib' });
+		expect(checkOption(closed, '[]').ok).toBe(false);
 	});
 });

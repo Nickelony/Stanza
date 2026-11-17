@@ -79,6 +79,7 @@ The site has one page for each language and one for the markup rules, and the pa
 | Python | `/Stanza/py/` | The `[tool.stanza]` table, which downloads as `pyproject-stanza.toml` | `level`, `sel`, and a rule code or a key with a value. |
 
 The links of the header switch between the pages and carry the picked level in the hash, which the Markup page ignores.
+The link to the page the visitor is on carries the whole hash instead, so a click on it changes nothing.
 Python Stanza reports no severity, so its page has no severity picker, and a rule is enabled or disabled.
 
 Only the C# page and the Markup page import an `.editorconfig` and list conflicts.
@@ -127,6 +128,9 @@ A default written as a quoted word makes a dropdown of the values that the code 
 
 A Python list whose items the code closes to a set of words, such as `named-argument-sources`, takes only those words,
 and the build fails the same way.
+A JS or Python list also takes `[]`, an explicit empty list that the form stores as `[]`, writes as a native empty array and keeps in the hash;
+a blank box resets the list to its default.
+A C# value cannot hold `:`, which the readers cut as a severity suffix.
 
 The effect cell of such a key names its values between backticks after its last colon,
 and a whole number that the cell gives as `from X to Y` must equal the bounds of the code.
@@ -290,6 +294,8 @@ except that explicit pair choices retain both overrides.
 - A section whose glob matches every C# file, such as `[*]`, `[*.cs]` and `[*.{cs,vb}]`, gives the analyzer settings,
   and one that names an extension of a markup profile gives the `stanza-markup` settings.
   The lines above the first section count as C#, as in a `.globalconfig`.
+- A glob can reach both tools, as `[*]` and `[*.{cs,xml}]` do, and then each line goes to the analyzer and, if `stanza-markup` reads it, to the tool too.
+- A header that needs more than 64 alternatives or 4096 characters to expand is not read as a glob, and its section is skipped.
 - The form holds one value for both tools, so where the markup section disagrees with the C# one, the C# value wins and a note says so.
 - A section for a path or another file type, such as `[tests/**/*.cs]`, is skipped, and one entry counts its Stanza lines.
 - A line is read as `stanza-markup` and Roslyn read it: `=` or `:` ends the key, and a trailing `#` or `;` comment is cut,

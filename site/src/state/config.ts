@@ -192,9 +192,20 @@ export function isEnabledByFile<S>(rule: Rule<S>, config: Config): boolean {
 	return ruleDeltaIn(rule, config, 'analyzer') !== null || config.everySetting || addsPresetFile(config.level, config.severity);
 }
 
+/** The value of a list option that holds an explicit empty list, which differs from no value at all: the tool's own default list stays. */
+export const emptyList = '[]';
+
+/** Whether a list option writes an empty list as `[]`, which a page of JS or Python does; the C# readers have no such value, and `none` is theirs. */
+export function takesEmptyList<S>(option: Option<S>): boolean {
+	return option.kind === 'list' && option.csharp === undefined;
+}
+
 export type OptionCheck = { ok: true; value: string | null } | { ok: false; reason: string };
 
-/** Checks what was typed for an option against the values its page allows; empty input leaves the option at its default. */
+/**
+ * Checks what was typed for an option against the values its page allows; empty input leaves the option at its default.
+ * A list of JS or Python also takes `[]`, an explicit empty list, which is a value of its own.
+ */
 export function checkOption<S>(option: Option<S>, raw: string): OptionCheck {
 	const value = raw.trim();
 
@@ -209,6 +220,15 @@ export function checkOption<S>(option: Option<S>, raw: string): OptionCheck {
 
 	if (option.csharp !== undefined && /[#;]/u.test(value)) {
 		return { ok: false, reason: 'An .editorconfig value cannot hold "#" or ";".' };
+	}
+
+	// The readers cut a C# value at a colon, as the suffix that sets a severity, so a value that holds one would come back shortened.
+	if (option.csharp !== undefined && value.includes(':')) {
+		return { ok: false, reason: 'An .editorconfig value cannot hold ":", which the readers take for a severity suffix.' };
+	}
+
+	if (takesEmptyList(option) && value.startsWith('[') && value.endsWith(']') && value.slice(1, -1).trim() === '') {
+		return { ok: true, value: emptyList };
 	}
 
 	switch (option.kind) {
@@ -319,8 +339,8 @@ export function changedCount<S>(catalog: Catalog<S>, config: Config): number {
 	return rules + options;
 }
 
-/** The items of a list option, which `checkOption` stores joined by a comma and a space. */
-export const listItems = (value: string): string[] => value.split(', ');
+/** The items of a list option, which `checkOption` stores joined by a comma and a space, or `[]` for none. */
+export const listItems = (value: string): string[] => (value === emptyList ? [] : value.split(', '));
 
 /** The value the tool uses for an option of a preset language: the visitor's, else the default. */
 export function optionValueAt<S>(option: Option<S>, config: Config): string | null {

@@ -122,3 +122,20 @@ describe('the lines the preview shows for Python', () => {
 		expect(pyprojectOptionLines(option('formatter'), { ...config, options: { formatter: 'black' } })).toEqual(['formatter = "black"']);
 	});
 });
+
+describe('an explicit empty list in the [tool.stanza] table', () => {
+	it.each(['assertion-roots', 'subscription-roots', 'named-argument-sources'])(
+		'writes %s as a TOML empty array, though its default lists names',
+
+		(key) => {
+			expect(option(key).defaultValue).not.toBeNull();
+			expect(written({ options: { [key]: '[]' } })).toBe(`[tool.stanza]\n${key} = []\n`);
+			expect(pyprojectOptionLines(option(key), { ...emptyConfig('error'), options: { [key]: '[]' } })).toEqual([`${key} = []`]);
+		},
+	);
+
+	it('keeps the other lists and the other keys beside it', () => {
+		const options = { 'assertion-roots': '[]', 'guard-roots': 'check', exclude: '[]' };
+		expect(written({ options })).toBe(['[tool.stanza]', 'assertion-roots = []', 'exclude = []', 'guard-roots = ["check"]', ''].join('\n'));
+	});
+});

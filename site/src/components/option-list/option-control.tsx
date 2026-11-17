@@ -2,20 +2,31 @@ import { useState } from 'preact/hooks';
 
 import { useAppState } from '../../hooks/use-app-state.ts';
 import { useStore } from '../../hooks/use-page.ts';
-import { checkOption, withOption } from '../../state/config.ts';
+import { checkOption, takesEmptyList, withOption } from '../../state/config.ts';
 import { optionDefaultLabel } from '../../state/labels.ts';
 import { optionId, wordsOf, type Option, type Snippet } from '../../state/model.ts';
 import { FieldError, RowInput, RowSelect } from '../row-list/parts.ts';
 
 import type { OptionControlProps } from './types.ts';
 
-/** Names the default as the dropdowns do; a default too long for the box is left to the tooltip and the preview. */
+/** Names the default as the dropdowns do; a default too long for the box is left to the tooltip and the preview. A list that can be empty names `[]`. */
 function placeholder(option: Option<Snippet>): string {
 	const accepted = wordsOf(option);
 	const words = accepted.length > 0 ? `, or ${accepted.join(', ')}` : '';
 	const value = option.defaultValue;
 
+	if (takesEmptyList(option)) {
+		return value !== null && value.length <= 12 ? `Default (${value}), or []` : 'Default, or []';
+	}
+
 	return value !== null && value.length <= 12 ? `Default (${value})${words}` : 'Default';
+}
+
+/** The tooltip of the box: the default, and for a list that can be empty what `[]` does. */
+function tooltip(option: Option<Snippet>): string {
+	return takesEmptyList(option)
+		? `Default: ${option.defaultText}. Type [] for an empty list, which replaces the default.`
+		: `Default: ${option.defaultText}`;
 }
 
 /** The dropdown or the text box that sets an option, and the message that says why a typed value is refused. */
@@ -61,7 +72,7 @@ export function OptionControl({ option, changed, anchored }: OptionControlProps)
 				<RowInput
 					type="text"
 					placeholder={placeholder(option)}
-					title={`Default: ${option.defaultText}`}
+					title={tooltip(option)}
 					aria-label={`Value of ${id}`}
 					aria-describedby={errorId}
 					aria-invalid={reason !== ''}

@@ -48,10 +48,8 @@ export interface ImportResult {
 	refused: string | null;
 }
 
-type Scope = 'analyzer' | 'markup' | 'other';
-
-/** The scopes whose settings the page reads. */
-type ReadScope = Exclude<Scope, 'other'>;
+/** The tools whose settings the page reads; a section that reaches neither is not read. */
+type ReadScope = 'analyzer' | 'markup';
 
 interface Assignment {
 	value: string;
@@ -107,72 +105,114 @@ function stripCommentAndSeverity(key: string, raw: string): string {
 	return value;
 }
 
-/** Splits the first `{a,b}` of a glob into its alternatives, and does the same for the braces left in each. */
-function expandBraces(glob: string, budget = { left: 64 }): string[] {
-	const open = glob.indexOf('{');
+/** What the expansion of a section header may spend: how many alternatives it builds, and how many characters they hold together. */
+export interface BraceLimits {
+	alternatives: number;
+	characters: number;
+}
 
-	if (open < 0 || budget.left <= 0) {
-		return [glob];
-	}
+/** The limits of a header: a section that matches C# or markup files is a short glob, so a header that needs more is not one. */
+export const braceLimits: Readonly<BraceLimits> = { alternatives: 64, characters: 4096 };
 
-	let depth = 0;
-	let close = -1;
-
-	const commas: number[] = [];
-
-	for (let index = open; index < glob.length; index++) {
-		const character = glob[index];
-
-		if (character === '{') {
-			depth++;
-		} else if (character === '}') {
-			depth--;
-
-			if (depth === 0) {
-				close = index;
-				break;
-			}
-		} else if (character === ',' && depth === 1) {
-			commas.push(index);
-		}
-	}
-
-	// A brace with no comma, or none that closes, is a literal as far as this reader goes.
-	if (close < 0 || commas.length === 0) {
-		return [glob];
-	}
-
-	const bounds = [open, ...commas, close];
+/**
+ * Splits the first `{a,b}` of a glob into its alternatives, and does the same for the braces left in each.
+ * The limits are charged before an alternative is built, so a header never builds more than they allow,
+ * and the result is `null` when they run out, which the caller treats as a glob it cannot read.
+ * A test passes its own budget and reads what is left.
+ */
+export function expandBraces(glob: string, budget: BraceLimits = { ...braceLimits }): string[] | null {
 	const results: string[] = [];
+	const pending = [glob];
 
-	for (let part = 0; part < bounds.length - 1; part++) {
-		budget.left--;
-		results.push(...expandBraces(glob.slice(0, open) + glob.slice(bounds[part]! + 1, bounds[part + 1]).trim() + glob.slice(close + 1), budget));
+	for (let current = pending.pop(); current !== undefined; current = pending.pop()) {
+		const open = current.indexOf('{');
+
+		if (open < 0) {
+			results.push(current);
+			continue;
+		}
+
+		let depth = 0;
+		let close = -1;
+
+		const commas: number[] = [];
+
+		for (let index = open; index < current.length; index++) {
+			const character = current[index];
+
+			if (character === '{') {
+				depth++;
+			} else if (character === '}') {
+				depth--;
+
+				if (depth === 0) {
+					close = index;
+					break;
+				}
+			} else if (character === ',' && depth === 1) {
+				commas.push(index);
+
+				if (commas.length > budget.alternatives) {
+					return null;
+				}
+			}
+		}
+
+		// A brace with no comma, or none that closes, is a literal as far as this reader goes.
+		if (close < 0 || commas.length === 0) {
+			results.push(current);
+			continue;
+		}
+
+		const bounds = [open, ...commas, close];
+		const rest = current.length - close - 1;
+
+		for (let part = bounds.length - 2; part >= 0; part--) {
+			const length = open + (bounds[part + 1]! - bounds[part]! - 1) + rest;
+
+			budget.alternatives--;
+			budget.characters -= length;
+
+			if (budget.alternatives < 0 || budget.characters < 0) {
+				return null;
+			}
+
+			pending.push(current.slice(0, open) + current.slice(bounds[part]! + 1, bounds[part + 1]).trim() + current.slice(close + 1));
+		}
 	}
 
 	return results;
 }
 
-/** Whether the glob of a section matches every C# file, the markup files of the profiles, or neither. */
-function scopeOf(header: string, markupExtensions: readonly string[]): Scope {
+/** The tools whose sections the glob of a header reaches: the analyzer for C# files, `stanza-markup` for the markup files of the profiles, both for a glob of every file. */
+function scopesOf(header: string, markupExtensions: readonly string[]): ReadScope[] {
+	const alternatives = expandBraces(header.trim().toLowerCase());
+
+	if (alternatives === null) {
+		return [];
+	}
+
+	let analyzer = false;
 	let markup = false;
 
-	for (const alternative of expandBraces(header.trim().toLowerCase())) {
-		const glob = alternative.trim();
-		const match = /^(?:\*\*\/)?\*{1,2}(?:\.([a-z0-9]+))?$/.exec(glob);
+	for (const alternative of alternatives) {
+		const match = /^(?:\*\*\/)?\*{1,2}(?:\.([a-z0-9]+))?$/.exec(alternative.trim());
 
 		if (!match) {
 			continue;
 		}
 
-		if (match[1] === undefined || match[1] === 'cs') {
-			return 'analyzer';
+		if (match[1] === undefined) {
+			analyzer = true;
+			markup = true;
+		} else if (match[1] === 'cs') {
+			analyzer = true;
+		} else if (markupExtensions.includes(match[1])) {
+			markup = true;
 		}
-
-		markup ||= markupExtensions.includes(match[1]);
 	}
 
-	return markup ? 'markup' : 'other';
+	return [...(analyzer ? (['analyzer'] as const) : []), ...(markup ? (['markup'] as const) : [])];
 }
 
 function quoted(line: string): string {
@@ -240,11 +280,11 @@ function missingReason<S>(catalog: Catalog<S>, kind: 'rule' | 'option', name: st
 	return kind === 'rule' ? `The page has no rule ${name}.` : `The page has no option ${quoted(name)}.`;
 }
 
-/** Notes the rule line, or collects its severity under the scope that read it. */
+/** Notes the rule line, or collects its severity under each scope that read it. */
 function collectRule<S>(
 	catalog: Catalog<S>,
 	reading: Reading,
-	scope: ReadScope,
+	scopes: readonly ReadScope[],
 	ruleId: string,
 	value: string,
 	note: (reason: string) => ImportNote,
@@ -255,15 +295,18 @@ function collectRule<S>(
 		reading.skipped.push(note(`"${quoted(value)}" is not a severity; use ${[...severityWords].join(', ')}.`));
 	} else {
 		const severity = value.toLowerCase();
-		reading.collected.rules[scope].set(ruleId, { value: severityAliases.get(severity) ?? severity, note: note('') });
+
+		for (const scope of scopes) {
+			reading.collected.rules[scope].set(ruleId, { value: severityAliases.get(severity) ?? severity, note: note('') });
+		}
 	}
 }
 
-/** Notes the option line, or collects its value under the scope that read it. */
+/** Notes the option line, or collects its value under each scope that read it. */
 function collectOption<S>(
 	catalog: Catalog<S>,
 	reading: Reading,
-	scope: ReadScope,
+	scopes: readonly ReadScope[],
 	key: string,
 	value: string,
 	note: (reason: string) => ImportNote,
@@ -282,8 +325,21 @@ function collectOption<S>(
 	} else if (checked.value === null) {
 		reading.skipped.push(note('The value is empty.'));
 	} else {
-		reading.collected.options[scope].set(option.key, { value: checked.value, note: note('') });
+		for (const scope of scopes) {
+			reading.collected.options[scope].set(option.key, { value: checked.value, note: note('') });
+		}
 	}
+}
+
+/** Whether `stanza-markup` reads the rule, or the key when there is no rule ID. */
+function isReadByMarkup<S>(catalog: Catalog<S>, ruleId: string | undefined, key: string): boolean {
+	if (ruleId !== undefined) {
+		return catalog.rules.find((rule) => rule.id === ruleId)?.csharp?.readByMarkup === true;
+	}
+
+	const option = catalog.options.find((candidate) => candidate.key === key);
+
+	return option !== undefined && readsOption(option, 'markup');
 }
 
 /** Walks the lines once, keeping the scope of the section it is in, and collects every Stanza setting a section reads. */
@@ -300,7 +356,7 @@ function collectLines<S>(catalog: Catalog<S>, lines: readonly string[]): Reading
 		markupSeen: false,
 	};
 
-	let scope: Scope = 'analyzer';
+	let scopes: readonly ReadScope[] = ['analyzer'];
 	let header: ImportNote | null = null;
 	let unread = 0;
 
@@ -333,9 +389,9 @@ function collectLines<S>(catalog: Catalog<S>, lines: readonly string[]): Reading
 			}
 
 			closeSection();
-			scope = scopeOf(bracketed.slice(1, -1), catalog.markupExtensions);
+			scopes = scopesOf(bracketed.slice(1, -1), catalog.markupExtensions);
 
-			if (scope === 'other') {
+			if (scopes.length === 0) {
 				header = note('');
 			}
 
@@ -349,7 +405,7 @@ function collectLines<S>(catalog: Catalog<S>, lines: readonly string[]): Reading
 		const stanza = ruleId !== undefined || key.startsWith('stanza_');
 
 		if (at < 0 || key === '') {
-			if (scope === 'other') {
+			if (scopes.length === 0) {
 				reading.ignored++;
 			} else {
 				reading.skipped.push(note('Not a setting: it needs a key, an equals sign or a colon, and a value.'));
@@ -363,21 +419,21 @@ function collectLines<S>(catalog: Catalog<S>, lines: readonly string[]): Reading
 			return;
 		}
 
-		if (scope === 'other') {
+		if (scopes.length === 0) {
 			unread++;
 			return;
 		}
 
-		if (scope === 'analyzer') {
-			reading.analyzerSeen = true;
-		} else {
-			reading.markupSeen = true;
-		}
+		// A section of the markup files alone gives the tool every line; one that also covers C# files gives it the lines it reads.
+		const read = scopes.filter((candidate) => candidate === 'analyzer' || scopes.length === 1 || isReadByMarkup(catalog, ruleId, key));
+
+		reading.analyzerSeen ||= read.includes('analyzer');
+		reading.markupSeen ||= read.includes('markup');
 
 		if (ruleId !== undefined) {
-			collectRule(catalog, reading, scope, ruleId, value, note);
+			collectRule(catalog, reading, read, ruleId, value, note);
 		} else {
-			collectOption(catalog, reading, scope, key, value, note);
+			collectOption(catalog, reading, read, key, value, note);
 		}
 	});
 
@@ -468,8 +524,9 @@ function resolveReading<S>(catalog: Catalog<S>, reading: Reading, current: Confi
 /**
  * Reads the text of an `.editorconfig` and applies the Stanza settings in it to a copy of the configuration.
  * It never throws: text it cannot read as an `.editorconfig` is refused whole, and a line it cannot apply is listed in `skipped`.
- * A section that matches C# files gives the analyzer values, and one that matches the markup files the `stanza-markup` values;
- * the page keeps one value for both, so the C# one wins where they differ.
+ * A section that matches C# files gives the analyzer values, and one that matches the markup files the `stanza-markup` values,
+ * and a section that matches both, such as `[*]`, gives both; the page keeps one value for both, so the C# one wins where they differ.
+ * A header too large to expand is a glob it cannot read, so its section is skipped like one for other files.
  */
 export function importEditorConfig<S>(catalog: Catalog<S>, text: string, current: Config): ImportResult {
 	const refused = refusalOf(text);

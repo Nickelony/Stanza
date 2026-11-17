@@ -320,3 +320,20 @@ describe('the lines the preview shows for JS', () => {
 		expect(eslintRuleLines(realJavascript, rule('separate-directives'), configFor({}))).toEqual([]);
 	});
 });
+
+describe('an explicit empty list in the eslint.config.mjs', () => {
+	it('writes assertionRoots as an empty array under settings.stanza, though its default lists names', () => {
+		expect(option('assertionRoots').defaultValue).not.toBeNull();
+
+		const text = written({ options: { assertionRoots: '[]' } });
+
+		expect(text).toContain('\t\tsettings: {\n\t\t\tstanza: {\n\t\t\t\tassertionRoots: [],\n\t\t\t},\n\t\t},');
+	});
+
+	it('writes it for an option beside a list of names', () => {
+		const text = written({ options: { assertionRoots: '[]', testRoots: 'describe, it' } });
+
+		expect(text).toContain('\t\t\t\tassertionRoots: [],');
+		expect(text).toContain("\t\t\t\ttestRoots: ['describe', 'it'],");
+	});
+});

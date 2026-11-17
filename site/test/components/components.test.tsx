@@ -274,6 +274,37 @@ describe('a list option whose page closes the set of words', () => {
 	});
 });
 
+describe('a list option of Python', () => {
+	const roots = {
+		...option('assertion-roots', { kind: 'list', defaultValue: 'assert*, expect' }),
+		csharp: undefined,
+	};
+
+	it('takes [] as an empty list, which a blank box does not give', async () => {
+		const store = renderPage({ selection: { kind: 'option', id: 'assertion-roots' } }, python, catalog(rules, [roots]));
+		const box = screen.getByLabelText('Value of assertion-roots') as HTMLInputElement;
+
+		expect(box.placeholder).toBe('Default, or []');
+
+		box.focus();
+		fireEvent.input(box, { target: { value: 'expect' } });
+		await flush();
+
+		expect(store.get().config.options).toEqual({ 'assertion-roots': 'expect' });
+
+		fireEvent.input(box, { target: { value: '[]' } });
+		await flush();
+
+		expect(box.getAttribute('aria-invalid')).toBe('false');
+		expect(store.get().config.options).toEqual({ 'assertion-roots': '[]' });
+
+		fireEvent.input(box, { target: { value: '' } });
+		await flush();
+
+		expect(store.get().config.options).toEqual({});
+	});
+});
+
 describe('the options of two rules that share a name', () => {
 	const family = ['keep-single', 'separate-multi'];
 
@@ -542,7 +573,7 @@ describe('the language switch', () => {
 	const base = import.meta.env.BASE_URL;
 
 	it('links the pages and carries the picked level in the hash, and marks the page it is on', () => {
-		renderPage({ config: { ...emptyConfig(), level: 'strong' } }, javascript);
+		renderPage({ config: { ...emptyConfig(javascript.defaultSeverity), level: 'strong' }, selection: null }, javascript);
 
 		const links = within(screen.getByRole('navigation', { name: 'Language' })).getAllByRole('link');
 
@@ -556,6 +587,28 @@ describe('the language switch', () => {
 		]);
 
 		expect(links.map((link) => link.getAttribute('aria-current'))).toEqual([null, null, 'page', null]);
+	});
+
+	it('keeps the whole address in the link to the page it is on, and only the level in the others', () => {
+		renderPage(
+			{
+				config: { ...emptyConfig(), level: 'strong', rules: { ZA0001: 'warning' }, options: { stanza_max_line_length: '120' } },
+				selection: { kind: 'rule', id: 'ZA0002' },
+			},
+
+			csharp,
+		);
+
+		const hrefs = within(screen.getByRole('navigation', { name: 'Language' }))
+			.getAllByRole('link')
+			.map((link) => link.getAttribute('href'));
+
+		expect(hrefs).toEqual([
+			`${base}#ZA0001=w&stanza_max_line_length=120&level=strong&sel=ZA0002`,
+			`${base}markup/#level=strong`,
+			`${base}js/#level=strong`,
+			`${base}py/#level=strong`,
+		]);
 	});
 
 	it('leaves the hash out for the default level', () => {

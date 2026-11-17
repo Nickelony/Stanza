@@ -221,4 +221,16 @@ describe('the address hash of the Markup page', () => {
 		expect(decodeHash(realCatalog, '#level=strong', csharp).config.level).toBe('strong');
 		expect(decodeHash(realMarkup, '#level=strong', markup).config.level).toBe('none');
 	});
+
+	it.each([
+		['Python', realPython, python, 'assertion-roots'],
+		['JS', realJavascript, javascript, 'assertionRoots'],
+	] as const)('keeps an explicit empty list of %s apart from a default, through the link', (_name, catalog, language, key) => {
+		const config = { ...emptyConfig(language.defaultSeverity), options: { [key]: '[]' } };
+		const hash = encodeHash(catalog, { config, selection: null }, language);
+
+		expect(hash).toBe(`${key}=%5B%5D`);
+		expect(decodeHash(catalog, `#${hash}`, language).config.options).toEqual({ [key]: '[]' });
+		expect(decodeHash(catalog, `#${key}=`, language).config.options).toEqual({});
+	});
 });

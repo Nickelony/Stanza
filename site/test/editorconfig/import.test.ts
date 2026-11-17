@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import { findConflicts } from '../../src/editorconfig/conflicts.ts';
-import { importEditorConfig, listedNotes, maxImportLength, maxListedNotes, refusal, sizeRefusal, summarize } from '../../src/editorconfig/import.ts';
+import {
+	braceLimits,
+	expandBraces,
+	importEditorConfig,
+	listedNotes,
+	maxImportLength,
+	maxListedNotes,
+	refusal,
+	sizeRefusal,
+	summarize,
+} from '../../src/editorconfig/import.ts';
 import { changedCount, emptyConfig, isRuleChanged, type Config } from '../../src/state/config.ts';
 import { generateEditorConfig } from '../../src/writers/editorconfig.ts';
 import { catalog, markupConfig, option, realCatalog, realMarkup, rule } from '../fixtures.ts';
@@ -156,6 +166,56 @@ describe('an imported .editorconfig', () => {
 	it('writes the markup section only when the file has one', () => {
 		expect(read('[*.cs]\ndotnet_diagnostic.ZA0018.severity = warning\n').config.markupSection).toBe(false);
 		expect(read('[*.xml]\nstanza_markup_enabled = false\n').config.markupSection).toBe(true);
+	});
+
+	describe('a section that matches the C# files and the markup files', () => {
+		it.each(['[*]', '[*.{cs,xml}]', '[*.xml]', '[**/*.{xml, csproj}]'])('keeps a markup key of %s, and writes it back', (header) => {
+			const result = read(`${header}\nstanza_markup_enabled = false\n`);
+
+			expect(result.config.options).toEqual({ stanza_markup_enabled: 'false' });
+			expect(result.config.markupSection).toBe(true);
+			expect(result.skipped).toEqual([]);
+			expect(generateEditorConfig(small, result.config)).toContain('stanza_markup_enabled = false');
+		});
+
+		it.each(['[*]', '[*.{cs,xml}]'])('gives a rule of %s to both tools', (header) => {
+			const result = read(`${header}\ndotnet_diagnostic.ZA2001.severity = none\n`);
+
+			expect(result.config.rules).toEqual({ ZA2001: 'none' });
+			expect(result.config.markupSection).toBe(true);
+			expect(generateEditorConfig(small, result.config).split('[*.{xml,csproj}]')[1]).toContain('dotnet_diagnostic.ZA2001.severity = none');
+		});
+
+		it('leaves the markup section off for a file whose shared section holds only what the analyzer reads', () => {
+			const result = read('[*]\ndotnet_diagnostic.ZA0018.severity = warning\n');
+
+			expect(result.config.rules).toEqual({ ZA0018: 'warning' });
+			expect(result.config.markupSection).toBe(false);
+		});
+
+		it('keeps the C# value where a later C# section differs, and says the markup value differs for a key the tool reads', () => {
+			const result = read('[*]\ndotnet_diagnostic.ZA2001.severity = warning\n[*.cs]\ndotnet_diagnostic.ZA2001.severity = error\n');
+
+			expect(result.config.rules).toEqual({ ZA2001: 'error' });
+			expect(result.skipped.map((note) => note.line)).toEqual([2]);
+			expect(result.skipped[0]!.reason).toMatch(/differs/);
+		});
+
+		it('says nothing of a markup value for a rule the tool does not read', () => {
+			const result = read('[*]\ndotnet_diagnostic.ZA0018.severity = warning\n[*.cs]\ndotnet_diagnostic.ZA0018.severity = error\n');
+
+			expect(result.config.rules).toEqual({ ZA0018: 'error' });
+			expect(result.skipped).toEqual([]);
+		});
+
+		it('gives the file back as it wrote it, for a markup key a shared section holds', () => {
+			const config: Config = { ...emptyConfig(), options: { stanza_markup_enabled: 'false' } };
+			const text = generateEditorConfig(small, config).replace('[*.{xml,csproj}]', '[*]');
+			const back = importEditorConfig(small, text, emptyConfig());
+
+			expect(back.config.options).toEqual(config.options);
+			expect(back.config.markupSection).toBe(true);
+		});
 	});
 
 	it('keeps the choices of the page that no file holds', () => {
@@ -340,11 +400,17 @@ describe('an import that cannot be read', () => {
 	});
 
 	it('survives text of every shape without throwing', () => {
+		// Mulberry32: a 32-bit generator whose products stay in range, so the low bits it picks from are not a short cycle.
 		let seed = 12345;
 
 		const next = (limit: number): number => {
-			seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-			return seed % limit;
+			seed = (seed + 0x6d2b79f5) | 0;
+
+			let mixed = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+
+			mixed = (mixed + Math.imul(mixed ^ (mixed >>> 7), 61 | mixed)) ^ mixed;
+
+			return Math.floor((((mixed ^ (mixed >>> 14)) >>> 0) / 0x100000000) * limit);
 		};
 
 		const pieces = [
@@ -380,14 +446,36 @@ describe('an import that cannot be read', () => {
 			'"',
 		];
 
+		const reached = new Set<string>();
+
 		for (let round = 0; round < 400; round++) {
 			let text = '';
 
 			for (let piece = next(40); piece > 0; piece--) {
-				text += pieces[next(pieces.length)];
+				const chosen = pieces[next(pieces.length)]!;
+
+				reached.add(chosen);
+				text += chosen;
 			}
 
 			expect(() => importEditorConfig(small, text, emptyConfig()), JSON.stringify(text)).not.toThrow();
+		}
+
+		// A generator that never picks a piece tests nothing about it.
+		expect(pieces.filter((piece) => !reached.has(piece))).toEqual([]);
+	});
+
+	it('survives a header of thousands of alternatives and a nest of braces, which would spread an unbounded list', () => {
+		const wide = `[{${'a,'.repeat(16000)}b}${'x'.repeat(40000)}]\ndotnet_diagnostic.ZA0018.severity = warning\n`;
+		const nested = `[{{${'a,'.repeat(150000)}b},c}]\ndotnet_diagnostic.ZA0018.severity = warning\n`;
+
+		for (const text of [wide, nested]) {
+			const result = read(text);
+
+			expect(result.refused).toBeNull();
+			expect(result.config.rules).toEqual({});
+			expect(result.skipped).toHaveLength(1);
+			expect(result.skipped[0]!.reason).toMatch(/not a section/i);
 		}
 	});
 
@@ -396,6 +484,40 @@ describe('an import that cannot be read', () => {
 			const result = importEditorConfig(small, bad as unknown as string, emptyConfig());
 			expect(result.refused, String(bad)).not.toBeNull();
 		}
+	});
+});
+
+describe('the expansion of the braces of a section header', () => {
+	it('splits every group into its alternatives', () => {
+		expect(expandBraces('*.{cs, vb}')!.sort()).toEqual(['*.cs', '*.vb']);
+		expect(expandBraces('{a,b}.{c,d}')!.sort()).toEqual(['a.c', 'a.d', 'b.c', 'b.d']);
+		expect(expandBraces('{a,{b,c}}')!.sort()).toEqual(['a', 'b', 'c']);
+		expect(expandBraces('*.{cs}')).toEqual(['*.{cs}']);
+		expect(expandBraces('*.{cs,vb')).toEqual(['*.{cs,vb']);
+	});
+
+	it('refuses a glob that needs more alternatives than the limit, having built at most the limit', () => {
+		const budget = { ...braceLimits };
+
+		expect(expandBraces(`{${'a,'.repeat(braceLimits.alternatives)}b}`, budget)).toBeNull();
+		expect(budget.alternatives).toBeGreaterThanOrEqual(-1);
+		expect(budget.characters).toBeGreaterThanOrEqual(0);
+	});
+
+	it('refuses a glob whose first alternative is longer than the character limit before it builds any', () => {
+		const budget = { ...braceLimits };
+
+		expect(expandBraces(`{a,b}${'x'.repeat(braceLimits.characters)}`, budget)).toBeNull();
+		expect(budget.alternatives).toBe(braceLimits.alternatives - 1);
+	});
+
+	it('spends the budget on the alternatives of every group together', () => {
+		expect(expandBraces('{a,b}{c,d}{e,f}', { alternatives: 6, characters: 1000 })).toBeNull();
+		expect(expandBraces('{a,b}{c,d}{e,f}', { alternatives: 14, characters: 1000 })).toHaveLength(8);
+	});
+
+	it('does not throw on the input the review spread into a call', () => {
+		expect(() => expandBraces(`{{${'a,'.repeat(150000)}b},c}`)).not.toThrow();
 	});
 });
 
