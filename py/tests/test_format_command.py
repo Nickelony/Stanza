@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -11,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from nickelony_stanza import Config, ConfigError, fix
+from nickelony_stanza import formatter as formatter_module
 from nickelony_stanza.analysis.document import read_document
 from nickelony_stanza.cli import run
 from nickelony_stanza.formatter import DEFAULT_FORMATTER, Formatter, FormatterError, detect_formatter, find_formatter
@@ -58,7 +60,7 @@ def _undo_formatter() -> Formatter:
 
 
 def _hide_formatters(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(shutil, "which", lambda name: None)
+    monkeypatch.setattr(formatter_module, "_which", lambda name: None)
     monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
 
 
@@ -247,8 +249,59 @@ def test_a_formatter_the_table_does_not_know_is_a_configuration_error(
 
 def _install(monkeypatch: pytest.MonkeyPatch, *names: str) -> None:
     """Makes exactly the named formatters findable, as a path that holds only them would."""
-    monkeypatch.setattr(shutil, "which", lambda name: f"/fake/{name}" if name in names else None)
+    monkeypatch.setattr(formatter_module, "_which", lambda name: f"/fake/{name}" if name in names else None)
     monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+
+
+def _plant(directory: Path, name: str) -> Path:
+    """Writes a file that the system would start as the program `name`, as a checkout could carry one."""
+    planted = directory / (f"{name}.exe" if sys.platform == "win32" else name)
+    planted.write_bytes(b"")
+    planted.chmod(0o755)
+
+    return planted
+
+
+def test_a_formatter_in_the_current_directory_is_never_started(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    checkout, installed = tmp_path / "checkout", tmp_path / "installed"
+    checkout.mkdir()
+    installed.mkdir()
+
+    _plant(checkout, "ruff")
+    _plant(checkout, "black")
+
+    # The path names the checkout in every way the current directory can be named, and then the real directory.
+    entries = ["", ".", str(checkout), f'"{checkout}"', str(installed)]
+
+    monkeypatch.chdir(checkout)
+    monkeypatch.setenv("PATH", os.pathsep.join(entries))
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+
+    for name in ("ruff", "black"):
+        with pytest.raises(FormatterError, match="not installed"):
+            find_formatter(name)
+
+    real = _plant(installed, "ruff")
+
+    found = find_formatter("ruff")
+
+    assert found is not None
+    assert os.path.samefile(found.command[0], real)
+
+    with pytest.raises(FormatterError, match="not installed"):
+        find_formatter("black")
+
+
+def test_a_formatter_on_a_relative_path_entry_is_never_started(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "bin").mkdir()
+    _plant(tmp_path / "bin", "ruff")
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PATH", "bin")
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+
+    with pytest.raises(FormatterError, match="not installed"):
+        find_formatter("ruff")
 
 
 def _name_of(formatter: Formatter | None) -> str | None:

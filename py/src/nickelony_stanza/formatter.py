@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
-import shutil
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -88,8 +88,41 @@ def detect_formatter(start: Path) -> Literal["ruff", "black"] | None:
     return None
 
 
+def _which(name: str) -> str | None:
+    """
+    Finds a program on the path, in no directory that the current directory could stand for.
+
+    `shutil.which` looks in the current directory first on Windows, and for an empty or `.` entry elsewhere,
+    so a checkout could plant the formatter that `format` then starts.
+    """
+    current = os.path.normcase(str(Path.cwd().resolve()))
+    extensions = [""]
+
+    if sys.platform == "win32":
+        pathext = [
+            extension for extension in os.environ.get("PATHEXT", ".COM;.EXE;.BAT;.CMD").split(os.pathsep) if extension
+        ]
+
+        if not name.lower().endswith(tuple(extension.lower() for extension in pathext)):
+            extensions = pathext
+
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        directory = Path(entry.strip('"'))
+
+        if not entry or not directory.is_absolute() or os.path.normcase(str(directory.resolve())) == current:
+            continue
+
+        for extension in extensions:
+            candidate = directory / f"{name}{extension}"
+
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate)
+
+    return None
+
+
 def _locate(name: str) -> Formatter | None:
-    executable = shutil.which(name)
+    executable = _which(name)
 
     if executable is not None:
         return Formatter(name, (executable,))
