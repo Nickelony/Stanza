@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 
 import pytest
 
 from nickelony_stanza import Config, Options, fix, lint
 from nickelony_stanza.analysis.model import Container
 from nickelony_stanza.analysis.source import SourceFile
-from nickelony_stanza.engine import find_findings
+from nickelony_stanza.engine import Edit, Finding, apply_edits, find_findings
 from nickelony_stanza.rules import ALL_RULES, KEEP_ORDER, TWO_UNIT_RULES
 from tests.helpers import OPTION_VARIANTS, same_tree_ignoring_keyword_names
 
@@ -151,6 +151,17 @@ def _claimed_lines(text: str, config: Config, code: str) -> set[int]:
     return lines
 
 
+def _edited_lines(findings: Sequence[Finding]) -> list[int]:
+    """
+    Lists the line of each edit the findings carry.
+
+    The findings of one run of one rule each carry the edits of the whole run, so a run counts once.
+    An edit two rules share stays twice.
+    """
+    groups = dict.fromkeys((finding.code, finding.edits) for finding in findings)
+    return [edit.line for _, group in groups for edit in group]
+
+
 @pytest.mark.parametrize("seed", range(150))
 def test_a_relationship_body_settles_and_a_noqa_on_each_gap_of_a_keeper_is_the_keeper_off(seed: int) -> None:
     text = _generate_related(seed)
@@ -161,8 +172,7 @@ def test_a_relationship_body_settles_and_a_noqa_on_each_gap_of_a_keeper_is_the_k
 
     first = fix(text, config)
 
-    # The findings of one loose run repeat one edit, so an edit counts once.
-    edited = [edit.line for edit in dict.fromkeys(edit for finding in lint(text, config) for edit in finding.edits)]
+    edited = _edited_lines(lint(text, config))
 
     assert first.passes <= 1
     assert fix(first.text, config).passes == 0
@@ -197,3 +207,44 @@ def test_a_relationship_body_settles_and_a_noqa_on_each_gap_of_a_keeper_is_the_k
 
     assert silenced.passes <= 1
     assert silenced.text.replace(keeper, "ZA0000") == fix(_mark(text, marked, "ZA0000"), off).text
+
+
+_GAP = Edit(line=2, delete=1, insert="")
+
+
+def _finding(rule_index: int, *edits: Edit) -> Finding:
+    return Finding(edits[0].line, 1, ALL_RULES[rule_index], "message", edits)
+
+
+def test_two_rules_that_own_one_gap_count_the_edit_twice() -> None:
+    owners = [_finding(0, _GAP), _finding(1, _GAP)]
+    assert _edited_lines(owners) == [2, 2]
+
+
+def test_the_findings_of_one_run_count_its_edits_once() -> None:
+    edits = (_GAP, Edit(line=4, delete=1, insert=""))
+    run = [_finding(0, *edits), _finding(0, *edits), _finding(0, *edits)]
+
+    assert _edited_lines(run) == [2, 4]
+
+
+def test_a_gap_two_rules_own_is_not_hidden_when_the_edits_apply() -> None:
+    source = SourceFile("a = 1\n\n\nb = 2\n")
+
+    assert apply_edits(source, [_finding(0, _GAP)]) == "a = 1\n\nb = 2\n"
+    assert apply_edits(source, [_finding(0, _GAP), _finding(0, _GAP)]) == "a = 1\n\nb = 2\n"
+    assert apply_edits(source, [_finding(0, _GAP), _finding(1, _GAP)]) == "a = 1\nb = 2\n"
+
+
+@pytest.mark.parametrize("which", [[0], [1], [2], [0, 1, 2]])
+def test_each_finding_of_a_run_settles_it_as_the_whole_run_does(which: list[int]) -> None:
+    text = "a = 1\n\nb = 2\n\nc = 3\n\nd = 4\n"
+    config = Config.create("none", enable=["ZA3052"])
+    findings = lint(text, config)
+
+    assert len(findings) == 3
+
+    fixed = apply_edits(SourceFile(text), [findings[index] for index in which])
+
+    assert fixed == "a = 1\nb = 2\nc = 3\nd = 4\n"
+    assert lint(fixed, config) == []

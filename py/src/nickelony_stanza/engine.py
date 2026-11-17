@@ -238,8 +238,10 @@ def apply_edits(source: SourceFile, findings: Sequence[Finding]) -> str:
     """Applies the edits of the findings, last place first so the line numbers and the columns stay true."""
     lines = list(source.lines)
 
-    # Several findings of one run each carry the removal of the whole run, which is applied once.
-    edits = list(dict.fromkeys(edit for finding in findings for edit in finding.edits))
+    # Several findings of one run of one rule each carry the removal of the whole run, which is applied once.
+    # An edit that findings of different rules share stays twice, so the tree check sees a gap two rules own.
+    groups = dict.fromkeys((finding.code, finding.edits) for finding in findings)
+    edits = [edit for _, group in groups for edit in group]
 
     deleted = {
         number for edit in edits if isinstance(edit, Edit) for number in range(edit.line, edit.line + edit.delete)
