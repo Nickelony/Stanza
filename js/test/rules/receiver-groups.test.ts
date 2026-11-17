@@ -231,7 +231,7 @@ it('claims every tight inner gap of a compact mixed receiver group', () => {
 	assert.equal(stable(source, { ...keeper, 'separate-assignment-runs': 'error' }, settings()), source);
 });
 
-it('puts the fix of the whole group on its first report, which writes the text a batch fix writes', () => {
+it('puts the fix of the whole group on each report, which writes the text a batch fix writes', () => {
 	const source = lines('db.a();', '', 'db.b();', '', 'db.c();', 'db.d();');
 	const expected = lines('db.a();', 'db.b();', 'db.c();', 'db.d();');
 	const config = createConfig(keeper, settings());
@@ -242,7 +242,7 @@ it('puts the fix of the whole group on its first report, which writes the text a
 	assert.equal(stable(source, keeper, settings()), expected);
 });
 
-it('reads each statement of a group a number of times linear in its size, and gives the group one fix', () => {
+it('reads each statement of a group a number of times linear in its size, and gives a long group one fix', () => {
 	const counts: number[] = [];
 
 	for (const size of [200, 400]) {

@@ -51,13 +51,14 @@ While it is disabled, most rules still leave the container as written, and its [
 
 `gather-loose-statements`, `gather-loose-members`, `keep-statement-runs-together`, `keep-member-runs-together`,
 `keep-single-line-elements-together` and the keep rules of switch cases and JSX children remove blank lines.
-Each removes only a blank line that holds nothing else, so a comment, a trailing comment or a line with a token on it keeps its gap.
+Each removes only a blank line that holds nothing else, so a comment, a trailing comment or a line with a token on it keeps its gap, an `eslint-disable` comment aside.
 
 | Quirk | Decision |
 | --- | --- |
 | A blank line some enabled rule asks for | Stays, and ends the run, so the run is counted up to that gap. |
 | A multi-line unit, an import, a directive or a shebang | Ends a run, because other rules own the gaps beside it. |
 | A blank line a keep rule removes | Reads as tight already, so the run is the one the keep rule leaves, whatever order the fixes run in. |
+| An `eslint-disable` comment directly above the unit below the gap, or trailing the unit above it | Does not end the run: the blank line goes and the comment stays. ESLint deletes a comment that silences nothing, so a run that the comment ended would gather in the next pass. A comment beside another comment, or a block comment with a blank line on both sides, still ends it. |
 | A unit tight against one neighbor and apart from the other | Out of the loose run, so the blank line that sets that group apart stays. A neighbor that a rule asks to set apart does not count as tight. |
 | The blank line above a `return`, `throw`, `break` or `continue` | Stays while `separate-jump-statements` is enabled and the stanza above the jump spans two or more lines once the run is gathered, because that rule would write it back. A jump below one line goes with the run. |
 | Several blank lines in a row, a line of whitespace or a CRLF file | All the blank lines go, and the file keeps its line ending. |
@@ -65,7 +66,7 @@ Each removes only a blank line that holds nothing else, so a comment, a trailing
 | A blank line between two sections of a run | `keep-statement-runs-together` and `keep-member-runs-together` keep it when each side holds at least two units tight against each other, and a lone unit between two sections is a section. |
 | A blank line between two sections of tight units that `keep-receiver-groups-together` or `keep-dependent-bindings-together` keeps | Stays, and ends the runs of the run rules before any rule gathers or moves a boundary. |
 | A run rule that is off | Its runs are not read, so `keep-statement-runs-together` and `keep-member-runs-together` join only the runs of the rules that are enabled. |
-| A run or a group whose blank lines one fix removes | The first report of the run carries that fix, and the others carry none, so the fix is built once and every fix order writes one text. |
+| A run or a group whose blank lines one fix removes | Each report of a group of up to 64 blank lines carries that fix, so applying any one of them writes the text a batch fix writes. A longer group gives it to its first report that no directive silences, because ESLint serializes each fix and the fix holds the text of the whole group, so a long run stays linear. |
 | A gap a [keep rule](Rule-map.md#rules-that-keep-a-pair-together) keeps | Goes, and no rule that adds a blank line asks for it, so the keep rule wins over `separate-multi-line-constructs` and the others. A `return` below reads the kept pair as one stanza. |
 
 ## Comments

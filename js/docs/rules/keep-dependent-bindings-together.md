@@ -29,7 +29,7 @@ const stream = new MemoryStream(bytes);
 - Comments, directives, statements that share a line with another and multi-line declarations end chains.
   The rule does not search ahead or connect statements that merely share an earlier input.
 - Authored sections of multiple tight bindings remain separate.
-  The first report of a chain carries the fix that removes every eligible blank line of the chain,
+  Each report of a chain carries the fix that removes every eligible blank line of the chain, and only the first of a chain over 64 blank lines does,
   so applying that fix alone and applying a batch produce the same layout.
 - The keeper owns inner gaps independently of ordinary declaration-kind grouping, and asks for no blank line around the chain.
 - A separation another rule asks for inside the kept group moves above the group, as the [rule map](../Rule-map.md#rules-that-keep-a-pair-together) says.

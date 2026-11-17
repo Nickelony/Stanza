@@ -3,9 +3,10 @@ import { describe, it } from 'node:test';
 
 import { Linter } from 'eslint';
 
+import { everyReportGroupSize } from '../../src/createGroupFix.ts';
 import gatherLooseMembers from '../../src/rules/gather-loose-members.ts';
 import gatherLooseStatements from '../../src/rules/gather-loose-statements.ts';
-import { assertGroupFix, createConfig, createRuleTester, crlf, lines, readSuppressedMessages, stable } from '../helpers.ts';
+import { applyFix, assertGroupFix, createConfig, createRuleTester, crlf, lines, readSuppressedMessages, stable } from '../helpers.ts';
 
 const tester = createRuleTester();
 
@@ -228,25 +229,117 @@ tester.run('gather-loose-members', gatherLooseMembers as never, {
 describe('the fix of a gathered run', () => {
 	const gather = { 'gather-loose-statements': 'error' } as const;
 
-	it('stands on the first report of the run, and the others carry none', () => {
+	it('stands on each report of the run, so applying any one of them gathers the run', () => {
 		const source = lines(...spaced('a();', 'b();', 'c();', 'd();'));
-		const reports = new Linter().verify(source, createConfig(gather), { filename: 'file.ts' });
+		const config = createConfig(gather);
+		const reports = new Linter().verify(source, config, { filename: 'file.ts' });
 
 		assert.equal(reports.length, 3);
 		assertGroupFix(source, reports, lines('a();', 'b();', 'c();', 'd();'));
+
+		for (const report of reports) {
+			const fixed = applyFix(source, report.fix as never);
+			assert.deepEqual(new Linter().verify(fixed, config, { filename: 'file.ts' }), []);
+		}
 	});
 
-	it('moves to the next report where a directive silences the first, so the run still gathers in one fix', () => {
+	it('stands on the reports that no directive silences, so the run still gathers in one fix', () => {
 		const source = lines(...spaced('a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();'));
 		const linter = new Linter();
 		const reports = linter.verify(source, createConfig(gather), { filename: 'file.ts' });
 
-		assert.deepEqual(
-			readSuppressedMessages(linter).map((message) => message.fix),
-			[undefined],
-		);
+		assert.equal(readSuppressedMessages(linter).length, 1);
+		assert.equal(reports.length, 2);
 
 		assertGroupFix(source, reports, lines('a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();'));
 		assert.equal(stable(source, gather), lines('a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();'));
+	});
+
+	it('stands on the report that opens a long run only, so the cost of a run stays linear in its length', () => {
+		const size = everyReportGroupSize + 2;
+		const source = lines(...spaced(...Array.from({ length: size }, (_, index) => `call${index}();`)));
+		const reports = new Linter().verify(source, createConfig(gather), { filename: 'file.ts' });
+
+		assert.equal(reports.length, size - 1);
+		assert.equal(reports.filter((report) => report.fix !== undefined).length, 1);
+		assert.ok(reports[0]?.fix);
+		assert.equal(stable(source, gather), lines(...Array.from({ length: size }, (_, index) => `call${index}();`)));
+	});
+
+	it('stands on every report of a run of the size where each still carries it', () => {
+		const source = lines(...spaced(...Array.from({ length: everyReportGroupSize + 1 }, (_, index) => `call${index}();`)));
+		const reports = new Linter().verify(source, createConfig(gather), { filename: 'file.ts' });
+
+		assert.equal(reports.length, everyReportGroupSize);
+		assert.ok(reports.every((report) => report.fix !== undefined));
+	});
+});
+
+describe('a disable directive in the gap of a run', () => {
+	const gather = { 'gather-loose-statements': 'error' } as const;
+
+	/** Builds a config that reports an unused directive and removes it, as ESLint does by default, with `no-console` and `no-eval` on for a directive that is used. */
+	function createDefaultConfig(rules: Record<string, Linter.RuleEntry>): Linter.Config[] {
+		return [
+			...createConfig(rules).map((entry) => ({ ...entry, linterOptions: {} })),
+			{ files: ['**/*.ts'], rules: { 'no-console': 'error', 'no-eval': 'error' } },
+		];
+	}
+
+	/** Fixes a source under the default options, checking that one pass of fixes leaves nothing to report. */
+	function settleUnderDefaults(source: string, rules: Record<string, Linter.RuleEntry>): string {
+		const linter = new Linter();
+		const options = { filename: 'file.ts', stats: true };
+		const result = linter.verifyAndFix(source, createDefaultConfig(rules), options);
+
+		assert.deepEqual(result.messages, []);
+		assert.ok(linter.getFixPassCount() <= 1, `needed ${linter.getFixPassCount()} fix passes`);
+
+		return result.output;
+	}
+
+	it('leaves the same text whether or not ESLint removes it as unused, where it names no report of the rule', () => {
+		const source = lines('a();', '', 'b();', '', '// eslint-disable-next-line stanza/gather-loose-statements', 'c();', '', 'd();');
+		const kept = new Linter().verifyAndFix(source, createConfig(gather), { filename: 'file.ts' }).output;
+		const removed = new Linter().verifyAndFix(source, createDefaultConfig(gather), { filename: 'file.ts' }).output;
+
+		assert.equal(kept, lines('a();', 'b();', '// eslint-disable-next-line stanza/gather-loose-statements', 'c();', 'd();'));
+
+		// ESLint leaves the space the comment stood in.
+		assert.equal(removed, lines('a();', 'b();', ' ', 'c();', 'd();'));
+	});
+
+	it('does not end the run where another rule uses it', () => {
+		const source = lines('a();', '', 'b();', '', '// eslint-disable-next-line no-console', 'console.log(1);', '', 'd();');
+		assert.equal(settleUnderDefaults(source, gather), lines('a();', 'b();', '// eslint-disable-next-line no-console', 'console.log(1);', 'd();'));
+	});
+
+	it('does not end the run where it trails the statement above the gap', () => {
+		const source = lines(...spaced('a();', 'console.log(1); // eslint-disable-line no-console', 'c();', 'd();'));
+		assert.equal(settleUnderDefaults(source, gather), lines('a();', 'console.log(1); // eslint-disable-line no-console', 'c();', 'd();'));
+	});
+
+	it('does not end the run of a keep rule either', () => {
+		const rules = { 'keep-statement-runs-together': 'error', 'separate-declaration-runs': 'error' } as const;
+		const source = lines('const a = 1;', '', '// eslint-disable-next-line no-eval', 'const b = eval(a);', '', 'const c = 3;', '', 'foo(a, b, c);');
+
+		assert.equal(
+			settleUnderDefaults(source, rules),
+			lines('const a = 1;', '// eslint-disable-next-line no-eval', 'const b = eval(a);', 'const c = 3;', '', 'foo(a, b, c);'),
+		);
+	});
+
+	it('does not end the run of the members of a type either', () => {
+		const source = lines('class A {', '  a = 1;', '', '  b = 2;', '', '  // eslint-disable-next-line no-eval', '  c = eval(1);', '', '  d = 4;', '}');
+
+		assert.equal(
+			settleUnderDefaults(source, { 'gather-loose-members': 'error' }),
+			lines('class A {', '  a = 1;', '  b = 2;', '  // eslint-disable-next-line no-eval', '  c = eval(1);', '  d = 4;', '}'),
+		);
+	});
+
+	it('ends the run where a comment stands beside it, as a comment does', () => {
+		const source = lines('a();', '', 'b();', '', '// note', '// eslint-disable-next-line no-console', 'console.log(1);', '', 'd();');
+		assert.equal(settleUnderDefaults(source, gather), source);
 	});
 });

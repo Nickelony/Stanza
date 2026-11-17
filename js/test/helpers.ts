@@ -102,17 +102,14 @@ export function applyFix(source: string, fix: Rule.Fix): string {
 	return source.slice(0, fix.range[0]) + fix.text + source.slice(fix.range[1]);
 }
 
-/** Checks that the first of the reports of one group carries the fix that writes the expected text, and that the others carry none. */
+/** Checks that each report of one group carries a fix that writes the expected text, so applying any one of them settles the group. */
 export function assertGroupFix(source: string, reports: readonly Linter.LintMessage[], expected: string): void {
-	const [first, ...others] = reports;
+	assert.ok(reports.length > 0, 'the group has no report');
 
-	assert.ok(first?.fix, 'the first report of the group carries no fix');
-	assert.equal(applyFix(source, first.fix), expected);
-
-	assert.deepEqual(
-		others.map((report) => report.fix),
-		others.map(() => undefined),
-	);
+	for (const report of reports) {
+		assert.ok(report.fix, `the report at line ${report.line} carries no fix`);
+		assert.equal(applyFix(source, report.fix), expected);
+	}
 }
 
 /** Fixes a source as `stable` does, and checks that fixing one report at a time from the top and from the bottom writes the same text. */

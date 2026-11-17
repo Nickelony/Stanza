@@ -1,6 +1,6 @@
 import type { JSONSchema4 } from '@typescript-eslint/utils/json-schema';
 
-import { createGroupFix } from './createGroupFix.ts';
+import { carriesGroupFix, createGroupFix } from './createGroupFix.ts';
 import { createOwnedGapListener, createRule } from './createRule.ts';
 
 import type { RemoveRuleName } from './analysis/ruleNames.ts';
@@ -41,9 +41,9 @@ export function createRemovalRule<Options extends readonly unknown[] = []>(defin
 				hold: definition.hold,
 			});
 
-			// One report of a group carries the fix of the group, so a run of many blank lines costs no more than its length.
-			return createOwnedGapListener(context, session, definition.name, 'extraBlankLine', ({ gap, group, fixesGroup }) =>
-				group === undefined || fixesGroup === true ? (fixer) => createGroupFix(fixer, context.sourceCode.text, group ?? [gap]) : null,
+			// A report of a small group carries the fix of the group, and a long group gives it to one report, so a long run costs no more than its length.
+			return createOwnedGapListener(context, session, definition.name, 'extraBlankLine', (owned) =>
+				carriesGroupFix(owned) ? (fixer) => createGroupFix(fixer, context.sourceCode.text, owned.group ?? [owned.gap]) : null,
 			);
 		},
 	});

@@ -161,7 +161,7 @@ describe('dependent binding chains', () => {
 		});
 	}
 
-	it('puts the fix of the whole chain on its first report, which writes the text a batch fix writes', () => {
+	it('puts the fix of the whole chain on each report, which writes the text a batch fix writes', () => {
 		const source = lines(
 			'const first = load();',
 			'',

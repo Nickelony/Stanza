@@ -1,4 +1,4 @@
-import { createGroupFix } from './createGroupFix.ts';
+import { carriesGroupFix, createGroupFix } from './createGroupFix.ts';
 import { createRule } from './createRule.ts';
 
 import type { KeepRuleName } from './analysis/ruleNames.ts';
@@ -51,7 +51,9 @@ export function createKeepRule(definition: KeepRuleDefinition) {
 
 			return {
 				Program() {
-					for (const { gap, group, fixesGroup, silencedAt, next } of session.getOwnedGaps(definition.name)) {
+					for (const owned of session.getOwnedGaps(definition.name)) {
+						const { gap, group, silencedAt, next } = owned;
+
 						if (silencedAt !== undefined) {
 							context.report({ loc: silencedAt, messageId: 'silenced' });
 							continue;
@@ -60,7 +62,7 @@ export function createKeepRule(definition: KeepRuleDefinition) {
 						context.report({
 							node: next.node,
 							messageId: 'extraBlankLine',
-							fix: group === undefined || fixesGroup === true ? (fixer) => createGroupFix(fixer, context.sourceCode.text, group ?? [gap]) : null,
+							fix: carriesGroupFix(owned) ? (fixer) => createGroupFix(fixer, context.sourceCode.text, group ?? [gap]) : null,
 						});
 					}
 				},

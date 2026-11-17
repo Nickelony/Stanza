@@ -6,7 +6,7 @@ import type { AddRuleName } from './ruleNames.ts';
 import { isSectionBoundary } from './sections.ts';
 import type { RemovalContext } from './session.ts';
 import { isDirective, isImport } from './syntax.ts';
-import type { Container, ContainerKind, Unit } from './types.ts';
+import type { Container, ContainerKind, Gap, Unit } from './types.ts';
 
 /** The two kinds of unit a pair of removal rules splits between its halves: the statements of a block and the members of a type. */
 export type RunUnits = 'statements' | 'members';
@@ -30,6 +30,11 @@ function isLooseUnit(unit: Unit): boolean {
 	return !unit.isMultiLine && !unit.isShebang && !isDirective(unit.node) && !isImport(unit.node);
 }
 
+/** Tells whether a gap holds a comment that ends a run: an `eslint-disable` comment does not, since ESLint deletes it where no report uses it. */
+function holdsRunBreakingComment(gap: Gap, context: RemovalContext): boolean {
+	return gap.hasComment && !gap.comments.every(context.isDisableDirective);
+}
+
 /** Tells whether the blank line at a gap between two statements or members may go: nothing else stands there and no rule would write it back. */
 function isLooseGap(container: Container, gapIndex: number, context: RemovalContext): boolean {
 	const gap = container.gaps[gapIndex];
@@ -40,7 +45,14 @@ function isLooseGap(container: Container, gapIndex: number, context: RemovalCont
 		return false;
 	}
 
-	if (!gap.isBlank || gap.blankRange === undefined || gap.hasComment || gap.isJoined || !isLooseUnit(previous) || !isLooseUnit(next)) {
+	if (
+		!gap.isBlank ||
+		gap.blankRange === undefined ||
+		holdsRunBreakingComment(gap, context) ||
+		gap.isJoined ||
+		!isLooseUnit(previous) ||
+		!isLooseUnit(next)
+	) {
 		return false;
 	}
 
@@ -165,7 +177,7 @@ function isTightInRun(container: Container, span: RunSpan, gapIndex: number, con
 		return false;
 	}
 
-	return !gap.hasComment && isLooseUnit(previous) && isLooseUnit(next) && isTightGap(container, gapIndex, context);
+	return !holdsRunBreakingComment(gap, context) && isLooseUnit(previous) && isLooseUnit(next) && isTightGap(container, gapIndex, context);
 }
 
 /** Tells whether the blank line of a gap sets two sections apart, a section being the tight units of one run and a lone unit between two being one. */
@@ -223,7 +235,7 @@ export function readRunGaps(container: Container, context: RemovalContext, units
 				gap !== undefined &&
 				previous !== undefined &&
 				next !== undefined &&
-				!gap.hasComment &&
+				!holdsRunBreakingComment(gap, context) &&
 				!gap.isJoined &&
 				isLooseUnit(previous) &&
 				isLooseUnit(next) &&

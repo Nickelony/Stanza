@@ -30,6 +30,9 @@ type SectionReading = Pick<Reading, 'receiverGroupsOf' | 'dependentBindingsOf'>;
 /** What the analysis reads about a file once, for every rule to share. */
 interface Reading {
 	readonly environment: Environment;
+
+	/** Tells whether a comment is an `eslint-disable` directive, which a run of blank lines reads through. */
+	readonly isDisableDirective: (comment: TSESTree.Comment) => boolean;
 	readonly receiverGroupsOf: ReceiverGroupReader;
 	readonly dependentBindingsOf: DependentBindingReader;
 
@@ -485,6 +488,7 @@ class Session {
 
 		return {
 			environment,
+			isDisableDirective: (comment) => this.readSilencing().isDirective(comment),
 			receiverGroupsOf,
 			dependentBindingsOf,
 			protectedSectionsOf,
