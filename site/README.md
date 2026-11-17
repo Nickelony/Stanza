@@ -17,7 +17,10 @@ The site lints with [JS Stanza](../js/README.md), which it links from `js/`, so 
 oxlint loads the plugin, because typescript-eslint does not yet support the TypeScript 7 of the site.
 A test keeps the rules of [`.oxlintrc.json`](.oxlintrc.json) equal to the `strong` preset and the opt-in rules that keep a run together.
 
-`npm test` runs every test of the site, `npm run typecheck` checks the types,
+`npm test` runs every test of the site.
+On Windows, start it from a directory with an uppercase drive letter, as in `C:`.
+Under `c:` Vitest loads its runner twice and every file fails with "reading 'config'", and no setting of `vite.config.ts` makes it load one spelling.
+`npm run typecheck` checks the types,
 and `npm run build` writes `dist/`, which `npm run preview` serves.
 `npm run format` applies Prettier, which also sorts the imports into the groups of [`.prettierrc.json`](.prettierrc.json),
 and `npm run format:check` fails on code it would change.
