@@ -62,12 +62,12 @@ OWNER_ORDER: tuple[Rule, ...] = (
     separate_member_groups.RULE,
     separate_declaration_runs.RULE,
     separate_same_type_declaration_runs.RULE,
-    separate_assignment_runs.RULE,
+    separate_invocation_runs.RULE,
     separate_assertion_runs.RULE,
     separate_await_runs.RULE,
     separate_yield_runs.RULE,
     separate_subscription_runs.RULE,
-    separate_invocation_runs.RULE,
+    separate_assignment_runs.RULE,
     separate_receiver_groups.RULE,
 )
 

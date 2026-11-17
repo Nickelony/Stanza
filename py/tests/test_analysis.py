@@ -197,6 +197,13 @@ def test_the_first_enabled_rule_in_the_owner_order_reports_a_gap() -> None:
     assert fix_with(text, "ZA3001") == fix_with(text, "ZA3002") == "x = 1\ny = 2\n\nif z:\n    pass\n"
 
 
+def test_the_run_rules_own_a_gap_in_the_order_of_the_csharp_run_rules() -> None:
+    text = "def f(self):\n    saved.connect(h)\n    saved.connect(h)\n    self.q = 3\n    self.r = 4\n"
+
+    assert [f.code for f in findings_with(text, "ZA3009", "ZA3008")] == ["ZA3008"]
+    assert [f.code for f in findings_with(text, "ZA3009")] == ["ZA3009"]
+
+
 def test_a_rule_that_is_off_hands_its_gap_to_the_next_rule() -> None:
     text = "print(a)\n# note\nb = 2\nc = 3\n"
 

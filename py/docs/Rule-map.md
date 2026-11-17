@@ -138,12 +138,12 @@ Several rules can ask for a blank line at one gap, so a [shared analysis](Archit
 11. `ZA3017` `separate-member-groups`
 12. `ZA3002` `separate-declaration-runs`
 13. `ZA3003` `separate-same-type-declaration-runs`
-14. `ZA3009` `separate-assignment-runs`
+14. `ZA3004` `separate-invocation-runs`
 15. `ZA3005` `separate-assertion-runs`
 16. `ZA3006` `separate-await-runs`
 17. `ZA3007` `separate-yield-runs`
 18. `ZA3008` `separate-subscription-runs`
-19. `ZA3004` `separate-invocation-runs`
+19. `ZA3009` `separate-assignment-runs`
 20. `ZA3010` `separate-receiver-groups`
 
 A rule that is off hands its gaps to the next rule that asks for them, as in the C# analyzers.
