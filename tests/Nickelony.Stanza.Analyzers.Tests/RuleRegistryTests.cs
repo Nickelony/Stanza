@@ -492,6 +492,60 @@ public sealed partial class RuleRegistryTests
 	}
 
 	[TestMethod]
+	public void TheDescriptorsAreDeclaredInIdOrder()
+	{
+		// The metadata token follows the order of the source, which `GetFields` does not promise.
+		string[] declared =
+		[
+			.. typeof(DiagnosticDescriptors)
+				.GetFields(BindingFlags.Public | BindingFlags.Static)
+				.Where(static field => field.FieldType == typeof(DiagnosticDescriptor))
+				.OrderBy(static field => field.MetadataToken)
+				.Select(static field => ((DiagnosticDescriptor)field.GetValue(null)!).Id),
+		];
+
+		Assert.IsNotEmpty(declared);
+
+		Assert.IsEmpty(
+			[
+				.. declared
+					.Skip(1)
+					.Where((id, index) => string.CompareOrdinal(id, declared[index]) < 0),
+			],
+
+			"DiagnosticDescriptors declares these descriptors below a lower ID"
+		);
+	}
+
+	[TestMethod]
+	public void TheKeeperListIsInIdOrder()
+	{
+		FieldInfo field = typeof(Nickelony.Stanza.Analyzers.BlankLines.BlankLineKeptPairs).GetField(
+			"s_rules",
+			BindingFlags.Static | BindingFlags.NonPublic
+		)!;
+
+		string[] keepers =
+		[
+			.. ((ImmutableArray<StanzaRule>)field.GetValue(null)!).Select(static rule =>
+				rule.Descriptor.Id
+			),
+		];
+
+		Assert.IsNotEmpty(keepers);
+
+		Assert.IsEmpty(
+			[
+				.. keepers
+					.Skip(1)
+					.Where((id, index) => string.CompareOrdinal(id, keepers[index]) < 0),
+			],
+
+			"BlankLineKeptPairs lists these keepers below a lower ID"
+		);
+	}
+
+	[TestMethod]
 	public void EveryDeclaredDescriptorIsReportedByAnAnalyzer()
 	{
 		HashSet<string> reported = new(

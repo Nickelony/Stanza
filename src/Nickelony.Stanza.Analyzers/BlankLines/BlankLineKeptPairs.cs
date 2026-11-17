@@ -18,18 +18,21 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 internal static class BlankLineKeptPairs
 {
 	/// <summary>
-	/// The rules that keep a pair together, which win the gap of their pair over the separating rules.
+	/// The rules that keep a pair together, in ID order, which win the gap of their pair over the separating rules.
 	/// </summary>
+	/// <remarks>
+	/// The order is no priority, since every read asks whether any rule claims a gap.
+	/// </remarks>
 	private static readonly ImmutableArray<StanzaRule> s_rules =
 	[
 		StanzaRules.KeepGuardClausesTogether,
 		StanzaRules.KeepGuardWithBinding,
-		StanzaRules.KeepAccumulatorWithLoop,
 		StanzaRules.KeepJumpWithBinding,
 		StanzaRules.KeepNarrowingAssertionWithBinding,
-		StanzaRules.KeepInitializationWithCalls,
-		StanzaRules.KeepReceiverGroupTogether,
 		StanzaRules.KeepDependentBindingsTogether,
+		StanzaRules.KeepInitializationWithCalls,
+		StanzaRules.KeepAccumulatorWithLoop,
+		StanzaRules.KeepReceiverGroupTogether,
 	];
 
 	/// <summary>The keepers that anchor on separating boundaries, each ignored by its own read of the runs.</summary>
