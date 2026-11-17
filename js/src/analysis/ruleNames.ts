@@ -42,6 +42,7 @@ export const removeOrder = [
 /**
  * The rules that keep a pair of statements together, in the order that decides which of them reports a gap several of them ask for.
  * Each removes the blank line of a gap it asks for, and no rule of the add order asks for that gap.
+ * The order is a priority and not an ID order, so a sort would change the rule that reports a gap and the gaps a group fix removes together.
  */
 export const keepOrder = [
 	'keep-guard-clauses-together',

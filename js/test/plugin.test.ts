@@ -14,7 +14,7 @@ import {
 	leastMaxLooseRunSize,
 	readSharedSettings,
 } from '../src/analysis/environment.ts';
-import { addOrder, removeOrder } from '../src/analysis/ruleNames.ts';
+import { addOrder, keepOrder, removeOrder } from '../src/analysis/ruleNames.ts';
 import plugin, { configs, rules } from '../src/index.ts';
 import { optInRules } from '../src/presets.ts';
 
@@ -380,6 +380,14 @@ describe('the documentation', () => {
 		const listed = [...section.matchAll(/^\d+\. `([a-z-]+)`$/gm)].map((match) => match[1]);
 
 		assert.deepEqual(listed, [...addOrder]);
+	});
+
+	it('lists the order of the rules that keep a pair in the rule map in the order of the code', () => {
+		const map = read('../docs/Rule-map.md');
+		const section = /^## Rules that keep a pair together$([^]*?)^## /m.exec(map)?.[1] ?? '';
+		const listed = [...(section.split('Each removes')[0] ?? '').matchAll(/`(keep-[a-z-]+)`/g)].map((match) => match[1]);
+
+		assert.deepEqual(listed, [...keepOrder]);
 	});
 
 	it('lists the order of the rules that remove a gap in the rule map in the order of the code', () => {
