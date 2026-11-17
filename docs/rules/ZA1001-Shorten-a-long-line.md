@@ -26,7 +26,8 @@ var report = BuildReport(
 - A string or a URL that starts past the width does not excuse its line, because breaking the line before it moves it.
 - A string literal is a regular, verbatim, raw or UTF-8 literal, or one text part of an interpolated string.
   The code inside an interpolation is judged like other code.
-- A URL is a run of characters without whitespace that starts with `http://` or `https://` in lower case, inside a `//` or `/* */` comment.
+- A URL is a run of characters without whitespace that starts with a `scheme://` token, inside a `//` or `/* */` comment.
+  A scheme is a letter, then letters, digits, `+`, `-` or `.`, in any case, as RFC 3986 says, so `ftp://`, `file://` and `HTTPS://` count too.
   A URL in the text of a directive is not excused.
 - A documentation comment line, one in a `///` or `/** */` comment, is left to
   [`ZA0901`](https://github.com/Nickelony/Stanza/wiki/ZA0901-Lay-out-a-documentation-comment),

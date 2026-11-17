@@ -39,6 +39,11 @@ public sealed class ShortenLongLineTests
 		["a URL in a block comment", "/* See https://example.com/" + new string('a', 60) + " */"],
 		["an http URL", "// See http://example.com/" + new string('a', 60)],
 		["a URL after code", "var s = 1; // See https://example.com/" + new string('a', 60)],
+		["an ftp URL", "// See ftp://example.com/" + new string('a', 60)],
+		["a file URL", "// See file:///C:/" + new string('a', 60)],
+		["a scheme in capitals", "// See HTTPS://example.com/" + new string('a', 60)],
+		["a scheme with a plus, a minus and a dot", "// See git+ssh-v2.x://example.com/" + new string('a', 60)],
+		["a scheme with a digit", "// See s3://bucket/" + new string('a', 60)],
 	];
 
 	// Each source is one line, whose overflow no string and no URL covers from before the width.
@@ -53,10 +58,10 @@ public sealed class ShortenLongLineTests
 			"// " + new string('a', 36) + " https://example.com/" + new string('a', 40),
 		],
 
-		[
-			"a comment whose scheme is in capitals",
-			"// See HTTPS://example.com/" + new string('a', 60),
-		],
+		["a comment whose scheme starts with a digit", "// See 1http://example.com/" + new string('a', 60)],
+		["a comment whose scheme holds an underscore", "// See a_b://example.com/" + new string('a', 60)],
+		["a comment with a token that has no scheme", "// See ://example.com/" + new string('a', 60)],
+		["a comment with a scheme and no slashes", "// See mailto:" + new string('a', 60)],
 
 		[
 			"a comment whose URL follows an opening bracket",

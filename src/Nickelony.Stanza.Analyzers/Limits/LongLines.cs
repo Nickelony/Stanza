@@ -11,9 +11,6 @@ namespace Nickelony.Stanza.Analyzers.Limits;
 /// <summary>Finds the lines that run past a width, apart from the ones that cannot be broken.</summary>
 internal static class LongLines
 {
-	private const string HttpPrefix = "http://";
-	private const string HttpsPrefix = "https://";
-
 	/// <summary>What may follow a string that ends a statement, a list, or a sum that goes on below.</summary>
 	private const string ClosingPunctuation = ")]};,+";
 
@@ -93,7 +90,7 @@ internal static class LongLines
 				or SyntaxKind.InterpolatedStringTextToken;
 	}
 
-	/// <summary>Whether a URL opens the run of non-space characters at the offset, and it ends the comment.</summary>
+	/// <summary>Whether a <c>scheme://</c> URL opens the run of non-space characters at the offset, and it ends the comment.</summary>
 	private static bool IsInUrl(string lineText, int offset)
 	{
 		int start = offset;
@@ -107,7 +104,7 @@ internal static class LongLines
 			end++;
 
 		return start < offset
-			&& (HasPrefixAt(lineText, start, HttpPrefix) || HasPrefixAt(lineText, start, HttpsPrefix))
+			&& StartsWithScheme(lineText, start, end)
 			&& lineText.Substring(end).Trim() is "" or "*/";
 	}
 
@@ -123,6 +120,21 @@ internal static class LongLines
 		return true;
 	}
 
-	private static bool HasPrefixAt(string text, int start, string prefix) =>
-		string.CompareOrdinal(strA: text, indexA: start, strB: prefix, indexB: 0, length: prefix.Length) == 0;
+	/// <summary>Whether a scheme of RFC 3986, a letter then letters, digits, plus, minus or dot, and then <c>://</c> open the run.</summary>
+	private static bool StartsWithScheme(string text, int start, int end)
+	{
+		if (start >= end || !IsAsciiLetter(text[start]))
+			return false;
+
+		int index = start + 1;
+
+		while (index < end && IsSchemeCharacter(text[index]))
+			index++;
+
+		return index + 3 <= end && string.CompareOrdinal(strA: text, indexA: index, strB: "://", indexB: 0, length: 3) == 0;
+	}
+
+	private static bool IsAsciiLetter(char character) => character is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z');
+
+	private static bool IsSchemeCharacter(char character) => IsAsciiLetter(character) || character is (>= '0' and <= '9') or '+' or '-' or '.';
 }
