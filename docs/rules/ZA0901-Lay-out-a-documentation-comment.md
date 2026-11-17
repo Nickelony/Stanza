@@ -29,9 +29,10 @@ and writes an element that does not fit on one line as a block.
   The spaces between its words still collapse to one.
 - A backtick code span is one word of the fill: it moves whole and keeps the spaces inside it, and a line break inside it becomes one space.
 - Only a space, a tab and a line break separate words, so a character such as a form feed stays in its word.
-- A word made of marks alone keeps the space the author wrote and stays with its neighbor: a closing mark, such as `?`, `,` or `)`, with the word before it,
-  and an opening mark, `(`, `[` or `{`, with the word after it, so no line starts with the first or ends on the second.
-  So `#, ?, and %`, `(* and ?)`, `[ U+0000 ]` and `( see above )` come out as written.
+- A word made of marks alone keeps the space the author wrote and stays with its neighbor.
+  A closing mark, such as `?`, `,` or `)`, stays with the word before it, and an opening mark, `(`, `[` or `{`, with the word after it.
+- So no line starts with a closing mark or ends on an opening one.
+  `#, ?, and %`, `(* and ?)`, `[ U+0000 ]` and `( see above )` come out as written.
 - A `<list>` or a `<table>` is laid out with the comment, as [`ZA0904`](https://github.com/Nickelony/Stanza/wiki/ZA0904-Lay-out-the-items-of-a-documentation-list) describes.
   Prose on both sides of a list gains a `<para>` pair around each run.
 - [`ZA0902`](https://github.com/Nickelony/Stanza/wiki/ZA0902-Mark-documentation-paragraphs) wraps a comment only as it writes the paragraphs,

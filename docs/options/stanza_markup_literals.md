@@ -49,8 +49,8 @@ class Templates
   Otherwise it stands above the nearest statement that holds the literal:
   for `if (ok) Load("""...""");` that is the embedded `Load(...)` statement, not the `if`, so a comment above the `if` marks nothing.
 - Outside any statement, such as in a field initializer or an expression-bodied method, the comment stands above the member.
-  So a comment above an expression-bodied method marks its literal, and one above a block-bodied method marks nothing, because the literal sits in a statement.
-  A comment above another statement marks nothing either.
+  So a comment above an expression-bodied method marks its literal.
+- A comment above a block-bodied method marks nothing, because the literal sits in a statement, and neither does one above another statement.
 - `[StringSyntax]` of `System.Diagnostics.CodeAnalysis` marks a literal that initializes or is assigned to the field or property it sits on,
   or that is passed to the parameter it sits on, as a positional, named or `params` argument.
 - The syntax name of the attribute is compared in any case, so `"xml"` and `StringSyntaxAttribute.Xml` both count, and `"Json"` marks nothing.
