@@ -16,7 +16,7 @@ namespace Nickelony.Stanza.Format.Running;
 /// <summary>Runs a child process, and copies each stream to a writer as it comes when one is given.</summary>
 internal static class ProcessRunner
 {
-	/// <summary>Bounds the items <see cref="RunEach"/> runs at once, as each one may start a .NET host or send a request to a server.</summary>
+	/// <summary>Bounds the items <see cref="RunEach"/> runs at once, as each may start a host or a request.</summary>
 	private const int MaxParallelItems = 8;
 
 	private static readonly UTF8Encoding s_utf8 = new(encoderShouldEmitUTF8Identifier: false);
