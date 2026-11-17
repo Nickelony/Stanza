@@ -83,6 +83,9 @@ public sealed class RulePageExampleGuardTests
 		["stanza_local_function_modifiers"] = "ZA0021",
 		["stanza_receiver_roots"] = "ZA0054",
 		["stanza_receiver_comparison"] = "ZA0019",
+		["stanza_region_padding"] = "ZA0401",
+		["stanza_conditional_block_padding"] = "ZA0402",
+		["stanza_suppression_block_padding"] = "ZA0406",
 	};
 
 	// An option an example needs beyond the defaults, keyed by its page and a part of its marker.
@@ -240,6 +243,30 @@ public sealed class RulePageExampleGuardTests
 			"stanza_receiver_roots",
 			string.Empty,
 			new Dictionary<string, string> { ["stanza_receiver_roots"] = "db" }
+		),
+
+		(
+			"stanza_region_padding",
+			"with tight",
+			new Dictionary<string, string> { ["stanza_region_padding"] = "tight" }
+		),
+
+		(
+			"stanza_conditional_block_padding",
+			"with padded",
+			new Dictionary<string, string> { ["stanza_conditional_block_padding"] = "padded" }
+		),
+
+		(
+			"stanza_suppression_block_padding",
+			"with padded",
+			new Dictionary<string, string> { ["stanza_suppression_block_padding"] = "padded" }
+		),
+
+		(
+			"ZA0407",
+			"with tight regions",
+			new Dictionary<string, string> { ["stanza_region_padding"] = "tight" }
 		),
 
 		(

@@ -87,6 +87,7 @@ ZA0403 strong
 ZA0404 strong
 ZA0405 moderate
 ZA0406 moderate
+ZA0407 moderate
 ZA0501 strong
 ZA0502 strong
 ZA0503 strong

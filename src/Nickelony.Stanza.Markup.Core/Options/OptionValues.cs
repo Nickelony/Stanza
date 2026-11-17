@@ -72,4 +72,13 @@ internal static class OptionValues
 
 	/// <summary>Whether <see cref="OptionKeys.ReceiverComparison"/> compares the whole direct receiver path.</summary>
 	public static readonly OptionChoice<bool> ReceiverComparison = new(("root", false), ("path", true));
+
+	/// <summary>Whether <see cref="OptionKeys.RegionPadding"/> pads a region.</summary>
+	public static readonly OptionChoice<bool> RegionPadding = new(("padded", true), ("tight", false));
+
+	/// <summary>Whether <see cref="OptionKeys.ConditionalBlockPadding"/> pads a conditional block.</summary>
+	public static readonly OptionChoice<bool> ConditionalBlockPadding = new(("padded", true), ("tight", false));
+
+	/// <summary>Whether <see cref="OptionKeys.SuppressionBlockPadding"/> pads a suppression block.</summary>
+	public static readonly OptionChoice<bool> SuppressionBlockPadding = new(("padded", true), ("tight", false));
 }

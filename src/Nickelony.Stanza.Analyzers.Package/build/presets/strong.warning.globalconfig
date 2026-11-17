@@ -85,6 +85,7 @@ dotnet_diagnostic.ZA0403.severity = warning
 dotnet_diagnostic.ZA0404.severity = warning
 dotnet_diagnostic.ZA0405.severity = warning
 dotnet_diagnostic.ZA0406.severity = warning
+dotnet_diagnostic.ZA0407.severity = warning
 dotnet_diagnostic.ZA0501.severity = warning
 dotnet_diagnostic.ZA0502.severity = warning
 dotnet_diagnostic.ZA0503.severity = warning

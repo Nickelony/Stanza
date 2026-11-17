@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   They also keep a binding with the guard, loop, jump or assertion that reads it, a chain of guards, and the operations of one receiver together.
   The rules `ZA0020` and `ZA0021` separate runs of `yield return` statements and of single-line local functions from their neighbors,
   `ZA0207` removes the blank line below a switch label, and `ZA0406` separates a `#pragma warning` suppression block from its neighbors.
+  `ZA0407` removes the blank lines inside a region, a conditional block or a suppression block whose padding key says `tight`.
+  The options `stanza_region_padding`, `stanza_conditional_block_padding` and `stanza_suppression_block_padding`
+  choose whether the rule that separates each kind also pads its inside.
   The options `stanza_receiver_roots`, `stanza_receiver_comparison`, `stanza_declaration_shapes`, `stanza_declaration_typing`
   and `stanza_local_function_modifiers` choose which receivers, declarations and local functions they group.
 - Presets: `<StanzaLevel>` picks the `minimal`, `moderate` or `strong` level of analyzer rules, or `none`,

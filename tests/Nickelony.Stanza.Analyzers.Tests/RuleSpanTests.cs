@@ -1381,6 +1381,27 @@ public sealed class RuleSpanTests
 		],
 
 		[
+			DiagnosticDescriptors.RemoveDirectiveBlockPadding.Id,
+
+			"""
+				class C
+				{
+					private int _total;
+
+				#if TRACE
+
+					private int _trace;
+
+				#endif
+
+					private int _sum;
+				}
+				""",
+
+			"\tprivate int _trace;@7:1+#if TRACE@5:1|#endif@9:1+\tprivate int _trace;@7:1",
+		],
+
+		[
 			DiagnosticDescriptors.BreakExpressionOffSignatureLine.Id,
 
 			"""

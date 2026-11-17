@@ -235,12 +235,18 @@ internal static partial class RoslynTestHarness
 
 	public static async Task<ImmutableArray<Diagnostic>> RunWithoutCompilingAsync(
 		string source,
-		IReadOnlyDictionary<string, ReportDiagnostic>? diagnosticOptions = null
+		IReadOnlyDictionary<string, ReportDiagnostic>? diagnosticOptions = null,
+		IReadOnlyDictionary<string, string>? analyzerConfigOptions = null
 	)
 	{
 		using var workspace = new AdhocWorkspace();
 
-		Document document = CreateDocument(workspace, source, diagnosticOptions);
+		Document document = CreateDocument(
+			workspace,
+			source,
+			diagnosticOptions,
+			analyzerConfigOptions: analyzerConfigOptions
+		);
 
 		Compilation? compilation = await document
 			.Project.GetCompilationAsync(HarnessBudget.Token)

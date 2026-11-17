@@ -12,6 +12,9 @@ public sealed class SeparateSuppressionBlockTests
 	private static IReadOnlyDictionary<string, ReportDiagnostic> BlockRuleOnly { get; } =
 		TestRuleSets.Only(DiagnosticDescriptors.SeparateSuppressionBlock);
 
+	private static Dictionary<string, string> PaddedBlocks { get; } =
+		new() { ["stanza_suppression_block_padding"] = "padded" };
+
 	[TestMethod]
 	public async Task TheGapsAboveADisableAndBelowItsRestoreArePadded()
 	{
@@ -708,5 +711,297 @@ public sealed class SeparateSuppressionBlockTests
 				DiagnosticDescriptors.KeepRunOfStatementsTogether,
 			]
 		);
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockGetsABlankLineInsideItsMarkersToo()
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					var options = Build(1);
+			#pragma warning disable CS0618
+					var legacy = Build(options);
+			#pragma warning restore CS0618
+					DoThing();
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M()
+				{
+					var options = Build(1);
+
+			#pragma warning disable CS0618
+
+					var legacy = Build(options);
+
+			#pragma warning restore CS0618
+
+					DoThing();
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateSuppressionBlockAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.HasCount(4, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+
+		RoslynTestHarness.AssertChangeRidesDiagnostic(result);
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockIsNotReportedAgain()
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					var options = Build(1);
+
+			#pragma warning disable CS0618
+
+					var legacy = Build(options);
+
+			#pragma warning restore CS0618
+
+					DoThing();
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateSuppressionBlockAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.IsEmpty(result.Diagnostics, "A padded block is padded again.");
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockIsPaddedInsideBesideTheBracesOfItsContainer()
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+			#pragma warning disable CS0219
+					var legacy = 1;
+			#pragma warning restore CS0219
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M()
+				{
+			#pragma warning disable CS0219
+
+					var legacy = 1;
+
+			#pragma warning restore CS0219
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateSuppressionBlockAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task ACommentAboveTheRestoreTakesTheBlankLineOfAPaddedBlock()
+	{
+		const string source = """
+			class C
+			{
+				private int _total;
+
+			#pragma warning disable CS0169
+
+				private int _unused;
+				// Kept for the log.
+			#pragma warning restore CS0169
+
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				private int _total;
+
+			#pragma warning disable CS0169
+
+				private int _unused;
+
+				// Kept for the log.
+			#pragma warning restore CS0169
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateSuppressionBlockAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.HasCount(1, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task NestedPairsOfAPaddedBlockKeepTheirDirectivesTogether()
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					var options = Build(1);
+			#pragma warning disable CS0219
+			#pragma warning disable CS0168
+					var legacy = 1;
+			#pragma warning restore CS0168
+			#pragma warning restore CS0219
+					DoThing();
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M()
+				{
+					var options = Build(1);
+
+			#pragma warning disable CS0219
+			#pragma warning disable CS0168
+
+					var legacy = 1;
+
+			#pragma warning restore CS0168
+			#pragma warning restore CS0219
+
+					DoThing();
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateSuppressionBlockAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.HasCount(4, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockInsideAnArgumentListKeepsEveryGap()
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					Take(
+						1,
+			#pragma warning disable CS0618
+						Build(2),
+			#pragma warning restore CS0618
+						3);
+				}
+
+				void Take(int first, int second, int third) { }
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateSuppressionBlockAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	[DataRow("tight")]
+	[DataRow("TIGHT")]
+	[DataRow("")]
+	[DataRow("loose")]
+	public async Task ATightBlockOrAnyOtherValueGetsTheOutsideGapsOnly(string value)
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					var options = Build(1);
+			#pragma warning disable CS0618
+					var legacy = Build(options);
+			#pragma warning restore CS0618
+					DoThing();
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M()
+				{
+					var options = Build(1);
+
+			#pragma warning disable CS0618
+					var legacy = Build(options);
+			#pragma warning restore CS0618
+
+					DoThing();
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateSuppressionBlockAnalyzer>(
+				source,
+				BlockRuleOnly,
+				new Dictionary<string, string> { ["stanza_suppression_block_padding"] = value }
+			);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 }

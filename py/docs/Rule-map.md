@@ -107,6 +107,7 @@ These rules stay out because a formatter undoes their fix, their trigger has no 
 | `ZA0301` to `ZA0307` Member bodies | No expression bodies: a `def` has a block body, and `ruff format` writes a single-line `def` on separate lines, apart from a `...` stub. |
 | `ZA0401` to `ZA0405` Regions and conditional blocks | No Python counterpart. |
 | `ZA0406` Separate a suppression block | None. Python Stanza has no rule for the blocks that a `# fmt: off` and `# fmt: on` pair, or a `# pylint: disable` and `# pylint: enable` pair, opens and closes. |
+| `ZA0407` Remove directive block padding | None. Python Stanza has no directive blocks to pad; the blank lines inside a block take the rules of the code around them. |
 | `ZA0503` Remove a redundant argument name | Removing a keyword makes the argument positional, which fails for a keyword-only parameter and rewrites a name the author chose. `named-argument-match` already lets `ZA3501` leave a leading identifier of its parameter's name unnamed. |
 | `ZA0601` Remove the else after a jump | Ruff `RET505`, `RET506`, `RET507` and `RET508`. |
 | `ZA0602` Merge nested if statements | Ruff `SIM102`. |

@@ -319,6 +319,106 @@ public sealed class BareDiagnosticFixTests
 				}
 				""",
 		],
+
+		[
+			"the directive block padding rule",
+			new RemoveDirectiveBlockPaddingAnalyzer(),
+			OffersAFix,
+			null,
+
+			"""
+				internal sealed class Sample
+				{
+					private int _total;
+
+				#if TRACE
+
+					private int _trace;
+				#endif
+				}
+				""",
+		],
+
+		[
+			"the directive block padding rule of a tight region",
+			new RemoveDirectiveBlockPaddingAnalyzer(),
+			OffersAFix,
+			new Dictionary<string, string> { ["stanza_region_padding"] = "tight" },
+
+			"""
+				internal sealed class Sample
+				{
+					private int _total;
+
+					#region Fields
+
+					private int _count;
+					#endregion
+				}
+				""",
+		],
+
+		[
+			"the region rule of a tight region",
+			new SeparateRegionMarkerFromNeighborsAnalyzer(),
+			OffersAFix,
+			new Dictionary<string, string> { ["stanza_region_padding"] = "tight" },
+
+			"""
+				internal sealed class Sample
+				{
+					private int _total;
+					#region Fields
+					private int _count;
+
+					#endregion
+
+					private int _sum;
+				}
+				""",
+		],
+
+		[
+			"the conditional block rule of a padded block",
+			new SeparateConditionalBlockFromNeighborsAnalyzer(),
+			OffersAFix,
+			new Dictionary<string, string> { ["stanza_conditional_block_padding"] = "padded" },
+
+			"""
+				internal sealed class Sample
+				{
+					private int _total;
+
+				#if TRACE
+					private int _trace;
+
+				#endif
+
+					private int _sum;
+				}
+				""",
+		],
+
+		[
+			"the suppression block rule of a padded block",
+			new SeparateSuppressionBlockAnalyzer(),
+			OffersAFix,
+			new Dictionary<string, string> { ["stanza_suppression_block_padding"] = "padded" },
+
+			"""
+				internal sealed class Sample
+				{
+					private int _total;
+
+				#pragma warning disable CS0169
+					private int _unused;
+
+				#pragma warning restore CS0169
+
+					private int _sum;
+				}
+				""",
+		],
 	];
 
 	[TestMethod]

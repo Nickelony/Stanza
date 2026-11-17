@@ -12,7 +12,13 @@ internal sealed class SeparateSuppressionBlockAnalyzer()
 		RegionAnalysis.ReportEdits(
 			context,
 			Descriptor,
-			RegionEdits.CreateSuppressionBlockGapEdits(context.Tree, context.Tree.GetText(context.CancellationToken), context.CancellationToken)
+
+			RegionEdits.CreateSuppressionBlockGapEdits(
+				syntaxTree: context.Tree,
+				sourceText: context.Tree.GetText(context.CancellationToken),
+				options: StanzaOptions.From(context.Options, context.Tree),
+				cancellationToken: context.CancellationToken
+			)
 		);
 	}
 }

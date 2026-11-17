@@ -44,6 +44,9 @@ internal sealed record StanzaOptions(
 	bool SplitsDeclarationShapes,
 	bool SplitsDeclarationTyping,
 	bool SplitsLocalFunctionModifiers,
+	bool PadsRegions,
+	bool PadsConditionalBlocks,
+	bool PadsSuppressionBlocks,
 	ImmutableHashSet<string> RulesDisabledUnlessEnabled
 )
 {
@@ -114,6 +117,9 @@ internal sealed record StanzaOptions(
 			SplitsDeclarationShapes: OptionValues.DeclarationShapes.Read(ReadKey(OptionKeys.DeclarationShapes), fallback: false),
 			SplitsDeclarationTyping: OptionValues.DeclarationTyping.Read(ReadKey(OptionKeys.DeclarationTyping), fallback: true),
 			SplitsLocalFunctionModifiers: OptionValues.LocalFunctionModifiers.Read(ReadKey(OptionKeys.LocalFunctionModifiers), fallback: false),
+			PadsRegions: OptionValues.RegionPadding.Read(ReadKey(OptionKeys.RegionPadding), fallback: true),
+			PadsConditionalBlocks: OptionValues.ConditionalBlockPadding.Read(ReadKey(OptionKeys.ConditionalBlockPadding), fallback: false),
+			PadsSuppressionBlocks: OptionValues.SuppressionBlockPadding.Read(ReadKey(OptionKeys.SuppressionBlockPadding), fallback: false),
 			RulesDisabledUnlessEnabled: ReadRulesDisabledUnlessEnabled(options)
 		);
 	}

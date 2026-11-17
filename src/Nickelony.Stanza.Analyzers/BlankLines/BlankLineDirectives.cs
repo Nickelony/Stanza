@@ -15,39 +15,45 @@ internal static class BlankLineDirectives
 {
 	/// <summary>Whether ZA0401 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
 	/// <remarks>
-	/// ZA0401 separates a marker only from a unit beside it, so the first and the last directive of the gap decide.
+	/// The first and the last directive of the gap decide, and a padded region counts its inner markers too.
 	/// </remarks>
-	public static bool IsRegionMarkerGap(SyntaxNode next, string? ownerId, CancellationToken cancellationToken) =>
-		IsDirectiveGapKept(next, ownerId, isKeptFirst: IsRegionMarker, isKeptLast: IsRegionMarker, cancellationToken);
-
-	private static bool IsRegionMarker(DirectiveTriviaSyntax directive) => directive is RegionDirectiveTriviaSyntax or EndRegionDirectiveTriviaSyntax;
-
-	/// <summary>Whether ZA0402 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
-	/// <remarks>
-	/// ZA0402 separates an <c>#if</c> from the unit above it and an <c>#endif</c> from the unit below it.
-	/// </remarks>
-	public static bool IsConditionalBlockGap(SyntaxNode next, string? ownerId, CancellationToken cancellationToken)
+	public static bool IsRegionMarkerGap(SyntaxNode next, string? ownerId, bool padsInside, CancellationToken cancellationToken)
 	{
 		return IsDirectiveGapKept(
 			next,
 			ownerId,
-			isKeptFirst: static first => first is IfDirectiveTriviaSyntax && ConditionalBlocks.IsBetweenUnits(first),
-			isKeptLast: static last => last is EndIfDirectiveTriviaSyntax && ConditionalBlocks.IsBetweenUnits(last),
+			isKeptFirst: first => first is RegionDirectiveTriviaSyntax || (padsInside && first is EndRegionDirectiveTriviaSyntax),
+			isKeptLast: last => last is EndRegionDirectiveTriviaSyntax || (padsInside && last is RegionDirectiveTriviaSyntax),
+			cancellationToken
+		);
+	}
+
+	/// <summary>Whether ZA0402 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <remarks>
+	/// An <c>#if</c> or an <c>#endif</c> decides, and a padded block counts every directive of the block.
+	/// </remarks>
+	public static bool IsConditionalBlockGap(SyntaxNode next, string? ownerId, bool padsInside, CancellationToken cancellationToken)
+	{
+		return IsDirectiveGapKept(
+			next,
+			ownerId,
+			isKeptFirst: first => (first is IfDirectiveTriviaSyntax || padsInside) && ConditionalBlocks.IsBetweenUnits(first),
+			isKeptLast: last => (last is EndIfDirectiveTriviaSyntax || padsInside) && ConditionalBlocks.IsBetweenUnits(last),
 			cancellationToken
 		);
 	}
 
 	/// <summary>Whether ZA0406 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
 	/// <remarks>
-	/// ZA0406 separates a <c>disable</c> from the unit above it and its <c>restore</c> from the unit below it.
+	/// A <c>disable</c> or a <c>restore</c> decides, and a padded block counts both directives of the pair.
 	/// </remarks>
-	public static bool IsSuppressionBlockGap(SyntaxNode next, string? ownerId, CancellationToken cancellationToken)
+	public static bool IsSuppressionBlockGap(SyntaxNode next, string? ownerId, bool padsInside, CancellationToken cancellationToken)
 	{
 		return IsDirectiveGapKept(
 			next,
 			ownerId,
-			isKeptFirst: static first => SuppressionBlocks.IsOpener(first),
-			isKeptLast: static last => SuppressionBlocks.IsCloser(last),
+			isKeptFirst: first => SuppressionBlocks.IsOpener(first) || (padsInside && SuppressionBlocks.IsCloser(first)),
+			isKeptLast: last => SuppressionBlocks.IsCloser(last) || (padsInside && SuppressionBlocks.IsOpener(last)),
 			cancellationToken
 		);
 	}

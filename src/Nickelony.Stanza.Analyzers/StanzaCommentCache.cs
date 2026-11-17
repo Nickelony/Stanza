@@ -66,6 +66,10 @@ internal static class StanzaCommentCache
 	public static ImmutableArray<SyntaxTrivia> GetConditionalBlockMarkers(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
 		GetTriviaSnapshot(syntaxTree, cancellationToken).ConditionalBlockMarkers;
 
+	/// <summary>Every conditional directive of a tree, in active and inactive code.</summary>
+	public static ImmutableArray<SyntaxTrivia> GetConditionalDirectiveMarkers(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
+		GetTriviaSnapshot(syntaxTree, cancellationToken).ConditionalDirectiveMarkers;
+
 	private static TriviaSnapshot GetTriviaSnapshot(SyntaxTree syntaxTree, CancellationToken cancellationToken) =>
 		s_triviaCache.GetOrCompute(syntaxTree, state: cancellationToken, static (tree, token) => ReadTriviaSnapshot(tree, token));
 
@@ -76,12 +80,13 @@ internal static class StanzaCommentCache
 		// Whether a file has a comment is read from its text without a walk, and Roslyn keeps a flag for directives,
 		// so a file that carries neither is answered with no walk at all.
 		if (!root.ContainsDirectives && !ReadTriviaMarkers(syntaxTree, cancellationToken).HasComment)
-			return new TriviaSnapshot(Comments: [], DocumentationComments: [], RegionMarkers: [], ConditionalBlockMarkers: [], PragmaMarkers: []);
+			return new TriviaSnapshot(Comments: [], DocumentationComments: [], RegionMarkers: [], ConditionalBlockMarkers: [], ConditionalDirectiveMarkers: [], PragmaMarkers: []);
 
 		ImmutableArray<SyntaxTrivia>.Builder comments = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 		ImmutableArray<SyntaxTrivia>.Builder documentationComments = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 		ImmutableArray<SyntaxTrivia>.Builder regionMarkers = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 		ImmutableArray<SyntaxTrivia>.Builder conditionalBlockMarkers = ImmutableArray.CreateBuilder<SyntaxTrivia>();
+		ImmutableArray<SyntaxTrivia>.Builder conditionalDirectiveMarkers = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 		ImmutableArray<SyntaxTrivia>.Builder pragmaMarkers = ImmutableArray.CreateBuilder<SyntaxTrivia>();
 
 		foreach (SyntaxTrivia trivia in root.DescendantTrivia())
@@ -106,6 +111,9 @@ internal static class StanzaCommentCache
 			if (structure is IfDirectiveTriviaSyntax or EndIfDirectiveTriviaSyntax)
 				conditionalBlockMarkers.Add(trivia);
 
+			if (structure is IfDirectiveTriviaSyntax or ElifDirectiveTriviaSyntax or ElseDirectiveTriviaSyntax or EndIfDirectiveTriviaSyntax)
+				conditionalDirectiveMarkers.Add(trivia);
+
 			if (structure is PragmaWarningDirectiveTriviaSyntax)
 				pragmaMarkers.Add(trivia);
 
@@ -118,6 +126,7 @@ internal static class StanzaCommentCache
 			DocumentationComments: documentationComments.ToImmutable(),
 			RegionMarkers: regionMarkers.ToImmutable(),
 			ConditionalBlockMarkers: conditionalBlockMarkers.ToImmutable(),
+			ConditionalDirectiveMarkers: conditionalDirectiveMarkers.ToImmutable(),
 			PragmaMarkers: pragmaMarkers.ToImmutable()
 		);
 	}
@@ -146,6 +155,7 @@ internal static class StanzaCommentCache
 		ImmutableArray<SyntaxTrivia> DocumentationComments,
 		ImmutableArray<SyntaxTrivia> RegionMarkers,
 		ImmutableArray<SyntaxTrivia> ConditionalBlockMarkers,
+		ImmutableArray<SyntaxTrivia> ConditionalDirectiveMarkers,
 		ImmutableArray<SyntaxTrivia> PragmaMarkers
 	);
 }

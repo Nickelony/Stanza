@@ -35,5 +35,7 @@ class C
   In disabled text the label is read line by line, so a label wrapped over lines counts only when its `when` clause starts the last line.
 - A comment directly above a marker moves with it, so the blank line goes above the comment.
 - A marker at the very start of a file gets no blank line above it, and one at the very end gets none below it, because no unit stands there.
-- This rule has no tight counterpart; disable it to keep region markers tight.
+- [`stanza_region_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_region_padding) set to `tight` writes only the blank lines outside the region, above `#region` and below `#endregion`.
+  [`ZA0407`](https://github.com/Nickelony/Stanza/wiki/ZA0407-Remove-directive-block-padding) then removes the ones inside.
+  Disable this rule to leave region markers as written.
 - An `#if` and its `#endif` are separated by [ZA0402](https://github.com/Nickelony/Stanza/wiki/ZA0402-Separate-the-conditional-block-from-its-neighbors), not by this rule.

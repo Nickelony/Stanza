@@ -16,14 +16,19 @@ internal static class ConditionalBlocks
 	[ThreadStatic]
 	public static long StepsTaken;
 
-	/// <summary>Whether the directive is the <c>#if</c> or <c>#endif</c> of an active block between units.</summary>
+	/// <summary>Whether the directive is a branch directive of an active block between units.</summary>
 	/// <remarks>
 	/// A block inside a list keeps its gaps, as does one with a branch, active or disabled, that holds part of a unit.
 	/// </remarks>
 	public static bool IsBetweenUnits(DirectiveTriviaSyntax directive)
 	{
-		if (!directive.IsActive || directive is not (IfDirectiveTriviaSyntax or EndIfDirectiveTriviaSyntax))
+		if (
+			!directive.IsActive
+			|| directive is not (IfDirectiveTriviaSyntax or ElifDirectiveTriviaSyntax or ElseDirectiveTriviaSyntax or EndIfDirectiveTriviaSyntax)
+		)
+		{
 			return false;
+		}
 
 		List<DirectiveTriviaSyntax> related = directive.GetRelatedDirectives();
 

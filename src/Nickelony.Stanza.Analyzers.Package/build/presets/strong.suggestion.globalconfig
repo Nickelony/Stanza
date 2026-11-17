@@ -85,6 +85,7 @@ dotnet_diagnostic.ZA0403.severity = suggestion
 dotnet_diagnostic.ZA0404.severity = suggestion
 dotnet_diagnostic.ZA0405.severity = suggestion
 dotnet_diagnostic.ZA0406.severity = suggestion
+dotnet_diagnostic.ZA0407.severity = suggestion
 dotnet_diagnostic.ZA0501.severity = suggestion
 dotnet_diagnostic.ZA0502.severity = suggestion
 dotnet_diagnostic.ZA0503.severity = suggestion

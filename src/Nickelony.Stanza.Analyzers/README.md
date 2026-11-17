@@ -174,6 +174,7 @@ The **Level** column names the first [level](#presets) that enables the rule, an
 | `ZA0404` | [The closing `#endif` of a long conditional block from the condition of its `#if`](https://github.com/Nickelony/Stanza/wiki/ZA0404-Name-the-closing-conditional-directive) | Suggestion, off by default | Strong |
 | `ZA0405` | [An empty region from the two markers that bound it](https://github.com/Nickelony/Stanza/wiki/ZA0405-Remove-empty-regions) | Suggestion | Moderate |
 | `ZA0406` | [Adds a blank line above a `#pragma warning disable` and below its `restore`](https://github.com/Nickelony/Stanza/wiki/ZA0406-Separate-a-suppression-block) | Suggestion | Moderate |
+| `ZA0407` | [Removes the blank lines inside a region, a conditional block or a suppression block that its key sets to `tight`](https://github.com/Nickelony/Stanza/wiki/ZA0407-Remove-directive-block-padding) | Suggestion | Moderate |
 
 ### Argument names
 
@@ -334,6 +335,9 @@ Each key links to its own page, which says what the key controls and lists the v
 | [`stanza_local_function_modifiers`](https://github.com/Nickelony/Stanza/wiki/stanza_local_function_modifiers) | `merge` |
 | [`stanza_receiver_comparison`](https://github.com/Nickelony/Stanza/wiki/stanza_receiver_comparison) | `root` |
 | [`stanza_receiver_roots`](https://github.com/Nickelony/Stanza/wiki/stanza_receiver_roots) | `none` |
+| [`stanza_region_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_region_padding) | `padded` |
+| [`stanza_conditional_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_conditional_block_padding) | `tight` |
+| [`stanza_suppression_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_suppression_block_padding) | `tight` |
 | [`stanza_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_max_line_length) | `max_line_length`, then `100` |
 | [`stanza_doc_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_max_line_length) | `stanza_max_line_length`, then `max_line_length`, then `100` |
 | [`stanza_named_argument_min_arguments`](https://github.com/Nickelony/Stanza/wiki/stanza_named_argument_min_arguments) | `4` |

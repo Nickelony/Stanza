@@ -14,7 +14,13 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 			"Add the blank line",
 
 			FromCarriedChange(
-				static (document, cancellationToken) => RegionEdits.CreateMarkerGapEdits(document.Root.SyntaxTree, document.Text, cancellationToken)
+				static (document, cancellationToken) =>
+					RegionEdits.CreateMarkerGapEdits(
+						syntaxTree: document.Root.SyntaxTree,
+						sourceText: document.Text,
+						options: ReadOptions(document),
+						cancellationToken
+					)
 			)
 		),
 
@@ -24,7 +30,12 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 
 			FromCarriedChange(
 				static (document, cancellationToken) =>
-					RegionEdits.CreateConditionalBlockGapEdits(document.Root.SyntaxTree, document.Text, cancellationToken)
+					RegionEdits.CreateConditionalBlockGapEdits(
+						syntaxTree: document.Root.SyntaxTree,
+						sourceText: document.Text,
+						options: ReadOptions(document),
+						cancellationToken
+					)
 			)
 		),
 
@@ -34,7 +45,27 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 
 			FromCarriedChange(
 				static (document, cancellationToken) =>
-					RegionEdits.CreateSuppressionBlockGapEdits(document.Root.SyntaxTree, document.Text, cancellationToken)
+					RegionEdits.CreateSuppressionBlockGapEdits(
+						syntaxTree: document.Root.SyntaxTree,
+						sourceText: document.Text,
+						options: ReadOptions(document),
+						cancellationToken
+					)
+			)
+		),
+
+		FixRow.For(
+			DiagnosticDescriptors.RemoveDirectiveBlockPadding,
+			"Remove the blank line",
+
+			FromCarriedChange(
+				static (document, cancellationToken) =>
+					RegionEdits.CreateBlockPaddingEdits(
+						syntaxTree: document.Root.SyntaxTree,
+						sourceText: document.Text,
+						options: ReadOptions(document),
+						cancellationToken
+					)
 			)
 		),
 
@@ -69,4 +100,8 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 	]);
 
 	protected override FixTable Fixes => s_fixes;
+
+	/// <summary>Reads the options the project sets for the file, for a diagnostic that carries no change.</summary>
+	private static StanzaOptions ReadOptions(FixDocument document) =>
+		StanzaOptions.From(document.Document.Project.AnalyzerOptions, document.Root.SyntaxTree);
 }

@@ -256,4 +256,53 @@ public sealed class StanzaOptionsTests
 
 		Assert.AreEqual(expected, StanzaOptions.From(new FixedConfigOptions(values)).SplitsLocalFunctionModifiers);
 	}
+
+	[TestMethod]
+	[DataRow(null, true)]
+	[DataRow("padded", true)]
+	[DataRow("PADDED", true)]
+	[DataRow("tight", false)]
+	[DataRow("TIGHT", false)]
+	[DataRow("unknown", true)]
+	public void RegionsArePaddedUnlessTightIsSelected(string? value, bool expected)
+	{
+		var values = new Dictionary<string, string>();
+
+		if (value is not null)
+			values["stanza_region_padding"] = value;
+
+		Assert.AreEqual(expected, StanzaOptions.From(new FixedConfigOptions(values)).PadsRegions);
+	}
+
+	[TestMethod]
+	[DataRow(null, false)]
+	[DataRow("tight", false)]
+	[DataRow("padded", true)]
+	[DataRow("PADDED", true)]
+	[DataRow("unknown", false)]
+	public void ConditionalBlocksAreTightUnlessPaddedIsSelected(string? value, bool expected)
+	{
+		var values = new Dictionary<string, string>();
+
+		if (value is not null)
+			values["stanza_conditional_block_padding"] = value;
+
+		Assert.AreEqual(expected, StanzaOptions.From(new FixedConfigOptions(values)).PadsConditionalBlocks);
+	}
+
+	[TestMethod]
+	[DataRow(null, false)]
+	[DataRow("tight", false)]
+	[DataRow("padded", true)]
+	[DataRow("PADDED", true)]
+	[DataRow("unknown", false)]
+	public void SuppressionBlocksAreTightUnlessPaddedIsSelected(string? value, bool expected)
+	{
+		var values = new Dictionary<string, string>();
+
+		if (value is not null)
+			values["stanza_suppression_block_padding"] = value;
+
+		Assert.AreEqual(expected, StanzaOptions.From(new FixedConfigOptions(values)).PadsSuppressionBlocks);
+	}
 }

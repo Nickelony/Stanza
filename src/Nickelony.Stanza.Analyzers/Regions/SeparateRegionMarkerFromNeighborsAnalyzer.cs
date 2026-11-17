@@ -11,7 +11,13 @@ internal sealed class SeparateRegionMarkerFromNeighborsAnalyzer() : StanzaTreeAn
 		RegionAnalysis.ReportEdits(
 			context,
 			Descriptor,
-			RegionEdits.CreateMarkerGapEdits(context.Tree, context.Tree.GetText(context.CancellationToken), context.CancellationToken)
+
+			RegionEdits.CreateMarkerGapEdits(
+				syntaxTree: context.Tree,
+				sourceText: context.Tree.GetText(context.CancellationToken),
+				options: StanzaOptions.From(context.Options, context.Tree),
+				cancellationToken: context.CancellationToken
+			)
 		);
 	}
 }

@@ -48,6 +48,20 @@ public sealed partial class FormatterClaimGuardTests
 	private const string EndTagProject =
 		"<Project>\n  <ItemGroup>\n    <Compile Include=\"a.cs\"></Compile>\n  </ItemGroup>\n</Project>\n";
 
+	// A conditional block padded on both sides of every directive, between members and among statements.
+	private const string PaddedBranchesAmongMembers =
+		"\tprivate int _total;\n\n#if A\n\n\tprivate int _a;\n\n#elif B\n\n\tprivate int _b;\n\n"
+		+ "#else\n\n\tprivate int _c;\n\n#endif\n\n\tprivate int _sum;";
+
+	private const string PaddedBranchesAmongStatements =
+		"\t\tPrepare();\n\n#if A\n\n\t\tFirst();\n\n#elif B\n\n\t\tSecond();\n\n"
+		+ "#else\n\n\t\tThird();\n\n#endif\n\n\t\tFinish();";
+
+	private const string PaddedRegion =
+		"\t#region Fields\n\n\tprivate int _count;\n\n\t#endregion";
+
+	private const string TightRegion = "\t#region Fields\n\tprivate int _count;\n\t#endregion";
+
 	// The comments differ in their spacing and their words, and none of them names the condition.
 	private const string EndifComments =
 		"#if DEBUG\n\tprivate int _first;\n\tprivate int _second;\n#endif //DEBUG\n\n"
@@ -116,6 +130,7 @@ public sealed partial class FormatterClaimGuardTests
 		["the blank line around a region marker", "ZA0401", Members, Keeps],
 		["the blank line around a conditional block", "ZA0402", Members, Keeps],
 		["the blank line around a suppression block", "ZA0406", Statements, Keeps],
+		["the blank line inside a suppression block", "ZA0407", Statements, Keeps],
 		["the blank line above a jump statement", "ZA0009", Statements, Keeps],
 		["the blank line beside the base call", "ZA0010", Members, Keeps],
 		["the blank line below the guard clauses", "ZA0011", Statements, Keeps],
@@ -390,6 +405,64 @@ public sealed partial class FormatterClaimGuardTests
 	}
 
 	[TestMethod]
+	public void CSharpierDropsTheBlankLineAboveABranchDirectiveBetweenMembers()
+	{
+		string formatted = Format(AsMembers(PaddedBranchesAmongMembers));
+
+		foreach (string directive in new[] { "#elif B", "#else", "#endif" })
+		{
+			Assert.DoesNotContain(
+				"\n\n" + directive,
+				formatted,
+				$"CSharpier kept the blank line above {directive} between members."
+			);
+		}
+
+		foreach (string directive in new[] { "#if A", "#elif B", "#else" })
+		{
+			Assert.Contains(
+				directive + "\n\n",
+				formatted,
+				$"CSharpier dropped the blank line below {directive} between members."
+			);
+		}
+	}
+
+	[TestMethod]
+	public void CSharpierKeepsTheBlankLinesOfAPaddedBlockAmongStatements()
+	{
+		string formatted = Format(AsStatements(PaddedBranchesAmongStatements));
+
+		foreach (string directive in new[] { "#if A", "#elif B", "#else", "#endif" })
+		{
+			Assert.Contains(
+				"\n\n" + directive + "\n",
+				formatted,
+				$"CSharpier dropped the blank line above {directive} among statements."
+			);
+		}
+
+		foreach (string directive in new[] { "#if A", "#elif B", "#else" })
+		{
+			Assert.Contains(
+				directive + "\n\n",
+				formatted,
+				$"CSharpier dropped the blank line below {directive} among statements."
+			);
+		}
+	}
+
+	[TestMethod]
+	public void CSharpierKeepsTheBlankLinesInsideARegion()
+	{
+		AssertCSharpierKeepsTheDifference(
+			AsMembers(PaddedRegion),
+			AsMembers(TightRegion),
+			"region padding"
+		);
+	}
+
+	[TestMethod]
 	public void CSharpierRemovesTheBlankLinesBesideTheTagsOfAProjectFile() =>
 		AssertCSharpierErasesTheDifference(PaddedProject, TightProject, "markup element padding");
 
@@ -598,6 +671,10 @@ public sealed partial class FormatterClaimGuardTests
 			AsMembers(SpacedAccessors),
 			AsMembers(Summary + "\ninternal static void Bind()\n{\n}"),
 			AsMembers(EndifComments),
+			AsMembers(PaddedBranchesAmongMembers),
+			AsStatements(PaddedBranchesAmongStatements),
+			AsMembers(PaddedRegion),
+			AsMembers(TightRegion),
 			PaddedProject,
 			TightProject,
 			TightSlashProject,

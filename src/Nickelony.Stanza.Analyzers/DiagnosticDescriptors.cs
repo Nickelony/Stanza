@@ -740,6 +740,15 @@ internal static class DiagnosticDescriptors
 		isEnabledByDefault: true
 	);
 
+	public static readonly DiagnosticDescriptor RemoveDirectiveBlockPadding = Describe(
+		id: "ZA0407",
+		title: "Remove directive block padding",
+		messageFormat: "Remove the blank line inside this directive block",
+		description: "Requires that no blank line sits directly inside the markers of a region, a conditional block or a suppression block that `stanza_region_padding`, `stanza_conditional_block_padding` or `stanza_suppression_block_padding` sets to `tight`, unless the gap holds a comment or another directive.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: true
+	);
+
 	public static readonly DiagnosticDescriptor NameArgumentsOfCall = Describe(
 		id: "ZA0501",
 		title: "Name the arguments of a call",

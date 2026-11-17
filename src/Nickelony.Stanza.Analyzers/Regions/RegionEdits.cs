@@ -13,36 +13,236 @@ namespace Nickelony.Stanza.Analyzers.Regions;
 /// <summary>Builds the edits for region and conditional directives, including the regions in inactive code.</summary>
 internal static class RegionEdits
 {
-	public static List<RegionEdit> CreateMarkerGapEdits(SyntaxTree syntaxTree, SourceText sourceText, CancellationToken cancellationToken)
+	/// <summary>Builds the edits that pad each region marker on the sides its option picks.</summary>
+	public static List<RegionEdit> CreateMarkerGapEdits(
+		SyntaxTree syntaxTree,
+		SourceText sourceText,
+		StanzaOptions options,
+		CancellationToken cancellationToken
+	)
 	{
+		bool padded = options.PadsRegions;
+
 		return CreateGapEdits(
 			markers: StanzaCommentCache.GetRegionMarkers(syntaxTree, cancellationToken),
 			sourceText,
-			readSides: static _ => MarkerSides.Both,
+			readSides: trivia => ReadRegionSides(trivia, padded),
 			cancellationToken
 		);
 	}
 
-	/// <summary>Builds the edits that write a blank line above each <c>#if</c> and below each <c>#endif</c>.</summary>
-	public static List<RegionEdit> CreateConditionalBlockGapEdits(SyntaxTree syntaxTree, SourceText sourceText, CancellationToken cancellationToken)
+	/// <summary>Builds the edits that pad each conditional directive on the sides its option picks.</summary>
+	public static List<RegionEdit> CreateConditionalBlockGapEdits(
+		SyntaxTree syntaxTree,
+		SourceText sourceText,
+		StanzaOptions options,
+		CancellationToken cancellationToken
+	)
 	{
+		bool padded = options.PadsConditionalBlocks;
+
 		return CreateGapEdits(
-			markers: StanzaCommentCache.GetConditionalBlockMarkers(syntaxTree, cancellationToken),
+			markers: StanzaCommentCache.GetConditionalDirectiveMarkers(syntaxTree, cancellationToken),
 			sourceText,
-			readSides: ReadConditionalBlockSides,
+			readSides: trivia => ReadConditionalBlockSides(trivia, padded),
 			cancellationToken
 		);
 	}
 
-	/// <summary>Builds the edits that write a blank line around each <c>disable</c> and <c>restore</c> pair.</summary>
-	public static List<RegionEdit> CreateSuppressionBlockGapEdits(SyntaxTree syntaxTree, SourceText sourceText, CancellationToken cancellationToken)
+	/// <summary>Builds the edits that pad each suppression pragma on the sides its option picks.</summary>
+	public static List<RegionEdit> CreateSuppressionBlockGapEdits(
+		SyntaxTree syntaxTree,
+		SourceText sourceText,
+		StanzaOptions options,
+		CancellationToken cancellationToken
+	)
 	{
+		bool padded = options.PadsSuppressionBlocks;
+
 		return CreateGapEdits(
 			markers: StanzaCommentCache.GetPragmaMarkers(syntaxTree, cancellationToken),
 			sourceText,
-			readSides: ReadSuppressionBlockSides,
+			readSides: trivia => ReadSuppressionBlockSides(trivia, padded),
 			cancellationToken
 		);
+	}
+
+	/// <summary>Builds the edits that remove the blank lines inside each block of a tight kind.</summary>
+	public static List<RegionEdit> CreateBlockPaddingEdits(
+		SyntaxTree syntaxTree,
+		SourceText sourceText,
+		StanzaOptions options,
+		CancellationToken cancellationToken
+	)
+	{
+		List<RegionEdit> edits = [];
+
+		if (!options.PadsRegions)
+		{
+			CollectPaddingRemovals(
+				edits,
+				markers: StanzaCommentCache.GetRegionMarkers(syntaxTree, cancellationToken),
+				sourceText,
+				readSides: ReadInsideRegionSides,
+				cancellationToken
+			);
+		}
+
+		if (!options.PadsConditionalBlocks)
+		{
+			CollectPaddingRemovals(
+				edits,
+				markers: StanzaCommentCache.GetConditionalDirectiveMarkers(syntaxTree, cancellationToken),
+				sourceText,
+				readSides: ReadInsideConditionalBlockSides,
+				cancellationToken
+			);
+		}
+
+		if (!options.PadsSuppressionBlocks)
+		{
+			CollectPaddingRemovals(
+				edits,
+				markers: StanzaCommentCache.GetPragmaMarkers(syntaxTree, cancellationToken),
+				sourceText,
+				readSides: ReadInsideSuppressionBlockSides,
+				cancellationToken
+			);
+		}
+
+		return edits;
+	}
+
+	private static void CollectPaddingRemovals(
+		List<RegionEdit> edits,
+		ImmutableArray<SyntaxTrivia> markers,
+		SourceText sourceText,
+		Func<SyntaxTrivia, MarkerSides> readSides,
+		CancellationToken cancellationToken
+	)
+	{
+		foreach (SyntaxTrivia trivia in markers)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			MarkerSides sides = readSides(trivia);
+
+			if (sides == MarkerSides.None || !TryReadList(trivia, out SyntaxTriviaList list, out int index))
+				continue;
+
+			if (sides.HasFlag(MarkerSides.Above) && CreatePaddingRemoval(marker: trivia, list, index, sourceText, below: false) is { } above)
+				edits.Add(above);
+
+			if (sides.HasFlag(MarkerSides.Below) && CreatePaddingRemoval(marker: trivia, list, index, sourceText, below: true) is { } below)
+				edits.Add(below);
+		}
+	}
+
+	/// <summary>Builds the removal of the blank lines on one side of a marker.</summary>
+	private static RegionEdit? CreatePaddingRemoval(SyntaxTrivia marker, SyntaxTriviaList list, int index, SourceText sourceText, bool below)
+	{
+		RegionNeighbor? found = below ? FindNeighborBelow(marker, list, index, sourceText) : FindNeighborAbove(marker, list, index, sourceText);
+
+		if (found is not { IsComment: false } neighbor)
+			return null;
+
+		int markerLineIndex = GetLineIndex(sourceText, marker.SpanStart);
+		int firstLineIndex = below ? markerLineIndex + 1 : neighbor.LineIndex + 1;
+		int endLineIndex = below ? neighbor.LineIndex : markerLineIndex;
+
+		if (endLineIndex <= firstLineIndex)
+			return null;
+
+		var span = TextSpan.FromBounds(sourceText.Lines[firstLineIndex].Start, sourceText.Lines[endLineIndex].Start);
+
+		// A comment that trails the code above can run on to the lines between, and those lines are no padding.
+		if (!StanzaText.IsWhitespaceOnly(sourceText, span))
+			return null;
+
+		// The report stands on the line the removal reaches, as the gap rules do, so the edits of a file keep one order.
+		return new RegionEdit(new TextChange(span, string.Empty), sourceText.Lines[endLineIndex].Span, below ? marker.Span : neighbor.Span);
+	}
+
+	private static MarkerSides ReadRegionSides(SyntaxTrivia trivia, bool padded)
+	{
+		if (padded)
+			return MarkerSides.Both;
+
+		return trivia.GetStructure() is RegionDirectiveTriviaSyntax ? MarkerSides.Above : MarkerSides.Below;
+	}
+
+	/// <summary>The sides inside a region, which a marker with no partner or in inactive code has none of.</summary>
+	private static MarkerSides ReadInsideRegionSides(SyntaxTrivia trivia)
+	{
+		if (trivia.GetStructure() is not DirectiveTriviaSyntax directive || !IsPairedActiveRegion(directive))
+			return MarkerSides.None;
+
+		return directive is RegionDirectiveTriviaSyntax ? MarkerSides.Below : MarkerSides.Above;
+	}
+
+	private static bool IsPairedActiveRegion(DirectiveTriviaSyntax directive)
+	{
+		if (!directive.IsActive)
+			return false;
+
+		List<DirectiveTriviaSyntax> related = directive.GetRelatedDirectives();
+
+		return related.Count == 2 && related[0] is RegionDirectiveTriviaSyntax { IsActive: true } && related[1] is EndRegionDirectiveTriviaSyntax { IsActive: true };
+	}
+
+	private static MarkerSides ReadSuppressionBlockSides(SyntaxTrivia trivia, bool padded)
+	{
+		if (trivia.GetStructure() is not DirectiveTriviaSyntax directive)
+			return MarkerSides.None;
+
+		if (SuppressionBlocks.IsOpener(directive))
+			return padded ? MarkerSides.Both : MarkerSides.Above;
+
+		if (!SuppressionBlocks.IsCloser(directive))
+			return MarkerSides.None;
+
+		return padded ? MarkerSides.Both : MarkerSides.Below;
+	}
+
+	private static MarkerSides ReadInsideSuppressionBlockSides(SyntaxTrivia trivia)
+	{
+		if (trivia.GetStructure() is not DirectiveTriviaSyntax directive)
+			return MarkerSides.None;
+
+		if (SuppressionBlocks.IsOpener(directive))
+			return MarkerSides.Below;
+
+		return SuppressionBlocks.IsCloser(directive) ? MarkerSides.Above : MarkerSides.None;
+	}
+
+	private static MarkerSides ReadConditionalBlockSides(SyntaxTrivia trivia, bool padded)
+	{
+		if (trivia.GetStructure() is not DirectiveTriviaSyntax directive)
+			return MarkerSides.None;
+
+		bool isOuter = directive is IfDirectiveTriviaSyntax or EndIfDirectiveTriviaSyntax;
+
+		if ((!padded && !isOuter) || !ConditionalBlocks.IsBetweenUnits(directive))
+			return MarkerSides.None;
+
+		if (padded)
+			return MarkerSides.Both;
+
+		return directive is IfDirectiveTriviaSyntax ? MarkerSides.Above : MarkerSides.Below;
+	}
+
+	/// <summary>The sides inside a conditional block: below an opening branch and above a closing one.</summary>
+	private static MarkerSides ReadInsideConditionalBlockSides(SyntaxTrivia trivia)
+	{
+		if (trivia.GetStructure() is not DirectiveTriviaSyntax directive || !ConditionalBlocks.IsBetweenUnits(directive))
+			return MarkerSides.None;
+
+		return directive switch
+		{
+			IfDirectiveTriviaSyntax => MarkerSides.Below,
+			EndIfDirectiveTriviaSyntax => MarkerSides.Above,
+			_ => MarkerSides.Both,
+		};
 	}
 
 	private static List<RegionEdit> CreateGapEdits(
@@ -86,25 +286,6 @@ internal static class RegionEdits
 		}
 
 		return edits;
-	}
-
-	private static MarkerSides ReadSuppressionBlockSides(SyntaxTrivia trivia)
-	{
-		if (trivia.GetStructure() is not DirectiveTriviaSyntax directive)
-			return MarkerSides.None;
-
-		if (SuppressionBlocks.IsOpener(directive))
-			return MarkerSides.Above;
-
-		return SuppressionBlocks.IsCloser(directive) ? MarkerSides.Below : MarkerSides.None;
-	}
-
-	private static MarkerSides ReadConditionalBlockSides(SyntaxTrivia trivia)
-	{
-		if (trivia.GetStructure() is not DirectiveTriviaSyntax directive || !ConditionalBlocks.IsBetweenUnits(directive))
-			return MarkerSides.None;
-
-		return directive is IfDirectiveTriviaSyntax ? MarkerSides.Above : MarkerSides.Below;
 	}
 
 	public static List<RegionEdit> CreateEndRegionNameEdits(SyntaxTree syntaxTree, CancellationToken cancellationToken)
@@ -393,12 +574,26 @@ internal static class RegionEdits
 			if (trivia.IsKind(SyntaxKind.DisabledTextTrivia))
 			{
 				if (FindDisabledTextLine(sourceText, trivia.FullSpan, fromEnd: true) is { } line)
-					return new RegionNeighbor(line.LineNumber, line.Span, isBrace: EndsWithOpeningBraceOrLabel(sourceText.ToString(line.Span)));
+				{
+					return new RegionNeighbor(
+						lineIndex: line.LineNumber,
+						span: line.Span,
+						isBrace: EndsWithOpeningBraceOrLabel(sourceText.ToString(line.Span)),
+						isComment: IsCommentLine(sourceText.ToString(line.Span))
+					);
+				}
 
 				continue;
 			}
 
-			return trivia.IsDirective ? null : new RegionNeighbor(GetLineIndex(sourceText, trivia.FullSpan.End), trivia.FullSpan, false);
+			return trivia.IsDirective
+				? null
+				: new RegionNeighbor(
+					lineIndex: GetLineIndex(sourceText, trivia.FullSpan.End),
+					span: trivia.FullSpan,
+					isBrace: false,
+					isComment: StanzaTrivia.IsComment(trivia)
+				);
 		}
 
 		SyntaxToken previous = marker.Token.GetPreviousToken();
@@ -406,9 +601,10 @@ internal static class RegionEdits
 		return previous.IsKind(SyntaxKind.None)
 			? null
 			: new RegionNeighbor(
-				GetLineIndex(sourceText, previous.Span.End),
-				previous.Span,
-				isBrace: previous.IsKind(SyntaxKind.OpenBraceToken) || IsSwitchLabelColon(previous)
+				lineIndex: GetLineIndex(sourceText, previous.Span.End),
+				span: previous.Span,
+				isBrace: previous.IsKind(SyntaxKind.OpenBraceToken) || IsSwitchLabelColon(previous),
+				isComment: false
 			);
 	}
 
@@ -428,23 +624,36 @@ internal static class RegionEdits
 				if (FindDisabledTextLine(sourceText, trivia.FullSpan, fromEnd: false) is { } line)
 				{
 					return new RegionNeighbor(
-						line.LineNumber,
-						line.Span,
-						isBrace: sourceText.ToString(line.Span).TrimStart().StartsWith("}", StringComparison.Ordinal)
+						lineIndex: line.LineNumber,
+						span: line.Span,
+						isBrace: sourceText.ToString(line.Span).TrimStart().StartsWith("}", StringComparison.Ordinal),
+						isComment: IsCommentLine(sourceText.ToString(line.Span))
 					);
 				}
 
 				continue;
 			}
 
-			return trivia.IsDirective ? null : new RegionNeighbor(GetLineIndex(sourceText, trivia.FullSpan.Start), trivia.FullSpan, false);
+			return trivia.IsDirective
+				? null
+				: new RegionNeighbor(
+					lineIndex: GetLineIndex(sourceText, trivia.FullSpan.Start),
+					span: trivia.FullSpan,
+					isBrace: false,
+					isComment: StanzaTrivia.IsComment(trivia)
+				);
 		}
 
 		SyntaxToken token = marker.Token;
 
 		return token.IsKind(SyntaxKind.EndOfFileToken)
 			? null
-			: new RegionNeighbor(GetLineIndex(sourceText, token.SpanStart), token.Span, isBrace: token.IsKind(SyntaxKind.CloseBraceToken));
+			: new RegionNeighbor(
+				lineIndex: GetLineIndex(sourceText, token.SpanStart),
+				span: token.Span,
+				isBrace: token.IsKind(SyntaxKind.CloseBraceToken),
+				isComment: false
+			);
 	}
 
 	/// <summary>
@@ -465,6 +674,12 @@ internal static class RegionEdits
 		}
 
 		return null;
+	}
+
+	private static bool IsCommentLine(string line)
+	{
+		string trimmed = line.TrimStart();
+		return trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("/*", StringComparison.Ordinal);
 	}
 
 	/// <summary>
@@ -525,9 +740,10 @@ internal static class RegionEdits
 	/// A brace that stops the gap is the container's own: its opening brace above a marker, or its closing one below.
 	/// A marker also stops at the switch label above it, which opens the section that holds it.
 	/// </summary>
-	private readonly struct RegionNeighbor(int lineIndex, TextSpan span, bool isBrace)
+	private readonly struct RegionNeighbor(int lineIndex, TextSpan span, bool isBrace, bool isComment)
 	{
 		public bool IsBrace { get; } = isBrace;
+		public bool IsComment { get; } = isComment;
 		public int LineIndex { get; } = lineIndex;
 		public TextSpan Span { get; } = span;
 	}

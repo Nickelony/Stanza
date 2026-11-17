@@ -18,6 +18,9 @@ public sealed class SeparateConditionalBlockFromNeighborsTests
 	private static IReadOnlyDictionary<string, ReportDiagnostic> BlockRuleOnly { get; } =
 		TestRuleSets.Only(DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors);
 
+	private static Dictionary<string, string> PaddedBlocks { get; } =
+		new() { ["stanza_conditional_block_padding"] = "padded" };
+
 	[TestMethod]
 	public async Task TheGapsAboveAnIfAndBelowItsEndifArePadded()
 	{
@@ -1783,5 +1786,422 @@ public sealed class SeparateConditionalBlockFromNeighborsTests
 				$"The block keeps its gaps with [{symbols.Trim()}]."
 			);
 		}
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockGetsABlankLineBesideEveryDirectiveOfIt()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+			#if A
+				private int _a;
+			#elif B
+				private int _b;
+			#else
+				private int _c;
+			#endif
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+			#if A
+
+				private int _a;
+
+			#elif B
+
+				private int _b;
+
+			#else
+
+				private int _c;
+
+			#endif
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.HasCount(8, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+
+		RoslynTestHarness.AssertChangeRidesDiagnostic(result);
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockIsNotReportedAgain()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+			#if A
+
+				private int _a;
+
+			#else
+
+				private int _c;
+
+			#endif
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.IsEmpty(result.Diagnostics, "A padded block is padded again.");
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockIsPaddedInsideBesideTheBracesOfItsContainer()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+			#if A
+				private int _a;
+			#endif
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+			#if A
+
+				private int _a;
+
+			#endif
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockWithAnEmptyBranchKeepsItsDirectivesTogether()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+			#if A
+			#else
+				private int _c;
+			#endif
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+			#if A
+			#else
+
+				private int _c;
+
+			#endif
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task ACommentAboveAnElseTakesTheBlankLineOfAPaddedBlock()
+	{
+		const string source = """
+			#define A
+			internal sealed class Sample
+			{
+				private int _total;
+
+			#if A
+
+				private int _a;
+				// The other case.
+			#else
+
+				private int _c;
+
+			#endif
+
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			#define A
+			internal sealed class Sample
+			{
+				private int _total;
+
+			#if A
+
+				private int _a;
+
+				// The other case.
+			#else
+
+				private int _c;
+
+			#endif
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.HasCount(1, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockOfTopLevelStatementsIsPaddedInside()
+	{
+		const string source = """
+			var options = Build(1);
+			#if A
+			Build(2);
+			#else
+			Build(3);
+			#endif
+			DoThing();
+			""";
+
+		const string fixedSource = """
+			var options = Build(1);
+
+			#if A
+
+			Build(2);
+
+			#else
+
+			Build(3);
+
+			#endif
+
+			DoThing();
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.HasCount(6, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockThatHoldsPartOfAUnitKeepsEveryGap()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private void M(bool ready)
+				{
+					DoThing();
+			#if A
+					if (ready)
+					{
+			#else
+					if (!ready)
+					{
+			#endif
+						DoThing();
+					}
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.IsEmpty(result.Diagnostics, "The branches hold the head of a statement, so no gap of the block is judged.");
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockInsideAnArgumentListKeepsEveryGap()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private void M()
+				{
+					Take(
+						1,
+			#if A
+						2,
+			#else
+						3,
+			#endif
+						4);
+				}
+
+				private void Take(int first, int second, int third) { }
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task APaddedBlockNestedInDisabledTextIsJudgedOnlyOnItsOuterGaps()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+			#if NEVER
+				private int _skipped;
+			#if OTHER
+				private int _other;
+			#else
+				private int _third;
+			#endif
+			#endif
+
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+			#if NEVER
+
+				private int _skipped;
+			#if OTHER
+				private int _other;
+			#else
+				private int _third;
+			#endif
+			#endif
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				PaddedBlocks
+			);
+
+		Assert.HasCount(1, result.Diagnostics, "Only the line below the outer opener is judged: the other gaps hold a directive.");
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	[DataRow("tight")]
+	[DataRow("TIGHT")]
+	[DataRow("")]
+	[DataRow("loose")]
+	public async Task ATightBlockOrAnyOtherValueGetsTheOutsideGapsOnly(string value)
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+			#if A
+				private int _a;
+			#else
+				private int _c;
+			#endif
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+			#if A
+				private int _a;
+			#else
+				private int _c;
+			#endif
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+				source,
+				BlockRuleOnly,
+				new Dictionary<string, string> { ["stanza_conditional_block_padding"] = value }
+			);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 }

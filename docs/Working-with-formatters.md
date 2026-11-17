@@ -53,6 +53,9 @@ A rule that disagrees with CSharpier falls into one of two groups:
 - **A commented sibling in a list** ([`ZA0012`](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-a-commented-sibling)):
   CSharpier drops the blank line the rule writes above a comment in an argument, parameter, tuple, declarator, array initializer or accessor list.
   It keeps the line among statements, members, enum members, object initializers, switch arms and switch sections.
+- **The blank line inside a padded conditional block** ([`stanza_conditional_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_conditional_block_padding)):
+  between members CSharpier drops the blank line above an `#elif`, an `#else` and an `#endif` that a member follows.
+  It keeps the blank line below each directive, and every blank line among statements.
 - **Before a clause keyword**: CSharpier drops the blank line before a keyword such as `else`,
   so the separating rule for clause keywords disagrees with it.
 - **The trailing comma** ([`ZA0199`](https://github.com/Nickelony/Stanza/wiki/ZA0199-Remove-the-trailing-comma)):
@@ -93,6 +96,9 @@ var handlers = new IHandler[]
 - **Switch sections, switch expression arms, object initializer members, region markers, conditional blocks, suppression blocks and jump statements**:
   CSharpier keeps the blank lines the separating rules write.
 - **Brace padding and empty blocks**: CSharpier already writes what these rules ask for.
+- **Directive block padding** ([`ZA0407`](https://github.com/Nickelony/Stanza/wiki/ZA0407-Remove-directive-block-padding)):
+  CSharpier writes no blank line inside a region marker, a conditional block or a suppression block, and it keeps those it finds.
+  The removal stays, and it matches the lines CSharpier drops above an `#elif`, an `#else` and an `#endif` between members.
 - **Switch label padding** ([`ZA0207`](https://github.com/Nickelony/Stanza/wiki/ZA0207-Remove-switch-label-padding)): CSharpier keeps a blank line below a label as written, so it leaves the removal in place.
 - **The trailing comma** ([`ZA0198`](https://github.com/Nickelony/Stanza/wiki/ZA0198-Add-a-trailing-comma)):
   CSharpier writes the comma after the last element of every list it breaks across lines, apart from a property pattern, which it keeps as written,

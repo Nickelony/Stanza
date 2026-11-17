@@ -56,7 +56,7 @@ This page maps which code does what, for a contributor who changes a rule or a t
 | `ZA0198`-`ZA0199` | `Commas/` | `CommaCodeFixProvider` |
 | `ZA0204`-`ZA0206`, `ZA0601`-`ZA0602` | `Braces/` | `BraceCodeFixProvider` |
 | `ZA0301`-`ZA0307` | `Bodies/` | `BodyCodeFixProvider` |
-| `ZA0401`-`ZA0406` | `Regions/` | `RegionCodeFixProvider` |
+| `ZA0401`-`ZA0407` | `Regions/` | `RegionCodeFixProvider` |
 | `ZA0501`-`ZA0503` | `Arguments/` | `ArgumentCodeFixProvider` |
 | `ZA0651`-`ZA0652` | `Expressions/` | `ExpressionCodeFixProvider` |
 | `ZA0901`-`ZA0904`, `ZA0906`-`ZA0914` | `Documentation/` | `DocumentationCodeFixProvider` |

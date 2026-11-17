@@ -870,6 +870,9 @@ public sealed partial class RuleDocumentationGuardTests
 			["stanza_declaration_typing"] = options.SplitsDeclarationTyping ? "split" : "merge",
 			["stanza_local_function_modifiers"] = options.SplitsLocalFunctionModifiers ? "split" : "merge",
 			["stanza_receiver_comparison"] = options.ComparesReceiverPaths ? "path" : "root",
+			["stanza_region_padding"] = options.PadsRegions ? "padded" : "tight",
+			["stanza_conditional_block_padding"] = options.PadsConditionalBlocks ? "padded" : "tight",
+			["stanza_suppression_block_padding"] = options.PadsSuppressionBlocks ? "padded" : "tight",
 
 			["stanza_receiver_roots"] = options.ReceiverRoots.IsEmpty
 				? "none"

@@ -420,6 +420,9 @@ internal static class BlankLineOwnership
 				? null
 				: commentedSibling.Descriptor.Id,
 
+			PadsRegions: container.Options.PadsRegions,
+			PadsConditionalBlocks: container.Options.PadsConditionalBlocks,
+			PadsSuppressionBlocks: container.Options.PadsSuppressionBlocks,
 			AwaitRuleEnabled: IsKindRuleOn(container, rule, DiagnosticDescriptors.SeparateAwaitRuns),
 			YieldRuleEnabled: IsKindRuleOn(container, rule, DiagnosticDescriptors.SeparateYieldRuns),
 			LocalFunctionRuleEnabled: IsKindRuleOn(container, rule, DiagnosticDescriptors.SeparateLocalFunctionRuns),

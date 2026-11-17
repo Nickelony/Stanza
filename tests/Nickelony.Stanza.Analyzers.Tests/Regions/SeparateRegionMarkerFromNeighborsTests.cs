@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.Regions;
@@ -7,6 +8,9 @@ namespace Nickelony.Stanza.Analyzers.Tests.Regions;
 [TestClass]
 public sealed class SeparateRegionMarkerFromNeighborsTests
 {
+	private static Dictionary<string, string> TightRegions { get; } =
+		new() { ["stanza_region_padding"] = "tight" };
+
 	[TestMethod]
 	public async Task TheFourGapsOfARegionArePadded()
 	{
@@ -803,6 +807,204 @@ public sealed class SeparateRegionMarkerFromNeighborsTests
 		AnalyzerRunResult result =
 			await RoslynTestHarness.RunAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(source);
 
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task ARegionThatItsOptionSaysTightIsPaddedOnTheOutsideOnly()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+				#region Fields
+				private int _count;
+				#endregion
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+				#region Fields
+				private int _count;
+				#endregion
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(
+				source,
+				analyzerConfigOptions: TightRegions
+			);
+
+		Assert.HasCount(2, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task ATightRegionLeavesTheLinesInsideItAsWritten()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+				#region Fields
+
+				private int _count;
+
+				#endregion
+
+				private int _sum;
+
+				#region Methods
+				private int _other;
+				#endregion
+
+				private int _last;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(
+				source,
+				analyzerConfigOptions: TightRegions
+			);
+
+		Assert.IsEmpty(result.Diagnostics, "Only the outside of the region is judged.");
+	}
+
+	[TestMethod]
+	[DataRow("padded")]
+	[DataRow("PADDED")]
+	[DataRow("")]
+	[DataRow("loose")]
+	public async Task APaddedRegionOrAnyOtherValueGetsTheFourGaps(string value)
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+				#region Fields
+				private int _count;
+				#endregion
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+
+				#region Fields
+
+				private int _count;
+
+				#endregion
+
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(
+				source,
+				analyzerConfigOptions: new Dictionary<string, string> { ["stanza_region_padding"] = value }
+			);
+
+		Assert.HasCount(4, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task ATightRegionKeepsTheExceptionsOfAPaddedOne()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				#region Fields
+				private int _count;
+				#endregion
+				// The members.
+				#region Members
+				private int _sum;
+				#endregion
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				#region Fields
+				private int _count;
+				#endregion
+
+				// The members.
+				#region Members
+				private int _sum;
+				#endregion
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(
+				source,
+				analyzerConfigOptions: TightRegions
+			);
+
+		Assert.HasCount(1, result.Diagnostics, "The braces of the class and the comment that moves with the marker decide.");
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	[TestMethod]
+	public async Task ATightRegionInDisabledTextIsPaddedOnTheOutsideOnly()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				private int _total;
+			#if NEVER
+				private int _skipped;
+				#region Fields
+				private int _count;
+				#endregion
+				private int _more;
+			#endif
+				private int _sum;
+			}
+			""";
+
+		const string fixedSource = """
+			internal sealed class Sample
+			{
+				private int _total;
+			#if NEVER
+				private int _skipped;
+
+				#region Fields
+				private int _count;
+				#endregion
+
+				private int _more;
+			#endif
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(
+				source,
+				analyzerConfigOptions: TightRegions
+			);
+
+		Assert.HasCount(2, result.Diagnostics);
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 }

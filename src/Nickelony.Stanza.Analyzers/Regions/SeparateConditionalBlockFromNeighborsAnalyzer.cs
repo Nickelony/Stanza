@@ -12,7 +12,13 @@ internal sealed class SeparateConditionalBlockFromNeighborsAnalyzer()
 		RegionAnalysis.ReportEdits(
 			context,
 			Descriptor,
-			RegionEdits.CreateConditionalBlockGapEdits(context.Tree, context.Tree.GetText(context.CancellationToken), context.CancellationToken)
+
+			RegionEdits.CreateConditionalBlockGapEdits(
+				syntaxTree: context.Tree,
+				sourceText: context.Tree.GetText(context.CancellationToken),
+				options: StanzaOptions.From(context.Options, context.Tree),
+				cancellationToken: context.CancellationToken
+			)
 		);
 	}
 }

@@ -94,6 +94,7 @@ Stanza rewrites whitespace only, so a rule whose fix changes tokens, or reports 
 | `ZA0305`, `ZA0306` Break and join an arrow body | Prettier, which breaks after a long `=>` and joins a line break before `=>`. |
 | `ZA0401` to `ZA0405` Regions and conditional blocks | No JS counterpart. |
 | `ZA0406` Separate a suppression block | No JS counterpart. `eslint-disable` and `eslint-enable` comments would be its counterpart, and Stanza has no rule for them. |
+| `ZA0407` Remove directive block padding | No JS counterpart. JS has no directive blocks, and Stanza has no rule for the comment pairs that stand in for them. |
 | `ZA0501` to `ZA0503` Named arguments | No JS counterpart. |
 | `ZA0651`, `ZA0652` Null checks | `eqeqeq` with `{ "null": "ignore" }` keeps `== null`, which also matches `undefined`. Without `ignore`, it reports a null check and writes no fix. |
 | `ZA0901` to `ZA0914` Documentation comments | `eslint-plugin-jsdoc` and `eslint-plugin-tsdoc`. |

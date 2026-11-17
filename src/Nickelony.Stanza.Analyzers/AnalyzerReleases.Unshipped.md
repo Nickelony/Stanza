@@ -86,6 +86,7 @@ ZA0403  | Formatting | Disabled | Name the closing region directive.
 ZA0404  | Formatting | Disabled | Name the closing conditional directive.
 ZA0405  | Formatting | Info     | Remove empty regions.
 ZA0406  | Formatting | Info     | Separate a suppression block.
+ZA0407  | Formatting | Info     | Remove directive block padding.
 ZA0501  | Formatting | Disabled | Name the arguments of a call.
 ZA0502  | Formatting | Disabled | Name the literal arguments of a call.
 ZA0503  | Formatting | Disabled | Remove a redundant argument name.

@@ -40,6 +40,9 @@ internal static class OptionKeys
 	public const string LocalFunctionModifiers = "stanza_local_function_modifiers";
 	public const string ReceiverRoots = "stanza_receiver_roots";
 	public const string ReceiverComparison = "stanza_receiver_comparison";
+	public const string RegionPadding = "stanza_region_padding";
+	public const string ConditionalBlockPadding = "stanza_conditional_block_padding";
+	public const string SuppressionBlockPadding = "stanza_suppression_block_padding";
 	public const string CommentBannerMinRun = "stanza_comment_banner_min_run";
 	public const string MaxBlankLines = "stanza_max_blank_lines";
 	public const string MaxElseIfBranches = "stanza_max_else_if_branches";
@@ -90,6 +93,9 @@ internal static class OptionKeys
 		LocalFunctionModifiers,
 		ReceiverRoots,
 		ReceiverComparison,
+		RegionPadding,
+		ConditionalBlockPadding,
+		SuppressionBlockPadding,
 		CommentBannerMinRun,
 		MaxBlankLines,
 		MaxElseIfBranches,
