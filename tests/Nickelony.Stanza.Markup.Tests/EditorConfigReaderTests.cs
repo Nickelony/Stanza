@@ -155,7 +155,7 @@ public sealed class EditorConfigReaderTests
 		Assert.AreEqual(1, configuration.GetOptions(plain, MarkupProfiles.Xml).MaxBlankLines);
 	}
 
-	// The class holds a brace, which the split of the alternatives once counted as an open one.
+	// A brace inside a class is a character of that class, so it does not open or close an alternative.
 	[TestMethod]
 	public void ABraceSectionWithAClassInAnAlternativeStillMatchesEachAlternative()
 	{
