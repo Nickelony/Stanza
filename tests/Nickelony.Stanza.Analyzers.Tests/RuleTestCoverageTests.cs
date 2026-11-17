@@ -78,7 +78,11 @@ public sealed class RuleTestCoverageTests
 		GC.Collect();
 
 		Assert.IsFalse(result.IsAlive, "The record holds the result of a run for the process.");
-		Assert.IsTrue(HarnessRecord.Runs.Any(run => run.Reads == reads), "The run went unrecorded.");
+
+		Assert.IsTrue(
+			HarnessRecord.Runs.Any(run => run.Reads == reads),
+			"The run went unrecorded."
+		);
 	}
 
 	[TestMethod]

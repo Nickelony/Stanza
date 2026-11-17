@@ -29,7 +29,11 @@ internal sealed class MarkupMsBuildReporter(TextWriter output, TextWriter error)
 	public override void ReportChanged(string displayPath, ImmutableArray<MarkupEdit> edits, bool write)
 	{
 		foreach (MarkupEdit edit in edits)
-			Output.WriteLine($"{MarkupLocation.Format(displayPath, edit.Line, edit.Column)}: warning {edit.Id}: {ToolHost.ToReportLine(edit.Message)}");
+		{
+			Output.WriteLine(
+				$"{MarkupLocation.Format(displayPath, edit.Line, edit.Column)}: warning {edit.Id}: {ToolHost.ToReportLine(edit.Message)}"
+			);
+		}
 	}
 
 	/// <summary>MSBuild has no note level, so a note stays a plain line, which a build logs as a message.</summary>

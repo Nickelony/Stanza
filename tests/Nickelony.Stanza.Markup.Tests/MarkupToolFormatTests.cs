@@ -437,10 +437,7 @@ public sealed class MarkupToolFormatTests
 
 	[TestMethod]
 	[DataRow("human", "warning: nested/.editorconfig: could not be read (")]
-	[DataRow(
-		"msbuild",
-		"nested/.editorconfig : warning : could not be read ("
-	)]
+	[DataRow("msbuild", "nested/.editorconfig : warning : could not be read (")]
 	public void AnEditorConfigThatCannotBeReadIsReportedUnderEachShape(string format, string report)
 	{
 		using TempDirectory directory = new();

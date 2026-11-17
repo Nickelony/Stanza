@@ -300,10 +300,7 @@ public sealed class MarkupToolLinkTests
 
 		Assert.HasCount(1, notices.Items);
 
-		Assert.AreEqual(
-			"could not be inspected: Access is denied.",
-			notices.Items[0].Message
-		);
+		Assert.AreEqual("could not be inspected: Access is denied.", notices.Items[0].Message);
 
 		Assert.AreEqual("locked", notices.Items[0].DisplayPath);
 		Assert.AreEqual(MarkupNoticeLevel.Warning, notices.Items[0].Level);

@@ -291,11 +291,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		if (!IsSectionHeader(header))
 		{
 			// Not a header, so the keys below it do not join the section above.
-			AddProblem(
-				path,
-				lineNumber,
-				$"has the line '{ToQuoted(line)}', which is not a section header; it was ignored."
-			);
+			AddProblem(path, lineNumber, $"has the line '{ToQuoted(line)}', which is not a section header; it was ignored.");
 
 			builder.StartSection(glob: null);
 
@@ -304,12 +300,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 
 		if (builder.SectionCount >= MaxSections)
 		{
-			AddDropped(
-				path,
-				lineNumber,
-				$"has more than {MaxSections} sections; the lines from here on were ignored."
-			);
-
+			AddDropped(path, lineNumber, $"has more than {MaxSections} sections; the lines from here on were ignored.");
 			return false;
 		}
 
@@ -331,12 +322,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		{
 			// Reported rather than dropped in silence:
 			// a mistyped key would look like one the tool never reads.
-			AddProblem(
-				path,
-				lineNumber,
-				$"has the line '{ToQuoted(line)}', which is not a key with a value; it was ignored."
-			);
-
+			AddProblem(path, lineNumber, $"has the line '{ToQuoted(line)}', which is not a key with a value; it was ignored.");
 			return;
 		}
 

@@ -359,7 +359,10 @@ public sealed class FormatRunnerTests
 		_ = directory.Write("Other.props", "<Project />\n");
 		_ = directory.Write("Server.cs", FakeCSharpierServer.Program);
 
-		FormatStep layout = BuildSourceLayoutStep(directory, ["Blank.cs", "Wrong.cs", "Other.props"]);
+		FormatStep layout = BuildSourceLayoutStep(
+			directory,
+			["Blank.cs", "Wrong.cs", "Other.props"]
+		);
 
 		using StringWriter output = new();
 		using StringWriter error = new();

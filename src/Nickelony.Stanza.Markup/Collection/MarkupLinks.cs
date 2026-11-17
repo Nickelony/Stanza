@@ -42,10 +42,6 @@ internal static class MarkupLinks
 		}
 	}
 
-	public static string Describe(string? inspectionError)
-	{
-		return inspectionError is null
-			? "is a link and was left alone."
-			: $"could not be inspected: {inspectionError.TrimEnd('.')}.";
-	}
+	public static string Describe(string? inspectionError) =>
+		inspectionError is null ? "is a link and was left alone." : $"could not be inspected: {inspectionError.TrimEnd('.')}.";
 }
