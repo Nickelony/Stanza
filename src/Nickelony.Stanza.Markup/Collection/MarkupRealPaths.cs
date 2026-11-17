@@ -40,7 +40,10 @@ internal sealed class MarkupRealPaths
 		return resolved;
 	}
 
-	/// <summary>A link target holds long names, so a short 8.3 name is written as its long one.</summary>
+	/// <summary>Writes a short 8.3 name as its long one, so two spellings of a directory compare equal.</summary>
+	/// <remarks>
+	/// .NET already expands a short name in the paths it returns, so this step is defense in depth.
+	/// </remarks>
 	private static string ResolveShortName(string path)
 	{
 		// A short name always holds a tilde, and only Windows writes one.

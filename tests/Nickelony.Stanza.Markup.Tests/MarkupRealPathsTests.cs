@@ -20,7 +20,7 @@ public sealed class MarkupRealPathsTests
 		Assert.AreEqual(file, new MarkupRealPaths().GetRealPath(file));
 	}
 
-	// A link resolves to the long spelling of its target, so a path spelled with a short 8.3 name has to reach the same identity.
+	// A path spelled with a short 8.3 name, one spelled with the long name and one through a link reach one identity.
 	[TestMethod]
 	[OSCondition(OperatingSystems.Windows)]
 	public void AShortNamedDirectoryAndALinkToItGiveOnePath()
