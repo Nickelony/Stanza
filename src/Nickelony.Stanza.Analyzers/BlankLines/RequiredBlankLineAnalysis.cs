@@ -44,8 +44,19 @@ internal static class RequiredBlankLineAnalysis
 
 		var container = new ContainerContext(context, options, siblings);
 
-		foreach (int boundary in BlankLineKeptPairs.ReadOuterBoundaries(container, boundaries.ToImmutable()))
-			ReportBoundary(container, boundary, rule);
+		ImmutableArray<int> judged = boundaries.ToImmutable();
+
+		foreach (int boundary in BlankLineKeptPairs.ReadOuterBoundaries(container, judged))
+			ReportBoundary(container, boundary, rule, messageArgs: [DescribeUnit(siblings, boundary, isMoved: !judged.Contains(boundary))]);
+	}
+
+	/// <summary>Names what the blank line goes before, for the message of the diagnostic.</summary>
+	private static string DescribeUnit(ImmutableArray<SyntaxNode> siblings, int boundary, bool isMoved)
+	{
+		if (isMoved)
+			return "kept group";
+
+		return StanzaSyntax.IsMultiLine(siblings[boundary]) ? "multi-line construct" : "unit";
 	}
 
 	/// <summary>
@@ -259,7 +270,7 @@ internal static class RequiredBlankLineAnalysis
 		context.ReportDiagnostic(Diagnostic.Create(rule.Descriptor, anchor.GetLocation(), additionalLocations: [neighbor.GetLocation()]));
 	}
 
-	private static void ReportBoundary(ContainerContext container, int boundary, StanzaRule rule, bool writesGapAbove = false)
+	private static void ReportBoundary(ContainerContext container, int boundary, StanzaRule rule, bool writesGapAbove = false, object?[]? messageArgs = null)
 	{
 		SyntaxNode previous = container.Siblings[boundary - 1];
 		SyntaxNode next = container.Siblings[boundary];
@@ -274,7 +285,7 @@ internal static class RequiredBlankLineAnalysis
 			return;
 		}
 
-		ReportGap(context: container.Context, previous, next, rule, writesGapAbove);
+		ReportGap(context: container.Context, previous, next, rule, writesGapAbove, messageArgs);
 	}
 
 	/// <summary>Reports the gap unless a directive in it keeps the gap as written.</summary>
@@ -298,7 +309,8 @@ internal static class RequiredBlankLineAnalysis
 		SyntaxNode previous,
 		SyntaxNode next,
 		StanzaRule rule,
-		bool writesGapAbove = false
+		bool writesGapAbove = false,
+		object?[]? messageArgs = null
 	)
 	{
 		// The blank-line check and the insertion check both need the leading unit and the previous end line,
@@ -325,7 +337,8 @@ internal static class RequiredBlankLineAnalysis
 				descriptor: rule.Descriptor,
 				location: next.GetFirstToken().GetLocation(),
 				additionalLocations: [previous.GetLocation()],
-				properties: new FixOptions(IndentStepColumns: indentStepColumns, WritesGapAbove: writesGapAbove).ToProperties()
+				properties: new FixOptions(IndentStepColumns: indentStepColumns, WritesGapAbove: writesGapAbove).ToProperties(),
+				messageArgs
 			)
 		);
 	}

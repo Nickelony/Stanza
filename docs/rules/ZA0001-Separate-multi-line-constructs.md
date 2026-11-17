@@ -86,6 +86,8 @@ public int Total => Count;
 - The rule leaves a gap alone when a blank line already separates the [units](https://github.com/Nickelony/Stanza/wiki/Terms) or a directive sits on it.
 - A unit is multi-line when it spans lines from its first token to its last,
   so an attribute list on its own line counts, and a documentation comment above the unit does not.
+- The message names what the blank line goes before: a multi-line construct, a single-line unit that stands below one,
+  or a kept group, when [a rule that keeps a pair together](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap) moves the boundary above it.
 - The rule inserts a blank line only when the second unit starts on the line the first one ends on or on the next line.
   The comments that travel with the second unit count as part of it.
 - A multi-line comment that trails the first unit counts as part of it,

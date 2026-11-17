@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -50,6 +52,83 @@ public sealed class SeparateMultiLineConstructsTests
 		);
 
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
+	// The message names what the blank line goes before, so it never calls a single-line statement a multi-line construct.
+	[TestMethod]
+	public async Task TheMessageNamesWhatTheBlankLineGoesBefore()
+	{
+		const string multiLineBelow = """
+			class C
+			{
+				void M()
+				{
+					DoThing();
+					{
+						DoThing();
+					}
+				}
+			}
+			""";
+
+		const string multiLineAbove = """
+			class C
+			{
+				void M()
+				{
+					{
+						DoThing();
+					}
+					DoThing();
+				}
+			}
+			""";
+
+		const string aboveAKeptGroup = """
+			class C
+			{
+				void M(int id)
+				{
+					int first = id + 1;
+					string name = Find(first);
+
+					if (name is null)
+					{
+						return;
+					}
+					Use(name);
+				}
+
+				string Find(int id) => id.ToString();
+
+				void Use(string name) { }
+			}
+			""";
+
+		Assert.AreEqual("Add a blank line before this multi-line construct", await ReadMessageAsync(multiLineBelow));
+		Assert.AreEqual("Add a blank line before this unit", await ReadMessageAsync(multiLineAbove));
+
+		// The boundary of the multi-line `if` moves above the single-line binding that the guard keeps it with.
+		Assert.AreEqual(
+			"Add a blank line before this kept group",
+			await ReadMessageAsync(aboveAKeptGroup, DiagnosticDescriptors.KeepGuardWithBinding)
+		);
+	}
+
+	private static async Task<string> ReadMessageAsync(string source, params DiagnosticDescriptor[] alsoEnabled)
+	{
+		AnalyzerRunResult result = await RoslynTestHarness.ReportAllAsync(
+			source,
+			TestRuleSets.Only([DiagnosticDescriptors.SeparateMultiLineConstructs, .. alsoEnabled])
+		);
+
+		// The first boundary of a body is the one the message of the test reads.
+		Diagnostic diagnostic = result
+			.Diagnostics.Where(diagnostic => diagnostic.Id == DiagnosticDescriptors.SeparateMultiLineConstructs.Id)
+			.OrderBy(diagnostic => diagnostic.Location.SourceSpan.Start)
+			.First();
+
+		return diagnostic.GetMessage(CultureInfo.InvariantCulture);
 	}
 
 	// A record and a record struct hold members as a class does, so their multi-line members are separated too.

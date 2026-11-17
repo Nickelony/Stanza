@@ -14,7 +14,7 @@ internal static class DiagnosticDescriptors
 	public static readonly DiagnosticDescriptor SeparateMultiLineConstructs = Describe(
 		id: "ZA0001",
 		title: "Separate multi-line constructs",
-		messageFormat: "Add a blank line before this construct",
+		messageFormat: "Add a blank line before this {0}",
 		description: "Requires a blank line between adjacent siblings when either sibling spans multiple lines.",
 		severity: DiagnosticSeverity.Info,
 		isEnabledByDefault: true
