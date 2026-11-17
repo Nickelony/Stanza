@@ -26,7 +26,17 @@ dependencies = ["tomli>=2.0; python_version < '3.11'"]
 Repository = "https://github.com/Nickelony/Stanza"
 
 [project.optional-dependencies]
-dev = ["black", "build", "flake8", "mypy", "pytest", "ruff"]
+# Pinned, so that a new release of a tool cannot fail a CI leg; CONTRIBUTING says how to bump them.
+# The newest flake8 needs Python 3.11, so the 3.10 leg takes the newest one that supports it.
+dev = [
+    "black==26.10.1",
+    "build==1.6.1",
+    "flake8==7.5.0; python_version >= '3.11'",
+    "flake8==7.3.0; python_version < '3.11'",
+    "mypy==2.4.1",
+    "pytest==9.2.0",
+    "ruff==0.17.4",
+]
 
 [project.scripts]
 stanza-py = "nickelony_stanza.cli:main"
