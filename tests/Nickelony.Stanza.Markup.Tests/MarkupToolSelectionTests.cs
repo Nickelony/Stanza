@@ -704,6 +704,26 @@ public sealed class MarkupToolSelectionTests
 		Assert.AreEqual(LineFeed(Formatted), directory.Read("filea.xml"));
 	}
 
+	// The class holds a brace, which the split of the alternatives once counted as an open one.
+	[TestMethod]
+	[DataRow("{[{],x}.xml")]
+	[DataRow("{[}],x}.xml")]
+	[DataRow("{[,],x}.xml")]
+	public void AClassInsideAnAlternationOfAnExcludePatternIsHonored(string exclude)
+	{
+		using TempDirectory directory = new();
+
+		_ = directory.Write("x.xml", LineFeed(Source));
+		_ = directory.Write("y.xml", LineFeed(Source));
+
+		RunResult result = Run(directory, "format", "--exclude", exclude, "*.xml");
+
+		Assert.AreEqual(0, result.ExitCode, result.Error);
+		Assert.Contains("1 file(s) formatted.", result.Output);
+		Assert.AreEqual(LineFeed(Source), directory.Read("x.xml"));
+		Assert.AreEqual(LineFeed(Formatted), directory.Read("y.xml"));
+	}
+
 	[TestMethod]
 	public void AFileNamedWithGlobCharactersIsTakenLiterally()
 	{

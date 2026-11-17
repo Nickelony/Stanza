@@ -155,6 +155,31 @@ public sealed class EditorConfigReaderTests
 		Assert.AreEqual(1, configuration.GetOptions(plain, MarkupProfiles.Xml).MaxBlankLines);
 	}
 
+	// The class holds a brace, which the split of the alternatives once counted as an open one.
+	[TestMethod]
+	public void ABraceSectionWithAClassInAnAlternativeStillMatchesEachAlternative()
+	{
+		using TempDirectory directory = new();
+
+		string spelled = directory.Write("x.xml", string.Empty);
+		string braced = directory.Write("{.xml", string.Empty);
+		string other = directory.Write("y.xml", string.Empty);
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig("[{[{],x}.xml]\nstanza_markup_max_blank_lines = 3\n")
+		);
+
+		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out _
+		);
+
+		Assert.AreEqual(3, configuration.GetOptions(spelled, MarkupProfiles.Xml).MaxBlankLines);
+		Assert.AreEqual(3, configuration.GetOptions(braced, MarkupProfiles.Xml).MaxBlankLines);
+		Assert.AreEqual(1, configuration.GetOptions(other, MarkupProfiles.Xml).MaxBlankLines);
+	}
+
 	[TestMethod]
 	public void AProblemInASharedEditorConfigIsReportedOnce()
 	{

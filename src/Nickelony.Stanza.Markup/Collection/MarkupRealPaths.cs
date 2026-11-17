@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 using Nickelony.Stanza.Shared;
 
 namespace Nickelony.Stanza.Markup.Collection;
 
-/// <summary>Resolves the directory links in a path, so two spellings of one file give the same path.</summary>
+/// <summary>Resolves the links and short names in a path, so two spellings of one file give one path.</summary>
 internal sealed class MarkupRealPaths
 {
 	/// <summary>Each directory resolves once for all its files, not once for each file.</summary>
@@ -14,7 +16,10 @@ internal sealed class MarkupRealPaths
 	public string GetRealPath(string filePath)
 	{
 		string? directory = Path.GetDirectoryName(filePath);
-		return directory is null ? filePath : Path.Combine(GetRealDirectory(directory), Path.GetFileName(filePath));
+
+		return directory is null
+			? filePath
+			: ResolveShortName(Path.Combine(GetRealDirectory(directory), Path.GetFileName(filePath)));
 	}
 
 	private string GetRealDirectory(string directory)
@@ -25,6 +30,8 @@ internal sealed class MarkupRealPaths
 		string? parent = Path.GetDirectoryName(directory);
 		string resolved = parent is null ? directory : Path.Combine(GetRealDirectory(parent), Path.GetFileName(directory));
 
+		resolved = ResolveShortName(resolved);
+
 		if (FindLinkTarget(resolved) is { } target)
 			resolved = target;
 
@@ -32,6 +39,29 @@ internal sealed class MarkupRealPaths
 
 		return resolved;
 	}
+
+	/// <summary>A link target holds long names, so a short 8.3 name is written as its long one.</summary>
+	private static string ResolveShortName(string path)
+	{
+		// A short name always holds a tilde, and only Windows writes one.
+		if (!OperatingSystem.IsWindows() || !Path.GetFileName(path).Contains('~'))
+			return path;
+
+		StringBuilder buffer = new(capacity: path.Length + 1);
+		uint length = GetLongPathName(path, buffer, (uint)buffer.Capacity);
+
+		if (length > buffer.Capacity)
+		{
+			buffer.EnsureCapacity((int)length);
+			length = GetLongPathName(path, buffer, (uint)buffer.Capacity);
+		}
+
+		// A path that does not exist, or that the call cannot read, keeps its own spelling.
+		return length == 0 ? path : buffer.ToString(startIndex: 0, length: (int)length);
+	}
+
+	[DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "GetLongPathNameW")]
+	private static extern uint GetLongPathName(string shortPath, StringBuilder longPath, uint length);
 
 	private static string? FindLinkTarget(string directory)
 	{

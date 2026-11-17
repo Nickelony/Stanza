@@ -288,6 +288,31 @@ public sealed class GlobMatcherTests
 		Assert.IsFalse(GlobMatcher.IsMatch("{[}],b}.xml", "{},b}.xml"));
 	}
 
+	// A bracket class is skipped whole while the alternatives are split, so a brace or a comma in it is a literal.
+	[TestMethod]
+	[DataRow("{[{],x}.xml", "{.xml", true)]
+	[DataRow("{[{],x}.xml", "x.xml", true)]
+	[DataRow("{[{],x}.xml", "y.xml", false)]
+	[DataRow("{x,[{]}.xml", "x.xml", true)]
+	[DataRow("{x,[{]}.xml", "{.xml", true)]
+	[DataRow("{[}],x}.xml", "}.xml", true)]
+	[DataRow("{[}],x}.xml", "x.xml", true)]
+	[DataRow("{[,],x}.xml", ",.xml", true)]
+	[DataRow("{[,],x}.xml", "x.xml", true)]
+	[DataRow("{[,],x}.xml", "].xml", false)]
+	[DataRow("{a[{]b,c}.xml", "a{b.xml", true)]
+	[DataRow("{a[{]b,c}.xml", "c.xml", true)]
+	[DataRow("{a[{]b,c}.xml", "a.xml", false)]
+	public void ABracketClassInAnAlternativeIsSkippedWholeWhenTheAlternativesAreSplit(
+		string pattern,
+		string path,
+		bool matches
+	)
+	{
+		Assert.IsTrue(GlobMatcher.TryValidate(pattern, out string? error), error);
+		Assert.AreEqual(matches, GlobMatcher.IsMatch(pattern, path), $"{pattern} against {path}.");
+	}
+
 	[TestMethod]
 	public void AnEscapedCharacterDoesNotSplitOrCloseAnAlternation()
 	{

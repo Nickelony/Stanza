@@ -81,7 +81,8 @@ vale --glob='!**/{bin,obj,artifacts}/**' .
 - `.vale.ini` skips the installed packages, the build output and the tool caches of [`js/`](js/README.md) and [`py/`](py/README.md),
   so a plain `vale .` also passes in a checkout that has built them.
 - The `Repository` guards read the pages, the readmes and the release rows, so they need a full checkout.
-- A page or a readme is read by no build step, so run Vale and the `Repository` filter after editing one:
+- The .NET build reads no page or readme, but the site build does, as the [site readme](site/README.md#what-the-build-reads) lists,
+  so run Vale and the `Repository` filter after editing one:
   `dotnet test Nickelony.Stanza.slnx --filter TestCategory=Repository`.
 - `release.ps1`, the changelog check and the release notes meet the real `CHANGELOG.md` only at a release,
   so CI tests their changelog steps on fixtures.

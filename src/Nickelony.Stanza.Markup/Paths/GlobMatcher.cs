@@ -351,7 +351,7 @@ internal static class GlobMatcher
 			{
 				offset++;
 			}
-			else if (pattern[offset] == '[' && pattern.IndexOf(']', offset + 1) is int classEnd && classEnd > offset + 1 && classEnd < end)
+			else if (TryFindClassEnd(pattern, offset, end, out int classEnd))
 			{
 				// A brace inside a character class is a literal, as SplitAlternatives reads it.
 				offset = classEnd;
@@ -371,6 +371,13 @@ internal static class GlobMatcher
 		return false;
 	}
 
+	/// <summary>Whether a complete character class opens at the offset, and where it closes.</summary>
+	private static bool TryFindClassEnd(string pattern, int offset, int end, out int classEnd)
+	{
+		classEnd = pattern[offset] == '[' ? pattern.IndexOf(']', offset + 1) : -1;
+		return classEnd > offset + 1 && classEnd < end;
+	}
+
 	private static string[] SplitAlternatives(string body)
 	{
 		List<string> alternatives = [];
@@ -386,14 +393,17 @@ internal static class GlobMatcher
 					offset++;
 					break;
 
+				// A class is skipped whole, so a brace or a comma in it is a literal, as TryFindClosingBrace reads it.
+				case '[' when TryFindClassEnd(pattern: body, offset, end: body.Length, out int classEnd):
+					offset = classEnd;
+					break;
+
 				case '{':
-				case '[':
 					depth++;
 					break;
 
 				case '}':
-				case ']':
-					// Clamped: a closing bracket with nothing open is a literal.
+					// Clamped: a closing brace with nothing open is a literal.
 					if (depth > 0)
 						depth--;
 
