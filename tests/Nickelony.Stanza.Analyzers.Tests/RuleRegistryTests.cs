@@ -520,6 +520,7 @@ public sealed partial class RuleRegistryTests
 	[TestMethod]
 	public void TheKeeperListIsInIdOrder()
 	{
+		// The order is no priority, since every read asks whether any rule claims a gap, so the list stays sorted.
 		FieldInfo field = typeof(Nickelony.Stanza.Analyzers.BlankLines.BlankLineKeptPairs).GetField(
 			"s_rules",
 			BindingFlags.Static | BindingFlags.NonPublic

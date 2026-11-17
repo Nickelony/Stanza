@@ -6,9 +6,6 @@ namespace Nickelony.Stanza.Markup.Core;
 /// <summary>The display widths of code points from Unicode 17.0.0, as the ranges of the characters that are not one column.</summary>
 internal static class TextWidthTable
 {
-	/// <summary>The Unicode version the tables come from.</summary>
-	public const string UnicodeVersion = "17.0.0";
-
 	/// <summary>The first and last code point of each run of wide characters, in order.</summary>
 	public static readonly int[] WideRanges =
 	[

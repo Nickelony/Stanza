@@ -167,9 +167,6 @@ $text.Add('')
 $text.Add("/// <summary>The display widths of code points from Unicode $Version, as the ranges of the characters that are not one column.</summary>")
 $text.Add('internal static class TextWidthTable')
 $text.Add('{')
-$text.Add("`t/// <summary>The Unicode version the tables come from.</summary>")
-$text.Add("`tpublic const string UnicodeVersion = `"$Version`";")
-$text.Add('')
 
 foreach ($line in (Format-Array 'WideRanges' 'The first and last code point of each run of wide characters, in order.' (Get-Runs 2))) { $text.Add($line) }
 

@@ -87,15 +87,15 @@ public sealed class DocCommentContentTests
 
 	[TestMethod]
 	[CrossCutting]
-	public async Task AnEmojiCountsTwoColumnsAndACjkCharacterOne()
+	public async Task AnEmojiAndACjkCharacterCountTwoColumns()
 	{
 		// A single-line summary is 27 columns of tab, markers and tags around its text, and the width is 100.
 		(string Glyph, int Columns, int Over)[] cases =
 		[
 			("\U0001F600", 2, 0),
 			("\U0001F600", 2, 1),
-			("漢", 1, 0),
-			("漢", 1, 1),
+			("漢", 2, 0),
+			("漢", 2, 1),
 		];
 
 		foreach ((string glyph, int columns, int over) in cases)

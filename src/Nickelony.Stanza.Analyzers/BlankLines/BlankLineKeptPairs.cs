@@ -20,9 +20,6 @@ internal static class BlankLineKeptPairs
 	/// <summary>
 	/// The rules that keep a pair together, in ID order, which win the gap of their pair over the separating rules.
 	/// </summary>
-	/// <remarks>
-	/// The order is no priority, since every read asks whether any rule claims a gap.
-	/// </remarks>
 	private static readonly ImmutableArray<StanzaRule> s_rules =
 	[
 		StanzaRules.KeepGuardClausesTogether,
