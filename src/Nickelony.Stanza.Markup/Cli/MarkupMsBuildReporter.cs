@@ -43,7 +43,9 @@ internal sealed class MarkupMsBuildReporter(TextWriter output, TextWriter error)
 
 		if (notice.Level == MarkupNoticeLevel.Note)
 		{
-			Output.WriteLine($"note: {message}");
+			string located = notice.DisplayPath is { } displayPath ? $"{MarkupLocation.Format(displayPath, notice.Line)}: " : string.Empty;
+			Output.WriteLine($"note: {located}{message}");
+
 			return;
 		}
 

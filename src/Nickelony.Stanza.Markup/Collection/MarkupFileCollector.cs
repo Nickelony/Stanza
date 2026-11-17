@@ -68,7 +68,7 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 		// A file named and excluded at once is a skip the user asked for, so it gets a note rather than silence.
 		if (context.Excludes.IsExcluded(fullPath, context.Paths))
 		{
-			context.Notices.AddNote($"'{displayPath}' is excluded by --exclude, so it was skipped.");
+			context.Notices.AddNote("is excluded by --exclude, so it was skipped.", displayPath);
 			return [];
 		}
 
@@ -79,12 +79,13 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 
 		if (skipped is MarkupSkipReason.Disabled)
 		{
-			context.Notices.AddNote($"'{displayPath}' is disabled by its .editorconfig, so it was skipped.");
+			context.Notices.AddNote("is disabled by its .editorconfig, so it was skipped.", displayPath);
 		}
 		else if (skipped is MarkupSkipReason.Unclaimed)
 		{
 			context.Notices.AddNote(
-				$"'{displayPath}' is not a file type any profile claims, so it was skipped. Name one with --profile or with a '{OptionKeys.MarkupProfile}' entry."
+				$"is not a file type any profile claims, so it was skipped. Name one with --profile or with a '{OptionKeys.MarkupProfile}' entry.",
+				displayPath
 			);
 		}
 

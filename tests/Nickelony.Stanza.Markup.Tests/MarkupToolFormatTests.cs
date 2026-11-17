@@ -377,7 +377,7 @@ public sealed class MarkupToolFormatTests
 		foreach (RunResult result in new[] { format, strictCheck })
 		{
 			Assert.AreEqual(0, result.ExitCode);
-			Assert.Contains("note: 'sample.txt'", result.Error);
+			Assert.Contains("note: sample.txt: is not a file type any profile claims", result.Error);
 			Assert.Contains("--profile", result.Error);
 		}
 	}

@@ -18,5 +18,6 @@ internal sealed class MarkupNotices(bool strict)
 		_items.Add(new(Message: message, Level: level, DisplayPath: displayPath, Line: line));
 	}
 
-	public void AddNote(string message) => _items.Add(new(Message: message, Level: MarkupNoticeLevel.Note));
+	public void AddNote(string message, string? displayPath = null) =>
+		_items.Add(new(Message: message, Level: MarkupNoticeLevel.Note, DisplayPath: displayPath));
 }

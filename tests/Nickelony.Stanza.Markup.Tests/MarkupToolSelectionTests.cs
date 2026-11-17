@@ -185,7 +185,7 @@ public sealed class MarkupToolSelectionTests
 		Assert.AreEqual(0, result.ExitCode);
 
 		Assert.Contains(
-			"note: 'sample.xml' is excluded by --exclude, so it was skipped.",
+			"note: sample.xml: is excluded by --exclude, so it was skipped.",
 			result.Error
 		);
 	}
@@ -614,12 +614,12 @@ public sealed class MarkupToolSelectionTests
 		RunResult relaxed = Run(directory, "check", "sample.xml");
 
 		Assert.AreEqual(0, relaxed.ExitCode);
-		Assert.Contains("note: 'sample.xml' is disabled", relaxed.Error);
+		Assert.Contains("note: sample.xml: is disabled", relaxed.Error);
 
 		RunResult strict = Run(directory, "check", "--strict", "sample.xml");
 
 		Assert.AreEqual(0, strict.ExitCode, strict.Error);
-		Assert.Contains("note: 'sample.xml' is disabled", strict.Error);
+		Assert.Contains("note: sample.xml: is disabled", strict.Error);
 	}
 
 	[TestMethod]
@@ -704,7 +704,7 @@ public sealed class MarkupToolSelectionTests
 		Assert.AreEqual(LineFeed(Formatted), directory.Read("filea.xml"));
 	}
 
-	// The class holds a brace, which the split of the alternatives once counted as an open one.
+	// A brace or a comma inside a class is a character of that class, so it does not split or close the alternation.
 	[TestMethod]
 	[DataRow("{[{],x}.xml")]
 	[DataRow("{[}],x}.xml")]
@@ -998,12 +998,12 @@ public sealed class MarkupToolSelectionTests
 
 		RunResult excluded = Run(directory, "check", "--exclude", "sub/b.xml", "./sub/b.xml");
 
-		Assert.Contains("note: 'sub/b.xml' is excluded by --exclude", excluded.Error);
+		Assert.Contains("note: sub/b.xml: is excluded by --exclude", excluded.Error);
 
 		RunResult unclaimed = Run(directory, "check", "./sub/notes.txt");
 
 		Assert.Contains(
-			"note: 'sub/notes.txt' is not a file type any profile claims",
+			"note: sub/notes.txt: is not a file type any profile claims",
 			unclaimed.Error
 		);
 	}

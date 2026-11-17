@@ -100,7 +100,7 @@ Keys:            https://github.com/Nickelony/Stanza/wiki/Markup-configuration
 - A message joins its lines with a space and writes any other control, format or separator character as its code,
   so text it quotes from a file cannot send an escape sequence to the terminal.
 - Notes, warnings and errors go to standard error, as `note: <message>`, `warning: <message>` or `error: <message>` lines.
-  A warning or an error about a file or a directory reads `warning: <location>: <message>`, and the same with `error`.
+  A note, a warning or an error about a file or a directory reads `warning: <location>: <message>`, and the same with `note` or `error`.
 - A location is `<path>`, `<path>(<line>)` or `<path>(<line>,<column>)`, and every report of the tool writes it that way.
   A problem on a line of an `.editorconfig` reads `warning: <path>(<line>): <message>`,
   and a file that cannot be laid out reads `warning: <path>(<line>,<column>): could not be laid out: <reason>`.
@@ -108,7 +108,8 @@ Keys:            https://github.com/Nickelony/Stanza/wiki/Markup-configuration
   A warning reads `stanza-markup : warning : <message>`,
   or `<path> : warning : <message>` when it is about a file or a directory,
   and `<path>(<line>): warning : <message>` for a line of an `.editorconfig`.
-- An error reads the same with `error`, and a note stays a `note: <message>` line, which a build logs as a message.
+- An error reads the same with `error`, and a note stays a `note: <message>` line, or `note: <location>: <message>` about a file,
+  which a build logs as a message.
 - `--format msbuild` replaces the per-file lines with [one diagnostic per finding](#build-output) and prints no summary line.
 - `--version` prints the tool version alone, so a script can read the line as it is.
 

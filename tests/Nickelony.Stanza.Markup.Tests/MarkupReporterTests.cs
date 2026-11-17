@@ -36,7 +36,8 @@ public sealed class MarkupReporterTests
 	[DataRow("Warning", null, null, "stanza-markup : warning : first second")]
 	[DataRow("Error", "sub/.editorconfig", null, "sub/.editorconfig : error : first second")]
 	[DataRow("Warning", "sub/.editorconfig", 4, "sub/.editorconfig(4): warning : first second")]
-	[DataRow("Note", "sub/.editorconfig", 4, "note: first second")]
+	[DataRow("Note", null, null, "note: first second")]
+	[DataRow("Note", "sub/b.xml", null, "note: sub/b.xml: first second")]
 	public void TheMsBuildShapeWritesANoticeAsADiagnostic(
 		string level,
 		string? displayPath,
