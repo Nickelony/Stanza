@@ -65,22 +65,24 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
 - A name bound more than once, bound inside an `if`, `try`, `with`, loop or `match`, declared `global` elsewhere,
   or bound by no statement the rule reads.
 - A name rebound by a `:=`, even one in a default, a decorator, an annotation or a class base.
-- Every name of a project module that may rewrite its own namespace:
-  one that writes `globals()` (`globals()["f"] = g`, `globals().update(...)`, `globals()` stored or passed to a call),
-  runs `exec` in its own namespace (one with no dict display for its globals, or an `eval` at module level),
+- A name of a project module that writes `globals()`, as in `globals()["f"] = g` or `globals().update(...)`, or passes it to a call.
+  A read such as `globals()["f"]`, `globals().get("f")` or `"f" in globals()` is no write.
+- A name of a project module that runs `exec`, or a module-level `eval`, in its own namespace,
   or reaches `exec`, `eval`, `locals`, `vars` or `globals` by an alias, `getattr` or `builtins`.
-  A read, as in `globals()["f"]`, `globals().get("f")` or `"f" in globals()`, is no write.
-  The standard library and installed packages are not checked: `typing` and `dataclasses` write their own namespaces.
+  The standard library and installed packages are not checked, because `typing` and `dataclasses` write their own namespaces.
 - A callee wrapped by a decorator the rule does not see through, such as `functools.lru_cache` or a decorator of the project,
   because the wrapper may take other arguments.
 - A module that is missing, compiled, sourceless, unparsable or shadowed, or that a `.pyi` stub stands beside.
 - A class whose constructor or metaclass the rule does not model,
-  such as a dataclass or a named tuple whose body touches `__annotations__` or reads `exec`, `eval`, `vars`, `locals` or `__builtins__`,
-  as a name, as an attribute or as a string given to `getattr`. A field or a string constant that spells one is no read.
+  such as a dataclass or a named tuple whose body touches `__annotations__`,
+  or reads `exec`, `eval`, `vars`, `locals` or `__builtins__` by a name, an attribute or `getattr`.
 - A method that a class of the project which inherits it overrides.
 - A callee that a project module replaces with a test double, as in `lib.f = other`, `setattr(lib, "f", fake)`,
   `monkeypatch.setattr(lib, "f", fake)`, `monkeypatch.setattr("lib.f", fake)`, `mock.patch("lib.f")` or `mock.patch.object(C, "m")`,
   because the double may take other names.
+- A callee whose `__code__`, `__defaults__`, `__kwdefaults__` or `__signature__` a project module assigns or deletes,
+  as in `f.__code__ = g.__code__`, or copies with `functools.update_wrapper(f, g, assigned=...)`.
+  The rule matches the last name of the callee, as for a double, and an assignment to anything but a name or an attribute stops every call.
 - Every callee with the same last name as a double, because the rule matches the last name of the callee against the names any project module patches.
 - `typing.cast`, `NewType`, `TypeVar`, `ParamSpec`, `TypeVarTuple`, `TypeAliasType`, `NamedTuple` and `TypedDict`, also from `typing_extensions`,
   and `collections.namedtuple`, because a type checker reads their arguments positionally.

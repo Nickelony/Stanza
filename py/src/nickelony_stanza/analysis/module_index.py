@@ -130,6 +130,11 @@ class ModuleInfo:
         return self.scan.rewrites_namespace
 
     @property
+    def replaced_signatures(self) -> frozenset[str]:
+        """The last names of the functions the module gives another code object, defaults or signature."""
+        return self.scan.replaced_signatures
+
+    @property
     def class_sites(self) -> tuple[ClassSite, ...]:
         """The `class` statements of the module, nested ones included."""
         return self.scan.classes

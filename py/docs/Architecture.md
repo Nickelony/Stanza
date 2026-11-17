@@ -166,7 +166,7 @@ A gap in what the resolver sees leaves the call unresolved, so a skip reason nam
 - The callee is a value, a name that is rebound, bound conditionally or rewritten through `globals()`, or a builtin or compiled definition.
 - The module is missing, compiled, sourceless or shadowed, a `.pyi` stub stands beside it, or the options leave out its source.
 - A decorator, a class shape or a call shape that the resolver does not model stands in the way.
-- The callee is a form a type checker reads positionally, or a project module replaces it with a test double.
+- The callee is a form a type checker reads positionally, or a project module replaces it with a test double or gives it another signature.
 - The method is not allowed by `named-argument-methods`, or the dispatch condition below fails.
 - The method is a dunder other than the few that construct or call an object, whose parameters are read as positional-only.
 - The project passes the caps of the scan, so no check that reads every module can clear the call, as [the project index](#the-project-index) says.

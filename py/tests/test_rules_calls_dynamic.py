@@ -151,3 +151,87 @@ def test_a_name_of_a_module_that_writes_its_namespace_is_not_resolved_from_anoth
     assert fix(call, config, path=main, projects=Projects()).text == call
     lib.write_text(_TARGET + "names = list(globals().keys())\n", encoding="utf-8")
     assert fix(call, config, path=main, projects=Projects()).text.endswith("target(a=1, b=2, c=3, d=4)\n")
+
+
+_OTHER = "def other(w, x, y, z):\n    return w\n\n\n"
+
+_SIGNATURE_MUTATIONS = {
+    "a code object": "target.__code__ = other.__code__",
+    "defaults": "target.__defaults__ = (1,)",
+    "keyword defaults": "target.__kwdefaults__ = {}",
+    "a signature": "target.__signature__ = inspect.signature(other)",
+    "a deleted default": "del target.__defaults__",
+    "a code object set by name": "setattr(target, '__code__', other.__code__)",
+    "a code object of a member": "this = types.SimpleNamespace(target=target)\nthis.target.__code__ = other.__code__",
+    "a code object of an element": "functions = [target]\nfunctions[0].__code__ = other.__code__",
+    "a code object copied by update_wrapper": "functools.update_wrapper(target, other, assigned=('__code__',))",
+    "a computed set of copied attributes": "functools.update_wrapper(target, other, assigned=names)",
+}
+
+
+@pytest.mark.parametrize("mutation", _SIGNATURE_MUTATIONS.values(), ids=_SIGNATURE_MUTATIONS)
+def test_a_function_whose_signature_the_module_replaces_is_not_resolved(mutation: str) -> None:
+    head = "import functools\nimport inspect\nimport types\n\nnames = ('__code__',)\n\n"
+    before = f"{head}{_TARGET}{_OTHER}{mutation}\n\nresult = target(1, 2, 3, 4)\n"
+    expected = run_module(before)["result"]
+
+    fixed = fix_with(before, "ZA3501")
+
+    assert run_module(fixed)["result"] == expected
+    assert fixed == before
+
+
+def test_a_method_or_constructor_whose_code_the_module_replaces_is_not_resolved() -> None:
+    method = (
+        "class C:\n    def m(self, a, b, c, d):\n        return a\n\n    def run(self):\n        return self.m(1, 2, 3, 4)\n\n\n"
+        "def other(self, w, x, y, z):\n    return w\n\n\nC.m.__code__ = other.__code__\nresult = C().run()\n"
+    )
+
+    constructor = (
+        "class C:\n    def __init__(self, a, b, c, d):\n        self.a = a\n\n\n"
+        "def other(self, w, x, y, z):\n    self.a = w\n\n\nC.__init__.__code__ = other.__code__\nresult = C(1, 2, 3, 4).a\n"
+    )
+
+    for before in (method, constructor):
+        expected = run_module(before)["result"]
+        fixed = fix_with(before, "ZA3501")
+
+        assert run_module(fixed)["result"] == expected
+        assert fixed == before
+
+
+_SIGNATURE_NEIGHBORS = {
+    "a docstring": "target.__doc__ = 'draws'",
+    "a note": "target.cache = {}",
+    "a read of the code": "size = target.__code__.co_argcount",
+    "an update_wrapper with its defaults": "functools.update_wrapper(target, other)",
+    "a code object of another function": "other.__code__ = other.__code__",
+}
+
+
+@pytest.mark.parametrize("neighbor", _SIGNATURE_NEIGHBORS.values(), ids=_SIGNATURE_NEIGHBORS)
+def test_an_attribute_that_leaves_the_signature_alone_does_not_stop_the_call(neighbor: str) -> None:
+    before = f"import functools\n\n{_TARGET}{_OTHER}{neighbor}\n\nresult = target(1, 2, 3, 4)\n"
+
+    fixed = fix_with(before, "ZA3501")
+
+    assert fixed.endswith("result = target(a=1, b=2, c=3, d=4)\n")
+    assert run_module(fixed)["result"] == run_module(before)["result"]
+
+
+def test_a_signature_replaced_in_another_module_stops_the_call_in_this_one(tmp_path: Path) -> None:
+    root = tmp_path / "app"
+    root.mkdir()
+    (root / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    (root / "lib.py").write_text(_TARGET, encoding="utf-8")
+    (root / "patch.py").write_text(f"import lib\n\n{_OTHER}lib.target.__code__ = other.__code__\n", encoding="utf-8")
+
+    main = root / "main.py"
+    config = Config.create("none", enable=["ZA3501"])
+    call = "from lib import target\ntarget(1, 2, 3, 4)\n"
+
+    assert fix(call, config, path=main, projects=Projects()).text == call
+
+    (root / "patch.py").write_text("import lib\n\nlib.target.__doc__ = 'draws'\n", encoding="utf-8")
+
+    assert fix(call, config, path=main, projects=Projects()).text.endswith("target(a=1, b=2, c=3, d=4)\n")

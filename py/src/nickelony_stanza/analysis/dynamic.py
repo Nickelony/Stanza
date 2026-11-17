@@ -1,7 +1,8 @@
 """
-The code of a module that can change what a name means without a statement that binds it.
+The code of a module that can change what a name or a function means without a statement that binds it.
 
-A watch sees every node of one walk of a module, then answers whether the module may rewrite its own namespace.
+One watch sees the functions a module gives another code object, defaults or signature, as `f.__code__ = g.__code__`.
+Another sees every node of one walk of a module, then answers whether the module may rewrite its own namespace.
 That is the case when it can write the dictionary `globals()` returns, run code in the namespace of the module,
 or reach `exec`, `eval`, `globals`, `vars` or `locals` by a route the watch does not follow.
 A use of `globals()` that only reads, as `globals()["name"]`, `globals().get(...)` or `"name" in globals()`,
@@ -158,3 +159,75 @@ def _has_own_globals(call: ast.Call) -> bool:
     """Tells whether an `exec` or `eval` call names a dictionary display of its own for the globals it runs in."""
     arguments = [*call.args[1:2], *(keyword.value for keyword in call.keywords if keyword.arg == "globals")]
     return len(arguments) == 1 and isinstance(arguments[0], ast.Dict)
+
+
+# The attributes of a function that decide the parameters its call binds, which a module may replace.
+_SIGNATURE_ATTRIBUTES = frozenset({"__code__", "__defaults__", "__kwdefaults__", "__signature__"})
+_ATTRIBUTE_SETTERS = frozenset({"setattr", "delattr"})
+
+# The attribute copiers of `functools`, with the position of their `assigned` argument.
+_COPIERS = {"update_wrapper": 2, "wraps": 1}
+
+# Stands for any function, where an assignment names none that the watch can read.
+EVERY_FUNCTION = "*"
+
+
+class SignatureWatch:
+    """Collects the names of the functions a module gives another code object, defaults or signature."""
+
+    def __init__(self) -> None:
+        self.names: set[str] = set()
+
+    def visit(self, node: ast.AST) -> None:
+        """Takes one node of the walk of a module."""
+        if isinstance(node, ast.Attribute):
+            if node.attr in _SIGNATURE_ATTRIBUTES and isinstance(node.ctx, ast.Store | ast.Del):
+                self.names.add(_function_name(node.value))
+        elif isinstance(node, ast.Call):
+            self._visit_call(node)
+
+    def _visit_call(self, call: ast.Call) -> None:
+        function = call.func
+
+        last = (
+            function.id
+            if isinstance(function, ast.Name)
+            else function.attr
+            if isinstance(function, ast.Attribute)
+            else ""
+        )
+
+        if last in _ATTRIBUTE_SETTERS:
+            if (
+                len(call.args) > 1
+                and isinstance(call.args[1], ast.Constant)
+                and call.args[1].value in _SIGNATURE_ATTRIBUTES
+            ):
+                self.names.add(_function_name(call.args[0]))
+        elif last in _COPIERS:
+            self._visit_copier(call, _COPIERS[last])
+
+    def _visit_copier(self, call: ast.Call, position: int) -> None:
+        """Reads the `assigned` argument of `update_wrapper` or `wraps`, which names the attributes it copies."""
+        keyword = next((keyword.value for keyword in call.keywords if keyword.arg == "assigned"), None)
+        assigned = call.args[position] if len(call.args) > position else keyword
+
+        if assigned is None:
+            return
+
+        if not isinstance(assigned, ast.List | ast.Tuple | ast.Set) or not all(
+            isinstance(element, ast.Constant) and isinstance(element.value, str) for element in assigned.elts
+        ):
+            self.names.add(EVERY_FUNCTION)
+        elif any(
+            isinstance(element, ast.Constant) and element.value in _SIGNATURE_ATTRIBUTES for element in assigned.elts
+        ):
+            self.names.add(_function_name(call.args[0]) if call.args and position == 2 else EVERY_FUNCTION)
+
+
+def _function_name(target: ast.expr) -> str:
+    """Reads the last name of the function an attribute is set on, or every function when it is no name."""
+    if isinstance(target, ast.Name):
+        return target.id
+
+    return target.attr if isinstance(target, ast.Attribute) else EVERY_FUNCTION

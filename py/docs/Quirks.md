@@ -188,6 +188,7 @@ The [rule page](rules/ZA3501-name-call-arguments.md#what-it-names) lists the cal
 | An exception class whose `__init__` does not call `super().__init__(...)` as a statement of its own | Left alone, because `BaseException` keeps the arguments it is given. |
 | `Class.method(obj, ...)` | The receiver stays positional and the names start at the next argument. |
 | A positional-only or mangled parameter | Stays positional. A call where one follows an argument that needs a name is left alone. |
+| A callee whose `__code__`, `__defaults__`, `__kwdefaults__` or `__signature__` a project module assigns or deletes | Left alone, matched by the last name of the callee. |
 | A callee that a test double replaces, a form a type checker reads positionally, or a dunder method | Left alone or kept positional, as the [rule page](rules/ZA3501-name-call-arguments.md#what-it-names) lists. |
 | A call with `*args` or `**kwargs`, or with more positional arguments than the callee takes | Left alone. |
 | An argument that is a generator or a `:=` expression without parentheses of its own | The call is left alone, because a name cannot stand in front of it. |

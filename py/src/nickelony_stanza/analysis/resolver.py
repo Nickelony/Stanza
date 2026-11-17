@@ -64,6 +64,7 @@ from nickelony_stanza.analysis.classes import (
     read_namedtuple_class_fields,
     runtime_builtin,
 )
+from nickelony_stanza.analysis.dynamic import EVERY_FUNCTION
 from nickelony_stanza.analysis.module_index import ModuleInfo, SourceIndex
 from nickelony_stanza.analysis.scopes import NameBinding, Scope, ScopeTable, mangle
 from nickelony_stanza.analysis.shapes import (
@@ -144,6 +145,14 @@ def dotted_parts(expression: ast.expr) -> list[str] | None:
 
     parts.append(expression.id)
     return parts[::-1]
+
+
+def _target_names(target: Target) -> tuple[str, ...]:
+    """Lists the last names under which code may give a callee another signature: a function's, or a constructor's."""
+    if isinstance(target, FunctionTarget):
+        return (target.node.name,)
+
+    return ("__init__", "__new__") if isinstance(target, ClassInfo) else ()
 
 
 class Resolver:
@@ -1230,7 +1239,7 @@ class Resolver:
         if callee.name.rpartition(".")[2] in patched or written in patched:
             return Skipped(Reason.NAME_REBOUND)
 
-        return callee
+        return Skipped(Reason.NAME_REBOUND) if written is not None and self._replaces_signature(written) else callee
 
     def _project_patched(self) -> frozenset[str]:
         key = self._project_key("patched")
@@ -1243,6 +1252,23 @@ class Resolver:
             self._project[key] = cached
 
         return cached
+
+    def _project_replaced(self) -> frozenset[str]:
+        key = self._project_key("replaced")
+        cached: frozenset[str] | None = self._project.get(key)
+
+        if cached is None:
+            modules = [*self.index.project_modules(), self.module]
+            cached = frozenset(name for module in modules for name in module.replaced_signatures)
+
+            self._project[key] = cached
+
+        return cached
+
+    def _replaces_signature(self, *names: str) -> bool:
+        """Tells whether any project module gives a function of one of these last names, or any, another signature."""
+        replaced = self._project_replaced()
+        return EVERY_FUNCTION in replaced or any(name in replaced for name in names)
 
     def _resolve_callee(self, call: ast.Call, scope: Scope) -> Callee | Skipped:
         function = call.func
@@ -1385,6 +1411,9 @@ class Resolver:
             return self.callee_of(self.class_info(member.owner.module, node))
 
         if node is None:
+            if self._replaces_signature("__init__", "__new__"):
+                return Skipped(Reason.NAME_REBOUND)
+
             parameters = self.dataclass_init(member.owner)
 
             if isinstance(parameters, Skipped):
@@ -1402,6 +1431,9 @@ class Resolver:
 
     def callee_of(self, target: Target) -> Callee | Skipped:
         """Reads the parameters of what a callee names, refusing a module, a builtin and a disabled source."""
+        if self._replaces_signature(*_target_names(target)):
+            return Skipped(Reason.NAME_REBOUND)
+
         if isinstance(target, FunctionTarget):
             parameters = self.function_parameters(target)
             qualname = target.node.name if target.owner is None else f"{target.owner.qualname}.{target.node.name}"

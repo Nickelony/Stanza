@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Literal
 
-from nickelony_stanza.analysis.dynamic import NamespaceWatch
+from nickelony_stanza.analysis.dynamic import NamespaceWatch, SignatureWatch
 
 BindingKind = Literal["def", "class", "import", "import_from", "star", "value", "other"]
 ScopeKind = Literal["module", "class", "function", "lambda", "comprehension"]
@@ -483,6 +483,7 @@ class ModuleScan:
     patched_attributes: frozenset[str]
     classes: tuple[ClassSite, ...]
     rewrites_namespace: bool
+    replaced_signatures: frozenset[str]
     by_node: dict[int, ClassSite] = field(repr=False, compare=False)
 
 
@@ -520,6 +521,7 @@ def scan_module(tree: ast.Module) -> ModuleScan:
     sites: list[ClassSite] = []
 
     watch = NamespaceWatch()
+    signatures = SignatureWatch()
 
     # Each node travels with the class that mangles its attributes, the prefix of qualified names,
     # whether a def or class holds it and whether it stands in the body of a function or lambda.
@@ -530,6 +532,7 @@ def scan_module(tree: ast.Module) -> ModuleScan:
         kind = type(node)
 
         watch.visit(node, in_function=in_function)
+        signatures.visit(node)
 
         if isinstance(node, ast.Attribute):
             if isinstance(node.ctx, ast.Store | ast.Del):
@@ -578,7 +581,9 @@ def scan_module(tree: ast.Module) -> ModuleScan:
     classes = tuple(sites)
     by_node = {id(site.node): site for site in classes}
 
-    return ModuleScan(frozenset(stored), frozenset(patched), classes, watch.finish(), by_node)
+    return ModuleScan(
+        frozenset(stored), frozenset(patched), classes, watch.finish(), frozenset(signatures.names), by_node
+    )
 
 
 def _literal_attribute(node: ast.AST) -> str | None:
