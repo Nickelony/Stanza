@@ -44,6 +44,24 @@ public sealed class DocPerformanceTests
 		Assert.AreEqual(atoms.Count, lines.Sum(static line => line.Split(' ').Length));
 	}
 
+	// A lone mark binds to its neighbor, so a long chain of them is one run that the search crosses in a pass.
+	[TestMethod]
+	public void ALongChainOfLoneMarksIsFilledInLinearWork()
+	{
+		List<DocAtom> atoms = [];
+
+		for (int line = 0; line < 20_000; line++)
+			DocFill.AddWords(atoms, "( a ) [ b ] , ? ( ", attached: false);
+
+		DocFill.LayOutSteps = 0;
+
+		List<string> lines = DocFill.LayOut(atoms, s_layout);
+
+		AssertLinear(atoms.Count, DocFill.LayOutSteps);
+
+		Assert.IsNotEmpty(lines);
+	}
+
 	// No break may fall inside a glued run, so the run stands on one line however far past the width it reaches.
 	[TestMethod]
 	public void ALongGluedRunIsFilledInLinearWork()
@@ -148,7 +166,30 @@ public sealed class DocPerformanceTests
 
 		Assert.IsLessThan(MaxSeconds, clock.Elapsed.TotalSeconds, "the read took too long.");
 		Assert.HasCount(1, atoms);
-		Assert.AreEqual(1 + 200_000, atoms[0].Text.Length);
+		Assert.AreEqual(1 + (2 * 200_000), atoms[0].Text.Length);
+	}
+
+	// Each lone opening mark binds to the word after it, so a chain of them is read in a pass and not by a rescan of the chain.
+	[TestMethod]
+	[DoNotParallelize]
+	public void ALongRunOfOpeningMarksIsReadInLinearTime()
+	{
+		StringBuilder text = new();
+
+		for (int index = 0; index < 200_000; index++)
+			text.Append("( ");
+
+		text.Append('a');
+
+		List<DocAtom> atoms = [];
+
+		var clock = Stopwatch.StartNew();
+
+		DocFill.AddWords(atoms, text.ToString(), attached: false);
+
+		Assert.IsLessThan(MaxSeconds, clock.Elapsed.TotalSeconds, "the read took too long.");
+		Assert.HasCount(1, atoms);
+		Assert.AreEqual((2 * 200_000) + 1, atoms[0].Text.Length);
 	}
 
 	// A step count above zero shows the code counts, and one under the bound shows it counts a linear pass.

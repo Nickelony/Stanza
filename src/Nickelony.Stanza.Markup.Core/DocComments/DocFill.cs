@@ -9,6 +9,7 @@ internal static class DocFill
 {
 	private static readonly char[] s_clauseMarks = [',', '.', ':', ';', '!', '?', '-', '\u2013', '\u2014', '\u2026', ')', ']'];
 	private static readonly char[] s_openingMarks = ['(', '['];
+	private static readonly char[] s_bindingOpeningMarks = ['(', '[', '{'];
 	private static readonly char[] s_whitespace = [' ', '\t', '\r', '\n'];
 	private static readonly char[] s_closingMarks = [',', '.', ';', ':', '!', '?', ')', ']', '}'];
 
@@ -81,18 +82,24 @@ internal static class DocFill
 				continue;
 			}
 
-			// A word made of closing marks alone belongs to the word before it, wherever the line puts it,
-			// so neither a space nor a break may come between the two.
-			if (atoms.Count > 0 && IsOnlyClosingMarks(word))
+			bool touches = glued && firstWord;
+
+			// A word made of closing marks alone belongs to the word before it, and one of opening marks alone to the word after it,
+			// so no line break may come between the two; the space the author wrote between them stays.
+			if (atoms.Count > 0 && (IsOnlyClosingMarks(word) || EndsOnOpeningMarks(atoms, open)))
 			{
 				open ??= new StringBuilder(atoms[atoms.Count - 1].Text);
+
+				if (!touches)
+					open.Append(' ');
+
 				open.Append(word);
 
 				continue;
 			}
 
 			CloseWord(atoms, ref open);
-			atoms.Add(new DocAtom(word, glued && firstWord));
+			atoms.Add(new DocAtom(word, touches));
 		}
 	}
 
@@ -127,15 +134,49 @@ internal static class DocFill
 		return offset;
 	}
 
-	private static bool IsOnlyClosingMarks(string word)
+	/// <summary>Whether the last atom holds opening marks alone, which the next word binds to.</summary>
+	private static bool EndsOnOpeningMarks(List<DocAtom> atoms, StringBuilder? open)
 	{
-		foreach (char character in word)
+		// A builder starts from the text of that atom and grows by joins, so the chain holds opening marks alone
+		// while the atom opens with one and the last word joined is one, which is read from the end of the builder.
+		string text = atoms[atoms.Count - 1].Text;
+
+		if (text.Length == 0 || Array.IndexOf(s_bindingOpeningMarks, text[0]) < 0)
+			return false;
+
+		if (open is null)
+			return IsOnlyOpeningMarks(text);
+
+		for (int index = open.Length - 1; index >= 0 && open[index] != ' '; index--)
 		{
-			if (Array.IndexOf(s_closingMarks, character) < 0)
+			if (Array.IndexOf(s_bindingOpeningMarks, open[index]) < 0)
 				return false;
 		}
 
-		return word.Length > 0;
+		return true;
+	}
+
+	private static bool IsOnlyClosingMarks(string word) => IsOnlyMarks(word, s_closingMarks);
+
+	/// <summary>Whether the text holds opening marks and the spaces between them alone.</summary>
+	private static bool IsOnlyOpeningMarks(string text) => IsOnlyMarks(text, s_bindingOpeningMarks);
+
+	private static bool IsOnlyMarks(string text, char[] marks)
+	{
+		bool any = false;
+
+		foreach (char character in text)
+		{
+			if (character == ' ')
+				continue;
+
+			if (Array.IndexOf(marks, character) < 0)
+				return false;
+
+			any = true;
+		}
+
+		return any;
 	}
 
 	public static bool EndsTouching(string text) => text.Length > 0 && !MarkupWhitespace.IsXmlWhitespace(text[text.Length - 1]);

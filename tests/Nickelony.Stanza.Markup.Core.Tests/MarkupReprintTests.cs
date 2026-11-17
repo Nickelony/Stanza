@@ -444,6 +444,17 @@ public sealed class MarkupReprintTests
 		Assert.DoesNotContain("don`t beta gamma delta", text);
 	}
 
+	// A lone mark keeps the space the author wrote and stays on the line of the word before it, whether or not it stands in code.
+	[TestMethod]
+	[DataRow("Is a ? b : c, or <c>a ? b : c</c> or `a ? b : c`.")]
+	[DataRow("The marks #, ?, and % and (* and ?) and [ U+0000 ] and ( see above ) stay.")]
+	[DataRow("Returns the value .")]
+	public void ALoneMarkKeepsItsSpacing(string content)
+	{
+		string text = FormatReprint(Member("<summary>" + content + "</summary>"), contentWidth: 200).Text;
+		Assert.AreEqual(Member("<summary>" + content + "</summary>"), text);
+	}
+
 	// Each word is ten ideographs, so three of them are 32 code units and 62 display columns, past a width of 50.
 	[TestMethod]
 	public void AWideCharacterCountsTwoColumnsAgainstTheWidth()
@@ -458,19 +469,21 @@ public sealed class MarkupReprintTests
 		Assert.IsTrue(lines.All(line => TextColumns.GetColumns(line.Trim(), tabColumns: 4) <= 50), "A line is wider than the width in columns.");
 	}
 
-	// A lone mark joins the word before it as a comma does, so only a code element or a span keeps it apart.
 	[TestMethod]
-	public void ALoneQuestionMarkOrColonJoinsTheWordBeforeItOutsideCode()
+	public void ALoneMarkIsNeverLeftAloneOnALineAtANarrowWidth()
 	{
 		string text = FormatReprint(
-			Member("<summary>Is a ? b : c, or <c>a ? b : c</c> or `a ? b : c`.</summary>"),
-			contentWidth: 80
+			Member("<summary>The marks #, ?, and % and (* and ?) and [ U+0000 ] and ( see above ) stay.</summary>"),
+			contentWidth: 12
 		).Text;
 
-		Assert.AreEqual(
-			Member("<summary>Is a? b: c, or <c>a ? b : c</c> or `a ? b : c`.</summary>"),
-			text
-		);
+		foreach (string line in text.Split('\n'))
+		{
+			string trimmed = line.Trim();
+
+			Assert.IsFalse(trimmed.StartsWith('?') || trimmed.StartsWith(']') || trimmed.StartsWith(')'), $"A line opens with a closing mark: {trimmed}");
+			Assert.IsFalse(trimmed.EndsWith(" [", StringComparison.Ordinal) || trimmed.EndsWith(" (", StringComparison.Ordinal), $"A line ends on an opening mark: {trimmed}");
+		}
 	}
 
 	// The words of a code element are filled as text, so their spaces collapse, and a backtick span keeps its own.

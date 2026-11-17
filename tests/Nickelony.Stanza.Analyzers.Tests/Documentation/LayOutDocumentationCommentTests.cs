@@ -438,23 +438,12 @@ public sealed partial class LayOutDocumentationCommentTests
 	}
 
 	[TestMethod]
-	public async Task ASpaceWrittenBeforeAClosingMarkIsTakenAway()
+	public async Task ASpaceWrittenBeforeAClosingMarkIsKept()
 	{
 		const string source = """
 			internal sealed class Sample
 			{
 				/// <summary>Reads <c>null</c> , and writes <see langword="null"/> .</summary>
-				internal int Bind()
-				{
-					return 1;
-				}
-			}
-			""";
-
-		const string fixedSource = """
-			internal sealed class Sample
-			{
-				/// <summary>Reads <c>null</c>, and writes <see langword="null"/>.</summary>
 				internal int Bind()
 				{
 					return 1;
@@ -468,13 +457,42 @@ public sealed partial class LayOutDocumentationCommentTests
 				TestRuleSets.StandaloneRulesEnabled
 			);
 
-		RoslynTestHarness.AssertFixedText(fixedSource, result);
+		Assert.IsEmpty(result.Diagnostics);
 	}
 
-	// A mark written apart from its word inside a line joins it as one at a line start does,
-	// so no line starts with the mark and a second layout finds nothing to join.
+	// A mark the prose quotes as a character is no stray space before a mark, so the layout keeps the spacing as written.
 	[TestMethod]
-	public async Task ASpaceBeforeAClosingMarkInsideALineIsTakenAwayToo()
+	[DataRow("The marks #, ?, and % are quoted.")]
+	[DataRow("A pair (* and ?) is quoted.")]
+	[DataRow("A range [ U+0000 ] is quoted.")]
+	[DataRow("A note ( see above ) is quoted.")]
+	[DataRow("Returns the value .")]
+	public async Task AQuotedMarkKeepsItsSpacingInTheLayout(string content)
+	{
+		string source = $$"""
+			internal sealed class Sample
+			{
+				/// <summary>{{content}}</summary>
+				internal int Bind()
+				{
+					return 1;
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<LayOutDocumentationCommentAnalyzer>(
+				source,
+				TestRuleSets.StandaloneRulesEnabled
+			);
+
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	// A mark written apart from its word inside a line keeps its space and stays on the line of that word,
+	// so no line starts with the mark and a second layout finds nothing to change.
+	[TestMethod]
+	public async Task ASpaceBeforeAClosingMarkInsideALineIsKeptAndTheMarkStaysWithItsWord()
 	{
 		const string source = """
 			internal sealed class Sample
@@ -491,7 +509,7 @@ public sealed partial class LayOutDocumentationCommentTests
 			internal sealed class Sample
 			{
 				/// <summary>
-				/// when empty?
+				/// when empty ?
 				/// returns
 				/// otherwise the
 				/// otherwise value
@@ -517,7 +535,7 @@ public sealed partial class LayOutDocumentationCommentTests
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
-	// A word made of marks joins the word before it, so a mark the prose names goes in a code span, which is one word.
+	// A mark the prose names may also go in a code span, which is one word and keeps its marks and spaces.
 	[TestMethod]
 	public async Task AMarkNamedInACodeSpanKeepsItsSpace()
 	{

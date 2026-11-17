@@ -99,7 +99,8 @@ the documentation clean-ups included.
 It fills the text as [`ZA0901`](https://github.com/Nickelony/Stanza/wiki/ZA0901-Lay-out-a-documentation-comment) does,
 so it changes more than the line breaks:
 
-- A word made of closing marks joins the word before it, so `a ? b : c` in prose becomes `a? b: c`.
+- A word made of marks alone keeps its space and stays on the line of its neighbor, so `a ? b : c` and `( see above )` in prose are unchanged;
+  [`ZA0901`](https://github.com/Nickelony/Stanza/wiki/ZA0901-Lay-out-a-documentation-comment) says which marks bind to which word.
 - A `<c>` element keeps its marks apart, but the spaces between its words collapse to one.
 - A backtick code span keeps its marks and its spaces, so an expression whose spacing matters belongs in one.
 

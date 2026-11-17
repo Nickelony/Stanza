@@ -91,6 +91,52 @@ public sealed class DocFillTests
 		);
 	}
 
+	// A mark that stands alone keeps the space the author wrote, and only a line break is kept away from it.
+	[TestMethod]
+	[DataRow("#, ?, and %")]
+	[DataRow("(* and ?)")]
+	[DataRow("[ U+0000 ]")]
+	[DataRow("( see above )")]
+	[DataRow("Returns the value .")]
+	[DataRow("when empty ? returns otherwise the value , and so on ...")]
+	[DataRow("an opening { brace and a closing } brace")]
+	public void AMarkThatStandsAloneKeepsItsSpacing(string text) =>
+		Assert.AreEqual(text, Fill(text, width: 200));
+
+	[TestMethod]
+	public void AMarkWithNoSpaceBeforeItStaysWithItsWord()
+	{
+		Assert.AreEqual("Returns the value. Done (see above).", Fill("Returns the value.   Done (see above).", width: 200));
+	}
+
+	[TestMethod]
+	public void SpacesAroundALoneMarkStillCollapseToOne()
+	{
+		Assert.AreEqual("( see above ) and [ a ] .", Fill("(   see\tabove   )  and  [  a  ]   .", width: 200));
+	}
+
+	[TestMethod]
+	public void NoLineBreakComesBetweenALoneMarkAndItsWord()
+	{
+		const string text = "alpha beta ( see the notes above ) gamma [ delta epsilon ] zeta eta , theta iota ? kappa lambda";
+
+		for (int width = 5; width <= 60; width++)
+		{
+			string[] lines = Fill(text, width, minTailWords: 0, minLineWords: 1, maxOverflowColumns: 0).Split('|');
+
+			for (int index = 0; index < lines.Length; index++)
+			{
+				string[] words = lines[index].Split(' ');
+
+				if (index > 0)
+					Assert.IsFalse(words[0] is ")" or "]" or "," or "?", $"Width {width} starts a line with a closing mark: {string.Join("|", lines)}");
+
+				if (index < lines.Length - 1)
+					Assert.IsFalse(words[^1] is "(" or "[", $"Width {width} ends a line on an opening mark: {string.Join("|", lines)}");
+			}
+		}
+	}
+
 	private static string Fill(
 		string text,
 		int width,
