@@ -3,7 +3,7 @@ import type { TSESLint } from '@typescript-eslint/utils';
 import type { OwnedGap } from './analysis/session.ts';
 import type { Gap } from './analysis/types.ts';
 
-/** The most blank lines a group may hold for every one of its reports to carry the fix of the group; a longer group gives it to one report. */
+/** The most gaps a group may hold for every one of its reports to carry the fix of the group; a longer group gives it to one report. */
 export const everyReportGroupSize = 64;
 
 /**

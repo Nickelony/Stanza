@@ -23,9 +23,10 @@ const label = name(total);
 
 - A loose run is a chain of single-line statements that only a blank line separates and no other rule asks to separate.
   The rule reports every blank line of a run past the limit, and the fix of a report removes the blank lines of the whole run.
-- Each report of a run of up to 64 blank lines carries that fix, and only the first of a longer run does.
+- Each report of a run of up to 64 gaps carries that fix, and only the first of a longer run does.
 - A multi-line statement, a comment, a trailing comment, an import, a directive, a shebang or a gap with no blank line ends a run.
-  An `eslint-disable` comment directly above a statement or trailing the one above does not, as [Quirks](../Quirks.md#blank-lines-that-go) says.
+- A disable or enable directive directly above a statement or trailing the one above ends no run.
+  A gap where a directive silences this rule ends the run and keeps its blank line, as [Quirks](../Quirks.md#blank-lines-that-go) says.
 - A statement that sits tight against its other neighbor stays out of the run, so the blank line that sets that group apart stays.
   A neighbor that a rule asks to set apart, as `separate-multi-line-constructs` does beside a multi-line statement, is not tight.
 - The rule never removes a blank line that another enabled rule asks for, so a run that a run rule,

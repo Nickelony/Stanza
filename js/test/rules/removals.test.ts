@@ -243,16 +243,18 @@ describe('the fix of a gathered run', () => {
 		}
 	});
 
-	it('stands on the reports that no directive silences, so the run still gathers in one fix', () => {
-		const source = lines(...spaced('a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();'));
+	it('stands on the reports that no directive silences, and the blank line it silences stays', () => {
+		const calls = ['a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();', 'e();', 'f();'];
+		const source = lines(...spaced(...calls));
 		const linter = new Linter();
 		const reports = linter.verify(source, createConfig(gather), { filename: 'file.ts' });
+		const expected = lines('a();', '', ...calls.slice(1));
 
 		assert.equal(readSuppressedMessages(linter).length, 1);
-		assert.equal(reports.length, 2);
+		assert.equal(reports.length, 4);
 
-		assertGroupFix(source, reports, lines('a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();'));
-		assert.equal(stable(source, gather), lines('a();', 'b(/* eslint-disable-line stanza/gather-loose-statements */);', 'c();', 'd();'));
+		assertGroupFix(source, reports, expected);
+		assert.equal(stable(source, gather), expected);
 	});
 
 	it('stands on the report that opens a long run only, so the cost of a run stays linear in its length', () => {
@@ -298,16 +300,73 @@ describe('a disable directive in the gap of a run', () => {
 		return result.output;
 	}
 
-	it('leaves the same text whether or not ESLint removes it as unused, where it names no report of the rule', () => {
-		const source = lines('a();', '', 'b();', '', '// eslint-disable-next-line stanza/gather-loose-statements', 'c();', '', 'd();');
-		const kept = new Linter().verifyAndFix(source, createConfig(gather), { filename: 'file.ts' }).output;
-		const removed = new Linter().verifyAndFix(source, createDefaultConfig(gather), { filename: 'file.ts' }).output;
+	/** Fixes a source with unused-directive reporting set as given, checking that one pass settles it and nothing is left to report. */
+	function settleReporting(source: string, rules: Record<string, Linter.RuleEntry>, reporting: 'off' | 'error', settings = limit(2)): string {
+		const config = createConfig(rules, settings).map((entry) => ({ ...entry, linterOptions: { reportUnusedDisableDirectives: reporting } }));
+		const linter = new Linter();
+		const options = { filename: 'file.ts', stats: true };
+		const result = linter.verifyAndFix(source, config, options);
 
-		assert.equal(kept, lines('a();', 'b();', '// eslint-disable-next-line stanza/gather-loose-statements', 'c();', 'd();'));
+		assert.deepEqual(result.messages, []);
+		assert.ok(linter.getFixPassCount() <= 1, `needed ${linter.getFixPassCount()} fix passes`);
 
-		// ESLint leaves the space the comment stood in.
-		assert.equal(removed, lines('a();', 'b();', ' ', 'c();', 'd();'));
-	});
+		return result.output;
+	}
+
+	for (const reporting of ['off', 'error'] as const) {
+		describe(`where unused directives are reported as ${reporting}`, () => {
+			it('leaves the blank line of the next line that a directive silences for the rule', () => {
+				const source = lines('a();', '', 'b();', '', '// eslint-disable-next-line stanza/gather-loose-statements', 'c();', '', 'd();');
+				assert.equal(settleReporting(source, gather, reporting, limit(3)), source);
+			});
+
+			it('gathers the run below the line that a directive silences, and keeps the directive used', () => {
+				const source = lines('a();', '', 'b();', '', '// eslint-disable-next-line stanza/gather-loose-statements', 'c();', '', 'd();', '', 'e();');
+
+				assert.equal(
+					settleReporting(source, gather, reporting),
+					lines('a();', '', 'b();', '', '// eslint-disable-next-line stanza/gather-loose-statements', 'c();', 'd();', 'e();'),
+				);
+			});
+
+			it('leaves the blank lines of a region that disables every rule', () => {
+				const source = lines('a();', '', 'b();', '', '/* eslint-disable */', 'c();', '', 'd();', '', 'e();', '/* eslint-enable */', '', 'g();');
+				assert.equal(settleReporting(source, gather, reporting), source);
+			});
+
+			it('leaves the blank lines of a region that disables the rule', () => {
+				const region = [
+					'/* eslint-disable stanza/gather-loose-statements */',
+					'c();',
+					'',
+					'd();',
+					'',
+					'e();',
+					'/* eslint-enable stanza/gather-loose-statements */',
+				];
+
+				const source = lines('a();', '', 'b();', '', ...region, '', 'g();');
+
+				assert.equal(settleReporting(source, gather, reporting), source);
+			});
+
+			it('leaves the blank line of a region that a run rule would join, and joins the run outside it', () => {
+				const rules = { 'keep-statement-runs-together': 'error', 'separate-declaration-runs': 'error' } as const;
+
+				const region = [
+					'/* eslint-disable stanza/keep-statement-runs-together */',
+					'const c = 3;',
+					'',
+					'const d = 4;',
+					'/* eslint-enable stanza/keep-statement-runs-together */',
+				];
+
+				const source = lines('const a = 1;', '', 'const b = 2;', '', ...region, '', 'const e = 5;');
+
+				assert.equal(settleReporting(source, rules, reporting), lines('const a = 1;', 'const b = 2;', '', ...region, '', 'const e = 5;'));
+			});
+		});
+	}
 
 	it('does not end the run where another rule uses it', () => {
 		const source = lines('a();', '', 'b();', '', '// eslint-disable-next-line no-console', 'console.log(1);', '', 'd();');

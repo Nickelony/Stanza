@@ -31,8 +31,8 @@ type SectionReading = Pick<Reading, 'receiverGroupsOf' | 'dependentBindingsOf'>;
 interface Reading {
 	readonly environment: Environment;
 
-	/** Tells whether a comment is an `eslint-disable` directive, which a run of blank lines reads through. */
-	readonly isDisableDirective: (comment: TSESTree.Comment) => boolean;
+	/** Tells whether a comment is an ESLint directive, a disable or enable comment, which a run of blank lines reads through. */
+	readonly isEslintDirective: (comment: TSESTree.Comment) => boolean;
 	readonly receiverGroupsOf: ReceiverGroupReader;
 	readonly dependentBindingsOf: DependentBindingReader;
 
@@ -79,6 +79,9 @@ export interface RemovalContext extends Reading {
 
 	/** Tells whether a rule is enabled, so a rule that removes blank lines reads the runs of the rules that are on and no others. */
 	readonly isEnabled: (name: RuleName) => boolean;
+
+	/** Tells whether a directive silences the rule being read at the gap, so a run ends there and no fix removes the blank line. */
+	readonly isSilenced: (gapIndex: number) => boolean;
 }
 
 /** Reads the gaps whose blank line a rule removes, as groups of gap indexes that one fix removes together. */
@@ -105,6 +108,9 @@ export interface Claimant {
 	/** The reading of a rule that removes blank lines instead of adding them. */
 	readonly removal?: Removal;
 	readonly hold?: RunHold;
+
+	/** For a rule that removes the blank lines of runs, the gaps it could remove were a run long enough, so it reports each one a directive silences and the directive stays used. */
+	readonly reach?: (container: Container, context: RemovalContext) => Iterable<number>;
 
 	/** True when the rule reads the claims of the other rules, so it is evaluated after them. */
 	readonly readsOthers?: boolean;
@@ -134,7 +140,7 @@ export interface OwnedGap {
 	/** The gaps whose blank lines one fix removes together, for a rule that removes the blank lines of a whole run. */
 	readonly group?: readonly Gap[];
 
-	/** True on the one report of a group that carries the fix of the group; the others carry none, so a group builds one fix and not one for each gap. */
+	/** True on the first report of a group, which carries the fix of the group at any size; `carriesGroupFix` says which of the others carry it too. */
 	readonly fixesGroup?: boolean;
 
 	/** Where a directive silences the rule at the gap, so the report stands there, only uses the directive and carries no fix. */
@@ -154,8 +160,11 @@ interface ClaimSource {
 	readonly isEnabled: (name: RuleName) => boolean;
 	readonly silencedAt: (name: RuleName, container: Container, gapIndex: number) => TSESTree.Position | undefined;
 
-	/** Tells whether a comment is a directive, which a silenced keeper reads through. */
-	readonly isDirective: (comment: TSESTree.Comment) => boolean;
+	/** Reads the gaps where a directive silences a rule that removes blank lines. */
+	readonly silencedGapsOf: (name: RuleName, container: Container) => ReadonlySet<number>;
+
+	/** Tells whether a comment is an ESLint directive, which a silenced keeper reads through. */
+	readonly isEslintDirective: (comment: TSESTree.Comment) => boolean;
 }
 
 /**
@@ -278,12 +287,14 @@ class ContainerClaims {
 			isClaimed: (gapIndex) => this.plannedGaps.has(gapIndex) || jumpAsks[gapIndex + 1] === true,
 			isKept: (gapIndex) => keptGaps.has(gapIndex),
 			isEnabled: this.source.isEnabled,
+			isSilenced: () => false,
 		};
 
 		for (const name of this.order.removers) {
 			const hold = this.source.claimantOf(name)?.hold;
+			const silenced = this.source.silencedGapsOf(name, this.container);
 
-			for (const index of hold?.read(this.container, context) ?? []) {
+			for (const index of hold?.read(this.container, { ...context, isSilenced: (gapIndex) => silenced.has(gapIndex) }) ?? []) {
 				this.heldGaps.add(index);
 
 				if (hold?.pinsBoundary === true) {
@@ -323,7 +334,7 @@ class ContainerClaims {
 	 */
 	private readSilencedAt(claimant: Claimant, name: KeepRuleName, gapIndex: number, claimed: boolean): TSESTree.Position | undefined {
 		const gap = this.container.gaps[gapIndex];
-		const throughDirectives = gap?.hasComment === true && gap.comments.every(this.source.isDirective);
+		const throughDirectives = gap?.hasComment === true && gap.comments.every(this.source.isEslintDirective);
 
 		if (gap === undefined || (!claimed && claimant.pairs === undefined && !throughDirectives)) {
 			return undefined;
@@ -424,6 +435,7 @@ class Session {
 	private owned: Map<RuleName, OwnedGap[]> | undefined;
 	private silencing: Silencing | undefined;
 
+	private readonly silencedGaps = new WeakMap<Container, Map<RuleName, ReadonlySet<number>>>();
 	private readonly sourceCode: SourceCode;
 
 	public constructor(sourceCode: SourceCode, settings: unknown) {
@@ -488,7 +500,7 @@ class Session {
 
 		return {
 			environment,
-			isDisableDirective: (comment) => this.readSilencing().isDirective(comment),
+			isEslintDirective: (comment) => this.readSilencing().isEslintDirective(comment),
 			receiverGroupsOf,
 			dependentBindingsOf,
 			protectedSectionsOf,
@@ -537,8 +549,27 @@ class Session {
 			return next.node.loc.start;
 		}
 
-		return container.gaps[gapIndex]?.comments.find((comment) => silencing.isDirective(comment) && silencing.silences(ruleId, comment.loc.start))?.loc
-			.start;
+		return container.gaps[gapIndex]?.comments.find((comment) => silencing.isEslintDirective(comment) && silencing.silences(ruleId, comment.loc.start))
+			?.loc.start;
+	}
+
+	/** Reads the gaps with a blank line where a directive silences a rule, which a rule that removes blank lines neither removes nor reads a run across. */
+	private silencedGapsOf(name: RuleName, container: Container): ReadonlySet<number> {
+		const byRule = this.silencedGaps.get(container) ?? new Map<RuleName, ReadonlySet<number>>();
+		let gaps = byRule.get(name);
+
+		if (gaps === undefined) {
+			gaps = new Set(
+				container.gaps.flatMap((gap, index) =>
+					gap.blankRange !== undefined && this.silencedAt(name, container, index) !== undefined ? [index] : [],
+				),
+			);
+
+			byRule.set(name, gaps);
+			this.silencedGaps.set(container, byRule);
+		}
+
+		return gaps;
 	}
 
 	private readSilencing(): Silencing {
@@ -564,7 +595,8 @@ class Session {
 			claimantOf: (name) => this.claimants.get(name),
 			isEnabled: (name) => judging.has(name),
 			silencedAt: (name, target, gapIndex) => this.silencedAt(name, target, gapIndex),
-			isDirective: (comment) => this.readSilencing().isDirective(comment),
+			silencedGapsOf: (name, target) => this.silencedGapsOf(name, target),
+			isEslintDirective: (comment) => this.readSilencing().isEslintDirective(comment),
 		};
 
 		const claims = new ContainerClaims(container, source, reading, order).read();
@@ -616,6 +648,7 @@ class Session {
 			isClaimed: (gapIndex) => claims.isClaimed(gapIndex),
 			isKept: (gapIndex) => claims.isKept(gapIndex),
 			isEnabled: source.isEnabled,
+			isSilenced: () => false,
 		};
 
 		this.readRemovals(container, order.removers, context, reported, owned);
@@ -656,7 +689,11 @@ class Session {
 		return groups;
 	}
 
-	/** Gives each blank line a rule removes to the first rule of the remove order that asks for it, with the gaps its fix removes together. */
+	/**
+	 * Gives each blank line a rule removes to the first rule of the remove order that asks for it, with the gaps its fix removes together.
+	 * A gap where a directive silences the rule ends a run and loses its blank line to no fix, so the directive keeps what it covers.
+	 * The rule still reports that gap, silenced and without a fix, wherever a run could take it, so ESLint counts the directive as used.
+	 */
 	private readRemovals(
 		container: Container,
 		removers: readonly RemoveRuleName[],
@@ -665,19 +702,39 @@ class Session {
 		owned: Map<RuleName, OwnedGap[]>,
 	): void {
 		for (const name of removers) {
-			for (const group of this.claimants.get(name)?.removal?.(container, context) ?? []) {
-				const gaps = group.flatMap((index) => container.gaps[index] ?? []);
+			const claimant = this.claimants.get(name);
+			const removal = claimant?.removal;
+
+			if (removal === undefined) {
+				continue;
+			}
+
+			const silenced = this.silencedGapsOf(name, container);
+			const groups = removal(container, { ...context, isSilenced: (gapIndex) => silenced.has(gapIndex) });
+			const reach = silenced.size === 0 ? [] : [...removal(container, context).flat(), ...(claimant?.reach?.(container, context) ?? [])];
+
+			for (const index of new Set(reach)) {
+				const gap = container.gaps[index];
+				const next = container.units[index + 1];
+				const silencedAt = silenced.has(index) ? this.silencedAt(name, container, index) : undefined;
+
+				if (gap !== undefined && next !== undefined && silencedAt !== undefined) {
+					addOwnedGap(owned, name, { container, gap, next, silencedAt });
+				}
+			}
+
+			for (const group of groups) {
+				const gaps = group.flatMap((index) => (silenced.has(index) ? [] : (container.gaps[index] ?? [])));
 				let hasFix = false;
 
 				for (const index of group) {
 					const gap = container.gaps[index];
 					const next = container.units[index + 1];
 
-					if (gap !== undefined && next !== undefined && !reported.has(gap)) {
-						// The first report that no directive silences carries the fix, so ESLint keeps it whichever reports it drops.
-						const fixesGroup: boolean = !hasFix && this.silencedAt(name, container, index) === undefined;
+					if (gap !== undefined && next !== undefined && !silenced.has(index) && !reported.has(gap)) {
+						const fixesGroup = !hasFix;
 
-						hasFix ||= fixesGroup;
+						hasFix = true;
 						reported.add(gap);
 						addOwnedGap(owned, name, { container, gap, next, group: gaps, fixesGroup });
 					}

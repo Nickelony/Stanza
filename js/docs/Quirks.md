@@ -16,17 +16,21 @@ The [shared analysis](https://github.com/Nickelony/Stanza/blob/main/js/src/analy
 - A blank line another rule's fix writes stands where `separate-jump-statements` already ends its stanza, so any fix order reaches one text.
 - The first enabled rule in the [owner order](Rule-map.md#one-owner-per-gap) that asks for a gap reports it, and the others stay silent.
 - A rule that is off asks for nothing, so the next rule that asks for the gap reports it.
-- An `eslint-disable` comment that silences a rule of the owner order or a removal rule does not hand its gap on,
-  because ESLint applies the comment after the rules report, so the gap keeps what it holds.
-- An `eslint-disable` comment that silences a [keep rule](Rule-map.md#rules-that-keep-a-pair-together) at a gap hands the gap back,
+- A disable directive that silences a rule of the owner order does not hand its gap on,
+  because ESLint applies the directive after the rules report, so the gap keeps what it holds.
+- A disable directive that silences a [keep rule](Rule-map.md#rules-that-keep-a-pair-together) at a gap hands the gap back,
   so the other rules judge it as if the keep rule were off.
-- The comment silences a keep rule at a gap when it covers the unit below the gap,
-  or when it stands in the gap and covers its own line, as an `eslint-disable-line` comment after the unit above does.
+- A directive silences a keep rule or a rule that removes the blank lines of runs at a gap in two cases.
+  It covers the unit below the gap, or it stands in the gap and covers its own line, as an `eslint-disable-line` comment after the unit above does.
 - A silenced keep rule protects no section at that gap, and no fix of its group removes that gap's blank line.
-- A silenced keep rule still reports the gap without a fix, blank or tight, where the comment covers it, so ESLint counts the comment as used.
-- A silenced keep rule reads a gap that holds only directives as if they were not there, so the comment does not end the pair it silences.
+- A silenced keep rule still reports the gap without a fix, blank or tight, where the directive covers it, so ESLint counts the directive as used.
+- A silenced keep rule reads a gap that holds only disable and enable directives as if they were not there, so a directive does not end the pair it silences.
 - A silenced keep rule reports wherever its pair stands, even where the stanza around the pair or a section boundary keeps it from claiming the gap,
   because the gap it hands back may change both.
+- A rule that removes the blank lines of runs ends its run at a gap where a directive silences it, as a `#pragma` does in C#.
+  No fix of its group removes that gap's blank line.
+- That rule still reports the gap without a fix wherever a run could take it, so ESLint counts the directive as used.
+- A directive that silences only other rules ends no run, so a run does not depend on whether ESLint deletes it.
 - With inline configuration turned off, a silenced report shows, says that a comment silences the rule there, and fixes nothing.
 - `separate-jump-statements` ends its stanza at each gap another enabled rule asks for.
 - A container of exactly two single-line units belongs to `keep-two-units-together`, as the [next section](#two-single-line-units) says.
@@ -52,14 +56,14 @@ While it is disabled, most rules still leave the container as written, and its [
 `gather-loose-statements`, `gather-loose-members`, `keep-statement-runs-together`, `keep-member-runs-together`,
 `keep-single-line-elements-together` and the keep rules of switch cases and JSX children remove blank lines.
 Each removes only a blank line that holds nothing else,
-so a comment, a trailing comment or a line with a token on it keeps its gap, an `eslint-disable` comment aside.
+so a comment, a trailing comment or a line with a token on it keeps its gap, a disable or enable directive aside.
 
 | Quirk | Decision |
 | --- | --- |
 | A blank line some enabled rule asks for | Stays, and ends the run, so the run is counted up to that gap. |
 | A multi-line unit, an import, a directive or a shebang | Ends a run, because other rules own the gaps beside it. |
 | A blank line a keep rule removes | Reads as tight already, so the run is the one the keep rule leaves, whatever order the fixes run in. |
-| An `eslint-disable` comment directly above the unit below the gap, or trailing the unit above it | Does not end the run: the blank line goes and the comment stays. ESLint deletes a comment that silences nothing, so a run that the comment ended would gather in the next pass. A comment beside another comment, or a block comment with a blank line on both sides, still ends it. |
+| A disable or enable directive directly above the unit below the gap, or trailing the unit above it | Does not end the run where it silences only other rules: the blank line goes and the directive stays, so the run does not depend on whether ESLint deletes a directive that silences nothing. Where it silences the rule, it ends the run at that gap and no fix removes that blank line. A directive beside another comment, or one with a blank line on both sides, still ends it. |
 | A unit tight against one neighbor and apart from the other | Out of the loose run, so the blank line that sets that group apart stays. A neighbor that a rule asks to set apart does not count as tight. |
 | The blank line above a `return`, `throw`, `break` or `continue` | Stays while `separate-jump-statements` is enabled and the stanza above the jump spans two or more lines once the run is gathered, because that rule would write it back. A jump below one line goes with the run. |
 | Several blank lines in a row, a line of whitespace or a CRLF file | All the blank lines go, and the file keeps its line ending. |
@@ -67,7 +71,7 @@ so a comment, a trailing comment or a line with a token on it keeps its gap, an 
 | A blank line between two sections of a run | `keep-statement-runs-together` and `keep-member-runs-together` keep it when each side holds at least two units tight against each other, and a lone unit between two sections is a section. |
 | A blank line between two sections of tight units that `keep-receiver-groups-together` or `keep-dependent-bindings-together` keeps | Stays, and ends the runs of the run rules before any rule gathers or moves a boundary. |
 | A run rule that is off | Its runs are not read, so `keep-statement-runs-together` and `keep-member-runs-together` join only the runs of the rules that are enabled. |
-| A run or a group whose blank lines one fix removes | Each report of a group of up to 64 blank lines carries that fix, so applying any one of them writes the text a batch fix writes. A longer group gives it to its first report that no directive silences, because ESLint serializes each fix and the fix holds the text of the whole group, so a long run stays linear. |
+| A run or a group whose blank lines one fix removes | Each report of a group of up to 64 gaps carries that fix, so applying any one of them writes the text a batch fix writes. A longer group gives it to its first report, because ESLint serializes each fix and the fix holds the text of the whole group, so a long run stays linear. |
 | A gap a [keep rule](Rule-map.md#rules-that-keep-a-pair-together) keeps | Goes, and no rule that adds a blank line asks for it, so the keep rule wins over `separate-multi-line-constructs` and the others. A `return` below reads the kept pair as one stanza. |
 
 ## Comments

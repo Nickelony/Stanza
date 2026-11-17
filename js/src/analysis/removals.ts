@@ -31,12 +31,12 @@ function isLooseUnit(unit: Unit): boolean {
 	return !unit.isMultiLine && !unit.isShebang && !isDirective(unit.node) && !isImport(unit.node);
 }
 
-/** Tells whether a gap holds a comment that ends a run: an `eslint-disable` comment does not, since ESLint deletes it where no report uses it. */
+/** Tells whether a gap holds a comment that ends a run: a disable or enable directive does not, so a run reads through one that silences only other rules. */
 function holdsRunBreakingComment(gap: Gap, context: RemovalContext): boolean {
-	return gap.hasComment && !gap.comments.every(context.isDisableDirective);
+	return gap.hasComment && !gap.comments.every(context.isEslintDirective);
 }
 
-/** Tells whether the blank line at a gap between two statements or members may go: nothing else stands there and no rule would write it back. */
+/** Tells whether the blank line at a gap between two statements or members may go: nothing else stands there, no directive silences the rule there and no rule would write it back. */
 function isLooseGap(container: Container, gapIndex: number, context: RemovalContext): boolean {
 	const gap = container.gaps[gapIndex];
 	const previous = container.units[gapIndex];
@@ -49,6 +49,7 @@ function isLooseGap(container: Container, gapIndex: number, context: RemovalCont
 	if (
 		!gap.isBlank ||
 		gap.blankRange === undefined ||
+		context.isSilenced(gapIndex) ||
 		holdsRunBreakingComment(gap, context) ||
 		gap.isJoined ||
 		!isLooseUnit(previous) ||
@@ -157,6 +158,15 @@ export function readLooseRuns(container: Container, context: RemovalContext, uni
 	});
 }
 
+/** Reads the gaps whose blank line a gather rule of one kind of unit could remove in a run of any size, so a directive that silences one is used. */
+export function readLooseGaps(container: Container, context: RemovalContext, units: RunUnits): readonly number[] {
+	if (context.environment.maxLooseRunSize === 0 || !containersOf[units].has(container.kind)) {
+		return [];
+	}
+
+	return range(0, container.units.length - 1).filter((index) => isLooseGap(container, index, context));
+}
+
 /** The units a kept run spans, as the indexes of its first and last unit. */
 interface RunSpan {
 	readonly start: number;
@@ -224,6 +234,13 @@ export function readKeptRuns(container: Container, context: RemovalContext, unit
 	});
 }
 
+/** Reads the gaps whose blank line a keep rule of one kind of unit could remove inside the runs the enabled run rules read as one, whatever sections stand, so a directive that silences one is used. */
+export function readKeptRunLooseGaps(container: Container, context: RemovalContext, units: RunUnits): readonly number[] {
+	return readEnabledRunSpans(container, context, units).flatMap((span) =>
+		range(span.start, span.end).filter((index) => isLooseGap(container, index, context)),
+	);
+}
+
 /** Reads the gaps inside the runs that the enabled run rules read as one whatever blank lines stand, so no section break splits a run yet. */
 export function readRunGaps(container: Container, context: RemovalContext, units: RunUnits): readonly number[] {
 	return readEnabledRunSpans(container, context, units).flatMap((span) =>
@@ -237,6 +254,7 @@ export function readRunGaps(container: Container, context: RemovalContext, units
 				previous !== undefined &&
 				next !== undefined &&
 				!holdsRunBreakingComment(gap, context) &&
+				!context.isSilenced(index) &&
 				!gap.isJoined &&
 				isLooseUnit(previous) &&
 				isLooseUnit(next) &&

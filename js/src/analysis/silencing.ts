@@ -17,13 +17,13 @@ interface Switch {
 	readonly disables: boolean;
 }
 
-/** What the `eslint-disable` comments of a file say. */
+/** What the disable and enable directives of a file say. */
 export interface Silencing {
 	/** Tells whether a directive silences a rule's report at a position. */
 	readonly silences: (ruleId: string, position: TSESTree.Position) => boolean;
 
-	/** Tells whether a comment is a directive. */
-	readonly isDirective: (comment: TSESTree.Comment) => boolean;
+	/** Tells whether a comment is an ESLint disable or enable directive. */
+	readonly isEslintDirective: (comment: TSESTree.Comment) => boolean;
 }
 
 function compareSwitches(first: Switch, second: Switch): number {
@@ -84,7 +84,7 @@ function isSilencedBy(switches: readonly Switch[], ruleId: string, position: TSE
 }
 
 /**
- * Reads the `eslint-disable` comments of a file, so a keeper can hand back a gap ESLint would drop its report for.
+ * Reads the disable and enable directives of a file, so a keeper can hand back a gap ESLint would drop its report for.
  * ESLint applies block and line directives apart, and a report is silenced when either silences it.
  */
 export function readSilencing(sourceCode: SourceCode): Silencing {
@@ -92,7 +92,7 @@ export function readSilencing(sourceCode: SourceCode): Silencing {
 	const directives = source.getDisableDirectives?.().directives ?? [];
 
 	if (directives.length === 0) {
-		return { silences: () => false, isDirective: () => false };
+		return { silences: () => false, isEslintDirective: () => false };
 	}
 
 	const switches = directives.map(readSwitches);
@@ -102,6 +102,6 @@ export function readSilencing(sourceCode: SourceCode): Silencing {
 
 	return {
 		silences: (ruleId, position) => isSilencedBy(block, ruleId, position) || isSilencedBy(line, ruleId, position),
-		isDirective: (comment) => starts.has(comment.range[0]),
+		isEslintDirective: (comment) => starts.has(comment.range[0]),
 	};
 }
