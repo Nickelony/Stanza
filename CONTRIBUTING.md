@@ -183,6 +183,11 @@ Such a failure publishes nothing: fix the analyzers on `main` and release the ne
 The [Pages workflow](.github/workflows/pages.yml) publishes the site on each push to `main` that changes what the site reads.
 [The site readme](site/README.md) names the one-time repository setting its first deployment needs.
 
+### What a 1.x release may change
+
+Levels may grow in a minor release: a new rule may join the `moderate` or `strong` level.
+A team that builds with warnings as errors and raises `StanzaSeverity` pins the package version, and reads the changelog before it moves it.
+
 ## Adding or changing a rule
 
 A rule's ID names its group of the analyzer readme, and each group holds one range,
