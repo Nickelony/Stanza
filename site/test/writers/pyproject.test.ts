@@ -135,7 +135,15 @@ describe('an explicit empty list in the [tool.stanza] table', () => {
 	);
 
 	it('keeps the other lists and the other keys beside it', () => {
-		const options = { 'assertion-roots': '[]', 'guard-roots': 'check', exclude: '[]' };
-		expect(written({ options })).toBe(['[tool.stanza]', 'assertion-roots = []', 'exclude = []', 'guard-roots = ["check"]', ''].join('\n'));
+		const options = { 'assertion-roots': '[]', 'guard-roots': 'check' };
+		expect(written({ options })).toBe(['[tool.stanza]', 'assertion-roots = []', 'guard-roots = ["check"]', ''].join('\n'));
+	});
+
+	it('writes no line for a list whose default is already empty', () => {
+		const options = { 'guard-roots': '[]', exclude: '[]', 'receiver-roots': '[]' };
+
+		expect(option('guard-roots').defaultValue).toBeNull();
+		expect(written({ options })).toBe('[tool.stanza]\n');
+		expect(pyprojectOptionLines(option('guard-roots'), { ...emptyConfig('error'), options })).toEqual([]);
 	});
 });

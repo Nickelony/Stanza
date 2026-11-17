@@ -1,4 +1,13 @@
-import { hasExplicitPairSetting, isOptionChanged, listItems, replacedBy, ruleStateIn, type Config, type EffectiveState } from '../state/config.ts';
+import {
+	hasExplicitPairSetting,
+	isDefaultValue,
+	isOptionChanged,
+	listItems,
+	replacedBy,
+	ruleStateIn,
+	type Config,
+	type EffectiveState,
+} from '../state/config.ts';
 import { enabledAt } from '../state/levels.ts';
 import { optionId, type Catalog, type Option, type Rule } from '../state/model.ts';
 
@@ -48,7 +57,7 @@ function ruleEntry<S>(catalog: Catalog<S>, rule: Rule<S>, config: Config): strin
 /** The entry of `settings.stanza` for an option the rules share, or `null` while it is at its default. */
 function settingEntry<S>(option: Option<S>, config: Config): string | null {
 	const value = config.options[optionId(option)];
-	return value === undefined || value === option.defaultValue ? null : `${option.key}: ${literal(option, value)},`;
+	return value === undefined || isDefaultValue(option, value) ? null : `${option.key}: ${literal(option, value)},`;
 }
 
 /** The entries the configuration writes for a rule: its own, and none for a rule the preset gives as written. */

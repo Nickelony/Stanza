@@ -1,4 +1,4 @@
-import { listItems, ruleDeltaIn, type Config } from '../state/config.ts';
+import { isDefaultValue, listItems, ruleDeltaIn, type Config } from '../state/config.ts';
 import { defaultLevel } from '../state/levels.ts';
 import { optionId, type Catalog, type Option, type Rule } from '../state/model.ts';
 
@@ -36,7 +36,7 @@ function ruleChanges<S>(catalog: Catalog<S>, config: Config): { enable: string[]
 /** The line of a key the visitor changed, or `null` while it is at its default. */
 function optionLine<S>(option: Option<S>, config: Config): string | null {
 	const value = config.options[optionId(option)];
-	return value === undefined || value === option.defaultValue ? null : `${option.key} = ${literal(option, value)}`;
+	return value === undefined || isDefaultValue(option, value) ? null : `${option.key} = ${literal(option, value)}`;
 }
 
 /** The lines the configuration writes for a rule: the list it joins, with every code in it. */

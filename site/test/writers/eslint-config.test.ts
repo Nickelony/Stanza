@@ -330,6 +330,12 @@ describe('an explicit empty list in the eslint.config.mjs', () => {
 		expect(text).toContain('\t\tsettings: {\n\t\t\tstanza: {\n\t\t\t\tassertionRoots: [],\n\t\t\t},\n\t\t},');
 	});
 
+	it('writes no entry for a list whose default is already empty', () => {
+		expect(option('receiverRoots').defaultValue).toBeNull();
+		expect(eslintOptionLines(realJavascript, option('receiverRoots'), configFor({ options: { receiverRoots: '[]' } }))).toEqual([]);
+		expect(written({ options: { receiverRoots: '[]' } })).not.toContain('receiverRoots');
+	});
+
 	it('writes it for an option beside a list of names', () => {
 		const text = written({ options: { assertionRoots: '[]', testRoots: 'describe, it' } });
 

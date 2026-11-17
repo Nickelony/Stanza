@@ -243,11 +243,15 @@ describe('an explicit empty list', () => {
 		expect(checkOption(pythonRoots, ' , ')).toEqual({ ok: true, value: null });
 	});
 
-	it('counts as a change from a default that lists names, and from one that lists none', () => {
+	it('counts as a change from a default that lists names, and as the default of a list whose default is empty', () => {
 		const none = realPython.options.find((candidate) => candidate.key === 'guard-roots')!;
+		const noneScript = realJavascript.options.find((candidate) => candidate.key === 'receiverRoots')!;
 
+		expect(none.defaultValue).toBeNull();
 		expect(isOptionChanged(pythonRoots, { ...emptyConfig(), options: { 'assertion-roots': '[]' } })).toBe(true);
-		expect(isOptionChanged(none, { ...emptyConfig(), options: { 'guard-roots': '[]' } })).toBe(true);
+		expect(isOptionChanged(none, { ...emptyConfig(), options: { 'guard-roots': '[]' } })).toBe(false);
+		expect(isOptionChanged(noneScript, { ...emptyConfig(), options: { receiverRoots: '[]' } })).toBe(false);
+		expect(isOptionChanged(none, { ...emptyConfig(), options: { 'guard-roots': 'check' } })).toBe(true);
 	});
 
 	it('is no empty list of a C# option, whose readers have the word none for it', () => {

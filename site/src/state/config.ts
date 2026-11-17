@@ -282,9 +282,20 @@ export function defaultIn<S>(option: Option<S>, context: Context): string | null
 	return context === 'analyzer' ? option.defaultValue : (option.csharp?.markupDefaultValue ?? null);
 }
 
+/** Whether the value is what the tool for the context uses when no line sets the key; `[]` is the default of a list whose default is empty. */
+function isDefaultIn<S>(option: Option<S>, value: string, context: Context): boolean {
+	const fallback = defaultIn(option, context);
+	return value === fallback || (value === emptyList && takesEmptyList(option) && (fallback ?? '') === '');
+}
+
+/** Whether the value is the analyzer default of the option, so a line for it adds nothing; the writers of JS and Python leave such a line out. */
+export function isDefaultValue<S>(option: Option<S>, value: string): boolean {
+	return isDefaultIn(option, value, 'analyzer');
+}
+
 /** Whether a line for the key would change what the tool for the context does. */
 export function differsFromDefaultIn<S>(option: Option<S>, value: string | undefined, context: Context): boolean {
-	return value !== undefined && readsOption(option, context) && value !== defaultIn(option, context);
+	return value !== undefined && readsOption(option, context) && !isDefaultIn(option, value, context);
 }
 
 /** Whether a line for the key would change what either tool does. */
