@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -52,7 +53,7 @@ public sealed class RuleTestCoverageTests
 			source
 		);
 
-		RecordedRun run = HarnessRecord.Runs.Single(run => run.Result == result);
+		RecordedRun run = HarnessRecord.Runs.Single(run => run.Reads == result.Reads);
 
 		Assert.AreEqual(
 			new RecordedTest(nameof(RuleTestCoverageTests), nameof(TheRecordNamesTheRunningTest)),
@@ -65,6 +66,19 @@ public sealed class RuleTestCoverageTests
 		_ = result.FixedText;
 
 		Assert.IsTrue(run.WasRead, "A read by the test went unrecorded.");
+	}
+
+	[TestMethod]
+	public void TheRecordKeepsTheReadsOfARunAndNotItsResult()
+	{
+		(WeakReference result, ResultReads reads) = RecordARun();
+
+		GC.Collect();
+		GC.WaitForPendingFinalizers();
+		GC.Collect();
+
+		Assert.IsFalse(result.IsAlive, "The record holds the result of a run for the process.");
+		Assert.IsTrue(HarnessRecord.Runs.Any(run => run.Reads == reads), "The run went unrecorded.");
 	}
 
 	[TestMethod]
@@ -90,7 +104,7 @@ public sealed class RuleTestCoverageTests
 			)
 		);
 
-		RecordedRun run = HarnessRecord.Runs.Single(run => run.Result == result);
+		RecordedRun run = HarnessRecord.Runs.Single(run => run.Reads == result.Reads);
 
 		Assert.Contains(DiagnosticDescriptors.RemoveBracePadding.Id, run.Reported);
 		Assert.DoesNotContain(DiagnosticDescriptors.CollapseEmptyBlocks.Id, run.Reported);
@@ -161,7 +175,7 @@ public sealed class RuleTestCoverageTests
 			}
 		);
 
-		RecordedRun run = HarnessRecord.Runs.Single(run => run.Result == result);
+		RecordedRun run = HarnessRecord.Runs.Single(run => run.Reads == result.Reads);
 
 		Assert.IsEmpty(run.Rules);
 	}
@@ -279,7 +293,7 @@ public sealed class RuleTestCoverageTests
 	private static async Task<ImmutableHashSet<string>> DriveAsync(RunOptions options)
 	{
 		AnalyzerRunResult result = await RoslynTestHarness.ReportAsync("class C\n{\n}\n", options);
-		return HarnessRecord.Runs.Single(run => run.Result == result).Rules;
+		return HarnessRecord.Runs.Single(run => run.Reads == result.Reads).Rules;
 	}
 
 	[TestMethod]
@@ -558,7 +572,7 @@ public sealed class RuleTestCoverageTests
 		foreach (
 			IGrouping<RecordedTest, RecordedRun> test in judged
 				.Where(run =>
-					run.Result is { FixedTheSource: true, FixedTextWasRead: false }
+					run.Reads is { FixedTheSource: true, FixedTextWasRead: false }
 					&& !IsCrossCutting(run.Test, crossCutting)
 				)
 				.GroupBy(run => run.Test)
@@ -627,6 +641,24 @@ public sealed class RuleTestCoverageTests
 			);
 	}
 
+	// The result is out of reach once this returns, so the collection above can tell whether the record holds it.
+	[MethodImpl(MethodImplOptions.NoInlining)]
+	private static (WeakReference Result, ResultReads Reads) RecordARun()
+	{
+		AnalyzerRunResult result = new([], "fixed");
+
+		HarnessRecord.Add(
+			options: new RunOptions(Analyzers: []),
+			diagnostics: [],
+			result,
+			source: "source"
+		);
+
+		_ = result.FixedText;
+
+		return (new WeakReference(result), result.Reads);
+	}
+
 	private static RecordedRun Run(
 		string className,
 		string method,
@@ -646,7 +678,7 @@ public sealed class RuleTestCoverageTests
 			Test: new RecordedTest(Class: className, Method: method),
 			Rules: [rule],
 			Reported: reported ?? [rule],
-			Result: result
+			Reads: result.Reads
 		);
 	}
 

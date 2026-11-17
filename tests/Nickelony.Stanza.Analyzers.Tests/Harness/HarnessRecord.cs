@@ -54,7 +54,7 @@ internal static class HarnessRecord
 		result?.Track(source);
 
 		s_runs.Enqueue(
-			new RecordedRun(Test: test, Rules: rules, Reported: reported, Result: result)
+			new RecordedRun(Test: test, Rules: rules, Reported: reported, Reads: result?.Reads)
 		);
 	}
 
@@ -129,9 +129,9 @@ internal sealed record RecordedRun(
 	RecordedTest Test,
 	ImmutableHashSet<string> Rules,
 	ImmutableHashSet<string> Reported,
-	AnalyzerRunResult? Result
+	ResultReads? Reads
 )
 {
 	// A run that hands back only diagnostics is read by the test that asked for them.
-	public bool WasRead => Result?.WasRead ?? true;
+	public bool WasRead => Reads?.WasRead ?? true;
 }
