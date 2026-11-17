@@ -26,9 +26,9 @@ With CSharpier, run the commands of the [run order](https://github.com/Nickelony
 so each tool lays out what the one before it wrote.
 [Adopting the analyzers](https://github.com/Nickelony/Stanza/wiki/Adopting-the-analyzers) lists the steps in order.
 
-The rules of the Moderate level ship on as suggestions, which a build never reports, so no first build fails on them.
+The rules of the default level ship on as suggestions, which a build never reports, so no first build fails on them.
 Once the fixes have run, the `warning` severity makes a build enforce the level.
-The [presets page](https://github.com/Nickelony/Stanza/wiki/Presets) shows the MSBuild properties that pick the level, the formatter and the severity.
+The [presets page](https://github.com/Nickelony/Stanza/wiki/Presets) names the default level and shows the MSBuild properties that pick the level, the formatter and the severity.
 
 Next, read [Severity and enablement](#severity-and-enablement), [Presets](#presets) and [Configuration](#configuration), which follow the rule tables.
 [Disabling and silencing a rule](https://github.com/Nickelony/Stanza/wiki/Disabling-and-silencing-a-rule) covers a rule that does not fit,

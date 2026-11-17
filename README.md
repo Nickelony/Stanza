@@ -20,10 +20,10 @@ The second command applies the fixes of every analyzer in the project, the sugge
 The analyzer package is a development dependency:
 it ships analyzers and code fixes and adds nothing to the consuming project's output.
 
-A fresh install enables the Moderate level of rules as suggestions:
+A fresh install enables the default level of rules as suggestions:
 the IDE shows them and `dotnet format` fixes them, but a build reports nothing, so no build breaks.
 Once the fixes have run, the `warning` severity makes a build enforce the level.
-The [presets page](https://github.com/Nickelony/Stanza/wiki/Presets) shows the MSBuild properties that pick the level, the formatter and the severity.
+The [presets page](https://github.com/Nickelony/Stanza/wiki/Presets) names the default level and shows the MSBuild properties that pick the level, the formatter and the severity.
 
 The fixes add or remove blank lines between neighboring units, as [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-invocation-runs) does here:
 

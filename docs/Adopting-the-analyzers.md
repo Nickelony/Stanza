@@ -4,7 +4,7 @@ Adopting the analyzers in a codebase that already has code takes a few steps, an
 
 1. **Install the package.** Add the reference that the [analyzer readme](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Analyzers/README.md#installation) shows.
    The package starts at the default level and severity of the [presets page](https://github.com/Nickelony/Stanza/wiki/Presets),
-   which show as suggestions in the IDE and report nothing in a build, so `TreatWarningsAsErrors` can stay on.
+   so its rules show as suggestions in the IDE and report nothing in a build, and `TreatWarningsAsErrors` can stay on.
 2. **Run CSharpier once.** [Install CSharpier](https://csharpier.com/docs/Installation),
    then run `dotnet csharpier format .` once before the first fix, so the rules start from its layout.
    CSharpier is optional: `stanza-format --layout whitespace` or `--layout none` runs the fixes without it,
