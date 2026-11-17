@@ -26,7 +26,7 @@ public sealed partial class ConventionGuardTests
 		"""
 		Add Analyze Append Apply Arrange Break Build Can Cannot Carries Check Claims Close Collapse
 		Collect Compare Compile Conflicts Contains Copy Count Covers Create Crosses Declares
-		Describe Detect Discard Display End Ends Ensure Enumerate Equals Escape Evaluate Fail
+		Describe Detect Discard Display Dispose End Ends Ensure Enumerate Equals Escape Evaluate Fail
 		Fails Find Finish Fits Fix Flush Fold For Format From Get Has Holds Is Join Joins Keep
 		Keeps Lay Leaves Mark Matches Measure Merge Names Narrow Normalize Open Opens Order Owns
 		Pair Parse Peek Plan Pop Process Push Rank Read Record Remove Reorder Repeat Replace
