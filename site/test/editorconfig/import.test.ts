@@ -352,6 +352,42 @@ describe('an import that skips', () => {
 		expect(result.skipped[1]!.reason).toContain('1 Stanza line');
 	});
 
+	it('says a rule of the C# files is not read in a section of markup files only', () => {
+		const result = read('[*.xml]\ndotnet_diagnostic.ZA0018.severity = warning\ndotnet_diagnostic.ZA2001.severity = none\n');
+
+		expect(result.config.rules).toEqual({ ZA2001: 'none' });
+
+		expect(result.skipped.map((note) => [note.line, note.reason])).toEqual([
+			[2, 'ZA0018 is a rule for C# files, but this section covers only markup files, which it does not judge.'],
+		]);
+	});
+
+	it('says a C# rule in the section of the markup files is not judged there, on the page that has it', () => {
+		const result = importEditorConfig(realCatalog, '[*.xml]\ndotnet_diagnostic.ZA0018.severity = warning\n', emptyConfig());
+
+		expect(result.config.rules).toEqual({});
+		expect(result.skipped.map((note) => [note.line, note.text])).toEqual([[2, 'dotnet_diagnostic.ZA0018.severity = warning']]);
+		expect(result.skipped[0]!.reason).toMatch(/covers only markup files/);
+	});
+
+	it('says an option of the C# files is not read in a section of markup files only, and keeps one both tools read', () => {
+		const result = read('[*.xml]\nstanza_named_argument_match = require\nstanza_max_line_length = 120\n');
+
+		expect(result.config.options).toEqual({ stanza_max_line_length: '120' });
+
+		expect(result.skipped.map((note) => [note.line, note.reason])).toEqual([
+			[2, 'stanza_named_argument_match is an option for C# files, but this section covers only markup files, which do not read it.'],
+		]);
+	});
+
+	it('reads the same lines in a section that also covers C# files', () => {
+		const result = read('[*]\ndotnet_diagnostic.ZA0018.severity = warning\nstanza_named_argument_match = require\n');
+
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
+		expect(result.config.options).toEqual({ stanza_named_argument_match: 'require' });
+		expect(result.skipped).toEqual([]);
+	});
+
 	it('says nothing about a section it skips that holds no Stanza line', () => {
 		const result = read('[tests/**/*.cs]\nindent_style = tab\n[*.cs]\ndotnet_diagnostic.ZA0018.severity = warning\n');
 
@@ -475,8 +511,33 @@ describe('an import that cannot be read', () => {
 			expect(result.refused).toBeNull();
 			expect(result.config.rules).toEqual({});
 			expect(result.skipped).toHaveLength(1);
-			expect(result.skipped[0]!.reason).toMatch(/not a section/i);
+			expect(result.skipped[0]!.reason).toMatch(/more than 64 alternatives or 4096 characters/);
+			expect(result.skipped[0]!.reason).toContain('1 Stanza line');
+			expect(result.skipped[0]!.reason).not.toMatch(/not a section/i);
 		}
+	});
+
+	it('gives the header of a section that is too large its own reason, and the other section its old one', () => {
+		const alternatives = Array.from({ length: 64 }, (_, index) => `a${index}`).join(',');
+
+		const file = [
+			`[{${alternatives},*.cs}]`,
+			'stanza_max_line_length = 120',
+			'stanza_max_line_length = 130',
+			'[*.json]',
+			'stanza_max_line_length = 140',
+			'',
+		];
+
+		const result = read(file.join('\n'));
+
+		expect(result.skipped.map((note) => note.line)).toEqual([1, 4]);
+
+		expect(result.skipped[0]!.reason).toBe(
+			'Its header needs more than 64 alternatives or 4096 characters to expand, so its 2 Stanza lines are not read.',
+		);
+
+		expect(result.skipped[1]!.reason).toMatch(/^Not a section for all C# files or the markup files/);
 	});
 
 	it('survives a value that is not a string, as a script that calls it with the wrong thing would pass', () => {
@@ -518,6 +579,43 @@ describe('the expansion of the braces of a section header', () => {
 
 	it('does not throw on the input the review spread into a call', () => {
 		expect(() => expandBraces(`{{${'a,'.repeat(150000)}b},c}`)).not.toThrow();
+	});
+});
+
+describe('the expansion of a brace around a character class', () => {
+	it('keeps a comma in a class inside its alternative', () => {
+		expect(expandBraces('*.{c[,]s,xml}')!.sort()).toEqual(['*.c[,]s', '*.xml']);
+		expect(expandBraces('{[,],b}')!.sort()).toEqual(['[,]', 'b']);
+	});
+
+	it('keeps a brace in a class as a literal, the way the glob matcher of stanza-markup does', () => {
+		expect(expandBraces('{[}],b}')!.sort()).toEqual(['[}]', 'b']);
+		expect(expandBraces('{[{],b}.xml')!.sort()).toEqual(['[{].xml', 'b.xml']);
+	});
+
+	it('reads an unclosed bracket and an empty class as plain characters, which split as before', () => {
+		expect(expandBraces('{[,b}')!.sort()).toEqual(['[', 'b']);
+		expect(expandBraces('{[],b}')!.sort()).toEqual(['[]', 'b']);
+		expect(expandBraces('{[]],b}')!.sort()).toEqual(['[]]', 'b']);
+	});
+
+	it('does not close the brace with a bracket that closes after it', () => {
+		expect(expandBraces('{a,[b}]')).toEqual(['{a,[b}]']);
+	});
+
+	it('reads a comma in a class as part of the header, so a header that splits into `*.cs` only there is no C# section', () => {
+		const result = read('[{x[,*.cs,]y}]\nstanza_max_line_length = 120\n');
+
+		expect(result.config.options).toEqual({});
+		expect(result.skipped).toHaveLength(1);
+		expect(result.skipped[0]!.reason).toMatch(/^Not a section/);
+	});
+
+	it('reads the markup section of a header with a comma in a class as before', () => {
+		const result = read('[*.{c[,]s,xml}]\nstanza_markup_enabled = false\n');
+
+		expect(result.config.options).toEqual({ stanza_markup_enabled: 'false' });
+		expect(result.skipped).toEqual([]);
 	});
 });
 
@@ -601,6 +699,34 @@ describe('an import of a key the tool has no default for', () => {
 
 	it('reads the same value in the markup section as a change, because the tool has no default to match', () => {
 		expect(readScoped('[*.xml]\nstanza_markup_scope = all\n').config.options).toEqual({ stanza_markup_scope: 'all' });
+	});
+
+	const headers = [['[*]'], ['[*.{cs,xml}]'], ['[*.cs]', 'stanza_markup_scope = all', '[*.xml]']];
+
+	it.each(headers)('reads the analyzer default as a change when the markup section holds it too, as in %j', (...header) => {
+		const result = readScoped([...header, 'stanza_markup_scope = all', ''].join('\n'));
+
+		expect(result.config.options).toEqual({ stanza_markup_scope: 'all' });
+		expect(result.options).toBe(1);
+
+		const text = generateEditorConfig(scoped, result.config);
+
+		expect(text).toContain('stanza_markup_scope = all');
+		expect(readScoped(text).config.options).toEqual({ stanza_markup_scope: 'all' });
+	});
+
+	it.each(headers)('gives the same answer on the real Markup page, as in %j', (...header) => {
+		const config = importEditorConfig(realMarkup, [...header, 'stanza_markup_scope = all', ''].join('\n'), markupConfig({})).config;
+
+		expect(config.options).toEqual({ stanza_markup_scope: 'all' });
+		expect(importEditorConfig(realMarkup, generateEditorConfig(realMarkup, config), markupConfig({})).config.options).toEqual(config.options);
+	});
+
+	it('keeps the value of the C# section where the markup section holds another', () => {
+		const result = readScoped('[*.cs]\nstanza_markup_scope = all\n[*.xml]\nstanza_markup_scope = containers\n');
+
+		expect(result.config.options).toEqual({});
+		expect(result.skipped).toHaveLength(1);
 	});
 
 	it('holds a key only the tool reads against the tool default wherever its line stands', () => {

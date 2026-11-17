@@ -131,8 +131,9 @@ A default written as a quoted word makes a dropdown of the values that the code 
 
 A Python list whose items the code closes to a set of words, such as `named-argument-sources`, takes only those words,
 and the build fails the same way.
-A JS or Python list also takes `[]`, an explicit empty list that the form stores as `[]`, writes as a native empty array and keeps in the hash;
-a blank box resets the list to its default.
+
+A JS or Python list also takes `[]`, an explicit empty list that the form stores as `[]`, writes as a native empty array and keeps in the hash.
+A blank box resets the list to its default, and on a list whose default is empty, `[]` is that default and writes no line.
 A C# value cannot hold `:`, which the readers cut as a severity suffix.
 
 The effect cell of such a key names its values between backticks after its last colon,
@@ -299,7 +300,8 @@ except that explicit pair choices retain both overrides.
   The lines above the first section count as C#, as in a `.globalconfig`.
 - A glob can reach both tools, as `[*]` and `[*.{cs,xml}]` do,
   and then each line goes to the analyzer and, if `stanza-markup` reads it, to the tool too.
-- A header that needs more than 64 alternatives or 4096 characters to expand is not read as a glob, and its section is skipped.
+- A header that needs more than 64 alternatives or 4096 characters to expand is not read as a glob, and its section is skipped with a note.
+- A brace or a comma in a `[...]` class, or after a backslash, is a literal in a header, as in the glob matcher of `stanza-markup`.
 - The form holds one value for both tools, so where the markup section disagrees with the C# one, the C# value wins and a note says so.
 - A section for a path or another file type, such as `[tests/**/*.cs]`, is skipped, and one entry counts its Stanza lines.
 - A line is read as `stanza-markup` and Roslyn read it: `=` or `:` ends the key, and a trailing `#` or `;` comment is cut,
@@ -312,7 +314,10 @@ except that explicit pair choices retain both overrides.
 - A rule or key that the other of the two pages holds is skipped, and its note says to import the file there.
 - A rule set to `default` and an option set to its default stay at the default.
   A rule set to what the level gives does too, unless both halves of its pair are explicit.
-- A value in the C# section is held against the analyzer's default, so the `stanza_markup_scope = all` that **Every setting** writes is no change.
+- A value in the C# section alone is held against the analyzer's default,
+  so the `stanza_markup_scope = all` that **Every setting** writes is no change.
+  The same value in a markup section too, as in `[*]`, is a change, because the tool has no default for it.
+- In a section for markup files alone, a C# rule or key that `stanza-markup` does not read is skipped, and its note says so.
 
 ## Conflict warnings
 
