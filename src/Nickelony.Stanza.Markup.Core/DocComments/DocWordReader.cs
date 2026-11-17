@@ -73,7 +73,16 @@ internal sealed class DocWordReader
 
 	public void AddWord(List<DocAtom> atoms, string text)
 	{
-		atoms.Add(new DocAtom(text, Attached));
+		// An atom of opening marks alone binds to the word after it, an element included, so no line break comes between them.
+		if (atoms.Count > 0 && DocFill.EndsOnOpeningMarks(atoms, open: null))
+		{
+			DocAtom last = atoms[atoms.Count - 1];
+			atoms[atoms.Count - 1] = new DocAtom(last.Text + (Attached ? string.Empty : " ") + text, last.IsGlued);
+		}
+		else
+		{
+			atoms.Add(new DocAtom(text, Attached));
+		}
 
 		Attached = true;
 		LineBreaks = 0;

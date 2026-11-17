@@ -137,6 +137,36 @@ public sealed class DocFillTests
 		}
 	}
 
+	[TestMethod]
+	public void NoLineBreakComesBetweenALoneOpeningMarkAndAnElementAfterIt()
+	{
+		for (int width = 5; width <= 60; width++)
+		{
+			DocWordReader reader = new();
+			List<DocAtom> atoms = [];
+
+			Assert.IsTrue(reader.TryRead("alpha beta ( ", () => atoms, _ => true));
+			reader.AddWord(atoms, "<see cref=\"M\"/>");
+			Assert.IsTrue(reader.TryRead(" ) gamma [ ", () => atoms, _ => true));
+			reader.AddWord(atoms, "<c>x</c>");
+
+			DocLayoutOptions layout = MarkupFormatFixtures.ReprintLayout(contentWidth: width) with
+			{
+				MinTailWords = 0,
+				MinLineWords = 1,
+				MaxOverflowColumns = 0,
+			};
+
+			List<string> lines = DocFill.LayOut(atoms, layout);
+
+			for (int index = 0; index < lines.Count - 1; index++)
+			{
+				string[] words = lines[index].Split(' ');
+				Assert.IsFalse(words[^1] is "(" or "[", $"Width {width} ends a line on an opening mark: {string.Join("|", lines)}");
+			}
+		}
+	}
+
 	private static string Fill(
 		string text,
 		int width,

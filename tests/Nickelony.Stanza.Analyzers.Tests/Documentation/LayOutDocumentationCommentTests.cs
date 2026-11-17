@@ -535,6 +535,41 @@ public sealed partial class LayOutDocumentationCommentTests
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
+	// An opening mark that stands alone binds to the element after it, as it does to a word, so no line ends on the mark.
+	[TestMethod]
+	public async Task NoLineEndsOnALoneOpeningMarkBeforeAnElement()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				/// <summary>bbbbbbbbbbbbbbbbbbbb ( <see cref="M"/> ) and then</summary>
+				internal int Bind()
+				{
+					return 1;
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<LayOutDocumentationCommentAnalyzer>(
+				source,
+				TestRuleSets.Only(DiagnosticDescriptors.LayOutDocumentationComment),
+
+				analyzerConfigOptions: new Dictionary<string, string>
+				{
+					["stanza_doc_max_line_length"] = "40",
+				}
+			);
+
+		foreach (string line in result.FixedText.Split('\n'))
+		{
+			Assert.IsFalse(
+				line.TrimEnd().EndsWith(" (", StringComparison.Ordinal),
+				$"A line ends on an opening mark: {line}"
+			);
+		}
+	}
+
 	// A mark the prose names may also go in a code span, which is one word and keeps its marks and spaces.
 	[TestMethod]
 	public async Task AMarkNamedInACodeSpanKeepsItsSpace()

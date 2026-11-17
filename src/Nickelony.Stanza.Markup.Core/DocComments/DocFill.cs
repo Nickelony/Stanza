@@ -135,7 +135,7 @@ internal static class DocFill
 	}
 
 	/// <summary>Whether the last atom holds opening marks alone, which the next word binds to.</summary>
-	private static bool EndsOnOpeningMarks(List<DocAtom> atoms, StringBuilder? open)
+	public static bool EndsOnOpeningMarks(List<DocAtom> atoms, StringBuilder? open)
 	{
 		// A builder starts from the text of that atom and grows by joins, so the chain holds opening marks alone
 		// while the atom opens with one and the last word joined is one, which is read from the end of the builder.

@@ -469,6 +469,22 @@ public sealed class MarkupReprintTests
 		Assert.IsTrue(lines.All(line => TextColumns.GetColumns(line.Trim(), tabColumns: 4) <= 50), "A line is wider than the width in columns.");
 	}
 
+	// An opening mark that stands alone binds to the element after it, as it does to a word, so no line ends on the mark.
+	[TestMethod]
+	public void NoLineEndsOnALoneOpeningMarkBeforeAnElement()
+	{
+		for (int width = 12; width <= 60; width++)
+		{
+			string text = FormatReprint(
+				Member("<summary>bbbbbbbbbbbbbbbbbbbb ( <see cref=\"M\"/> ) and then</summary>"),
+				contentWidth: width
+			).Text;
+
+			foreach (string line in text.Split('\n'))
+				Assert.IsFalse(line.TrimEnd().EndsWith(" (", StringComparison.Ordinal), $"Width {width} ends a line on an opening mark: {line}");
+		}
+	}
+
 	[TestMethod]
 	public void ALoneMarkIsNeverLeftAloneOnALineAtANarrowWidth()
 	{
