@@ -44,7 +44,7 @@ def indent_width(self, number: int) -> int:
   The blank line below the docstring stays as written.
 - A single-line function docstring above one statement loses its blank line, as pydocstyle `D202` asks.
 - No rule that adds a blank line asks for the gap, whether this rule is on or off.
-  While it is off, only the relationship keepers `ZA3057` to `ZA3064` may remove the blank line.
+  While it is off, only the keep rules `ZA3057` to `ZA3064` may remove the blank line.
 
 ## C# counterpart
 

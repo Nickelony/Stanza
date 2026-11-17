@@ -29,7 +29,7 @@ async def read():
   A class body is outside the rule.
 - A blank line between two tight sections stays as written.
   One finding removes every other blank line of the chain, so one fix and a fix of every finding agree.
-- A blank line another rule asks for inside the chain moves above it, as the [rule map](../Rule-map.md#separation-a-keeper-displaces) says.
+- A blank line another rule asks for inside the chain moves above it, as the [rule map](../Rule-map.md#separation-a-keep-rule-displaces) says.
   The rule asks for no blank line around the chain.
 
 ## C# counterpart

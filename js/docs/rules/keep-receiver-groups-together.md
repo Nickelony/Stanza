@@ -23,7 +23,7 @@ The [invocation settings](separate-invocation-runs.md#settings) define selection
   and test calls keep their own roles. Declarations and bare-local assignments remain outside.
 - Authored sections of multiple tight operations keep their separating blank line. Gaps between isolated
   operations can join.
-- The keeper wins ordinary family edges inside its group.
+- The rule wins ordinary family edges inside its group.
 - A separation another rule asks for inside the kept group moves above the group, as the [rule map](../Rule-map.md#rules-that-keep-a-pair-together) says.
 - [Receiver separation](separate-receiver-groups.md) adds outer gaps independently. This rule alone demands none.
 - Initialization keeping retains its own eligibility and stanza-anchor conditions.

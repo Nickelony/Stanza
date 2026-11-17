@@ -33,7 +33,7 @@ object.child.save()
 - [`ZA3052`](ZA3052-gather-loose-statements.md) reads a gap of the group as tight, so no statement of the group joins a loose run.
 - A subscription call on the receiver, such as `db.changed.connect(handler)`, joins the group.
   A blank line that [`ZA3008`](ZA3008-separate-subscription-runs.md) or another rule asks for inside the group
-  moves above it, as the [rule map](../Rule-map.md#separation-a-keeper-displaces) says.
+  moves above it, as the [rule map](../Rule-map.md#separation-a-keep-rule-displaces) says.
 - The rule asks for no blank line around the group. [`ZA3010`](ZA3010-separate-receiver-groups.md) adds those,
   and both can be enabled.
 
@@ -42,7 +42,7 @@ object.child.save()
 | Key | Default | Effect |
 | --- | --- | --- |
 | `receiver-roots` | `[]` | Patterns selecting direct receivers; empty selects nothing and `"*"` selects all. |
-| `receiver-comparison` | `"root"` | Compare the first meaningful root, or the full owner `path`. |
+| `receiver-comparison` | `"root"` | Compare the first name of the owner, or the full owner `path`. |
 
 The [configuration page](../Configuration.md#receiver-groups) defines selector normalization and path comparison.
 

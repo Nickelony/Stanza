@@ -52,7 +52,7 @@ function ship(id) {
 - The stanza borders end surrounding runs, while kept pairs win inside the stanza.
 - [`keep-two-units-together`](keep-two-units-together.md) owns a container of two single-line statements while that rule is enabled.
 - Enable [`keep-guard-clauses-together`](keep-guard-clauses-together.md) and [`keep-guard-with-binding`](keep-guard-with-binding.md)
-  to keep multi-line checks tight inside the stanza. With the matching binding keeper enabled,
+  to keep multi-line checks tight inside the stanza. With the matching binding keep rule enabled,
   the whole checked binding group stays tight even when each check reads a different binding.
 
 ## C# counterpart

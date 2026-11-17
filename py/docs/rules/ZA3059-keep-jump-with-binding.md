@@ -45,7 +45,7 @@ def describe(rule, container):
 - Where [`ZA3055`](ZA3055-keep-statement-runs-together.md)
   or [`ZA3061`](ZA3061-keep-dependent-bindings-together.md) joins the binding to the stanza above,
   the binding stands alone no more, and the jump stays apart.
-- A blank line another rule asks for inside the pair moves above it, as the [rule map](../Rule-map.md#separation-a-keeper-displaces) says.
+- A blank line another rule asks for inside the pair moves above it, as the [rule map](../Rule-map.md#separation-a-keep-rule-displaces) says.
 
 ## C# counterpart
 

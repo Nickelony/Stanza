@@ -17,7 +17,7 @@ The [shared analysis](Architecture.md#shared-analysis) reads each file once and 
 - The first enabled rule in the [owner order](Rule-map.md#one-owner-per-gap) that asks for a gap reports it, and the others stay silent.
 - A rule that is off asks for nothing, so the next rule that asks for the gap reports it.
 - `ZA3013` ends its stanza at a blank line or at a gap another rule asks for,
-  and reads through a blank line that a keeper removes in the same fix.
+  and reads through a blank line that a keep rule removes in the same fix.
 - A container of exactly two single-line units belongs to `ZA3054`, as the [next section](#two-single-line-units) says.
   A function docstring above them does not count as a unit.
 - A rule that keeps a pair apart wins a gap over the rules that write a blank line.
@@ -30,7 +30,7 @@ The [shared analysis](Architecture.md#shared-analysis) reads each file once and 
 The rules that add a blank line ask for nothing in such a container, whether `ZA3054` is on or off,
 so the two kinds of rule never meet.
 
-While `ZA3054` is off, the relationship keepers `ZA3057` to `ZA3064` judge the gap as they judge any other.
+While `ZA3054` is off, the keep rules `ZA3057` to `ZA3064` judge the gap as they judge any other.
 A function docstring is documentation and no step of the code, so it does not count as a unit.
 
 | Quirk | Decision |
@@ -167,7 +167,7 @@ A gap is joined, and the rules leave it as written, when a blank line would spli
 | Two declarations of different types | One run for `ZA3055` while `ZA3003` is off, and two runs while it is enabled. |
 | A blank line between two sections of a run | `ZA3055` and `ZA3056` keep it when each side holds at least two units tight against each other, and a lone unit between two sections is a section. |
 | A blank line between two sections of a group that `ZA3064` or `ZA3061` keeps | It ends the runs of the grouping rules, so `ZA3052` and `ZA3055` keep it too. |
-| A blank line that a relationship keeper removes, such as `ZA3058` or `ZA3064` | It reads as tight, so no unit of the kept group joins a loose run. |
+| A blank line that a keep rule removes, such as `ZA3058` or `ZA3064` | It reads as tight, so no unit of the kept group joins a loose run. |
 
 ## Calls
 

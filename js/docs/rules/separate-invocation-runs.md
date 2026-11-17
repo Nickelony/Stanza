@@ -38,7 +38,7 @@ Direct `this.save()` and `self.save()` calls have no concrete receiver and remai
 
 | Value | Identity |
 | --- | --- |
-| `root` | The first meaningful name: `this.db.items.add()` and `db.flush()` share `db`. |
+| `root` | The first name of the receiver path, after a leading `this`: `this.db.items.add()` and `db.flush()` share `db`. |
 | `path` | The full receiver: `object.call()` uses `object`, while `object.child.call()` uses `object.child`. |
 
 Comparison excludes the terminal method or assigned member. Selection and comparison are independent.

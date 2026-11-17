@@ -48,7 +48,7 @@ def test_start(client):
 - A comment between the two, a trailing comment included, keeps the blank line.
 - The rule wins the gap over the rules that write a blank line, such as
   [`ZA3002`](ZA3002-separate-declaration-runs.md), which reads a binding beside other bindings as a run.
-  That blank line moves above the binding, as the [rule map](../Rule-map.md#separation-a-keeper-displaces) says.
+  That blank line moves above the binding, as the [rule map](../Rule-map.md#separation-a-keep-rule-displaces) says.
 - The rule judges the gap above the assert only. The gap below it belongs to the other rules.
 
 ## C# counterpart

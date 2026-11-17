@@ -32,10 +32,10 @@ const stream = new MemoryStream(bytes);
 - Each report of a chain carries the fix that removes every eligible blank line of the chain,
   so applying that fix alone and applying a batch produce the same layout.
   Only the first report of a chain over 64 blank lines carries it.
-- The keeper owns inner gaps independently of ordinary declaration-kind grouping, and asks for no blank line around the chain.
+- The rule owns inner gaps independently of ordinary declaration-kind grouping, and asks for no blank line around the chain.
 - A separation another rule asks for inside the kept group moves above the group, as the [rule map](../Rule-map.md#rules-that-keep-a-pair-together) says.
 - [`keep-two-units-together`](keep-two-units-together.md) owns a container of two single-line statements while that rule is enabled.
-- Jump and initialization keeping cannot treat a last binding as lone when this keeper joins its upper gap.
+- Jump and initialization keeping cannot treat a last binding as lone when this rule joins its upper gap.
 
 ## C# counterpart
 

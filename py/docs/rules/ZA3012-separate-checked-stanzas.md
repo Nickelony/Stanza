@@ -49,7 +49,7 @@ is enabled to keep them together as the After shows.
   and [`ZA3019`](ZA3019-separate-import-section.md) the gap below an import, while they are enabled.
 - The rule judges the body of a function and of a compound statement such as `if`, `for` or `try`, at module level too.
   It leaves the statements of a module and of a class body alone.
-- When a keeper such as [`ZA3061`](ZA3061-keep-dependent-bindings-together.md) keeps the bindings above the stanza
+- When a keep rule such as [`ZA3061`](ZA3061-keep-dependent-bindings-together.md) keeps the bindings above the stanza
   together, the upper blank line goes above the whole kept group.
 - Enable the binding keep rules to remove blank lines inside the stanza.
 

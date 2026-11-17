@@ -49,7 +49,7 @@ async def read_customer(service, customer_id):
   as `ZA3011` does. It leaves the statements of a module and of a class body alone.
 - With [`ZA3057`](ZA3057-keep-guard-clauses-together.md), a chain of guards below the binding joins it too.
   The gap below the chain belongs to the other rules.
-- A blank line another rule asks for inside the group moves above it, as the [rule map](../Rule-map.md#separation-a-keeper-displaces) says.
+- A blank line another rule asks for inside the group moves above it, as the [rule map](../Rule-map.md#separation-a-keep-rule-displaces) says.
 
 ## C# counterpart
 

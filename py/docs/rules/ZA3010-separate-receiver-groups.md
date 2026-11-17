@@ -34,7 +34,7 @@ object.child.second()
 | Key | Default | Effect |
 | --- | --- | --- |
 | `receiver-roots` | `[]` | Patterns selecting direct receivers; empty selects nothing and `"*"` selects all. |
-| `receiver-comparison` | `"root"` | Compare the first meaningful root, or the full owner `path`. |
+| `receiver-comparison` | `"root"` | Compare the first name of the owner, or the full owner `path`. |
 
 The [configuration page](../Configuration.md#receiver-groups) defines selector normalization and path comparison.
 

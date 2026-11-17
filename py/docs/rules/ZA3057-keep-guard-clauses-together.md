@@ -44,7 +44,7 @@ def start(cart):
 - A comment between two guards, a trailing comment included, keeps the blank line, since it heads a guard of its own.
 - The rule wins the gaps inside the chain over the rules that write a blank line, such as
   [`ZA3001`](ZA3001-separate-multi-line-constructs.md), which separates every `if` that spans several lines.
-  Such a blank line moves above the chain, as the [rule map](../Rule-map.md#separation-a-keeper-displaces) says.
+  Such a blank line moves above the chain, as the [rule map](../Rule-map.md#separation-a-keep-rule-displaces) says.
 - The gaps above and below the chain belong to the other rules, so `ZA3011` still sets the guards that open a body
   apart from the statements below them.
 
