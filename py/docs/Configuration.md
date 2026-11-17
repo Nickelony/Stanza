@@ -152,9 +152,10 @@ stanza-py rules
 - A call finding takes its `# noqa` on the first line of the call's statement, on the line where the call starts or on the line of its `(`.
   `named-argument-ignore` takes a call away from both call rules, while a `# noqa` silences only the rule that owns the call.
 - `# ruff: noqa: ZA3001` and `# flake8: noqa` on a line of their own silence the named codes, or every code, for the file.
-- A silenced finding is not handed to another rule: the gap or the call stays as written.
-- A relationship keeper, `ZA3057` to `ZA3064`, hands its gaps on: a line `# noqa` leaves its gap judged as if it were off there.
-  A file-wide one turns it off, so the other rules judge the file as they do without it.
+- A rule that removes a blank line hands its gaps on, as a C# pragma does.
+  A line `# noqa` leaves its gap judged as if the rule were off there, so another rule may write or remove its blank line.
+- A file-wide `# noqa` that names such a rule turns it off, so the other rules judge the file as they do without it.
+- A silenced finding of a rule that adds a blank line or names a call is not handed on: the gap or the call stays as written.
 
 ## flake8 and pre-commit
 

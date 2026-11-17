@@ -276,6 +276,63 @@ def test_a_file_wide_noqa_on_a_keeper_is_the_keeper_turned_off(keeper: str) -> N
         assert fix(source, keeping).text == fix(source, off).text
 
 
+# A keeper that is no relationship rule, at a gap that another rule asks for once the keeper is off:
+# the rule that takes the gap over, the text with the keeper's gap tight, and the text with it written by that rule.
+HANDED_ON = {
+    "ZA3202": (
+        "ZA3201",
+        "if a:\n    x()\nelse:{noqa}\n    y()\n",
+        "if a:\n    x()\n\nelse:{noqa}\n    y()\n",
+    ),
+    "ZA3112": (
+        "ZA3111",
+        "match v:\n    case 1:\n        a()\n        b()\n    case 2:{noqa}\n        c()\n        d()\n",
+        "match v:\n    case 1:\n        a()\n        b()\n\n    case 2:{noqa}\n        c()\n        d()\n",
+    ),
+    "ZA3054": (
+        "ZA3060",
+        "def f():\n    value = get()\n\n    assert value is not None{noqa}\n",
+        "def f():\n    value = get()\n    assert value is not None{noqa}\n",
+    ),
+}
+
+
+@pytest.mark.parametrize("keeper", HANDED_ON)
+def test_a_noqa_on_a_pair_half_or_the_pair_hands_the_gap_to_the_next_rule(keeper: str) -> None:
+    taker, source, written = HANDED_ON[keeper]
+    silenced = source.replace("{noqa}", f"  # noqa: {keeper}")
+
+    assert written != source
+    assert fix_with(silenced, keeper, taker) == written.replace("{noqa}", f"  # noqa: {keeper}")
+
+
+@pytest.mark.parametrize("keeper", HANDED_ON)
+def test_a_file_wide_noqa_on_a_pair_half_or_the_pair_turns_it_off(keeper: str) -> None:
+    taker, source, written = HANDED_ON[keeper]
+    header = f"# ruff: noqa: {keeper}\n"
+
+    assert fix_with(header + source.replace("{noqa}", ""), keeper, taker) == header + written.replace("{noqa}", "")
+
+
+# A gap that only the keeper judges, blank, where the comment leaves it as written and the keeper alone would remove it.
+BLANK_GAPS = {
+    "ZA3203": "def f():\n\n    x = 1{noqa}\n    y = 2\n",
+    "ZA3113": "match v:\n    case 1: a()\n\n    case 2: b(){noqa}\n",
+    "ZA3112": "match v:\n    case 1:\n        a()\n        b()\n\n    case 2:{noqa}\n        c()\n        d()\n",
+    "ZA3054": "def f():\n    x = 1\n\n    y = 2{noqa}\n",
+    "ZA3202": "if a:\n    x()\n\nelse:{noqa}\n    y()\n",
+}
+
+
+@pytest.mark.parametrize("keeper", BLANK_GAPS)
+def test_a_noqa_on_an_older_keeper_over_a_blank_gap_leaves_it_as_written(keeper: str) -> None:
+    silenced = BLANK_GAPS[keeper].replace("{noqa}", f"  # noqa: {keeper}")
+    neutral = BLANK_GAPS[keeper].replace("{noqa}", "  # noqa: ZA0000")
+
+    assert fix_with(silenced, keeper) == silenced
+    assert fix_with(neutral, keeper) != neutral
+
+
 # A pair each keeper joins, of single-line statements so that each could read as a loose statement.
 LOOSE_PAIRS = {
     "ZA3057": ("if not a: return", "if not text: return"),
@@ -332,14 +389,13 @@ def test_a_binding_above_a_guard_chain_that_an_assert_opens_belongs_to_the_asser
             ["ZA3003"],
             '    c: str = "x"',
         ),
-        ("ZA3112", "match x:\n    case 1:\n        a()\n        b()\n    case 2:\n        c()\n", ["ZA3111"], None),
     ],
 )
-def test_a_file_wide_noqa_on_any_other_rule_silences_its_findings_and_hands_no_gap_on(
-    code: str, body: str, enable: list[str], written: str | None
+def test_a_file_wide_noqa_on_a_rule_that_adds_a_blank_line_silences_its_findings_and_hands_no_gap_on(
+    code: str, body: str, enable: list[str], written: str
 ) -> None:
     source = f"# ruff: noqa: {code}\n" + body
-    expected = source if written is None else source.replace(written, "\n" + written)
+    expected = source.replace(written, "\n" + written)
 
     assert fix(source, Config.create("strong", enable=[code, *enable])).text == expected
 

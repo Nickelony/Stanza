@@ -158,7 +158,7 @@ The first enabled rule of this list that asks for a gap reports it, and `ZA3054`
 - `ZA3054` `keep-two-units-together`, `ZA3202` `keep-clause-keywords-adjacent`,
   `ZA3112` `keep-multi-line-cases-together` and `ZA3113` `keep-single-line-cases-together` keep two units together.
   A gap they ask for is no gap a rule above may ask for, so the gap settles on the tight text.
-- The relationship keepers `ZA3060` `keep-assertion-with-binding`, `ZA3057` `keep-guard-clauses-together`,
+- The keep rules `ZA3060` `keep-assertion-with-binding`, `ZA3057` `keep-guard-clauses-together`,
   `ZA3059` `keep-jump-with-binding`, `ZA3058` `keep-guard-with-binding`, `ZA3063` `keep-accumulator-with-loop`,
   `ZA3062` `keep-initialization-with-calls`, `ZA3064` `keep-receiver-groups-together`
   and `ZA3061` `keep-dependent-bindings-together` keep a group of related statements together.
@@ -169,21 +169,21 @@ The first enabled rule of this list that asks for a gap reports it, and `ZA3054`
   `ZA3052` `gather-loose-statements` and `ZA3053` `gather-loose-members` keep a run.
   They yield every gap that a rule above asks for.
 
-### Separation a keeper displaces
+### Separation a keep rule displaces
 
-A relationship keeper wins a gap that a rule above asks to separate, and that blank line moves above the first unit
-of the kept group instead, so the group stays one stanza apart from the code above it.
+A keep rule among `ZA3057` to `ZA3064` wins a gap that a rule above asks to separate.
+That blank line moves above the first unit of the kept group instead, so the group stays one stanza apart from the code above it.
 
 - The blank line does not move when the group opens its body, when a comment stands in the gap above the group,
-  or when a formatter, another keeper, `ZA3055` or `ZA3056` holds that gap.
+  or when a formatter, another keep rule, `ZA3055` or `ZA3056` holds that gap.
 - `ZA3052` and `ZA3053` never gather across a blank line that moved,
-  and read a gap a keeper joins as tight, so no unit of a kept group is a loose unit.
-- A `# noqa` that silences the keeper at a gap, blank or tight, moves nothing and hands the gap on, as a C# pragma does.
-  The gap is judged as if the keeper were off, so another rule may write or remove its blank line.
+  and read a gap a keep rule joins as tight, so no unit of a kept group is a loose unit.
+- A `# noqa` that silences the keep rule at a gap, blank or tight, moves nothing and hands the gap on, as a C# pragma does.
+  The gap is judged as if the rule were off, so another rule may write or remove its blank line.
 - That `# noqa` trails the first line of the statement below the gap. On a single-line statement it is also a comment
   in the gap below, so no rule removes a blank line there.
-- A file-wide `# ruff: noqa` or `# flake8: noqa` that names a keeper turns the keeper off for the file.
-  One that names any other rule silences its findings and hands none of its gaps on, as a line `# noqa` does.
+- A file-wide `# ruff: noqa` or `# flake8: noqa` that names a rule that removes a blank line turns the rule off for the file.
+  One that names a rule that adds a blank line or a call rule silences its findings and hands none of its gaps on, as a line `# noqa` does.
 
 ## Pairs and their default halves
 
@@ -201,7 +201,7 @@ The default half owns the gap while `enable` names neither half, if the level ho
 - The default halves come from the levels: `ZA3202` from `minimal` and `ZA3111` from `moderate`, so the `none` level leaves both gaps to no rule.
 - `disable = ["ZA3111"]` leaves the gaps between two multi-line `case` clauses as written, and `ZA3112` and `ZA3113` keep judging theirs.
 - `check`, `fix`, `format` and the flake8 plugin report no conflict when both halves are enabled, because they apply the owner and say nothing else.
-- A line `# noqa` that silences the owner leaves the gap as written, and the other half does not take it over.
+- A line `# noqa` that silences the owner hands the gap on, so the other half judges it as if the owner were off.
 - `ZA3113` and `ZA3054` are in no pair: no separating rule asks for the gaps they judge.
 
 ## One owner per call

@@ -8,9 +8,10 @@ from collections.abc import Collection
 import pytest
 
 from nickelony_stanza import Config, Options, fix, lint
-from nickelony_stanza.analysis import session
 from nickelony_stanza.analysis.model import Container
-from nickelony_stanza.rules import ALL_RULES, TWO_UNIT_RULES
+from nickelony_stanza.analysis.source import SourceFile
+from nickelony_stanza.engine import find_findings
+from nickelony_stanza.rules import ALL_RULES, KEEP_ORDER, TWO_UNIT_RULES
 from tests.helpers import OPTION_VARIANTS, same_tree_ignoring_keyword_names
 
 STATEMENTS = [
@@ -138,31 +139,20 @@ def _mark(text: str, line_numbers: Collection[int], code: str) -> str:
     return "\n".join(lines)
 
 
-def _claimed_lines(monkeypatch: pytest.MonkeyPatch, text: str, config: Config, code: str) -> set[int]:
+def _claimed_lines(text: str, config: Config, code: str) -> set[int]:
     """Reads the first lines of the units below the gaps a rule asks for, blank or tight, in every container."""
-    claims: list[tuple[Container, dict[str, list[bool]]]] = []
-    own_gaps = session._own_gaps
+    lines: set[int] = set()
 
-    def recording(container: Container, judging: object, claimed: dict[str, list[bool]], owned: object) -> None:
-        claims.append((container, claimed))
-        own_gaps(container, judging, claimed, owned)  # type: ignore[arg-type]
+    def observe(container: Container, claimed: dict[str, list[bool]]) -> None:
+        lines.update(container.units[index + 1].first_line for index, flag in enumerate(claimed.get(code, ())) if flag)
 
-    monkeypatch.setattr(session, "_own_gaps", recording)
-    lint(text, config)
-    monkeypatch.undo()
+    find_findings(SourceFile(text), config, observer=observe)
 
-    return {
-        container.units[index + 1].first_line
-        for container, claimed in claims
-        for index, flag in enumerate(claimed.get(code, ()))
-        if flag
-    }
+    return lines
 
 
 @pytest.mark.parametrize("seed", range(150))
-def test_a_relationship_body_settles_and_a_noqa_on_each_gap_of_a_keeper_is_the_keeper_off(
-    seed: int, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_a_relationship_body_settles_and_a_noqa_on_each_gap_of_a_keeper_is_the_keeper_off(seed: int) -> None:
     text = _generate_related(seed)
     rng = random.Random(seed)
     chosen = [code for code in RELATIONSHIP_RULES if rng.random() < 0.5]
@@ -180,13 +170,13 @@ def test_a_relationship_body_settles_and_a_noqa_on_each_gap_of_a_keeper_is_the_k
     assert len(edited) == len(set(edited)), "two rules own one gap"
 
     # The keeper silenced is one that asks for a gap of the text: an enabled one first, else one enabled for this check.
-    keepers = [rule.code for rule in TWO_UNIT_RULES]
+    keepers = [rule.code for rule in KEEP_ORDER if rule.claim is not None]
     enabled = [code for code in keepers if code in chosen]
     others = [code for code in keepers if code not in chosen]
 
     for keeper in [*rng.sample(enabled, len(enabled)), *rng.sample(others, len(others))]:
         config = Config.create("strong", enable=[*chosen, keeper], options=options)
-        marked = _claimed_lines(monkeypatch, text, config, keeper)
+        marked = _claimed_lines(text, config, keeper)
 
         if marked:
             break
@@ -195,7 +185,7 @@ def test_a_relationship_body_settles_and_a_noqa_on_each_gap_of_a_keeper_is_the_k
 
     # A comment changes the gap below its line, so the keeper's gaps are read again until the comments add none.
     for _ in range(4):
-        more = _claimed_lines(monkeypatch, _mark(text, marked, "ZA0000"), config, keeper)
+        more = _claimed_lines(_mark(text, marked, "ZA0000"), config, keeper)
 
         if more <= marked:
             break

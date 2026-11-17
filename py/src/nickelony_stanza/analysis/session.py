@@ -136,6 +136,9 @@ def _asks(rule: Claimant, gap: Gap) -> bool:
     return not gap.is_joined and (gap.restriction is None or gap.restriction in rule.restrictions)
 
 
+# Reads the gaps each rule asks for in a container, by rule code, before they are given to owners.
+ClaimsObserver = Callable[[Container, dict[str, list[bool]]], None]
+
 # Tells whether a noqa comment silences the rule of a code at the gap of a container with the given index.
 Silenced = Callable[[str, Container, int], bool]
 
@@ -302,7 +305,7 @@ class _ClaimReader:
     def read_yielding(self, role: Role) -> None:
         """Asks the rules of a role that yields every gap a separating rule asks for."""
         for rule in (rule for rule in self.enabled if rule.role == role):
-            self.claimed[rule.code] = self.ask(rule, self.everything.__getitem__, self.memo)
+            self.claimed[rule.code] = self.hold(rule, self.ask(rule, self.everything.__getitem__, self.memo))
 
 
 def _read_claims(
@@ -383,6 +386,7 @@ def analyze(
     pair: Claimant | None,
     two_unit_rules: Sequence[Claimant],
     silenced: Silenced,
+    observer: ClaimsObserver | None = None,
 ) -> dict[str, list[OwnedGap]]:
     """
     Reads the file once and returns the gaps each rule owns, keyed by rule code.
@@ -390,7 +394,8 @@ def analyze(
     The enabled rules come in the order that decides which of them reports a gap several ask for,
     and `pair` is the rule that removes the blank line of a pair, or None while it is off.
     While it is off, the enabled `two_unit_rules` alone judge such a pair.
-    `silenced` tells where a `# noqa` silences a keeper, which then leaves the gap as if it were off there.
+    `silenced` tells where a `# noqa` silences a keeper or the pair, which then leaves the gap as if it were off there.
+    `observer` sees the claims of each container the enabled rules judge, so a test can read what a rule asks.
     """
     families = frozenset(rule.family for rule in enabled if rule.family is not None)
     codes = frozenset(rule.code for rule in enabled)
@@ -468,15 +473,22 @@ def analyze(
         if pair_index is not None:
             pair_gap = container.gaps[pair_index]
 
-            if pair is not None and pair_gap.is_blank and len(pair_gap.blank_lines) > 0:
-                owned.setdefault(pair.code, []).append(OwnedGap(container, pair_index))
+            # A pair that a noqa comment silences at its gap is off there, so the relationship rules judge it.
+            judge = None if pair is None or silenced(pair.code, container, pair_index) else pair
 
-            if pair is not None or not two_unit_rules:
+            if judge is not None and pair_gap.is_blank and len(pair_gap.blank_lines) > 0:
+                owned.setdefault(judge.code, []).append(OwnedGap(container, pair_index))
+
+            if judge is not None or not two_unit_rules:
                 continue
 
             judging = two_unit_rules
 
         claimed = _read_claims(container, judging, environment, runs, silenced)
+
+        if observer is not None:
+            observer(container, claimed)
+
         _own_gaps(container, judging, claimed, owned)
 
     return owned
