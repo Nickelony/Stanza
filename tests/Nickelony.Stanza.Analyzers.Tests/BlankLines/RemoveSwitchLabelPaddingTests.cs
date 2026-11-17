@@ -215,6 +215,37 @@ public sealed class RemoveSwitchLabelPaddingTests
 		Assert.IsEmpty(result.Diagnostics);
 	}
 
+	// Neither rule owns a blank line between a label and a suppression block: this one leaves a gap that holds a directive,
+	// and ZA0403 writes no blank line beside a switch label, so the line stays as written in every order of the fixes.
+	[TestMethod]
+	public async Task ABlankLineBetweenALabelAndASuppressionBlockStaysAsWritten()
+	{
+		string source = Switch(
+			"""
+			case 1:
+
+			#pragma warning disable CS0168
+				int unused;
+			#pragma warning restore CS0168
+
+				break;
+			"""
+		);
+
+		var options = new RunOptions(RoslynTestHarness.AllAnalyzers)
+		{
+			DiagnosticOptions = TestRuleSets.Only(
+				DiagnosticDescriptors.RemoveSwitchLabelPadding,
+				DiagnosticDescriptors.SeparateSuppressionBlock
+			),
+		};
+
+		AnalyzerRunResult reported = await RoslynTestHarness.ReportAsync(source, options);
+
+		Assert.IsEmpty(reported.Diagnostics);
+		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(expected: source, source, options);
+	}
+
 	[TestMethod]
 	public async Task ACasePatternAndAWhenClauseAreLabelsToo()
 	{

@@ -26,6 +26,7 @@ switch (kind)
 ```
 
 - Only whitespace is removed, and a directive in the [gap](https://github.com/Nickelony/Stanza/wiki/Terms) leaves it alone.
+  So a blank line between a label and a `#pragma warning disable` stays as written, and [`ZA0403`](https://github.com/Nickelony/Stanza/wiki/ZA0403-Separate-a-suppression-block) writes none beside a switch label either.
 - With a comment in the gap, the blank lines before the first comment go, and the ones between the comment and the statement stay.
 - The blank line between two sections is no padding of a label; [`ZA0111`](https://github.com/Nickelony/Stanza/wiki/ZA0111-Separate-multi-line-switch-sections) and [`ZA0113`](https://github.com/Nickelony/Stanza/wiki/ZA0113-Keep-single-line-switch-sections-together) own it.
 - A block that opens a section leaves its gap to [`ZA0203`](https://github.com/Nickelony/Stanza/wiki/ZA0203-Remove-brace-padding) where that rule is on, because the gap lies between a header and its `{`.
