@@ -121,6 +121,65 @@ public sealed class ShortenLongLineTests
 		Assert.HasCount(1, pastWidth.Diagnostics);
 	}
 
+	// A code point is written as its number, so no file holds the character itself.
+	private static string Text(params int[] codePoints) =>
+		string.Concat(codePoints.Select(char.ConvertFromUtf32));
+
+	[TestMethod]
+	public async Task AWideCharacterCountsTwoColumnsSoAShortLineOfUnitsCanRunPastTheWidth()
+	{
+		// 75 code units, as the pinned CSharpier counts them: 45 narrow ones and 30 ideographs of two columns, 105 in all.
+		string comment = "// " + new string('a', 42) + string.Concat(Enumerable.Repeat(Text(0x6771), 30));
+
+		Assert.AreEqual(75, comment.Length);
+
+		AnalyzerRunResult result = await ReportAsync(comment + "\n", width: null);
+
+		Assert.HasCount(1, result.Diagnostics);
+
+		// The overflow starts at column 100, where the 28th ideograph ends past it, so three ideographs are left.
+		Assert.AreEqual(Text(0x6771, 0x6771, 0x6771), LimitFixtures.Text(result.Diagnostics[0]));
+	}
+
+	[TestMethod]
+	public async Task ALineOfWideCharactersEndingAtTheWidthPasses()
+	{
+		AnalyzerRunResult atWidth = await ReportAsync(
+			"// " + string.Concat(Enumerable.Repeat(Text(0x6771), 18)) + "\n"
+		);
+
+		AnalyzerRunResult pastWidth = await ReportAsync(
+			"// " + string.Concat(Enumerable.Repeat(Text(0x6771), 19)) + "\n"
+		);
+
+		// Width 40 holds the marker, its space and 18 ideographs, 39 columns, and the 19th ends at column 41.
+		Assert.IsEmpty(atWidth.Diagnostics);
+		Assert.HasCount(1, pastWidth.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task ACombiningMarkAndAZeroWidthCharacterAddNoColumn()
+	{
+		// 18 columns in 60 code units: a letter, a combining accent, a zero width space and a joiner, over and over.
+		string comment = "// " + string.Concat(Enumerable.Repeat("a" + Text(0x0301, 0x200B, 0x200D), 14)) + "a";
+
+		AnalyzerRunResult result = await ReportAsync(comment + "\n");
+
+		Assert.IsGreaterThan(40, comment.Length);
+		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task ATabAfterWideCharactersReachesTheTabStopOfTheirColumns()
+	{
+		// The marker, its space and 18 ideographs end at column 39, so at a tab width of 8 the tab reaches column 40 and the letter ends at 41.
+		string source = string.Concat(Enumerable.Repeat(Text(0x6771), 18)) + "\ta\n";
+
+		AnalyzerRunResult result = await ReportAsync("// " + source, width: "40", tabWidth: "8");
+
+		Assert.HasCount(1, result.Diagnostics);
+	}
+
 	[TestMethod]
 	public async Task TheReportCoversTheLineFromTheFirstColumnPastTheWidthToItsEnd()
 	{

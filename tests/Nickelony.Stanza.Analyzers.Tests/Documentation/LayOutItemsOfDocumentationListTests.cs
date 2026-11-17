@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -12,6 +13,50 @@ public sealed class LayOutItemsOfDocumentationListTests
 {
 	private static IReadOnlyDictionary<string, ReportDiagnostic> ListRuleOnly { get; } =
 		TestRuleSets.Only(DiagnosticDescriptors.LayOutItemsOfDocumentationList);
+
+	// Each word is ten ideographs, so the item is 81 columns in code units and 111 by display columns, past the width of 100.
+	[TestMethod]
+	public async Task AWideCharacterCountsTwoColumnsAgainstTheWidthOfAnItem()
+	{
+		string word = string.Concat(Enumerable.Repeat(char.ConvertFromUtf32(0x6771), 10));
+		string words = string.Join(" ", word, word, word);
+
+		string source = $$"""
+			internal sealed class Sample
+			{
+				/// <list type="bullet">
+				/// <item><description>{{words}}</description></item>
+				/// </list>
+				internal int Bind() => 1;
+			}
+			""";
+
+		string fixedSource = $$"""
+			internal sealed class Sample
+			{
+				/// <list type="bullet">
+				/// <item>
+				/// <description>{{words}}</description>
+				/// </item>
+				/// </list>
+				internal int Bind() => 1;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<LayOutItemsOfDocumentationListAnalyzer>(
+				source,
+				ListRuleOnly,
+
+				analyzerConfigOptions: new Dictionary<string, string>
+				{
+					["stanza_doc_max_line_length"] = "100",
+				}
+			);
+
+		Assert.HasCount(1, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
 
 	// The layout rule leaves alone a comment whose closer shares its line with code, so this rule does not defer to it.
 	[TestMethod]

@@ -444,6 +444,20 @@ public sealed class MarkupReprintTests
 		Assert.DoesNotContain("don`t beta gamma delta", text);
 	}
 
+	// Each word is ten ideographs, so three of them are 32 code units and 62 display columns, past a width of 50.
+	[TestMethod]
+	public void AWideCharacterCountsTwoColumnsAgainstTheWidth()
+	{
+		string word = string.Concat(Enumerable.Repeat(char.ConvertFromUtf32(0x6771), 10));
+		string words = string.Join(" ", word, word, word);
+
+		string text = FormatReprint(Member("<summary>" + words + "</summary>"), contentWidth: 50).Text;
+		string[] lines = text.Split('\n').Where(line => line.Contains(word, StringComparison.Ordinal)).ToArray();
+
+		Assert.IsGreaterThan(1, lines.Length, "Three words of 62 columns fit no line of 50.");
+		Assert.IsTrue(lines.All(line => TextColumns.GetColumns(line.Trim(), tabColumns: 4) <= 50), "A line is wider than the width in columns.");
+	}
+
 	// A lone mark joins the word before it as a comma does, so only a code element or a span keeps it apart.
 	[TestMethod]
 	public void ALoneQuestionMarkOrColonJoinsTheWordBeforeItOutsideCode()

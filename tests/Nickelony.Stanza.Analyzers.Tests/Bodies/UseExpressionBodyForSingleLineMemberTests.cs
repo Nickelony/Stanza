@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -531,6 +532,46 @@ public sealed class UseExpressionBodyForSingleLineMemberTests
 			);
 
 		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	// A wide character counts two columns, so a member whose code units fit the width can still be too wide for two lines.
+	[TestMethod]
+	public async Task AWideCharacterInTheSignatureCountsTwoColumnsTowardTheWidth()
+	{
+		string wide = "a" + string.Concat(Enumerable.Repeat(char.ConvertFromUtf32(0x6771), 5));
+
+		AnalyzerRunResult narrow = await ReportNamedMemberAsync("abcdef");
+		AnalyzerRunResult wideName = await ReportNamedMemberAsync(wide);
+
+		Assert.AreEqual(wide.Length, "abcdef".Length);
+		Assert.HasCount(1, narrow.Diagnostics, "Both signatures with the arrow are 15 code units and the indentation, which fits the width of 19.");
+		Assert.IsEmpty(wideName.Diagnostics, "The ideographs make the signature with the arrow 24 columns wide.");
+	}
+
+	private static Task<AnalyzerRunResult> ReportNamedMemberAsync(string name)
+	{
+		string source = $$"""
+			class C
+			{
+				int {{name}}()
+				{
+					return _v;
+				}
+
+				private int _v;
+			}
+			""";
+
+		return RoslynTestHarness.RunAsync<UseExpressionBodyForSingleLineMemberAnalyzer>(
+			source,
+			TestRuleSets.Only(DiagnosticDescriptors.UseExpressionBodyForSingleLineMember),
+
+			analyzerConfigOptions: new Dictionary<string, string>
+			{
+				["stanza_max_line_length"] = "19",
+				["tab_width"] = "4",
+			}
+		);
 	}
 
 	[TestMethod]

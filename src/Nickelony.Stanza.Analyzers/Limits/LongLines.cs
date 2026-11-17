@@ -33,8 +33,8 @@ internal static class LongLines
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			// A tab takes up to the columns of a tab stop and every other character one, so a short enough line fits unread.
-			if ((long)line.Span.Length * Math.Max(tabColumns, 1) <= maxColumns)
+			// A tab takes up to the columns of a tab stop and every other code unit at most two, so a short enough line fits unread.
+			if ((long)line.Span.Length * Math.Max(tabColumns, TextColumns.MaxColumnsPerCharacter) <= maxColumns)
 				continue;
 
 			string text = sourceText.ToString(line.Span);
@@ -90,7 +90,7 @@ internal static class LongLines
 				or SyntaxKind.InterpolatedStringTextToken;
 	}
 
-	/// <summary>Whether a <c>scheme://</c> URL opens the run of non-space characters at the offset, and it ends the comment.</summary>
+	/// <summary>Whether a <c>scheme://</c> URL opens the non-space run at the offset and ends the comment.</summary>
 	private static bool IsInUrl(string lineText, int offset)
 	{
 		int start = offset;
@@ -120,7 +120,7 @@ internal static class LongLines
 		return true;
 	}
 
-	/// <summary>Whether a scheme of RFC 3986, a letter then letters, digits, plus, minus or dot, and then <c>://</c> open the run.</summary>
+	/// <summary>Whether a scheme of RFC 3986 and then <c>://</c> open the run, from the start up to the end.</summary>
 	private static bool StartsWithScheme(string text, int start, int end)
 	{
 		if (start >= end || !IsAsciiLetter(text[start]))
@@ -135,6 +135,5 @@ internal static class LongLines
 	}
 
 	private static bool IsAsciiLetter(char character) => character is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z');
-
 	private static bool IsSchemeCharacter(char character) => IsAsciiLetter(character) || character is (>= '0' and <= '9') or '+' or '-' or '.';
 }

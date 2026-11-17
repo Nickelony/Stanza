@@ -48,7 +48,12 @@ A `0` also turns the documentation layout off, unless [`stanza_doc_max_line_leng
 A line's indentation counts toward its width,
 and a tab reaches the next multiple of the file's `tab_width`, then its `indent_size`, then `4`.
 A tab after other text counts the columns left to the next stop, so at `4` a tab at column 3 ends at column 4.
-Every other character counts as one column per UTF-16 code unit, so an emoji counts 2 and a CJK character 1.
+Every other character counts the columns a terminal shows it in, by Unicode East Asian Width (UAX #11), as the formatter counts it:
+- A wide or fullwidth character, such as a CJK ideograph, a kana, a Hangul syllable or an emoji, counts 2, whatever its length in UTF-16 code units.
+- A combining mark, a variation selector and a zero width space, joiner or non-joiner count 0.
+  An emoji variation selector after a text-style symbol such as U+2764 makes that symbol 2.
+- Any other character, an ambiguous-width one included, counts 1.
+- The width table comes from Unicode 17.0.0.
 
 A member fits on one line when its whole line fits.
 The line is the indentation, the signature, the arrow with a space either side, and the expression with its semicolon.

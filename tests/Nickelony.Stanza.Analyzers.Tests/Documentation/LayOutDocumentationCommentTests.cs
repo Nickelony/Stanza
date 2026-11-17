@@ -2855,6 +2855,53 @@ public sealed partial class LayOutDocumentationCommentTests
 		Assert.IsEmpty(offResult.Diagnostics, "a comment whose width is zero is not laid out.");
 	}
 
+	// Each word is ten ideographs, which are twenty columns in ten code units, so the line is wider than it counts in units.
+	[TestMethod]
+	public async Task AWideCharacterCountsTwoColumnsAgainstTheDocumentationWidth()
+	{
+		string word = string.Concat(Enumerable.Repeat(char.ConvertFromUtf32(0x6771), 10));
+		string words = string.Join(" ", word, word, word);
+
+		// The summary line is 59 columns by code units, which fits a width of 80, and 89 by display columns, which does not.
+		string source = $$"""
+			internal sealed class Sample
+			{
+				/// <summary>{{words}}</summary>
+				internal int Bind()
+				{
+					return 1;
+				}
+			}
+			""";
+
+		string fixedSource = $$"""
+			internal sealed class Sample
+			{
+				/// <summary>
+				/// {{words}}
+				/// </summary>
+				internal int Bind()
+				{
+					return 1;
+				}
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<LayOutDocumentationCommentAnalyzer>(
+				source,
+				TestRuleSets.StandaloneRulesEnabled,
+
+				analyzerConfigOptions: new Dictionary<string, string>
+				{
+					["stanza_doc_max_line_length"] = "80",
+				}
+			);
+
+		Assert.HasCount(1, result.Diagnostics);
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
+	}
+
 	[TestMethod]
 	public async Task TheIndentAndMarkerOfACommentCountAgainstTheDocumentationWidth()
 	{
