@@ -69,7 +69,8 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
   because the wrapper may take other arguments.
 - A module that is missing, compiled, sourceless, unparsable or shadowed, or that a `.pyi` stub stands beside.
 - A class whose constructor or metaclass the rule does not model,
-  such as a dataclass or a named tuple whose body touches `__annotations__` or calls `exec`, `eval`, `vars` or `locals`.
+  such as a dataclass or a named tuple whose body touches `__annotations__` or reads `exec`, `eval`, `vars`, `locals` or `__builtins__`,
+  as a name, as an attribute or as a string given to `getattr`. A field or a string constant that spells one is no read.
 - A method that a class of the project which inherits it overrides.
 - A callee that a project module replaces with a test double, as in `lib.f = other`, `setattr(lib, "f", fake)`,
   `monkeypatch.setattr(lib, "f", fake)`, `monkeypatch.setattr("lib.f", fake)`, `mock.patch("lib.f")` or `mock.patch.object(C, "m")`,

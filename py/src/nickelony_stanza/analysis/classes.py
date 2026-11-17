@@ -311,34 +311,32 @@ def class_attribute_names(node: ast.ClassDef, is_dataclass: bool, origin_of: Ori
 # The names of the annotation mapping a class body could replace, as a name, an attribute or a string.
 _ANNOTATION_NAMES = frozenset({"__annotations__", "__annotate__", "__annotate_func__"})
 
-# The functions that hand out or run code in the namespace a class body fills, which a call of the name reaches.
-# A field may carry any of these names or hold them as a string, so only a call of the name counts.
-_NAMESPACE_CALLEES = frozenset({"locals", "vars", "exec", "eval"})
+# The functions that hand out or run code in the namespace a class body fills, and the table they come from.
+# A field may carry any of these names or hold them as a string, so only a read of the name counts, not a store.
+_NAMESPACE_FUNCTIONS = frozenset({"locals", "vars", "exec", "eval"})
+_NAMESPACE_NAMES = _NAMESPACE_FUNCTIONS | {"__builtins__"}
 
 
 def _reaches_namespace(node: ast.AST) -> bool:
     if isinstance(node, ast.Name):
-        return node.id in _ANNOTATION_NAMES
+        return node.id in _ANNOTATION_NAMES or (node.id in _NAMESPACE_NAMES and isinstance(node.ctx, ast.Load))
 
-    if isinstance(node, ast.Attribute) and node.attr in _ANNOTATION_NAMES:
-        return True
+    if isinstance(node, ast.Attribute):
+        return node.attr in _ANNOTATION_NAMES or (
+            isinstance(node.ctx, ast.Load) and (node.attr in _NAMESPACE_FUNCTIONS or node.attr == "__dict__")
+        )
 
     if isinstance(node, ast.Constant):
         return isinstance(node.value, str) and node.value in _ANNOTATION_NAMES
 
-    if not isinstance(node, ast.Call):
+    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name) or node.func.id != "getattr":
         return False
 
-    callee = node.func
-
-    if isinstance(callee, ast.Name):
-        return callee.id in _NAMESPACE_CALLEES
-
     return (
-        isinstance(callee, ast.Attribute)
-        and callee.attr in _NAMESPACE_CALLEES
-        and isinstance(callee.value, ast.Name)
-        and callee.value.id in {"builtins", "__builtins__"}
+        len(node.args) > 1
+        and isinstance(node.args[1], ast.Constant)
+        and isinstance(node.args[1].value, str)
+        and node.args[1].value in _NAMESPACE_FUNCTIONS
     )
 
 
