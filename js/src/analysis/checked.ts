@@ -2,6 +2,7 @@ import { isAssertion, readNarrowedTest } from './assertions.ts';
 import { narrowsAnyName, type ValueReferences } from './bindings.ts';
 import type { Environment } from './environment.ts';
 import { readAskingJumps } from './jumps.ts';
+import { guardKinds } from './kinds.ts';
 import { countLeadingGuards } from './leading.ts';
 import type { ClaimContext } from './session.ts';
 import { isGuard, isJump, readStatementCall } from './syntax.ts';
@@ -58,15 +59,18 @@ function readGeometry(container: Container, environment: Environment, references
 	const guardBindings = new Set<number>();
 	const assertionBindings = new Set<number>();
 
-	if (container.kind !== 'block') {
+	if (!guardKinds.has(container.kind)) {
 		return { stanzas, guardBindings, assertionBindings };
 	}
 
-	const checks = container.units.map((unit) => readCheck(unit, environment));
+	const checks = container.units.map((unit) => (unit.isShebang ? undefined : readCheck(unit, environment)));
 
 	const assertions = container.units.map((unit, index) => {
 		const call = readStatementCall(unit.node);
-		return !unit.isMultiLine && (checks[index] === 'assertion' || (typeof call === 'object' && isAssertion(unit.node, environment)));
+
+		return (
+			!unit.isMultiLine && !unit.isShebang && (checks[index] === 'assertion' || (typeof call === 'object' && isAssertion(unit.node, environment)))
+		);
 	});
 
 	for (let start = 0; start < assertions.length;) {
@@ -115,7 +119,8 @@ function readGeometry(container: Container, environment: Environment, references
 		let start = first;
 
 		while (start > 0 && container.gaps[start - 1]?.hasComment === false) {
-			const bindings = references.boundOf((container.units[start - 1] as Unit).node);
+			const above = container.units[start - 1] as Unit;
+			const bindings = above.isShebang ? new Set<object | string>() : references.boundOf(above.node);
 
 			if (bindings.size === 0 || ![...bindings].some((binding) => reads.has(binding))) {
 				break;
@@ -174,7 +179,7 @@ export function readCheckedEdges(container: Container, context: ClaimContext): R
 	const edges = new Set<number>();
 	const jumpEdges = new Set<number>();
 
-	if (container.kind !== 'block') {
+	if (!guardKinds.has(container.kind)) {
 		return edges;
 	}
 
@@ -186,7 +191,7 @@ export function readCheckedEdges(container: Container, context: ClaimContext): R
 		}
 
 		const next = container.units[stanza.lastCheck + 1];
-		const openingOwner = context.isEnabled('separate-guard-clauses') && stanza.lastCheck + 1 === leading;
+		const openingOwner = container.kind === 'block' && context.isEnabled('separate-guard-clauses') && stanza.lastCheck + 1 === leading;
 
 		if (!stanza.onlyAssertions && next !== undefined && !openingOwner) {
 			edges.add(stanza.lastCheck);

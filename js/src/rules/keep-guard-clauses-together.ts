@@ -1,3 +1,4 @@
+import { guardKinds } from '../analysis/kinds.ts';
 import { isGuard } from '../analysis/syntax.ts';
 import { createKeepRule } from '../createKeepRule.ts';
 
@@ -12,7 +13,7 @@ export default createKeepRule({
 		const { guardRoots } = context.environment;
 
 		if (
-			container.kind !== 'block' ||
+			!guardKinds.has(container.kind) ||
 			previous === undefined ||
 			next === undefined ||
 			(previous.isMultiLine && previous.node.type !== 'IfStatement') ||

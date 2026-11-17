@@ -30,11 +30,24 @@ createRuleTester().run('keep-guard-clauses-together', rule as never, {
 
 		{ code: lines('function f(a) {', '  if (!a) return;', '', '  run();', '  go();', '}') },
 		{ code: lines('function f(a) {', '  log(a);', '', '  if (!a) return;', '  go();', '}') },
-		{ code: lines('if (!a) throw error;', '', 'if (!b) throw error;', 'run();'), name: 'the top level of a file is not judged' },
 		{ code: lines('function f(a, b) {', '  check(a);', '', '  check(b);', '  run();', '}'), name: 'a call no guard root lists is no guard' },
 	],
 
 	invalid: [
+		{
+			code: lines('if (!a) throw error;', '', 'if (!b) throw error;', 'run();'),
+			output: lines('if (!a) throw error;', 'if (!b) throw error;', 'run();'),
+			errors: 1,
+			name: 'the top level of a file',
+		},
+
+		{
+			code: lines('switch (kind) {', '  case 1:', '    if (!a) break;', '', '    if (!b) break;', '    run();', '}'),
+			output: lines('switch (kind) {', '  case 1:', '    if (!a) break;', '    if (!b) break;', '    run();', '}'),
+			errors: 1,
+			name: 'a switch case',
+		},
+
 		{
 			code: lines('function f(a, b) {', '  run();', '  if (!a) return;', '', '  if (!b) return;', '  go();', '}'),
 			output: lines('function f(a, b) {', '  run();', '  if (!a) return;', '  if (!b) return;', '  go();', '}'),

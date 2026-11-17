@@ -63,11 +63,11 @@ function ship(order) {
   An `if` whose body holds two statements is no guard.
 - A helper call must fit on one line, while a multi-line `if` guard still joins the chain.
 - The returned value does not matter: a bare `return`, `return false` and a returned object are all jumps.
-- Two guards anywhere in a block are a chain, not only the guards that open it.
+- Two guards anywhere in a container are a chain, not only the guards that open it.
 - A comment between the two, a trailing comment included, keeps the blank line.
 - The rule wins the gaps it judges: [`separate-multi-line-constructs`](separate-multi-line-constructs.md) and the other rules that add a
   blank line ask for none of them, so a braced guard stays tight against the guard above it. The gap below the chain belongs to the other rules.
-- The rule judges the blocks of a file, as `separate-guard-clauses` does, and leaves a switch case and the top level of a file alone.
+- The rule judges blocks, the consequent of a switch case and the top level of a file, as the C# rule does.
 - A block of two single-line guards belongs to [`keep-two-units-together`](keep-two-units-together.md) while that
   rule is enabled; otherwise this rule judges it.
 - The rule is in no preset, because it removes blank lines an author wrote on purpose; enable it with an entry of its own.

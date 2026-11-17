@@ -54,11 +54,51 @@ createRuleTester().run('keep-guard-with-binding', rule as never, {
 			code: lines('function f(id) {', '  user.name = load(id);', '', '  if (!user) return;', '  run(user);', '}'),
 			name: 'a member target binds nothing',
 		},
-
-		{ code: lines('const user = load(id);', '', 'if (!user) throw error;', 'run(user);'), name: 'the top level of a file is not judged' },
 	],
 
 	invalid: [
+		{
+			code: lines('audit(id);', 'const user = load(id);', '', 'if (!user) throw error;', 'run(user);'),
+			output: lines('audit(id);', 'const user = load(id);', 'if (!user) throw error;', 'run(user);'),
+			errors: 1,
+			name: 'the top level of a file',
+		},
+
+		{
+			code: lines(
+				'switch (kind) {',
+				'  case 1:',
+				'    audit(id);',
+				'    const user = load(id);',
+				'',
+				'    if (!user) break;',
+				'    run(user);',
+				'    break;',
+				'}',
+			),
+
+			output: lines(
+				'switch (kind) {',
+				'  case 1:',
+				'    audit(id);',
+				'    const user = load(id);',
+				'    if (!user) break;',
+				'    run(user);',
+				'    break;',
+				'}',
+			),
+
+			errors: 1,
+			name: 'a switch case',
+		},
+
+		{
+			code: lines('#!/usr/bin/env node', '', 'const user = load(id);', '', 'if (!user) throw error;', 'run(user);'),
+			output: lines('#!/usr/bin/env node', '', 'const user = load(id);', 'if (!user) throw error;', 'run(user);'),
+			errors: 1,
+			name: 'a file with a shebang',
+		},
+
 		{
 			code: lines('function f(id) {', '  audit(id);', '  const user = load(id);', '', '  if (!user) throw new Error();', '  run(user);', '}'),
 			output: lines('function f(id) {', '  audit(id);', '  const user = load(id);', '  if (!user) throw new Error();', '  run(user);', '}'),

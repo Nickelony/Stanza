@@ -1,4 +1,5 @@
 import { isCheckedBindingGap } from '../analysis/checked.ts';
+import { guardKinds } from '../analysis/kinds.ts';
 import { isGuard } from '../analysis/syntax.ts';
 import { createKeepRule } from '../createKeepRule.ts';
 
@@ -15,7 +16,13 @@ export default createKeepRule({
 		const previous = container.units[gapIndex];
 		const next = container.units[gapIndex + 1];
 
-		if (container.kind !== 'block' || previous === undefined || next === undefined || container.gaps[gapIndex]?.hasComment !== false) {
+		if (
+			!guardKinds.has(container.kind) ||
+			previous === undefined ||
+			previous.isShebang ||
+			next === undefined ||
+			container.gaps[gapIndex]?.hasComment !== false
+		) {
 			return false;
 		}
 

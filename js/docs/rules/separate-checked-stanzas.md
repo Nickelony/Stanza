@@ -34,7 +34,7 @@ function ship(id) {
 }
 ```
 
-- A checked stanza contains a chain of guards anywhere in a block and the bindings directly above it whose names the checks read.
+- A checked stanza contains a chain of guards anywhere in a container and the bindings directly above it whose names the checks read.
   A binding the checks do not read stays above the stanza.
 - A read refers to the actual binding, closure captures included; a shadowing declaration and a write-only target do not count.
 - A guard is an `if` with no `else` whose body is a lone jump, or a call listed in `guardRoots`, even one that narrows its argument.
@@ -47,7 +47,8 @@ function ship(id) {
 - [`separate-guard-clauses`](separate-guard-clauses.md) owns the edge below an opening guard chain while enabled,
   except in a container of two single-line statements, which that rule never judges.
   [`separate-jump-statements`](separate-jump-statements.md) judges a jump below the chain.
-- The rule judges the blocks of a file and leaves a switch case and the top level of a file alone, where the C# rule judges them too.
+- The rule judges blocks, the consequent of a switch case and the top level of a file, as the C# rule does.
+  `separate-guard-clauses` judges blocks only, so this rule writes the blank line below the guards that open a switch case or a file.
 - The stanza borders end surrounding runs, while kept pairs win inside the stanza.
 - [`keep-two-units-together`](keep-two-units-together.md) owns a container of two single-line statements while that rule is enabled.
 - Enable [`keep-guard-clauses-together`](keep-guard-clauses-together.md) and [`keep-guard-with-binding`](keep-guard-with-binding.md)

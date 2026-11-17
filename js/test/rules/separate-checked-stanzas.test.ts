@@ -6,6 +6,61 @@ import { createConfig, fix, fixOneByOne, lines, readPresetRules, readSilencedRul
 const rule = { 'separate-checked-stanzas': 'error' } as const;
 
 describe('separate-checked-stanzas', () => {
+	it('sets a guard chain apart at the top level of a file', () => {
+		const code = lines('validate(order);', 'if (order.closed) throw error;', 'send(order);');
+		assert.equal(settled(code, rule), lines('validate(order);', '', 'if (order.closed) throw error;', '', 'send(order);'));
+	});
+
+	it('sets a guard chain apart in a switch case, and the bindings it reads with it', () => {
+		const code = lines(
+			'switch (kind) {',
+			'  case 1:',
+			'    validate(order);',
+			'    const user = load(order);',
+			'    if (!user) break;',
+			'    send(user);',
+			'    break;',
+			'}',
+		);
+
+		assert.equal(
+			settled(code, rule),
+
+			lines(
+				'switch (kind) {',
+				'  case 1:',
+				'    validate(order);',
+				'',
+				'    const user = load(order);',
+				'    if (!user) break;',
+				'',
+				'    send(user);',
+				'    break;',
+				'}',
+			),
+		);
+	});
+
+	it('leaves the gap below the guards that open a block to separate-guard-clauses, and writes the one below the guards that open a switch case', () => {
+		const block = lines('function f(a) {', '  if (!a) return;', '  run(a);', '  go(a);', '}');
+		const switchCase = lines('switch (kind) {', '  case 1:', '    if (!kind) break;', '    run(kind);', '    go(kind);', '}');
+
+		assert.equal(
+			stable(block, { ...rule, 'separate-guard-clauses': 'error' }),
+			lines('function f(a) {', '  if (!a) return;', '', '  run(a);', '  go(a);', '}'),
+		);
+
+		assert.equal(
+			stable(switchCase, rule),
+			lines('switch (kind) {', '  case 1:', '    if (!kind) break;', '', '    run(kind);', '    go(kind);', '}'),
+		);
+	});
+
+	it('reads a file with a shebang', () => {
+		const code = lines('#!/usr/bin/env node', 'const order = load();', 'if (!order) throw error;', 'send(order);');
+		assert.equal(stable(code, rule), lines('#!/usr/bin/env node', 'const order = load();', 'if (!order) throw error;', '', 'send(order);'));
+	});
+
 	it('sets a mid-block single-line guard chain apart on both sides', () => {
 		const code = lines(
 			'function ship(order) {',
