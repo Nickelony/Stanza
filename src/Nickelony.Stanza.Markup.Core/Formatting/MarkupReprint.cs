@@ -77,7 +77,7 @@ internal static class MarkupReprint
 		if (HoldsUnreadableText(raw))
 			return null;
 
-		DocLayoutOptions layout = reprintLayout.NarrowBy(reprintLayout.GetColumns(baseIndent));
+		DocLayoutOptions layout = reprintLayout.NarrowBy(TextColumns.GetColumns(baseIndent, reprintLayout.TabColumns));
 
 		// The body begins on the line its start tag closes on, which a tag broken across lines leaves apart from the one it opens on.
 		string lineEnding = sourceText.GetLineEnding(sourceText.GetLineFromOffset(start).LineIndex);

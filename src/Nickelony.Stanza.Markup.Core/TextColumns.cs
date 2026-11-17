@@ -14,34 +14,55 @@ internal static class TextColumns
 	/// <summary>The cap on columns, a quarter of <see cref="int.MaxValue"/>, so a sum of columns cannot wrap.</summary>
 	public const int MaxColumns = int.MaxValue / 4;
 
-	/// <summary>The most columns a code unit takes, a tab apart, which takes up to its tab stop.</summary>
+	/// <summary>The most columns a code unit takes, but for an indentation tab, which reaches its tab stop.</summary>
 	public const int MaxColumnsPerCharacter = 2;
 
 	/// <summary>The first code unit that may need the table, which is the first of its ranges.</summary>
 	private const char FirstTabledUnit = (char)0x1100;
 
-	/// <summary>The columns of a text, where a tab reaches the next tab stop from the start column.</summary>
-	public static int GetColumns(string text, int tabColumns, int startColumn = 0)
+	/// <summary>The columns of a text, where only a tab in the leading blanks reaches a tab stop.</summary>
+	/// <remarks>
+	/// Any other tab counts one column, and <paramref name="afterContent"/> says that text stands before this one.
+	/// </remarks>
+	public static int GetColumns(string text, int tabColumns, int startColumn = 0, bool afterContent = false)
 	{
 		long columns = startColumn;
+		bool inIndentation = !afterContent;
 
 		foreach (char character in text)
-			columns += GetColumnsOf(character, tabColumns, columns);
+		{
+			columns += GetColumnsOf(character, tabColumns, column: columns, inIndentation);
+			inIndentation = inIndentation && character is ' ' or '\t';
+		}
 
 		return (int)Math.Min(columns - startColumn, MaxColumns);
 	}
 
+	/// <summary>Whether a text holds a character other than a space or a tab.</summary>
+	public static bool HasContent(string text)
+	{
+		foreach (char character in text)
+		{
+			if (character is not (' ' or '\t'))
+				return true;
+		}
+
+		return false;
+	}
+
 	/// <summary>Finds the offset of the first character that ends past a column, or -1 when none does.</summary>
 	/// <remarks>
-	/// The text starts at column 0, and a surrogate pair that ends past the column is found at its high surrogate.
+	/// The text starts a line, and a surrogate pair that ends past the column is found at its high surrogate.
 	/// </remarks>
 	public static int FindOffsetPastColumn(string text, int tabColumns, int maxColumns)
 	{
 		long columns = 0;
+		bool inIndentation = true;
 
 		for (int offset = 0; offset < text.Length; offset++)
 		{
-			columns += GetColumnsOf(text[offset], tabColumns, columns);
+			columns += GetColumnsOf(character: text[offset], tabColumns, column: columns, inIndentation);
+			inIndentation = inIndentation && text[offset] is ' ' or '\t';
 
 			if (columns > maxColumns)
 				return offset > 0 && char.IsLowSurrogate(text[offset]) && char.IsHighSurrogate(text[offset - 1]) ? offset - 1 : offset;
@@ -50,9 +71,9 @@ internal static class TextColumns
 		return -1;
 	}
 
-	private static long GetColumnsOf(char character, int tabColumns, long column)
+	private static long GetColumnsOf(char character, int tabColumns, long column, bool inIndentation)
 	{
-		if (character == '\t')
+		if (character == '\t' && inIndentation)
 			return tabColumns > 0 ? tabColumns - (column % tabColumns) : tabColumns;
 
 		return character >= FirstTabledUnit && IsWide(character) ? 2 : 1;

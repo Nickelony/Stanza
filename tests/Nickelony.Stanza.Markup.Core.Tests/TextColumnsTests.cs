@@ -7,7 +7,7 @@ namespace Nickelony.Stanza.Markup.Core.Tests;
 public sealed class TextColumnsTests
 {
 	[TestMethod]
-	public void ATabCountsItsWidthAndAnEmojiOutsideTheBasicPlaneCountsTwo()
+	public void AnIndentationTabCountsItsWidthAndAnEmojiOutsideTheBasicPlaneCountsTwo()
 	{
 		// The emoji takes two code units, and each counts one.
 		Assert.AreEqual(4 + 1 + 2, TextColumns.GetColumns("\ta\U0001F600", tabColumns: 4));
@@ -89,25 +89,37 @@ public sealed class TextColumnsTests
 	public void TheColumnsOfTwoPartsAddUpToTheColumnsOfTheWholeAtAnySplit()
 	{
 		// StanzaText measures the text before a span and the span itself apart, so no split may change the sum.
-		string text = "a" + Text(0x1F600, 0x6771, 0x2705, 0xFE0F, 0x0301) + "\tb";
+		string text = "  a" + Text(0x1F600, 0x6771, 0x2705, 0xFE0F, 0x0301) + "\tb";
 
 		for (int split = 0; split <= text.Length; split++)
 		{
 			int before = TextColumns.GetColumns(text[..split], tabColumns: 4);
-			int after = TextColumns.GetColumns(text[split..], tabColumns: 4, startColumn: before);
+			int after = TextColumns.GetColumns(text: text[split..], tabColumns: 4, startColumn: before, afterContent: TextColumns.HasContent(text[..split]));
 
 			Assert.AreEqual(TextColumns.GetColumns(text, tabColumns: 4), before + after, $"The split at {split} changed the sum.");
 		}
 	}
 
 	[TestMethod]
-	public void ATabAfterWideCharactersReachesTheNextTabStopOfTheirColumns()
+	public void TheColumnsOfTwoPartsOfAnIndentationAddUpToTheColumnsOfTheWholeAtAnySplit()
 	{
-		// Two ideographs end at column 4, which is a stop, so the tab takes a whole step.
-		Assert.AreEqual(4 + 4, TextColumns.GetColumns(Text(0x6771, 0x4EAC, '\t'), tabColumns: 4));
+		// A tab reaches its stop from the column it starts at, in whichever part of the blanks it falls; the tab after `x` counts one.
+		string text = " \t  \tx\t";
 
-		// One ideograph ends at column 2, so the tab takes 2.
-		Assert.AreEqual(2 + 2 + 1, TextColumns.GetColumns(Text(0x6771, '\t', 'a'), tabColumns: 4));
+		for (int split = 0; split <= text.Length; split++)
+		{
+			int before = TextColumns.GetColumns(text[..split], tabColumns: 4);
+			int after = TextColumns.GetColumns(text: text[split..], tabColumns: 4, startColumn: before, afterContent: TextColumns.HasContent(text[..split]));
+
+			Assert.AreEqual(4 + 4 + 1 + 1, before + after, $"The split at {split} changed the sum.");
+		}
+	}
+
+	[TestMethod]
+	public void ATabAfterWideCharactersCountsOneColumn()
+	{
+		Assert.AreEqual(4 + 1, TextColumns.GetColumns(Text(0x6771, 0x4EAC, '\t'), tabColumns: 4));
+		Assert.AreEqual(2 + 1 + 1, TextColumns.GetColumns(Text(0x6771, '\t', 'a'), tabColumns: 4));
 	}
 
 	[TestMethod]
@@ -157,10 +169,36 @@ public sealed class TextColumnsTests
 	}
 
 	[TestMethod]
-	public void ATabReachesTheNextTabStopOfItsLine()
+	public void ATabInTheLeadingBlanksReachesTheNextTabStopOfItsLine()
 	{
-		Assert.AreEqual(2 + 2 + 1, TextColumns.GetColumns("ab\tc", tabColumns: 4));
-		Assert.AreEqual(1 + 1, TextColumns.GetColumns("\tc", tabColumns: 4, startColumn: 3));
+		Assert.AreEqual(4 + 4 + 1, TextColumns.GetColumns("\t\tc", tabColumns: 4));
+		Assert.AreEqual(1 + 2 + 1, TextColumns.GetColumns(" \tc", tabColumns: 4, startColumn: 1));
+		Assert.AreEqual(2 + 1, TextColumns.GetColumns("\tc", tabColumns: 4, startColumn: 2));
+	}
+
+	[TestMethod]
+	public void ATabPastTheFirstCharacterThatIsNotABlankCountsOneColumn()
+	{
+		Assert.AreEqual(2 + 1 + 1, TextColumns.GetColumns("ab\tc", tabColumns: 4));
+		Assert.AreEqual(4 + 1 + 1 + 1, TextColumns.GetColumns("\ta\tb", tabColumns: 4));
+		Assert.AreEqual(1 + 5 + 1, TextColumns.GetColumns("\"\t\t\t\t\t\"", tabColumns: 4), "A tab right after an opening quote counts one.");
+		Assert.AreEqual(3 + 5 + 1, TextColumns.GetColumns("// \t\t\t\t\tx", tabColumns: 4), "Tabs in a comment count one each.");
+	}
+
+	[TestMethod]
+	public void TextThatStandsAfterContentCountsEveryTabOne()
+	{
+		Assert.AreEqual(1 + 1, TextColumns.GetColumns(text: "\tc", tabColumns: 4, startColumn: 2, afterContent: true));
+		Assert.AreEqual(3, TextColumns.GetColumns(text: "\t\t\t", tabColumns: 4, startColumn: 8, afterContent: true));
+	}
+
+	[TestMethod]
+	public void OnlyASpaceAndATabAreBlank()
+	{
+		Assert.IsFalse(TextColumns.HasContent(""));
+		Assert.IsFalse(TextColumns.HasContent(" \t "));
+		Assert.IsTrue(TextColumns.HasContent(" \ta"));
+		Assert.IsTrue(TextColumns.HasContent(((char)0x0C).ToString()), "A form feed is not a space or a tab.");
 	}
 
 	[TestMethod]
@@ -170,16 +208,23 @@ public sealed class TextColumnsTests
 
 		Assert.AreEqual(4, TextColumns.FindOffsetPastColumn("abcde", tabColumns: 4, maxColumns: 4));
 
-		// The tab reaches column 8 from column 4, so the character after it is the first to end past 8.
+		// The tab reaches column 8 from column 2, so the character after it is the first to end past 8.
 		Assert.AreEqual(
-			5,
-			TextColumns.FindOffsetPastColumn("abcd\tef", tabColumns: 8, maxColumns: 8)
+			3,
+			TextColumns.FindOffsetPastColumn("  \tef", tabColumns: 8, maxColumns: 8)
 		);
 
 		Assert.AreEqual(
-			4,
-			TextColumns.FindOffsetPastColumn("abcd\tef", tabColumns: 8, maxColumns: 7)
+			2,
+			TextColumns.FindOffsetPastColumn("  \tef", tabColumns: 8, maxColumns: 7)
 		);
+	}
+
+	[TestMethod]
+	public void TheOffsetPastAColumnCountsATabAfterContentOneColumn()
+	{
+		Assert.AreEqual(-1, TextColumns.FindOffsetPastColumn("abcd\tef", tabColumns: 8, maxColumns: 7));
+		Assert.AreEqual(5, TextColumns.FindOffsetPastColumn("abcd\tef", tabColumns: 8, maxColumns: 5));
 	}
 
 	// 34 million tabs at the widest tab width the tool reads fit in a document, and their sum passes int.MaxValue.

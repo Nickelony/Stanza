@@ -25,7 +25,8 @@ internal readonly record struct DocLayoutOptions(
 	public const int DefaultMaxOverflowColumns = 4;
 	public const int DefaultIndentSize = 0;
 
-	public int GetColumns(string text) => TextColumns.GetColumns(text, TabColumns);
+	/// <summary>The columns of text past the indentation of its line, where a tab counts one.</summary>
+	public int GetColumns(string text) => TextColumns.GetColumns(text, TabColumns, afterContent: true);
 
 	private static readonly HashSet<string> s_alwaysBlockElements = new(StringComparer.Ordinal) { "remarks", "example", "para" };
 

@@ -3193,7 +3193,7 @@ public sealed partial class LayOutDocumentationCommentTests
 	}
 
 	[TestMethod]
-	public async Task ATabInsideAnAttributeValueIsCountedInColumns()
+	public async Task ATabInsideAnAttributeValueCountsOneColumn()
 	{
 		const string source = """
 			internal sealed class Sample
@@ -3206,11 +3206,34 @@ public sealed partial class LayOutDocumentationCommentTests
 			}
 			""";
 
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<LayOutDocumentationCommentAnalyzer>(
+				source,
+				TestRuleSets.StandaloneRulesEnabled
+			);
+
+		Assert.IsEmpty(result.Diagnostics, "The line is 100 columns wide, where a tab stop would make it 102.");
+	}
+
+	[TestMethod]
+	public async Task ATabInsideAnAttributeValueCountsOneColumnAndAColumnMoreBreaksTheLine()
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				/// <param name="a	b">Binds the options the section names and validates them at startup!!</param>
+				internal int Bind()
+				{
+					return 1;
+				}
+			}
+			""";
+
 		const string fixedSource = """
 			internal sealed class Sample
 			{
 				/// <param name="a	b">
-				/// Binds the options the section names and validates them at startup.
+				/// Binds the options the section names and validates them at startup!!
 				/// </param>
 				internal int Bind()
 				{

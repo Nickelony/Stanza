@@ -17,7 +17,7 @@ public sealed class ColumnCountGuardTests
 {
 	private const int PrintWidth = 100;
 
-	private const string Prefix = "\tpublic static string S() => \"";
+	private const string Declaration = "public static string S() => \"";
 	private const string Suffix = "\";";
 
 	// CSharpier 1.3.0 lists these ranges, first and last code unit of each, in CharacterSizeCalculator.CalculateWidth.
@@ -30,13 +30,13 @@ public sealed class ColumnCountGuardTests
 	[TestMethod]
 	public void CSharpierBreaksALineExactlyWhereTheColumnCountSaysItIsPastTheWidth()
 	{
-		List<(string Text, string Name)> rows = ReadRows();
+		List<(string Text, string Name, int Depth)> rows = ReadRows();
 		List<string> sources = [];
 
-		foreach ((string text, _) in rows)
+		foreach ((string text, _, int depth) in rows)
 		{
-			sources.Add(Member(text, PrintWidth));
-			sources.Add(Member(text, PrintWidth + 1));
+			sources.Add(Member(text, depth, PrintWidth));
+			sources.Add(Member(text, depth, PrintWidth + 1));
 		}
 
 		using TempDirectory directory = new(editorConfig: false);
@@ -68,7 +68,7 @@ public sealed class ColumnCountGuardTests
 	}
 
 	// Each row is three copies of one character, so that a count off by one for it moves the line across the width.
-	private static List<(string Text, string Name)> ReadRows()
+	private static List<(string Text, string Name, int Depth)> ReadRows()
 	{
 		SortedSet<int> units = [];
 
@@ -89,13 +89,21 @@ public sealed class ColumnCountGuardTests
 		foreach (int unit in new[] { 0x2705, 0x231A, 0x2764, 0xFE0F, 0x200B, 0x200D, 0x0301, 0x3099, 0xFF61 })
 			_ = units.Add(unit);
 
-		List<(string, string)> rows = [];
+		List<(string, string, int)> rows = [];
 
 		foreach (int unit in units.Where(IsPlainUnit))
-			rows.Add((new string((char)unit, 3), $"U+{unit:X4}"));
+			rows.Add((new string((char)unit, 3), $"U+{unit:X4}", 1));
 
 		foreach (int codePoint in new[] { 0x1F600, 0x20000, 0x1D400 })
-			rows.Add((string.Concat(Enumerable.Repeat(char.ConvertFromUtf32(codePoint), 3)), $"U+{codePoint:X}"));
+			rows.Add((string.Concat(Enumerable.Repeat(char.ConvertFromUtf32(codePoint), 3)), $"U+{codePoint:X}", 1));
+
+		// A tab counts to its stop in the indentation, and one column anywhere else, such as in a string.
+		foreach (int depth in new[] { 1, 2, 3 })
+		{
+			rows.Add(("\t", $"a tab in a string at depth {depth}", depth));
+			rows.Add(("\t\t\t\t\t", $"five tabs in a string at depth {depth}", depth));
+			rows.Add(("x\tx\tx\t", $"tabs between letters in a string at depth {depth}", depth));
+		}
 
 		return rows;
 	}
@@ -112,12 +120,18 @@ public sealed class ColumnCountGuardTests
 			);
 	}
 
-	private static string Member(string text, int columns)
+	// The member sits in classes nested to the depth, and CSharpier writes its indentation as tabs.
+	private static string Member(string text, int depth, int columns)
 	{
-		int fixedColumns = TextColumns.GetColumns(Prefix + text + Suffix, tabColumns: 4);
+		string line = new string('\t', depth) + Declaration;
+		int fixedColumns = TextColumns.GetColumns(line + text + Suffix, tabColumns: 4);
 		string padding = new('a', columns - fixedColumns);
+		int[] levels = [.. Enumerable.Range(0, depth - 1)];
 
-		return $"class C\n{{\n{Prefix}{padding}{text}{Suffix}\n}}\n";
+		string opening = string.Concat(levels.Select(level => $"{new string('\t', level + 1)}class D{level}\n{new string('\t', level + 1)}{{\n"));
+		string closing = string.Concat(Enumerable.Reverse(levels).Select(level => $"{new string('\t', level + 1)}}}\n"));
+
+		return $"class C\n{{\n{opening}{line}{padding}{text}{Suffix}\n{closing}}}\n";
 	}
 
 	// CSharpier writes a member that is too wide with its arrow at the end of the line and the expression below it.

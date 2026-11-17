@@ -171,14 +171,16 @@ public sealed class ShortenLongLineTests
 	}
 
 	[TestMethod]
-	public async Task ATabAfterWideCharactersReachesTheTabStopOfTheirColumns()
+	public async Task ATabAfterWideCharactersCountsOneColumn()
 	{
-		// The marker, its space and 18 ideographs end at column 39, so at a tab width of 8 the tab reaches column 40 and the letter ends at 41.
-		string source = string.Concat(Enumerable.Repeat(Text(0x6771), 18)) + "\ta\n";
+		// The marker, its space and 17 ideographs end at column 37, so the tab ends at 38 and the letter at 39, where a tab stop of 8 would put them at 40 and 41.
+		string source = string.Concat(Enumerable.Repeat(Text(0x6771), 17)) + "\ta\n";
 
-		AnalyzerRunResult result = await ReportAsync("// " + source, width: "40", tabWidth: "8");
+		AnalyzerRunResult fits = await ReportAsync("// " + source, width: "39", tabWidth: "8");
+		AnalyzerRunResult oneShort = await ReportAsync("// " + source, width: "38", tabWidth: "8");
 
-		Assert.HasCount(1, result.Diagnostics);
+		Assert.IsEmpty(fits.Diagnostics);
+		Assert.HasCount(1, oneShort.Diagnostics);
 	}
 
 	[TestMethod]
@@ -247,15 +249,27 @@ public sealed class ShortenLongLineTests
 	}
 
 	[TestMethod]
-	public async Task ATabAfterTextReachesTheNextTabStopAndTheOverflowStartsAfterIt()
+	public async Task ATabAfterTextCountsOneColumnAndTheOverflowStartsAfterIt()
 	{
-		// Four columns of text, a tab to column 8, then 14 letters: the width of 20 ends after the first 12 of them.
-		string source = "int " + "\t" + new string('a', 14) + ";\n";
+		// Four columns of text, a tab that counts one, then 16 letters: the width of 20 ends after the first 15 of them.
+		string source = "int " + "\t" + new string('a', 16) + ";\n";
 
 		AnalyzerRunResult result = await ReportAsync(source, width: "20", tabWidth: "8");
 
 		Assert.HasCount(1, result.Diagnostics);
-		Assert.AreEqual("aa;", LimitFixtures.Text(result.Diagnostics[0]));
+		Assert.AreEqual("a;", LimitFixtures.Text(result.Diagnostics[0]));
+	}
+
+	[TestMethod]
+	public async Task TabsInATrailingCommentCountOneColumnEach()
+	{
+		// The code and the marker take 9 columns and the five tabs 5, so six letters end at the width of 20, where a tab stop of 8 would pass it.
+		AnalyzerRunResult fits = await ReportAsync("int x; //" + new string('\t', 5) + "abcdef\n", width: "20", tabWidth: "8");
+		AnalyzerRunResult oneShort = await ReportAsync("int x; //" + new string('\t', 5) + "abcdefg\n", width: "20", tabWidth: "8");
+
+		Assert.IsEmpty(fits.Diagnostics);
+		Assert.HasCount(1, oneShort.Diagnostics);
+		Assert.AreEqual("g", LimitFixtures.Text(oneShort.Diagnostics[0]));
 	}
 
 	[TestMethod]

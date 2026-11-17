@@ -46,8 +46,9 @@ The tool and the analyzers resolve it the same way.
 A `0` also turns the documentation layout off, unless [`stanza_doc_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_doc_max_line_length) holds a width above zero.
 
 A line's indentation counts toward its width,
-and a tab reaches the next multiple of the file's `tab_width`, then its `indent_size`, then `4`.
-A tab after other text counts the columns left to the next stop, so at `4` a tab at column 3 ends at column 4.
+and a tab in the leading spaces and tabs reaches the next multiple of the file's `tab_width`, then its `indent_size`, then `4`.
+
+A tab after the first character that is not a space or a tab counts 1 column, as CSharpier counts a tab in a string.
 
 Every other character counts as CSharpier counts it.
 Each UTF-16 code unit counts 1, except that a CJK, Hangul or fullwidth one in CSharpier's table of wide characters counts 2.

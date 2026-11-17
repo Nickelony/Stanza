@@ -12,13 +12,18 @@ internal static class StanzaText
 	/// <summary>The columns of one indent step when neither <c>indent_size</c> nor <c>tab_width</c> is set.</summary>
 	public const int DefaultIndentStepColumns = 4;
 
-	/// <summary>The columns the span takes in its line, where each tab reaches the next tab stop.</summary>
+	/// <summary>The columns of a span in its line, where only a leading tab reaches a tab stop.</summary>
 	public static int GetColumns(SourceText sourceText, TextSpan span, int tabColumns)
 	{
 		TextLine line = sourceText.Lines.GetLineFromPosition(span.Start);
 		string before = sourceText.ToString(TextSpan.FromBounds(line.Start, span.Start));
 
-		return TextColumns.GetColumns(sourceText.ToString(span), tabColumns, startColumn: TextColumns.GetColumns(before, tabColumns));
+		return TextColumns.GetColumns(
+			text: sourceText.ToString(span),
+			tabColumns,
+			startColumn: TextColumns.GetColumns(before, tabColumns),
+			afterContent: TextColumns.HasContent(before)
+		);
 	}
 
 	public static string GetIndentation(SourceText sourceText, int position)

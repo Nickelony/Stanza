@@ -23,7 +23,7 @@ internal static class BodyWidth
 		// The arrow sits between the signature and the body with a space on each side.
 		int bodyStartColumn = linePrefixColumns + signatureColumns + ArrowColumns + 1;
 
-		return bodyStartColumn + TextColumns.GetColumns(bodyText, options.TabColumns, bodyStartColumn) <= options.MaxLineLength;
+		return bodyStartColumn + TextColumns.GetColumns(text: bodyText, tabColumns: options.TabColumns, startColumn: bodyStartColumn, afterContent: true) <= options.MaxLineLength;
 	}
 
 	/// <summary>Whether the signature and continuation lines fit; a bound below one skips the check.</summary>
@@ -43,7 +43,7 @@ internal static class BodyWidth
 		int bodyStartColumn = indentationColumns + continuationStepColumns + (placement == ArrowPlacement.Leading ? arrowColumns : 0);
 
 		return linePrefixColumns + signatureColumns + (placement == ArrowPlacement.Trailing ? arrowColumns : 0) <= maxLineLength
-			&& bodyStartColumn + TextColumns.GetColumns(bodyText, tabColumns, bodyStartColumn) <= maxLineLength;
+			&& bodyStartColumn + TextColumns.GetColumns(text: bodyText, tabColumns, startColumn: bodyStartColumn, afterContent: true) <= maxLineLength;
 	}
 
 	private static int GetLinePrefixColumns(SourceText sourceText, TextSpan signatureSpan, int tabColumns)

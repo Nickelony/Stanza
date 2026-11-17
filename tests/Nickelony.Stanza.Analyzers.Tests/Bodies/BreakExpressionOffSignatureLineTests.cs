@@ -64,19 +64,50 @@ public sealed class BreakExpressionOffSignatureLineTests
 		RoslynTestHarness.AssertFixedText(PickFixedSource, result);
 	}
 
-	// The tab after `int` ends at column 8, so the line is 29 columns wide and fits the limit of 30.
+	// The tab after `byte` counts one column, as CSharpier counts it, so the line is 30 columns wide and fits the limit of 30.
 	[TestMethod]
-	public async Task ATabInsideTheSignatureReachesTheNextTabStop()
+	public async Task ATabInsideTheSignatureCountsOneColumn()
 	{
-		const string source = "class C\n{\n\tint _value;\n\n\tint\tGetValue() => _value;\n}\n";
+		const string source = "class C\n{\n\tbyte _value;\n\n\tbyte\tGetValue() => _value;\n}\n";
 
-		AnalyzerRunResult result =
-			await RoslynTestHarness.RunAsync<BreakExpressionOffSignatureLineAnalyzer>(
-				source,
-				analyzerConfigOptions: Width(30)
-			);
+		AnalyzerRunResult fits = await RoslynTestHarness.ReportAsync<BreakExpressionOffSignatureLineAnalyzer>(
+			source,
+			analyzerConfigOptions: Width(30)
+		);
 
-		Assert.IsEmpty(result.Diagnostics);
+		AnalyzerRunResult oneShort = await RoslynTestHarness.ReportAsync<BreakExpressionOffSignatureLineAnalyzer>(
+			source,
+			analyzerConfigOptions: Width(29)
+		);
+
+		Assert.IsEmpty(fits.Diagnostics);
+		Assert.HasCount(1, oneShort.Diagnostics);
+	}
+
+	// The tabs of the string count one column each, as CSharpier counts them: the member is 4 + 31 + 36 + 2 = 73 columns wide.
+	// CSharpier joins it to one line, so a rule that counted each tab to its stop would fight the formatter in a loop.
+	[TestMethod]
+	public async Task ATabInsideTheBodyCountsOneColumn()
+	{
+		string source = $$"""
+			class C
+			{
+				public static string Tsv() => "{{string.Concat(Enumerable.Repeat("a\t", 18))}}";
+			}
+			""";
+
+		AnalyzerRunResult fits = await RoslynTestHarness.ReportAsync<BreakExpressionOffSignatureLineAnalyzer>(
+			source,
+			analyzerConfigOptions: Width(73)
+		);
+
+		AnalyzerRunResult oneShort = await RoslynTestHarness.ReportAsync<BreakExpressionOffSignatureLineAnalyzer>(
+			source,
+			analyzerConfigOptions: Width(72)
+		);
+
+		Assert.IsEmpty(fits.Diagnostics);
+		Assert.HasCount(1, oneShort.Diagnostics);
 	}
 
 	// A code point is written as its number, so no file holds the character itself.
