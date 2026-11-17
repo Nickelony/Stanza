@@ -27,7 +27,9 @@ internal sealed partial class CSharpierServer : IDisposable
 	private CSharpierServer(Process process, int port, CancellationToken cancellationToken)
 	{
 		_process = process;
-		_client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port}/") };
+
+		// The server is on this machine, so no proxy of the environment may carry the sources it is sent.
+		_client = new HttpClient(new SocketsHttpHandler { UseProxy = false }) { BaseAddress = new Uri($"http://127.0.0.1:{port}/") };
 		_cancellationToken = cancellationToken;
 
 		// A canceled run stops the server too, so no host outlives the tool.

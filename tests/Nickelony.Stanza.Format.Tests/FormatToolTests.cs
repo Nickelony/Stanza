@@ -1,5 +1,8 @@
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Format.Cli;
 using Nickelony.Stanza.Tests.Shared;
@@ -1101,6 +1104,52 @@ public sealed class FormatToolTests
 		(int againCode, _, string againError) = Run(directory.Root, "--check", "sub");
 
 		Assert.AreEqual(0, againCode, againError);
+	}
+
+	[TestMethod]
+	public async Task ASourceLayoutCheckTalksToItsServerWithoutTheSystemProxy()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		_ = directory.Write("App.slnx", "<Solution />\n");
+		_ = directory.Write(".config/dotnet-tools.json", ReadRepositoryManifest());
+		_ = directory.Write("A.cs", "class  A{}\n");
+
+		TestGit.Init(directory.Root);
+
+		// The check runs in a child, as a proxy variable of this process would reach every parallel test.
+		// Nothing listens on the discard port, so a request that goes through the proxy fails.
+		ProcessStartInfo start = new(DotnetHost.Executable)
+		{
+			WorkingDirectory = directory.Root,
+			RedirectStandardError = true,
+			RedirectStandardOutput = true,
+			UseShellExecute = false,
+		};
+
+		foreach (
+			string argument in (string[])
+				[
+					Path.Combine(AppContext.BaseDirectory, "Nickelony.Stanza.Format.dll"),
+					"--check",
+					"--layout",
+					"csharpier",
+				]
+		)
+		{
+			start.ArgumentList.Add(argument);
+		}
+
+		foreach (string name in (string[])["HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"])
+			start.Environment[name] = "http://127.0.0.1:9";
+
+		start.Environment["NO_PROXY"] = string.Empty;
+		start.Environment["no_proxy"] = string.Empty;
+
+		RunResult result = await ChildProcess.RunAsync(start, "stanza-format --check behind a proxy");
+
+		Assert.AreEqual(1, result.ExitCode, result.Error);
+		Assert.Contains("    A.cs", result.Output);
 	}
 
 	private static string ReadRepositoryManifest() =>
