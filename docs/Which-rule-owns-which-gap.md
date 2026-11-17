@@ -145,8 +145,10 @@ whether or not `ZA0010` is on.
 
 The [default half](https://github.com/Nickelony/Stanza/wiki/Terms) owns the gap unless a file [enables](https://github.com/Nickelony/Stanza/wiki/Terms) only the other half,
 or, in the arrow pair, enables both.
-The table holds for the analyzer. In [`stanza-markup`](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Markup/README.md),
-[ZA2001](https://github.com/Nickelony/Stanza/wiki/ZA2001-Separate-multi-line-markup-elements) owns the markup gap unless a file disables it or enables `ZA2002`.
+The table holds for the analyzer, where no level enables a markup rule.
+[`stanza-markup`](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Markup/README.md) has no levels,
+so [ZA2001](https://github.com/Nickelony/Stanza/wiki/ZA2001-Separate-multi-line-markup-elements) owns the markup gap there unless a file disables it or enables `ZA2002`,
+which wins when both are enabled, as in the analyzer.
 The tool applies neither half of the markup slash pair unless a file enables one.
 
 | Gap or construct | Halves | Default half |
@@ -160,7 +162,7 @@ The tool applies neither half of the markup slash pair unless a file enables one
 | Multi-line parameters | [ZA0161](https://github.com/Nickelony/Stanza/wiki/ZA0161-Separate-multi-line-parameters) and [ZA0162](https://github.com/Nickelony/Stanza/wiki/ZA0162-Keep-multi-line-parameters-together) | `ZA0162` |
 | Multi-line declarators | [ZA0171](https://github.com/Nickelony/Stanza/wiki/ZA0171-Separate-multi-line-declarators) and [ZA0172](https://github.com/Nickelony/Stanza/wiki/ZA0172-Keep-multi-line-declarators-together) | `ZA0172` |
 | A closing brace and the clause keyword after it | [ZA0201](https://github.com/Nickelony/Stanza/wiki/ZA0201-Separate-clause-keywords) and [ZA0202](https://github.com/Nickelony/Stanza/wiki/ZA0202-Keep-clause-keywords-adjacent) | `ZA0202` |
-| Multi-line markup elements | [ZA2001](https://github.com/Nickelony/Stanza/wiki/ZA2001-Separate-multi-line-markup-elements) and [ZA2002](https://github.com/Nickelony/Stanza/wiki/ZA2002-Keep-multi-line-markup-elements-together) | `ZA2002` |
+| Multi-line markup elements | [ZA2001](https://github.com/Nickelony/Stanza/wiki/ZA2001-Separate-multi-line-markup-elements) and [ZA2002](https://github.com/Nickelony/Stanza/wiki/ZA2002-Keep-multi-line-markup-elements-together) | `ZA2002`, but `stanza-markup` applies `ZA2001` unless a file enables `ZA2002` |
 | The arrow of an expression body | [ZA0306](https://github.com/Nickelony/Stanza/wiki/ZA0306-Keep-the-arrow-on-the-signature-line) and [ZA0307](https://github.com/Nickelony/Stanza/wiki/ZA0307-Put-the-arrow-on-the-line-after-the-signature) | `ZA0306`, or `ZA0307` when both are enabled |
 | The slash of a self-closing tag | [ZA0907](https://github.com/Nickelony/Stanza/wiki/ZA0907-Separate-the-slash-of-a-self-closing-tag) and [ZA0908](https://github.com/Nickelony/Stanza/wiki/ZA0908-Keep-the-slash-of-a-self-closing-tag-tight) | `ZA0908` |
 | The comma after the last element of a list | [ZA0198](https://github.com/Nickelony/Stanza/wiki/ZA0198-Add-a-trailing-comma) and [ZA0199](https://github.com/Nickelony/Stanza/wiki/ZA0199-Remove-the-trailing-comma) | `ZA0198` |
