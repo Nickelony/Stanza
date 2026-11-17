@@ -23,9 +23,12 @@ def _is_candidate(container: Container, index: int, context: ClaimContext) -> bo
 
     if index > 0:
         upper = container.gaps[index - 1]
-        opens_stanza = upper.is_blank or context.is_claimed_by_others(index - 1)
 
-        if not opens_stanza or upper.has_comment or upper.is_joined or upper.restriction is not None:
+        # A function docstring is documentation and no statement, so an initialization right below it opens the body.
+        below_docstring = upper.restriction == "function-docstring"
+        opens_stanza = below_docstring or upper.is_blank or context.is_claimed_by_others(index - 1)
+
+        if not opens_stanza or upper.has_comment or upper.is_joined or (upper.restriction and not below_docstring):
             return False
 
     binding = read_name_binding(previous.node)

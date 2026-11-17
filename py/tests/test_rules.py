@@ -751,6 +751,23 @@ CASES = [
         "def f(xs, n):\n    a()\n    total = n\n\n    for x in xs:\n        total += x\n    return total\n",
     ),
     case(
+        "accumulator: a call through a class of the file is a call of a type",
+        "ZA3063",
+        "class Config:\n    ...\n\n\ndef f(xs):\n    a()\n    config = Config.default()\n\n    for x in xs:\n        config.add(x)\n    return config\n",
+        "class Config:\n    ...\n\n\ndef f(xs):\n    a()\n    config = Config.default()\n    for x in xs:\n        config.add(x)\n    return config\n",
+    ),
+    case(
+        "accumulator: a call through a nested class of the file is a call of a type",
+        "ZA3063",
+        "def f(xs):\n    class Config:\n        ...\n\n    a()\n    config = Config.default()\n\n    for x in xs:\n        config.add(x)\n    return config\n",
+        "def f(xs):\n    class Config:\n        ...\n\n    a()\n    config = Config.default()\n    for x in xs:\n        config.add(x)\n    return config\n",
+    ),
+    case(
+        "accumulator: a name the file binds without a class or an import is a variable",
+        "ZA3063",
+        "Config = make()\n\n\ndef f(xs):\n    a()\n    config = Config.default()\n\n    for x in xs:\n        config.add(x)\n    return config\n",
+    ),
+    case(
         "accumulator: a loop that does not build the name",
         "ZA3063",
         "def f(xs):\n    a()\n    total = 0\n\n    for x in xs:\n        use(x)\n    return total\n",

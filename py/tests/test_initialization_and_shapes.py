@@ -25,6 +25,20 @@ def test_initializations_respect_their_upper_stanza_boundary(prefix: str) -> Non
     assert fix_with(source, "ZA3062") == expected
 
 
+@pytest.mark.parametrize("above", ["", "\n", "    # note\n"])
+def test_an_initialization_below_a_function_docstring_opens_the_body(above: str) -> None:
+    docstring = '    """Doc."""\n'
+    source = f"def f():\n{docstring}{above}    item = Item()\n\n    item.first()\n    finish()\n"
+    expected = source if "#" in above else source.replace("    item = Item()\n\n", "    item = Item()\n")
+
+    assert fix_with(source, "ZA3062") == expected
+
+
+def test_an_initialization_below_a_class_docstring_stays_a_member_of_the_class() -> None:
+    source = 'class A:\n    """Doc."""\n    item = Item()\n\n    item.first()\n'
+    assert fix_with(source, "ZA3062") == source
+
+
 @pytest.mark.parametrize(
     "call",
     ["other.first()", "item.child.first()", "item.first(\n        1,\n    )", "# note\n    item.first()"],

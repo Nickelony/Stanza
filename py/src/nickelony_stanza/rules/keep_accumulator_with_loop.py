@@ -17,7 +17,7 @@ Loop = (ast.For, ast.AsyncFor, ast.While)
 _BUILDERS = frozenset({"append", "appendleft", "add", "extend", "extendleft", "insert", "setdefault", "update"})
 
 
-def _callee_names(value: ast.expr, imported: frozenset[str]) -> set[int]:
+def _callee_names(value: ast.expr, types: frozenset[str]) -> set[int]:
     """Collects the names a call is made through: `set` in `set()`, or `collections` in `collections.Counter()`."""
     names: set[int] = set()
 
@@ -27,15 +27,15 @@ def _callee_names(value: ast.expr, imported: frozenset[str]) -> set[int]:
         while isinstance(root, ast.Attribute):
             root = root.value
 
-        # A dotted callee names a module or class only through a name the file imports; `self` or a parameter, as in
-        # `source.copy()`, is a variable.
-        if isinstance(root, ast.Name) and (root is call.func or root.id in imported):
+        # A dotted callee names a module or class only through a name the file imports or defines as a class;
+        # `self` or a parameter, as in `source.copy()`, is a variable.
+        if isinstance(root, ast.Name) and (root is call.func or root.id in types):
             names.add(id(root))
 
     return names
 
 
-def _seeded_name(node: ast.AST | None, imported: frozenset[str]) -> str | None:
+def _seeded_name(node: ast.AST | None, types: frozenset[str]) -> str | None:
     """Reads the name a binding seeds: one plain name given a value that reads no variable, such as `[]` or `None`."""
     binding = read_name_binding(node)
 
@@ -43,7 +43,7 @@ def _seeded_name(node: ast.AST | None, imported: frozenset[str]) -> str | None:
         return None
 
     name, value = binding
-    callees = _callee_names(value, imported)
+    callees = _callee_names(value, types)
     reads_variable = any(isinstance(node, ast.Name) and id(node) not in callees for node in ast.walk(value))
 
     return None if reads_variable else name
@@ -68,7 +68,7 @@ def _built_names(loop: ast.For | ast.AsyncFor | ast.While) -> set[str]:
     return names
 
 
-def _find_accumulator_gaps(container: Container, imported: frozenset[str]) -> frozenset[int]:
+def _find_accumulator_gaps(container: Container, types: frozenset[str]) -> frozenset[int]:
     """
     Finds the gap above each loop that builds the seed right above it, and the gaps of the seeds above that one.
 
@@ -87,7 +87,7 @@ def _find_accumulator_gaps(container: Container, imported: frozenset[str]) -> fr
         built = _built_names(loop)
         seed = index - 1
 
-        while not units[seed].is_multi_line and _seeded_name(units[seed].node, imported) in built:
+        while not units[seed].is_multi_line and _seeded_name(units[seed].node, types) in built:
             found.add(seed)
 
             upper = gaps[seed - 1] if seed > 0 else None
@@ -105,7 +105,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
         return False
 
     if "accumulator-gaps" not in context.memo:
-        context.memo["accumulator-gaps"] = _find_accumulator_gaps(container, context.environment.imported_names)
+        context.memo["accumulator-gaps"] = _find_accumulator_gaps(container, context.environment.type_names)
 
     return index in cast("frozenset[int]", context.memo["accumulator-gaps"])
 

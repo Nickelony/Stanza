@@ -12,7 +12,7 @@ from nickelony_stanza.analysis.dependent_bindings import DependentBindingGroups,
 from nickelony_stanza.analysis.model import Container, Gap, Restriction, Unit
 from nickelony_stanza.analysis.receivers import RECEIVER_CONSUMERS, ReceiverGroups, find_receiver_groups
 from nickelony_stanza.analysis.source import SourceFile
-from nickelony_stanza.analysis.syntax import read_imported_names
+from nickelony_stanza.analysis.syntax import read_type_names
 from nickelony_stanza.analysis.two_units import find_two_unit_gap
 from nickelony_stanza.options import Options
 
@@ -405,7 +405,7 @@ def analyze(
         families=families,
         receiver_calls=bool(options.receiver_roots) and not codes.isdisjoint(RECEIVER_CONSUMERS),
         receiver_separation=bool(options.receiver_roots) and "ZA3010" in codes,
-        imported_names=read_imported_names(source.tree) if "ZA3063" in codes else frozenset(),
+        type_names=read_type_names(source.tree) if "ZA3063" in codes else frozenset(),
     )
 
     receivers_by_container: dict[int, ReceiverGroups] = {}

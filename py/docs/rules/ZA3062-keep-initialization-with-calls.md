@@ -33,11 +33,12 @@ def start():
 - The initialization assigns a call, optionally awaited, to one plain name,
   and the statement below calls a method directly on that name, optionally awaited.
 - The initialization opens a body or follows a blank line, a blank line that another rule writes in the same fix included.
+  A function docstring is no statement, so an initialization right below one opens the body.
 - A multi-line initialization, a multi-line call, or a comment or a directive between them keeps the gap.
 - A comment or a directive above the initialization keeps the gap, and so does a rule that keeps a run,
   such as [`ZA3055`](ZA3055-keep-statement-runs-together.md), when it would remove the blank line above.
 - Only the first gap is removed. The invocation run rules judge later calls.
-- A blank line another rule asks for inside the pair moves above it, as the [rule map](../Rule-map.md#separation-a-keeper-displaces) says.
+- A blank line another rule asks for inside the pair moves above it, as the [rule map](../Rule-map.md#separation-a-keep-rule-displaces) says.
 
 ## C# counterpart
 

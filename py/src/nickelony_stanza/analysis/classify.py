@@ -46,8 +46,8 @@ class Environment:
     receiver_calls: bool = False
     receiver_separation: bool = False
 
-    # The names the imports of the file bind, read only while the accumulator rule, which needs them, is enabled.
-    imported_names: frozenset[str] = frozenset()
+    # The names that stand for a module or a class, read only while the accumulator rule, which needs them, is enabled.
+    type_names: frozenset[str] = frozenset()
 
 
 def _key(family: Family, detail: str | None = None) -> RunKey:

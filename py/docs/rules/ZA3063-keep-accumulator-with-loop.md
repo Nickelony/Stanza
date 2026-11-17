@@ -34,8 +34,9 @@ def send_all(messages):
 - The seed and the loop that fills it are one step: the seed means nothing without the loop.
 - A seed is a single-line assignment or annotated assignment to one plain name whose value reads no variable,
   such as `0`, `None`, `[]`, `{}`, `set()`, `Decimal("0.00")` or `collections.Counter()`.
-- A name in the value may only be the callee of a call, as `set` in `set()`,
-  or the root of a dotted callee when the file imports that root, as `collections` in `collections.Counter()`.
+- A name in the value may only be the callee of a call, as `set` in `set()`.
+- A dotted callee may start with a name that the file imports or defines as a class,
+  as `collections` in `collections.Counter()` or `Config` in `Config.default()`, which C# reads as a type.
   Any other root reads a variable, so `items = source.copy()` and `items = self.make()` seed nothing.
 - The seeds directly above the loop form one group with it when the loop builds each of them,
   so the rule removes the blank lines between them too. A seed the loop does not build ends the group.
@@ -50,7 +51,7 @@ def send_all(messages):
   bases and annotations. A Python loop target shares the enclosing scope, so a nested loop target updates the seed.
 - A comment between the two, a trailing comment included, keeps the blank line.
 - The rule wins the gap above the loop over [`ZA3001`](ZA3001-separate-multi-line-constructs.md),
-  which separates the loop, and that blank line moves above the seeds, as the [rule map](../Rule-map.md#separation-a-keeper-displaces) says.
+  which separates the loop, and that blank line moves above the seeds, as the [rule map](../Rule-map.md#separation-a-keep-rule-displaces) says.
   The gap below the loop belongs to the other rules.
 
 ## C# counterpart

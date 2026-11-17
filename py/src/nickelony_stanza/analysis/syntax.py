@@ -60,12 +60,14 @@ def ends_with_definition(node: ast.AST) -> bool:
     return bool(block) and ends_with_definition(block[-1])
 
 
-def read_imported_names(tree: ast.AST) -> frozenset[str]:
-    """Reads the names the imports of a tree bind: `os` for `import os.path`, `Counter` for `from x import Counter`."""
+def read_type_names(tree: ast.AST) -> frozenset[str]:
+    """Reads the names of the classes and the imports of a tree, such as `os` for `import os.path`."""
     names: set[str] = set()
 
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
+        if isinstance(node, ast.ClassDef):
+            names.add(node.name)
+        elif isinstance(node, ast.Import):
             names.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
             names.update(alias.asname or alias.name for alias in node.names if alias.name != "*")
