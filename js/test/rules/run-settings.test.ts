@@ -25,7 +25,7 @@ describe('configured receiver runs', () => {
 		assert.equal(fix(expected, invocationRules, settings), expected);
 	});
 
-	it('groups nested receiver paths under their first meaningful root', () => {
+	it('groups nested receiver paths under the first name of the path', () => {
 		const code = lines('prepare();', 'this.db.items.add(cart);', 'await this.db.flush();', 'await this.db.refresh(cart);', 'finish();');
 		const settings = { stanza: { receiverRoots: ['db'] } };
 		const expected = lines('prepare();', '', 'this.db.items.add(cart);', 'await this.db.flush();', 'await this.db.refresh(cart);', '', 'finish();');
@@ -52,7 +52,7 @@ describe('configured receiver runs', () => {
 		}
 	});
 
-	it('keeps different meaningful roots apart', () => {
+	it('keeps receiver paths with different first names apart', () => {
 		const code = lines('this.db.add(cart);', 'await this.db.flush();', 'this.cache.add(cart);', 'await this.cache.flush();');
 
 		assert.equal(
