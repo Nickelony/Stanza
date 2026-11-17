@@ -132,7 +132,7 @@ A call rule writes the name of a parameter before an argument, and it claims no 
 - The walker skips a call inside a `# fmt: off` region or one that a trailing `# fmt: skip` comment covers,
   as the [comments table](Quirks.md#comments) says.
 - The walker skips a call inside an f-string before Python 3.12, whose tokens it cannot read,
-  and a call inside a self-documenting field, which prints the text of its expression.
+  a call inside a self-documenting field, which prints the text of its expression, and a call inside a template string.
 - The walker tokenizes the file to find the `(` of a call and the first token of each argument.
   `ast` counts columns in UTF-8 bytes, so each position is converted to a character column.
 - A name goes after the `(` or `,` in front of its argument, so a parenthesized argument takes it outside the parentheses.

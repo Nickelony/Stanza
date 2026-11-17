@@ -272,12 +272,12 @@ class _NamespaceCollector:
                 self._add(node.target.id, "other", node, True)
 
             if isinstance(node, _FunctionDef | ast.ClassDef | ast.Lambda):
-                stack.extend(_evaluated_at_definition(node))
+                stack.extend(evaluated_at_definition(node))
             else:
                 stack.extend(ast.iter_child_nodes(node))
 
 
-def _evaluated_at_definition(node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda) -> list[ast.AST]:
+def evaluated_at_definition(node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda) -> list[ast.AST]:
     """
     Lists the parts of a definition that run where it stands, not the body that runs when it is called or built.
 
@@ -395,23 +395,19 @@ def _signature_parts(arguments: ast.arguments) -> Iterator[ast.AST]:
 def _visit(node: ast.AST, scope: Scope, table: ScopeTable) -> Iterator[tuple[ast.AST, Scope]]:
     if isinstance(node, _FunctionDef):
         scope.assigned.add(node.name)
-        yield from ((part, scope) for part in (*node.decorator_list, *_signature_parts(node.args)))
-
-        if node.returns is not None:
-            yield node.returns, scope
-
+        yield from ((part, scope) for part in evaluated_at_definition(node))
         inner = _new_scope("function", node, scope, table)
         _add_parameters(inner, node.args)
         yield from ((statement, inner) for statement in node.body)
     elif isinstance(node, ast.Lambda):
-        yield from ((part, scope) for part in _signature_parts(node.args))
+        yield from ((part, scope) for part in evaluated_at_definition(node))
         inner = _new_scope("lambda", node, scope, table)
         _add_parameters(inner, node.args)
         yield node.body, inner
     elif isinstance(node, ast.ClassDef):
         scope.assigned.add(node.name)
         table.class_scopes[id(node)] = scope
-        yield from ((part, scope) for part in (*node.decorator_list, *node.bases, *node.keywords))
+        yield from ((part, scope) for part in evaluated_at_definition(node))
         inner = _new_scope("class", node, scope, table)
         yield from ((statement, inner) for statement in node.body)
     elif isinstance(node, _Comprehension):

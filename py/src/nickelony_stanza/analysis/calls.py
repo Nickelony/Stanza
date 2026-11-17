@@ -12,6 +12,7 @@ after a keyword, and `binding.py` settles which parameter each argument fills.
   and inside an f-string before Python 3.12, whose tokenizer reads the whole f-string as one token.
 - A call inside a self-documenting field of an f-string, as in `f"{call(1)=}"`, is left alone,
   because the field prints the text of its expression and a name would change what the program prints.
+- A call inside a template string (Python 3.14 and later) is left alone, because each interpolation keeps its own text.
 - An argument that is a generator or a `:=` expression without parentheses of its own cannot take a name,
   so its call is left alone.
 - `named-argument-ignore` takes a call away from both rules before either judges it.
@@ -188,10 +189,11 @@ def _is_self_documenting(field: ast.FormattedValue, text: str) -> bool:
         return True
 
     # What follows the expression is closing parentheses, blanks and comments, then `=` or the end of the field.
+    # A comment runs to its line break, so an `=` inside it is not the one that ends the expression.
     start = whole.find(expression)
     rest = whole[start + len(expression) :] if start >= 0 else "="
 
-    return re.match(r"(?:[\s)]|#[^\n]*)*=", rest) is not None
+    return re.match(r"(?:[\s)]|#[^\n]*(?=\n))*=", rest) is not None
 
 
 _COMPOUND_STATEMENTS = (

@@ -68,8 +68,9 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
 - A callee wrapped by a decorator the rule does not see through, such as `functools.lru_cache` or a decorator of the project,
   because the wrapper may take other arguments.
 - A module that is missing, compiled, sourceless, unparsable or shadowed, or that a `.pyi` stub stands beside.
-- A class whose constructor or metaclass the rule does not model, such as a dataclass or a named tuple whose body touches `__annotations__`,
-  and a method that a class of the project which inherits it overrides.
+- A class whose constructor or metaclass the rule does not model,
+  such as a dataclass or a named tuple whose body touches `__annotations__` or calls `exec`, `eval`, `vars` or `locals`.
+- A method that a class of the project which inherits it overrides.
 - A callee that a project module replaces with a test double, as in `lib.f = other`, `setattr(lib, "f", fake)`,
   `monkeypatch.setattr(lib, "f", fake)`, `monkeypatch.setattr("lib.f", fake)`, `mock.patch("lib.f")` or `mock.patch.object(C, "m")`,
   because the double may take other names.
@@ -81,8 +82,9 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
 - A call that unpacks `*args` or `**kwargs`, or that passes more positional arguments than the callee takes.
 - A call inside a `# fmt: off` region, or on a line that a trailing `# fmt: skip` comment trails,
   or in a simple statement whose last line it trails, because the formatter keeps that text as written.
-- A call inside an f-string before Python 3.12, inside a self-documenting field such as `f"{call(1)=}"` whose text a name would change,
-  or with an argument that is a generator or a `:=` expression without parentheses of its own.
+- A call inside an f-string before Python 3.12, or inside a self-documenting field such as `f"{call(1)=}"` whose text a name would change.
+- A call inside a template string (`t"..."`, Python 3.14 and later).
+- A call with an argument that is a generator or a `:=` expression without parentheses of its own.
 - Any call, when the project holds more than 20,000 files or 64 MB of source, because the checks for test doubles and subclasses need every module.
 
 The first call this rule resolves makes a run read the whole project up front, so a run at `strong` pays that cost before it names a call.

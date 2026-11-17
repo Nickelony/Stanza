@@ -26,7 +26,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from nickelony_stanza.analysis.module_index import ModuleInfo
-from nickelony_stanza.analysis.scopes import Namespace, Scope, collect_namespace, mangle
+from nickelony_stanza.analysis.scopes import Namespace, Scope, collect_namespace, evaluated_at_definition, mangle
 from nickelony_stanza.analysis.shapes import Parameter, ParameterKind, Reason, Skipped
 
 Origin = tuple[str, str]
@@ -308,45 +308,61 @@ def class_attribute_names(node: ast.ClassDef, is_dataclass: bool, origin_of: Ori
     return frozenset(names)
 
 
-# The names that reach the namespace a class body fills, where its annotation mapping lives:
-# the mapping itself and the functions that hand out the namespace to write into.
-_NAMESPACE_NAMES = frozenset({"__annotations__", "__annotate__", "__annotate_func__", "locals", "vars", "exec", "eval"})
+# The names of the annotation mapping a class body could replace, as a name, an attribute or a string.
+_ANNOTATION_NAMES = frozenset({"__annotations__", "__annotate__", "__annotate_func__"})
+
+# The functions that hand out or run code in the namespace a class body fills, which a call of the name reaches.
+# A field may carry any of these names or hold them as a string, so only a call of the name counts.
+_NAMESPACE_CALLEES = frozenset({"locals", "vars", "exec", "eval"})
+
+
+def _reaches_namespace(node: ast.AST) -> bool:
+    if isinstance(node, ast.Name):
+        return node.id in _ANNOTATION_NAMES
+
+    if isinstance(node, ast.Attribute) and node.attr in _ANNOTATION_NAMES:
+        return True
+
+    if isinstance(node, ast.Constant):
+        return isinstance(node.value, str) and node.value in _ANNOTATION_NAMES
+
+    if not isinstance(node, ast.Call):
+        return False
+
+    callee = node.func
+
+    if isinstance(callee, ast.Name):
+        return callee.id in _NAMESPACE_CALLEES
+
+    return (
+        isinstance(callee, ast.Attribute)
+        and callee.attr in _NAMESPACE_CALLEES
+        and isinstance(callee.value, ast.Name)
+        and callee.value.id in {"builtins", "__builtins__"}
+    )
 
 
 def _touches_annotations(node: ast.ClassDef) -> bool:
     """
     Tells whether a class body could replace or change the annotation mapping its fields are read from.
 
-    It looks at every name the body itself runs, which includes decorators, bases and defaults but not a function body.
+    It looks at every name the body itself runs, which includes decorators, bases, defaults and the annotations of a
+    method but not a function body.
     """
     stack: list[ast.AST] = [*node.body]
 
     while stack:
         current = stack.pop()
 
-        if isinstance(current, ast.Name) and current.id in _NAMESPACE_NAMES:
+        if _reaches_namespace(current):
             return True
 
-        if isinstance(current, ast.Constant) and current.value in _NAMESPACE_NAMES:
-            return True
-
-        if isinstance(current, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
-            stack.extend(_evaluated_at_definition(current))
-        elif isinstance(current, ast.ClassDef):
-            stack.extend([*current.bases, *(keyword.value for keyword in current.keywords), *current.decorator_list])
+        if isinstance(current, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda | ast.ClassDef):
+            stack.extend(evaluated_at_definition(current))
         else:
             stack.extend(ast.iter_child_nodes(current))
 
     return False
-
-
-def _evaluated_at_definition(node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda) -> list[ast.AST]:
-    found: list[ast.AST] = [*node.args.defaults, *(default for default in node.args.kw_defaults if default is not None)]
-
-    if not isinstance(node, ast.Lambda):
-        found.extend(node.decorator_list)
-
-    return found
 
 
 def read_dataclass_fields(

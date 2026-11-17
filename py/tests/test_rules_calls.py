@@ -277,6 +277,22 @@ def test_a_call_inside_a_self_documenting_f_string_field_is_left_alone_and_block
     assert run_module(expected)["x"] == run_module(before)["x"]
 
 
+@pytest.mark.skipif(sys.version_info < (3, 14), reason="template strings start with Python 3.14")
+def test_a_call_inside_a_template_string_is_left_alone_and_blocks_no_other_fix() -> None:
+    before = DRAW + 'label = t"{draw(1, 2, 3, 4)} {draw(5, 6, 7, 8)!r}"\ndraw(1, 2, 3, 4)\n'
+    expected = before[: before.rindex("draw(1")] + "draw(width=1, height=2, smooth=3, path=4)\n"
+
+    assert fix_with(before, "ZA3501") == expected
+
+
+@_NEEDS_FSTRING_TOKENS
+def test_a_comment_that_holds_an_equals_sign_does_not_make_a_field_self_documenting() -> None:
+    before = _PAIR + 'x = f"""{f(True, 2)  # a=b\n}"""\n'
+    expected = before.replace("f(True, 2)", "f(a=True, b=2)")
+
+    assert fix_with(before, "ZA3502") == expected
+
+
 @_NEEDS_FSTRING_TOKENS
 def test_a_call_in_an_ordinary_field_next_to_a_self_documenting_one_is_still_named() -> None:
     before = _PAIR + 'x = f"{f(True, 2)=} {f(True, 2)} {f(True, 4)!r:>{f(True, 6)}}"\n'
@@ -612,12 +628,71 @@ def test_a_class_whose_annotation_mapping_differs_from_its_statements_binds_as_i
         assert repr(run_module(fixed)["x"]) == repr(expected)
 
 
+_FIELDS_THAT_LOOK_LIKE_NAMESPACE_NAMES = [
+    (
+        "@dataclass\nclass C:\n    text: str\n    name: str\n    mode: str = 'exec'\n",
+        "C('x', True, 'exec')",
+        "name=True",
+    ),
+    (
+        "@dataclass\nclass C:\n    name: str\n    image: str\n    vars: dict = field(default_factory=dict)\n",
+        "C('b', True, {})",
+        "image=True",
+    ),
+    ("class C(NamedTuple):\n    source: str\n    kind: Literal['eval', 'exec']\n", "C(True, 'eval')", "source=True"),
+    ("class C(NamedTuple):\n    locals: int\n    eval: str\n", "C(True, 'x')", "locals=True"),
+]
+
+
+@pytest.mark.parametrize(
+    ("declaration", "call", "named"),
+    _FIELDS_THAT_LOOK_LIKE_NAMESPACE_NAMES,
+    ids=range(len(_FIELDS_THAT_LOOK_LIKE_NAMESPACE_NAMES)),
+)
+def test_a_field_or_string_that_spells_a_namespace_function_does_not_stop_the_class_binding(
+    declaration: str, call: str, named: str
+) -> None:
+    imports = "from dataclasses import dataclass, field\nfrom typing import Literal, NamedTuple\n\n"
+    before = f"{imports}{declaration}\nx = {call}\n"
+
+    fixed = fix_with(before, "ZA3502")
+
+    assert named in fixed.splitlines()[-1]
+    assert repr(run_module(fixed)["x"]) == repr(run_module(before)["x"])
+
+
+_CLEAR = "__annotations__.clear(); c: int; d: int"
+
+_NAMESPACE_TOUCHING_BODIES = [
+    f"exec('{_CLEAR}')",
+    f"builtins.exec('{_CLEAR}')",
+    "eval('__annotations__.update(c=int, d=int)')",
+    "builtins.eval('__annotations__.update(c=int, d=int)')",
+    "vars()['__annotations__'].clear()",
+    "locals()['__annotations__'] = {'c': int, 'd': int}",
+    "__annotations__ = {'c': int, 'd': int}",
+    "other = '__annotate__'",
+    f"def m(self, x: exec('{_CLEAR}') or int): ...",
+    f"def m(self) -> exec('{_CLEAR}'): ...",
+    f"def m(self, x=exec('{_CLEAR}')): ...",
+    f"@exec('{_CLEAR}')\n    def m(self): ...",
+]
+
+
+@pytest.mark.parametrize("body", _NAMESPACE_TOUCHING_BODIES, ids=range(len(_NAMESPACE_TOUCHING_BODIES)))
+@pytest.mark.parametrize("kind", ["dataclass", "namedtuple"])
+def test_a_class_body_that_reaches_its_namespace_leaves_the_call_unnamed(kind: str, body: str) -> None:
+    head = "@dataclass\nclass C:" if kind == "dataclass" else "class C(NamedTuple):"
+    imports = "import builtins\nfrom dataclasses import dataclass\nfrom typing import NamedTuple\n\n"
+    before = f"{imports}{head}\n    a: int\n    b: int\n    {body}\n\nx = C(True, 2)\n"
+
+    assert fix_with(before, "ZA3502") == before
+
+
 _REBINDING_HEADERS = {
     "a default": "def install(value=(target := lambda w, x, y, z: w + x + y + z)):\n    pass\n",
     "a keyword-only default": "def install(*, value=(target := lambda w, x, y, z: w + x + y + z)):\n    pass\n",
     "a decorator": "@(target := lambda w, x=0, y=0, z=0: w)\ndef install():\n    pass\n",
-    "an annotation": "def install(value: (target := lambda w, x, y, z: w + x + y + z) = None):\n    pass\n",
-    "a return annotation": "def install() -> (target := lambda w, x, y, z: w + x + y + z):\n    pass\n",
     "a lambda default": "install = lambda value=(target := lambda w, x, y, z: w + x + y + z): value\n",
     "a class base": "class Install((target := lambda w, x, y, z: w + x + y + z) and object):\n    pass\n",
     "a class keyword": (
@@ -626,6 +701,16 @@ _REBINDING_HEADERS = {
     ),
     "a class decorator": "@(target := lambda w, x=0, y=0, z=0: w)\nclass Install:\n    pass\n",
 }
+
+# Python 3.14 compiles an annotation lazily, in a scope of its own that does not accept `:=`, so these two cases stop there.
+if sys.version_info < (3, 14):
+    _REBINDING_HEADERS["an annotation"] = (
+        "def install(value: (target := lambda w, x, y, z: w + x + y + z) = None):\n    pass\n"
+    )
+
+    _REBINDING_HEADERS["a return annotation"] = (
+        "def install() -> (target := lambda w, x, y, z: w + x + y + z):\n    pass\n"
+    )
 
 _TARGET = "def target(a, b, c, d):\n    return a + b + c + d\n\n\n"
 
