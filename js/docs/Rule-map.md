@@ -83,8 +83,8 @@ Stanza rewrites whitespace only, so a rule whose fix changes tokens, or reports 
 
 | C# rule | Owner in the JS toolchain |
 | --- | --- |
-| `ZA0051` Collapse extra blank lines | Prettier, which keeps at most one blank line. |
 | `ZA0015` Separate local function runs | Prettier, which expands a nested function that has a body onto several lines, so [`separate-multi-line-constructs`](rules/separate-multi-line-constructs.md) already sets it apart. An empty `function f() {}` stays on one line, and the rule leaves it as written. |
+| `ZA0051` Collapse extra blank lines | Prettier, which keeps at most one blank line. |
 | `ZA0101` to `ZA0103` Accessors | No JS counterpart. A JS getter and its setter are two members of a class or an object, not an accessor list, so the member rules judge them like any member, and a getter stays with its setter, as the [quirks](Quirks.md#gaps-no-rule-owns) say. |
 | `ZA0121` to `ZA0123` Switch expression arms | No JS counterpart. JS has no switch expression, and the cases of a `switch` statement have the rules of `ZA0111` to `ZA0113`. |
 | `ZA0171` to `ZA0173` Declarators | Prettier, which removes every blank line between the declarators of one declaration. `ZA0171` would write a blank line that the next format removes, so it could never settle, and `ZA0172` and `ZA0173` have nothing left to remove. |

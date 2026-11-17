@@ -25,7 +25,7 @@ The entries sit under headings by topic.
 - **owner**: the rule, or the half of a pair, that decides whether a gap holds a blank line. A gap has at most one,
   and [Which rule owns which gap](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap) maps each gap to its owner.
 - **grouping rules**: [`ZA0002`](https://github.com/Nickelony/Stanza/wiki/ZA0002-Separate-declaration-runs) to [`ZA0009`](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-assignment-runs),
-  [`ZA0017`](https://github.com/Nickelony/Stanza/wiki/ZA0017-Separate-member-groups) and [`ZA0018`](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-modifier-groups), which separate a run from its neighbors
+  [`ZA0015`](https://github.com/Nickelony/Stanza/wiki/ZA0015-Separate-local-function-runs), [`ZA0017`](https://github.com/Nickelony/Stanza/wiki/ZA0017-Separate-member-groups) and [`ZA0018`](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-modifier-groups), which separate a run from its neighbors
   and leave a gap beside a multi-line unit to [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-multi-line-constructs).
 - **report-only rule**: a rule that reports a shape and has no code fix, such as
   [`ZA1007`](https://github.com/Nickelony/Stanza/wiki/ZA1007-Break-up-a-long-ternary-chain).

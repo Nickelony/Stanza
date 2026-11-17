@@ -525,6 +525,21 @@ public sealed class RemoveDirectiveBlockPaddingTests
 			}
 			""";
 
+		const string fixedSource = """
+			class C
+			{
+				private int _total;
+
+				#region Fields
+
+				/// <summary>The count.</summary>
+				private int _count;
+				#endregion
+
+				private int _sum;
+			}
+			""";
+
 		AnalyzerRunResult result =
 			await RoslynTestHarness.RunAsync<RemoveDirectiveBlockPaddingAnalyzer>(
 				source,
@@ -533,6 +548,7 @@ public sealed class RemoveDirectiveBlockPaddingTests
 			);
 
 		Assert.HasCount(1, result.Diagnostics, "Only the gap above the closing marker holds no comment.");
+		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
 	[TestMethod]
