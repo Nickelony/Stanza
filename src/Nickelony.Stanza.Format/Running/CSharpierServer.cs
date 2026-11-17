@@ -152,8 +152,10 @@ internal sealed partial class CSharpierServer : IDisposable
 		catch (OperationCanceledException exception) when (!_cancellationToken.IsCancellationRequested)
 		{
 			// The client's own time limit raises a cancellation, which the tool would otherwise report as Ctrl+C.
-			string waited = _client.Timeout.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
-			throw new FormatRunException($"The CSharpier server did not answer for '{fullPath}' within {waited} seconds.", exception);
+			string seconds = _client.Timeout.TotalSeconds.ToString("0.##", CultureInfo.InvariantCulture);
+			string waited = seconds + (seconds == "1" ? " second" : " seconds");
+
+			throw new FormatRunException($"The CSharpier server did not answer for '{fullPath}' within {waited}.", exception);
 		}
 		catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidOperationException)
 		{
