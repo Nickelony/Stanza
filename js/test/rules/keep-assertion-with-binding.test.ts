@@ -54,6 +54,11 @@ createRuleTester().run('keep-assertion-with-binding', rule as never, {
 			code: lines('function f(id) {', '  const order = load(id);', '', '  assert(', '    order,', '  );', '  ship(order);', '}'),
 			name: 'a multi-line assertion',
 		},
+
+		{
+			code: lines('function f(id) {', '  audit(id);', '  const order = load(id);', '', '  invariant(order);', '  ship(order);', '}'),
+			name: 'a guard root that is no assertion root, as in C#, where only an assertion root narrows',
+		},
 	],
 
 	invalid: [
@@ -64,8 +69,8 @@ createRuleTester().run('keep-assertion-with-binding', rule as never, {
 		},
 
 		{
-			code: lines('audit(id);', 'const order = load({', '  id,', '});', '', 'invariant(order !== undefined && order.ready);', 'ship(order);'),
-			output: lines('audit(id);', 'const order = load({', '  id,', '});', 'invariant(order !== undefined && order.ready);', 'ship(order);'),
+			code: lines('audit(id);', 'const order = load({', '  id,', '});', '', 'assert(order !== undefined && order.ready);', 'ship(order);'),
+			output: lines('audit(id);', 'const order = load({', '  id,', '});', 'assert(order !== undefined && order.ready);', 'ship(order);'),
 			errors: 1,
 			name: 'a multi-line binding and an and',
 		},
@@ -100,6 +105,14 @@ createRuleTester().run('keep-assertion-with-binding', rule as never, {
 			output: crlf(lines('audit(id);', 'const order = load(id);', 'check(order != null);', 'ship(order);')),
 			settings: { stanza: { assertionRoots: ['check'] } },
 			errors: 1,
+		},
+
+		{
+			code: lines('audit(id);', 'const order = load(id);', '', 'invariant(order);', 'ship(order);'),
+			output: lines('audit(id);', 'const order = load(id);', 'invariant(order);', 'ship(order);'),
+			settings: { stanza: { assertionRoots: ['invariant'] } },
+			errors: 1,
+			name: 'a guard root that assertionRoots lists too',
 		},
 	],
 });
