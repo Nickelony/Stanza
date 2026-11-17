@@ -297,7 +297,8 @@ except that explicit pair choices retain both overrides.
 - A section whose glob matches every C# file, such as `[*]`, `[*.cs]` and `[*.{cs,vb}]`, gives the analyzer settings,
   and one that names an extension of a markup profile gives the `stanza-markup` settings.
   The lines above the first section count as C#, as in a `.globalconfig`.
-- A glob can reach both tools, as `[*]` and `[*.{cs,xml}]` do, and then each line goes to the analyzer and, if `stanza-markup` reads it, to the tool too.
+- A glob can reach both tools, as `[*]` and `[*.{cs,xml}]` do,
+  and then each line goes to the analyzer and, if `stanza-markup` reads it, to the tool too.
 - A header that needs more than 64 alternatives or 4096 characters to expand is not read as a glob, and its section is skipped.
 - The form holds one value for both tools, so where the markup section disagrees with the C# one, the C# value wins and a note says so.
 - A section for a path or another file type, such as `[tests/**/*.cs]`, is skipped, and one entry counts its Stanza lines.

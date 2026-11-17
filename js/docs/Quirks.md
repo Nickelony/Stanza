@@ -51,7 +51,8 @@ While it is disabled, most rules still leave the container as written, and its [
 
 `gather-loose-statements`, `gather-loose-members`, `keep-statement-runs-together`, `keep-member-runs-together`,
 `keep-single-line-elements-together` and the keep rules of switch cases and JSX children remove blank lines.
-Each removes only a blank line that holds nothing else, so a comment, a trailing comment or a line with a token on it keeps its gap, an `eslint-disable` comment aside.
+Each removes only a blank line that holds nothing else,
+so a comment, a trailing comment or a line with a token on it keeps its gap, an `eslint-disable` comment aside.
 
 | Quirk | Decision |
 | --- | --- |

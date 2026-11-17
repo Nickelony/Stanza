@@ -57,7 +57,8 @@ const error = css`
 
 - The node is a declaration with the property `stanza-{interpolation}`, so the empty-line rules treat it as a sibling.
   A rule or an at-rule below it gets a blank line, and the first node of a block has none above it.
-- The braces make the property nonstandard, so a rule that judges a property name, a duplicate or a value skips the node, and no fix edits the JavaScript.
+- The braces make the property nonstandard,
+  so a rule that judges a property name, a duplicate or a value skips the node, and no fix edits the JavaScript.
 - A `${...}` at the end of a block is a declaration too, so a rule or an at-rule above it gets a blank line, and one alone in a block has none.
 - The blank lines inside a multi-line `${...}` are JavaScript, so no rule counts them as CSS spacing.
 - A `${...}` inside a selector, a property or a value stays part of it.
@@ -99,7 +100,8 @@ const spin = keyframes`
 - The tag is found by its import binding, so a `keyframes` that a function parameter or a local declaration shadows is not read.
   A `keyframes` of another library and a tag under another name, such as `import { keyframes as animate }`, are not read either.
 - A `keyframes` inside a `${...}` of a `css` template is read, with its whitespace and comments between the tag and the backtick kept.
-- The parser swaps each tag for a private-use marker of the same length and writes the tag back as it was spelled after the fix, an escaped `keyframes` included.
+- The parser swaps each tag for a private-use marker of the same length,
+  and writes the tag back as it was spelled after the fix, an escaped `keyframes` included.
   It picks a marker character that the script does not hold.
 - A script that holds the text `keyframes` is bound once more to find the tags, with the TypeScript compiler API and without reading any other file.
 
