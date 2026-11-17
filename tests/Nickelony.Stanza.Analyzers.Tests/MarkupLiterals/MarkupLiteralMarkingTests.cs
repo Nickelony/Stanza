@@ -260,6 +260,109 @@ public sealed class MarkupLiteralMarkingTests
 		Assert.IsEmpty((await ReportCapAsync(aboveAnotherStatement, "marked")).Diagnostics);
 	}
 
+	// The statement that holds the literal is the nearest one, so an embedded statement is its own and the `if` above it is not.
+	[TestMethod]
+	[CrossCutting]
+	public async Task TheNearestStatementIsTheEmbeddedOneBelowAnIf()
+	{
+		const string aboveTheIf = """"
+			class C
+			{
+				void M(bool ok)
+				{
+					// language=xml
+					if (ok)
+						Load("""
+							<root>
+							  <a>1</a>
+
+
+
+							  <b>2</b>
+							</root>
+							""");
+				}
+
+				static void Load(string markup)
+				{
+					return;
+				}
+			}
+			"""";
+
+		const string aboveTheEmbeddedStatement = """"
+			class C
+			{
+				void M(bool ok)
+				{
+					if (ok)
+						// language=xml
+						Load("""
+							<root>
+							  <a>1</a>
+
+
+
+							  <b>2</b>
+							</root>
+							""");
+				}
+
+				static void Load(string markup)
+				{
+					return;
+				}
+			}
+			"""";
+
+		Assert.IsEmpty((await ReportCapAsync(aboveTheIf, "marked")).Diagnostics);
+		Assert.HasCount(1, (await ReportCapAsync(aboveTheEmbeddedStatement, "marked")).Diagnostics);
+	}
+
+	// Outside any statement the member holds the literal, so an expression body is marked from above the method and a block body is not.
+	[TestMethod]
+	[CrossCutting]
+	public async Task AnExpressionBodiedMethodIsMarkedFromAboveTheMethod()
+	{
+		const string expressionBody = """"
+			class C
+			{
+				// language=xml
+				string M() => """
+					<root>
+					  <a>1</a>
+
+
+
+					  <b>2</b>
+					</root>
+					""";
+			}
+			"""";
+
+		const string blockBody = """"
+			class C
+			{
+				// language=xml
+				string M()
+				{
+					return """
+						<root>
+						  <a>1</a>
+
+
+
+						  <b>2</b>
+						</root>
+						""";
+				}
+			}
+			"""";
+
+		Assert.HasCount(1, (await ReportCapAsync(expressionBody, "marked")).Diagnostics);
+		Assert.IsEmpty((await ReportCapAsync(blockBody, "marked")).Diagnostics);
+	}
+
 	[TestMethod]
 	[CrossCutting]
 	public async Task StringSyntaxXmlOnAFieldOrAPropertyMarksItsInitializerAndItsAssignments()

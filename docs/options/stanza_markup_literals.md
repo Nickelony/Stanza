@@ -45,9 +45,12 @@ class Templates
   so `marked` leaves a literal alone until someone marks it as XML.
 - A comment marks a literal when it reads `language=xml` or `lang=xml`, in any case and with spaces around the `=` allowed,
   as a `//` comment or a `/* */` comment; more text, such as a prefix, may follow after a space.
-- The comment stands right before the literal, at the end of the line before it, or above the statement that holds the literal.
-  Outside a statement, such as in a field initializer, it stands above the member.
-  A comment above the method or above another statement marks nothing.
+- The comment stands right before the literal, or at the end of the line before it.
+  Otherwise it stands above the nearest statement that holds the literal:
+  for `if (ok) Load("""...""");` that is the embedded `Load(...)` statement, not the `if`, so a comment above the `if` marks nothing.
+- Outside any statement, such as in a field initializer or an expression-bodied method, the comment stands above the member.
+  So a comment above an expression-bodied method marks its literal, and one above a block-bodied method marks nothing, because the literal sits in a statement.
+  A comment above another statement marks nothing either.
 - `[StringSyntax]` of `System.Diagnostics.CodeAnalysis` marks a literal that initializes or is assigned to the field or property it sits on,
   or that is passed to the parameter it sits on, as a positional, named or `params` argument.
 - The syntax name of the attribute is compared in any case, so `"xml"` and `StringSyntaxAttribute.Xml` both count, and `"Json"` marks nothing.
