@@ -1,8 +1,8 @@
 import { readJumpAsks } from '../analysis/jumps.ts';
 import type { Container } from '../analysis/types.ts';
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-jump-statements',
 	description: 'Separate a return, throw, break or continue from a stanza of two or more lines above it.',
 	message: 'Add a blank line above this jump.',

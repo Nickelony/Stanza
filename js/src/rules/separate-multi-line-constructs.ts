@@ -1,7 +1,7 @@
 import { memberKinds, statementKinds } from '../analysis/kinds.ts';
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-multi-line-constructs',
 	description: 'Separate a statement or member that spans more than one line from its neighbors.',
 	message: 'Add a blank line between this multi-line construct and its neighbor.',

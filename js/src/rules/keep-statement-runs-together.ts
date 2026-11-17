@@ -1,7 +1,7 @@
 import { readKeptRuns, readRunGaps } from '../analysis/removals.ts';
-import { createRemovalRule } from '../createRemovalRule.ts';
+import { createRemoveRule } from '../createRemoveRule.ts';
 
-export default createRemovalRule({
+export default createRemoveRule({
 	name: 'keep-statement-runs-together',
 	description: 'Remove the blank lines inside a run of single-line statements that the enabled run rules read as one.',
 	message: 'Remove this blank line: the statements around it are one run.',

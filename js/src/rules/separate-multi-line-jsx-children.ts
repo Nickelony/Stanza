@@ -1,6 +1,6 @@
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-multi-line-jsx-children',
 	description: 'Separate a child of a JSX element that spans more than one line from its neighbors.',
 	message: 'Add a blank line between this multi-line JSX child and its neighbor.',

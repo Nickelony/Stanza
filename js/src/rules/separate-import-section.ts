@@ -2,7 +2,7 @@ import { countLeadingUnits } from '../analysis/leading.ts';
 import { readOncePerContainer } from '../analysis/memo.ts';
 import { isDirective, isImport } from '../analysis/syntax.ts';
 import type { Container } from '../analysis/types.ts';
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
 /** Reads the index of the last import of the imports that open a container, or -1 when none do. */
 function findLastLeadingImport(container: Container): number {
@@ -12,7 +12,7 @@ function findLastLeadingImport(container: Container): number {
 	return imports > 0 ? first + imports - 1 : -1;
 }
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-import-section',
 	description: 'Separate the imports that open a file from the first statement below them.',
 	message: 'Add a blank line below the imports.',

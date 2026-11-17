@@ -1,7 +1,7 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 
 import { isImport } from '../analysis/syntax.ts';
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
 export interface ImportGroupOptions {
 	/** Separates `import type` declarations from the value imports beside them. */
@@ -23,7 +23,7 @@ function readImportKind(node: TSESTree.Node, separatesTypes: boolean): ImportKin
 	return node.type === 'ImportDeclaration' && node.specifiers.length === 0 ? 'side-effect' : 'value';
 }
 
-export default createGapRule<[ImportGroupOptions]>({
+export default createAddRule<[ImportGroupOptions]>({
 	name: 'separate-import-groups',
 	description: 'Separate adjacent imports of different kinds with a blank line.',
 	message: 'Add a blank line between these imports of different kinds.',

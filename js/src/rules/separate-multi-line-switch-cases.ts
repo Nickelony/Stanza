@@ -1,6 +1,6 @@
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-multi-line-switch-cases',
 	description: 'Separate a case of a switch statement that spans more than one line from the case beside it.',
 	message: 'Add a blank line between this multi-line case and its neighbor.',

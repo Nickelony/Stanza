@@ -1,8 +1,8 @@
 import { readBoundaryFamilies } from '../analysis/classify.ts';
 import { memberKinds } from '../analysis/kinds.ts';
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-modifier-groups',
 	description: 'Separate a run of two or more members of one kind that share their access, static and readonly modifiers from the members beside it.',
 	message: 'Add a blank line between this modifier group and its neighbor.',

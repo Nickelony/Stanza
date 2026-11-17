@@ -6,7 +6,7 @@ import { createOwnedGapListener, createRule } from './createRule.ts';
 import type { RemoveRuleName } from './analysis/ruleNames.ts';
 import { registerClaimant, type Removal, type RunHold } from './analysis/session.ts';
 
-interface RemovalRuleDefinition<Options extends readonly unknown[]> {
+interface RemoveRuleDefinition<Options extends readonly unknown[]> {
 	readonly name: RemoveRuleName;
 	readonly description: string;
 	readonly message: string;
@@ -19,7 +19,7 @@ interface RemovalRuleDefinition<Options extends readonly unknown[]> {
 }
 
 /** Creates a rule that removes the blank lines of each group of gaps the shared analysis gives it, all of a group in one fix. */
-export function createRemovalRule<Options extends readonly unknown[] = []>(definition: RemovalRuleDefinition<Options>) {
+export function createRemoveRule<Options extends readonly unknown[] = []>(definition: RemoveRuleDefinition<Options>) {
 	const defaultOptions = (definition.defaultOptions ?? []) as unknown as Options;
 
 	return createRule<Options, 'extraBlankLine'>({

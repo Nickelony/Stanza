@@ -1,7 +1,7 @@
 import { isToolDirective } from '../analysis/comments.ts';
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-commented-jsx-children',
 	description: 'Separate a comment that leads a single-line child of a JSX element from the child above it.',
 	message: 'Add a blank line above this comment.',

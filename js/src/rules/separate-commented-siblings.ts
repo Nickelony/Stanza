@@ -1,8 +1,8 @@
 import { isToolDirective } from '../analysis/comments.ts';
 import { memberKinds, statementKinds } from '../analysis/kinds.ts';
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-commented-siblings',
 	description: 'Separate a comment that leads a single-line statement or member from the sibling above it.',
 	message: 'Add a blank line above this comment.',

@@ -1,7 +1,7 @@
 import { countLeadingGuards } from '../analysis/leading.ts';
 import { isSuperCall } from '../analysis/syntax.ts';
 import type { Container } from '../analysis/types.ts';
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
 /** Tells whether a block is the body of a constructor, a method, a getter or a setter, which a `super` call extends. */
 function isMemberBody(container: Container): boolean {
@@ -19,7 +19,7 @@ function isMemberBody(container: Container): boolean {
 	return owner.type === 'MethodDefinition' || (owner.type === 'Property' && owner.value === fn && (owner.method || owner.kind !== 'init'));
 }
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-base-call',
 	description: 'Separate a call of super that opens or closes a member body from the statements beside it.',
 	message: 'Add a blank line beside this call of super.',

@@ -5,7 +5,7 @@ import { createOwnedGapListener, createRule } from './createRule.ts';
 import type { AddRuleName, RemoveRuleName } from './analysis/ruleNames.ts';
 import { registerClaimant, type Claim, type Plan } from './analysis/session.ts';
 
-interface GapRuleDefinition<Options extends readonly unknown[]> {
+interface AddRuleDefinition<Options extends readonly unknown[]> {
 	readonly name: AddRuleName;
 	readonly description: string;
 	readonly message: string;
@@ -23,7 +23,7 @@ interface GapRuleDefinition<Options extends readonly unknown[]> {
 }
 
 /** Creates a rule that adds a blank line at each gap the shared analysis gives it. */
-export function createGapRule<Options extends readonly unknown[] = []>(definition: GapRuleDefinition<Options>) {
+export function createAddRule<Options extends readonly unknown[] = []>(definition: AddRuleDefinition<Options>) {
 	const defaultOptions = (definition.defaultOptions ?? []) as unknown as Options;
 
 	return createRule<Options, 'missingBlankLine'>({

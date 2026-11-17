@@ -1,6 +1,6 @@
-import { createGapRule } from '../createGapRule.ts';
+import { createAddRule } from '../createAddRule.ts';
 
-export default createGapRule({
+export default createAddRule({
 	name: 'separate-receiver-groups',
 	description: 'Separate consecutive operations on selected receiver roots or paths from neighboring groups.',
 	message: 'Add a blank line beside this receiver group.',
