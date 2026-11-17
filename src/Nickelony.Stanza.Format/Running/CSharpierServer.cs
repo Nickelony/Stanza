@@ -11,9 +11,7 @@ using System.Threading.Tasks;
 
 namespace Nickelony.Stanza.Format.Running;
 
-/// <summary>
-/// A running <c>csharpier server</c>, which formats any number of sources in one host instead of one host for each.
-/// </summary>
+/// <summary>A running <c>csharpier server</c>, which formats any number of sources in one host.</summary>
 /// <remarks>
 /// The server finds the configuration of a file from the path it is given, as <c>csharpier format</c> does.
 /// </remarks>
