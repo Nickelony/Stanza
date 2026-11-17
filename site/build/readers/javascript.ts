@@ -376,7 +376,8 @@ export function extractJavascript(sources: JsSources): SourceCatalog {
 
 	for (const rule of [...presets.levelOf.keys(), ...presets.optIn]) {
 		if (!rules.some((candidate) => candidate.id === rule)) {
-			throw new ExtractionError(sources.presets.file, `${rule} is in a preset but has no page`);
+			const holder = presets.optIn.has(rule) ? 'the opt-in list' : `the ${presets.levelOf.get(rule)} preset`;
+			throw new ExtractionError(sources.presets.file, `${rule} is in ${holder} but has no page under ${jsSourcePaths.rules}`);
 		}
 	}
 

@@ -427,7 +427,7 @@ export function checkDefaultHalf(file: string, pair: RulePair, isInLevel: (id: s
 }
 
 /** Whether the text of a page names the key between code marks, which is how a page names an option. */
-export function namesKey(code: string, key: string): boolean {
+function namesKey(code: string, key: string): boolean {
 	const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 	return new RegExp(`(?<![A-Za-z0-9_-])${escaped}(?![A-Za-z0-9_-])`).test(code);
 }

@@ -318,6 +318,18 @@ describe('the catalog of JS Stanza', () => {
 
 		failsOnJavascript(
 			'presets',
+			(text) => text.replace("\t\t'gather-loose-members': 'error',\n", "\t\t'gather-loose-members': 'error',\n\t\t'no-such-rule': 'error',\n"),
+			/js\/src\/presets\.ts: no-such-rule is in the strong preset but has no page under js\/docs\/rules/,
+		);
+
+		failsOnJavascript(
+			'presets',
+			(text) => text.replace("\t'keep-statement-runs-together',\n", "\t'keep-statement-runs-together',\n\t'no-such-rule',\n"),
+			/js\/src\/presets\.ts: no-such-rule is in the opt-in list but has no page under js\/docs\/rules/,
+		);
+
+		failsOnJavascript(
+			'presets',
 			(text) => text.replace('export const optInRules', 'const optInRules'),
 			/js\/src\/presets\.ts: there is no "export const optInRules/,
 		);
