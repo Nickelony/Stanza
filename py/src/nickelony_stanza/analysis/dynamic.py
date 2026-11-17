@@ -17,6 +17,10 @@ import ast
 # The functions that hand out the namespace of a module or run code in it, and the builtins table they come from.
 _NAMESPACE_FUNCTIONS = frozenset({"exec", "eval", "globals", "vars", "locals"})
 _WATCHED_NAMES = _NAMESPACE_FUNCTIONS | {"__builtins__", "builtins"}
+
+# The node types the watches read, and the names of a `Name` they read, so a walk skips the rest without a call.
+WATCHED_KINDS = frozenset({ast.Attribute, ast.Call, ast.Subscript, ast.Compare, ast.Import, ast.ImportFrom})
+WATCHED_NAMES = _WATCHED_NAMES
 _BUILTINS_BASES = frozenset({"builtins", "__builtins__"})
 
 # The methods of a mapping that leave it as it is.
@@ -46,11 +50,13 @@ class NamespaceWatch:
         elif isinstance(node, ast.Call):
             self._visit_call(node, in_function)
         elif isinstance(node, ast.Subscript):
-            if isinstance(node.ctx, ast.Load):
+            if isinstance(node.ctx, ast.Load) and isinstance(node.value, ast.Call):
                 self._reads.add(id(node.value))
         elif isinstance(node, ast.Compare):
             if any(isinstance(operator, ast.In | ast.NotIn) for operator in node.ops):
-                self._reads.update(id(comparator) for comparator in node.comparators)
+                self._reads.update(
+                    id(comparator) for comparator in node.comparators if isinstance(comparator, ast.Call)
+                )
         elif isinstance(node, ast.Import):
             if any(alias.name == "builtins" and alias.asname not in (None, "builtins") for alias in node.names):
                 self.rewrites = True
@@ -63,12 +69,13 @@ class NamespaceWatch:
             self.rewrites = True
 
     def _visit_attribute(self, node: ast.Attribute, in_function: bool) -> None:
-        self._bases.add(id(node.value))
-
         if not isinstance(node.ctx, ast.Load):
             return
 
-        if node.attr in _READING_METHODS:
+        if isinstance(node.value, ast.Name):
+            if node.value.id == "builtins":
+                self._bases.add(id(node.value))
+        elif node.attr in _READING_METHODS and isinstance(node.value, ast.Call):
             self._reads.add(id(node.value))
 
         if node.attr in _NAMESPACE_FUNCTIONS or node.attr == "__dict__":
@@ -76,7 +83,6 @@ class NamespaceWatch:
 
     def _visit_call(self, node: ast.Call, in_function: bool) -> None:
         function = node.func
-        self._callees.add(id(function))
 
         if isinstance(function, ast.Name) and function.id == "getattr":
             if (
@@ -85,7 +91,8 @@ class NamespaceWatch:
                 and node.args[1].value in _NAMESPACE_FUNCTIONS
             ):
                 self.rewrites = True
-        elif isinstance(function, ast.Name | ast.Attribute):
+        elif _namespace_function(function) is not None:
+            self._callees.add(id(function))
             self._calls.append((node, in_function))
 
     def finish(self) -> bool:

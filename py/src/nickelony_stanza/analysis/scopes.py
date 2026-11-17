@@ -15,7 +15,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Literal
 
-from nickelony_stanza.analysis.dynamic import NamespaceWatch, SignatureWatch
+from nickelony_stanza.analysis.dynamic import WATCHED_KINDS, WATCHED_NAMES, NamespaceWatch, SignatureWatch
 
 BindingKind = Literal["def", "class", "import", "import_from", "star", "value", "other"]
 ScopeKind = Literal["module", "class", "function", "lambda", "comprehension"]
@@ -24,6 +24,7 @@ _TryStar: type[ast.AST] = getattr(ast, "TryStar", ast.Try)
 
 _Comprehension = (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)
 _FunctionDef = ast.FunctionDef | ast.AsyncFunctionDef
+_BODY_HOLDERS = frozenset({ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda})
 
 
 @dataclass(frozen=True, eq=False)
@@ -531,8 +532,9 @@ def scan_module(tree: ast.Module) -> ModuleScan:
         node, class_name, prefix, local, in_function = queue.popleft()
         kind = type(node)
 
-        watch.visit(node, in_function=in_function)
-        signatures.visit(node)
+        if kind in WATCHED_KINDS or (isinstance(node, ast.Name) and node.id in WATCHED_NAMES):
+            watch.visit(node, in_function=in_function)
+            signatures.visit(node)
 
         if isinstance(node, ast.Attribute):
             if isinstance(node.ctx, ast.Store | ast.Del):
@@ -553,9 +555,11 @@ def scan_module(tree: ast.Module) -> ModuleScan:
         elif isinstance(node, _FunctionDef):
             prefix, local = f"{prefix}{node.name}.<locals>.", True
 
+        in_body = in_function or kind in _BODY_HOLDERS
+
         for name in kind._fields:
             value = getattr(node, name, None)
-            inside = in_function or (name == "body" and isinstance(node, _FunctionDef | ast.Lambda))
+            inside = in_body if name == "body" else in_function
 
             if isinstance(value, ast.AST):
                 if type(value) not in _INERT:
