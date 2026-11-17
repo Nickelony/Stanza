@@ -117,6 +117,12 @@ vale --glob='!**/{bin,obj,artifacts}/**' .
 - The `StanzaNewestRoslyn` line runs the analyzer tests on a newer Roslyn than the
   [floor](src/Nickelony.Stanza.Analyzers/README.md#installation) they build against.
 
+### Column widths
+
+- `TextWidthTable.cs` in `Markup.Core` holds the display width of each code point, which every width rule counts by.
+  It is generated, so never edit it by hand: run [`Update-TextWidths.ps1`](.github/scripts/Update-TextWidths.ps1) with the Unicode version to read,
+  such as `-Version 17.0.0`, and commit the table with the version in the message.
+
 ### Site
 
 - A change to `site/` or to a file the build reads, which [its readme](site/README.md) lists, also runs the site gates, in `site/`:
