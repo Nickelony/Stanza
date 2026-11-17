@@ -147,9 +147,8 @@ vale --glob='!**/{bin,obj,artifacts}/**' .
   also runs the gates of the [Python workflow](.github/workflows/py.yml), in `py/`, after `pip install -e ".[dev]"`:
   `pytest`, `ruff check .`, `ruff format --check .`, `mypy` and `stanza-py check src tests`.
   The workflow runs them on Python 3.10 to 3.14.
-- The `dev` extra of [`py/pyproject.toml`](py/pyproject.toml) pins each tool to one version, so a new release cannot fail a CI leg.
+- The `dev` extra of [`py/pyproject.toml`](py/pyproject.toml) pins each tool, so a new release cannot fail a CI leg; the comment there says why flake8 has two pins.
   To bump a pin, change it, run `pip install -e ".[dev]"` in a new virtual environment, run the gates above, and fix what the new version reports.
-- The newest flake8 needs Python 3.11, so the 3.10 leg of the `dev` extra keeps an older pin until the project drops 3.10.
 - Neither product has a changelog or a release workflow yet, so the `Unreleased` entries and the releasing steps below are for the C# packages.
 
 ## Releasing

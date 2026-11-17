@@ -27,7 +27,7 @@ Repository = "https://github.com/Nickelony/Stanza"
 
 [project.optional-dependencies]
 # Pinned, so that a new release of a tool cannot fail a CI leg; CONTRIBUTING says how to bump them.
-# The newest flake8 needs Python 3.11, so the 3.10 leg takes the newest one that supports it.
+# The newest flake8 needs Python 3.11, so the 3.10 leg takes the newest one that supports it, until the project drops 3.10.
 dev = [
     "black==26.10.1",
     "build==1.6.1",
