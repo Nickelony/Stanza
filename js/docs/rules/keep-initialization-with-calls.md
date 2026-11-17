@@ -44,6 +44,7 @@ item.call3();
 ```
 
 - The initialization declares one plain local name from a call or constructor, optionally awaited.
+  A type assertion, a `satisfies` operator or a non-null `!` around the call or the await does not matter.
   It opens the container or follows a blank line that holds only whitespace.
 - The first call must be a single-line expression statement directly on that name, optionally awaited.
   A chained receiver, a computed member, a destructuring declaration and an assignment stay outside the rule.

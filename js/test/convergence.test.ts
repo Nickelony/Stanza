@@ -69,7 +69,6 @@ for (const { name, level, withOptIn, settings } of corpusRuns) {
 						assert.deepEqual(first.messages, [], `${orderName}: the first fix leaves a message`);
 						assert.equal(second.fixed, false, `${orderName}: a second fix changes the text`);
 						assert.equal(second.output, first.output, `${orderName}: a second fix is not the identity`);
-						assert.deepEqual(linter.verify(first.output, config, { filename }), [], `${orderName}: the output does not lint clean`);
 
 						outputs.set(orderName, first.output);
 					}

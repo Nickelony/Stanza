@@ -1,6 +1,6 @@
 import { statementKinds } from '../analysis/kinds.ts';
 import type { Claim } from '../analysis/session.ts';
-import { readDirectReceiver } from '../analysis/syntax.ts';
+import { readDirectReceiver, unwrapExpression } from '../analysis/syntax.ts';
 import { createKeepRule } from '../createKeepRule.ts';
 
 /** Tells whether a single-line initialization stands directly above a single-line direct call on the initialized name. */
@@ -24,7 +24,11 @@ const pairs: Claim = (container, gapIndex) => {
 	}
 
 	const [declaration] = previous.node.declarations;
-	const value = declaration?.init?.type === 'AwaitExpression' ? declaration.init.argument : declaration?.init;
+	let value = declaration?.init ? unwrapExpression(declaration.init) : undefined;
+
+	if (value?.type === 'AwaitExpression') {
+		value = unwrapExpression(value.argument);
+	}
 
 	if (declaration?.id.type !== 'Identifier' || (value?.type !== 'CallExpression' && value?.type !== 'NewExpression')) {
 		return false;

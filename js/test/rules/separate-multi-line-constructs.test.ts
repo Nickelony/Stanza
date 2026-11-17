@@ -101,6 +101,41 @@ createRuleTester().run('separate-multi-line-constructs', rule as never, {
 		},
 
 		{
+			code: lines(
+				'class A {',
+				'  get [Symbol.iterator]() {',
+				'    return 1;',
+				'  }',
+				'  set [Symbol.asyncIterator](value) {',
+				'    consume(value);',
+				'  }',
+				'}',
+			),
+
+			output: lines(
+				'class A {',
+				'  get [Symbol.iterator]() {',
+				'    return 1;',
+				'  }',
+				'',
+				'  set [Symbol.asyncIterator](value) {',
+				'    consume(value);',
+				'  }',
+				'}',
+			),
+
+			errors: 1,
+			name: 'two accessors with keys that cannot be read are not a pair',
+		},
+
+		{
+			code: lines('class A {', '  [Symbol.iterator](a: string): void;', '  [Symbol.iterator](a: unknown) {', '    g(a);', '  }', '}'),
+			output: lines('class A {', '  [Symbol.iterator](a: string): void;', '', '  [Symbol.iterator](a: unknown) {', '    g(a);', '  }', '}'),
+			errors: 1,
+			name: 'two methods with keys that cannot be read are not overloads',
+		},
+
+		{
 			code: lines('class A {', '  @Input()', '  name: string;', '  size = 1;', '}'),
 			output: lines('class A {', '  @Input()', '  name: string;', '', '  size = 1;', '}'),
 			errors: 1,

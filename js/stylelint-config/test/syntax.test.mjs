@@ -47,16 +47,16 @@ describe('the syntax', () => {
 		const [template] = syntax.parse(source, { from: 'src/example.tsx' }).nodes;
 
 		assert.deepEqual(readDeclarations(template), [
-			['stanza-interpolation', '${border}'],
+			['stanza-{interpolation}', '${border}'],
 			['color', 'red'],
-			['stanza-interpolation', '${tail}'],
+			['stanza-{interpolation}', '${tail}'],
 		]);
 
 		const rule = template.first;
 
-		assert.equal(rule.first.prop, 'stanza-interpolation');
+		assert.equal(rule.first.prop, 'stanza-{interpolation}');
 		assert.equal(rule.first.source.start.line, 4);
-		assert.equal(rule.last.prop, 'stanza-interpolation');
+		assert.equal(rule.last.prop, 'stanza-{interpolation}');
 	});
 
 	it('leaves an interpolation inside a value or a selector as part of it', () => {
@@ -67,10 +67,43 @@ describe('the syntax', () => {
 	});
 
 	it('picks a marker character the source does not hold', () => {
-		const taken = String.fromCharCode(0xe000);
-		const source = `${react}const label = "${taken}";\nconst spin = keyframes\`\nfrom {\n opacity: 0;\n}\nto {\n opacity: 1;\n}\n\`;\n`;
+		const marker = `/*${String.fromCharCode(0xe000)}*/ css`;
+		const source = `${react}const label = "${marker}";\nconst spin = keyframes\`\nfrom {\n opacity: 0;\n}\nto {\n opacity: 1;\n}\n\`;\n`;
 
 		assert.equal(roundTrip(source), source);
+	});
+
+	it('writes a tag back as it was spelled, an escaped spelling too', () => {
+		const backslash = String.fromCharCode(0x5c);
+		const escaped = `key${backslash}u0066rames`;
+		const braced = `keyfr${backslash}u{61}mes`;
+		const body = '`\nfrom {\n opacity: 0;\n}\nto {\n opacity: ${end};\n}\n`';
+		const source = `${react}const a = ${escaped}${body};\nconst b = keyframes${body};\nconst c = ${braced}${body};\nconst d = ${escaped}${body};\n`;
+
+		assert.equal(roundTrip(source), source);
+
+		for (const template of syntax.parse(source, { from: 'src/example.tsx' }).nodes) {
+			assert.equal(template.nodes.length, 2);
+		}
+	});
+
+	it('writes a standalone interpolation from its source, whatever became of its value', () => {
+		const source = `${react}const x = css\`\n\${ base( 1 ) }\ncolor: red;\n\`;\n`;
+		const document = syntax.parse(source, { from: 'src/example.tsx' });
+
+		document.walkDecls((declaration) => {
+			if (declaration.prop === 'stanza-{interpolation}') {
+				declaration.value = '${changed}';
+			}
+		});
+
+		let output = '';
+
+		syntax.stringify(document, (part) => {
+			output += part;
+		});
+
+		assert.equal(output, source);
 	});
 
 	it('finds the keyframes template whatever the file extension', () => {

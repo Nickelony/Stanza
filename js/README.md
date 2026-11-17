@@ -14,8 +14,19 @@ The package is not published yet.
 
 ## Install
 
+Until the first release, build and pack the plugin at the root of a checkout of the repository, then install the tarball in your project:
+
 ```text
-npm install --save-dev eslint-plugin-stanza
+npm --prefix js ci
+npm --prefix js run build
+npm pack ./js --pack-destination <folder>
+npm install --save-dev eslint eslint-config-prettier typescript-eslint <folder>/eslint-plugin-stanza-<version>.tgz
+```
+
+After the first release, install it from the registry:
+
+```text
+npm install --save-dev eslint eslint-config-prettier typescript-eslint eslint-plugin-stanza
 ```
 
 The plugin needs ESLint 9 or 10 and a flat config.

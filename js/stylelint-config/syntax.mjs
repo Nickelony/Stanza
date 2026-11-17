@@ -4,8 +4,12 @@ import ts from 'typescript';
 
 import { createBindings, isEmotionKeyframes } from './emotion-tag.mjs';
 
-/** The property of a standalone interpolation, which the declaration rules read as a declaration. */
-const interpolationProperty = 'stanza-interpolation';
+/**
+ * The property of a standalone interpolation, which the empty-line rules read as a declaration.
+ * The braces keep it out of the standard properties, so a rule that judges a property, a duplicate or a value skips it.
+ * A leading `$` would make Stylelint read a Sass variable, and the empty-line rules would lay it out as one.
+ */
+const interpolationProperty = 'stanza-{interpolation}';
 
 /** Exposes each standalone `${...}` of a template as a node of its own, so a rule sees it as the sibling it is. */
 function exposeStandaloneInterpolations(document) {
@@ -72,7 +76,12 @@ function findKeyframesTags(source, fileName) {
 
 	function visit(node) {
 		if (ts.isTaggedTemplateExpression(node) && ts.isIdentifier(node.tag) && node.tag.text === 'keyframes' && isEmotionKeyframes(node.tag, checker)) {
-			ranges.push({ start: node.tag.getStart(sourceFile), end: node.tag.end, contentStart: node.template.getStart(sourceFile) + 1 });
+			ranges.push({
+				start: node.tag.getStart(sourceFile),
+				end: node.tag.end,
+				contentStart: node.template.getStart(sourceFile) + 1,
+				spelling: node.tag.getText(sourceFile),
+			});
 		}
 
 		ts.forEachChild(node, visit);
@@ -99,27 +108,33 @@ function parse(input, options) {
 		// A source TypeScript cannot read has no template for the upstream parser to find either.
 	}
 
+	// Each spelling of the tag, `keyframes` or an escaped one, gets a marker of its own and is restored as written.
+	// A marker is as long as its spelling and ends the identifier css where the tag ended, so every offset stays the source's.
+	// A private-use character no other text holds makes the restoration unambiguous, nested interpolations included.
+	const markers = new Map();
 	let character = 0xe000;
 
-	while (character <= 0xf8ff && source.includes(String.fromCharCode(character))) {
+	for (const spelling of new Set(ranges.map((range) => range.spelling))) {
+		while (character <= 0xf8ff && source.includes(String.fromCharCode(character))) {
+			character++;
+		}
+
+		if (character > 0xf8ff) {
+			return exposeStandaloneInterpolations(styledSyntax.parse(source, options));
+		}
+
+		markers.set(spelling, `/*${String.fromCharCode(character)}${' '.repeat(spelling.length - 9)}*/ css`);
 		character++;
 	}
 
-	if (ranges.length === 0 || character > 0xf8ff) {
-		return exposeStandaloneInterpolations(styledSyntax.parse(source, options));
-	}
-
-	// The marker is nine characters long, like keyframes, and ends the identifier css where the tag ended.
-	// A private-use character no other text holds makes the restoration unambiguous, nested interpolations included.
-	const marker = `/*${String.fromCharCode(character)}*/ css`;
 	let virtualSource = source;
 
-	for (const { start, end } of ranges.toSorted((left, right) => right.start - left.start)) {
-		virtualSource = virtualSource.slice(0, start) + marker + virtualSource.slice(end);
+	for (const { start, end, spelling } of ranges.toSorted((left, right) => right.start - left.start)) {
+		virtualSource = virtualSource.slice(0, start) + markers.get(spelling) + virtualSource.slice(end);
 	}
 
 	const document = styledSyntax.parse(virtualSource, options);
-	document.raws.stanzaKeyframesMarker = marker;
+	document.raws.stanzaKeyframesMarkers = new Map([...markers].map(([spelling, marker]) => [marker, spelling]));
 
 	const prefixes = new Map(ranges.map(({ start, contentStart }) => [contentStart, virtualSource.slice(start, contentStart)]));
 
@@ -134,10 +149,11 @@ function parse(input, options) {
 	return exposeStandaloneInterpolations(document);
 }
 
-/** Writes the document back, with each interpolation as its JavaScript and each marker as its `keyframes` tag. */
+/** Writes the document back, with each interpolation as its JavaScript and each marker as the tag it stands for. */
 function stringify(node, builder) {
 	const document = node.root();
-	const marker = document.raws.stanzaKeyframesMarker;
+	const markers = document.raws.stanzaKeyframesMarkers;
+	const text = document.source.input.css;
 	const interpolations = document.nodes?.filter((item) => !item.raws.styledSyntaxIsComponent) ?? [];
 
 	function render(current) {
@@ -158,7 +174,8 @@ function stringify(node, builder) {
 						),
 				);
 
-				let expression = cssNode.value;
+				// The expression is the source text, never the value, which a rule that fixes a value could have changed.
+				let expression = text.slice(start, end);
 
 				for (const child of outermost.toSorted((left, right) => right.raws.styledSyntaxRangeStart - left.raws.styledSyntaxRangeStart)) {
 					const from = child.raws.styledSyntaxRangeStart - start;
@@ -172,7 +189,7 @@ function stringify(node, builder) {
 			}
 
 			// The upstream stringifier restores interpolations in whitespace, but not inside declaration values.
-			if (marker && cssNode?.type === 'decl') {
+			if (markers && cssNode?.type === 'decl') {
 				for (const interpolation of interpolations) {
 					const prefix = interpolation.raws.stanzaKeyframesPrefix;
 
@@ -194,8 +211,13 @@ function stringify(node, builder) {
 		return output;
 	}
 
-	const output = render(node);
-	builder(marker ? output.split(marker).join('keyframes') : output);
+	let output = render(node);
+
+	for (const [marker, spelling] of markers ?? []) {
+		output = output.split(marker).join(spelling);
+	}
+
+	builder(output);
 }
 
 export default { parse, stringify };

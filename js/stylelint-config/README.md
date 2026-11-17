@@ -11,6 +11,15 @@ The package is not published yet.
 
 ## Install
 
+Until the first release, pack the config at the root of a checkout of the repository, then install the tarball in your project:
+
+```text
+npm pack ./js/stylelint-config --pack-destination <folder>
+npm install --save-dev stylelint <folder>/stylelint-config-stanza-<version>.tgz
+```
+
+After the first release, install it from the registry:
+
 ```text
 npm install --save-dev stylelint stylelint-config-stanza
 ```

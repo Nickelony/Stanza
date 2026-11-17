@@ -39,6 +39,24 @@ describe('keep-initialization-with-calls', () => {
 		assert.equal(fix(code, rule), lines('async function f() {', '  const item = await create();', '  await item.open();', '  use(item);', '}'));
 	});
 
+	it('sees through the type assertions, the non-null mark and the satisfies operator of an initializer', () => {
+		for (const initializer of [
+			'new Item() as Item',
+			'create()!',
+			'create() satisfies Item',
+			'(await create()) as Item',
+			'await (create() as Promise<Item>)',
+			'<Item>create()',
+		]) {
+			const keeper = initializer.includes('await') ? 'async function f() {' : 'function f() {';
+			const code = lines(keeper, '  prepare();', '', `  const item = ${initializer};`, '', '  item.call1();', '  item.call2();', '}');
+			const expected = lines(keeper, '  prepare();', '', `  const item = ${initializer};`, '  item.call1();', '  item.call2();', '}');
+
+			assert.equal(fix(code, rule), expected, initializer);
+			assert.equal(fix(expected, rule), expected, initializer);
+		}
+	});
+
 	it('excludes another receiver, a chained receiver, a property assignment and a destructuring declaration', () => {
 		for (const pair of [
 			['const item = new Item();', 'other.call();'],

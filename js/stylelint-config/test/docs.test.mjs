@@ -35,6 +35,8 @@ describe('the examples of the pages', () => {
 		it(`shows the real fix in each example of ${page}`, async () => {
 			const fences = readFences(readFileSync(`${packageDirectory}${page}`, 'utf8'));
 
+			assert.ok(fences.length > 0, `${page} holds an example the test can read`);
+
 			for (const { language, text } of fences) {
 				const { source, expected } = splitExample(text);
 				assert.equal((await check(source, true, filenames[language])).code, expected, text);

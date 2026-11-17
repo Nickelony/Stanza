@@ -27,25 +27,21 @@ function isClassMethod(node: Node): node is ClassMethod {
 	return node.type === 'MethodDefinition' || node.type === 'TSAbstractMethodDefinition';
 }
 
+/** Tells whether two members share a key whose name can be read, because two unreadable keys are not known to match. */
+function haveSameKnownKey(previous: ClassMethod, next: ClassMethod): boolean {
+	const name = readKeyName(previous.key, previous.computed);
+	return name !== undefined && name === readKeyName(next.key, next.computed);
+}
+
 /** Tells whether two class members are overloads of one method: the first has no body and both share a name. */
 function isMethodOverload(previous: ClassMethod, next: ClassMethod): boolean {
-	return (
-		previous.value.type === 'TSEmptyBodyFunctionExpression' &&
-		previous.static === next.static &&
-		readKeyName(previous.key, previous.computed) === readKeyName(next.key, next.computed)
-	);
+	return previous.value.type === 'TSEmptyBodyFunctionExpression' && previous.static === next.static && haveSameKnownKey(previous, next);
 }
 
 /** Tells whether two class members are the getter and the setter of one property. */
 function isAccessorPair(previous: ClassMethod, next: ClassMethod): boolean {
 	const kinds = new Set([previous.kind, next.kind]);
-
-	return (
-		kinds.has('get') &&
-		kinds.has('set') &&
-		previous.static === next.static &&
-		readKeyName(previous.key, previous.computed) === readKeyName(next.key, next.computed)
-	);
+	return kinds.has('get') && kinds.has('set') && previous.static === next.static && haveSameKnownKey(previous, next);
 }
 
 /** Tells whether two interface members are signatures of one overloaded method, call or constructor. */
@@ -61,6 +57,21 @@ function isSignatureOverload(previous: Node, next: Node): boolean {
 	);
 }
 
+/** The JSX containers read so far, with whether an element among their children holds text. */
+const textContainers = new WeakMap<Container, boolean>();
+
+/** Tells whether a JSX container has text among its children, reading its units once. */
+function hasText(container: Container): boolean {
+	let result = textContainers.get(container);
+
+	if (result === undefined) {
+		result = container.units.some((unit) => unit.isText);
+		textContainers.set(container, result);
+	}
+
+	return result;
+}
+
 /**
  * Tells whether a blank line between two neighbors would split a pair that has to stay together.
  * An element with text among its children keeps none, because Prettier removes the blank lines of such an element.
@@ -70,7 +81,7 @@ export function isGluedPair(container: Container, previous: Unit, next: Unit): b
 	const second = next.node;
 
 	if (container.kind === 'jsx') {
-		return container.units.some((unit) => unit.isText);
+		return hasText(container);
 	}
 
 	if (container.kind === 'switch') {

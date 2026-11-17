@@ -47,7 +47,7 @@ function createJsxUnits(children: readonly TSESTree.JSXChild[], sourceCode: Sour
 	const merged: Unit[] = [];
 
 	for (const unit of units.toReversed()) {
-		const following = merged[0];
+		const following = merged.at(-1);
 
 		if (
 			isJsxComment(unit.node) &&
@@ -55,7 +55,7 @@ function createJsxUnits(children: readonly TSESTree.JSXChild[], sourceCode: Sour
 			!following.isText &&
 			(following.jsxLeadLine ?? following.firstLine) - unit.lastLine <= 1
 		) {
-			merged[0] = {
+			merged[merged.length - 1] = {
 				...following,
 				jsxLeadLine: unit.firstLine,
 				jsxLeadTexts: [...sourceCode.getCommentsInside(unit.node).map((comment) => comment.value), ...following.jsxLeadTexts],
@@ -64,10 +64,10 @@ function createJsxUnits(children: readonly TSESTree.JSXChild[], sourceCode: Sour
 			continue;
 		}
 
-		merged.unshift(unit);
+		merged.push(unit);
 	}
 
-	return merged;
+	return merged.reverse();
 }
 
 /** Reads the text of the shebang line, which is no node and so needs a unit of its own. */

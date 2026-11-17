@@ -127,6 +127,6 @@ A gap is joined, and the rules leave it as written, when a blank line would spli
 | `using` and `await using` declarations | Declaration kinds of their own. |
 | Assignments, increments and decrements | One assignment run, whatever they write, and a right side that awaits or calls still makes an assignment. |
 | `super(...)` and `super.method(...)` | A base call. It opens or closes the body of a constructor, a method, an accessor or an object method, and an arrow function inside it is not that body. |
-| `yield` statements | Not a run. A generator's `yield` statements are plain units. |
+| `yield`, `yield*` and bare `yield` statements | One yield run, so two or more neighbors are separated from the statements beside them, as [`separate-yield-runs`](rules/separate-yield-runs.md) says. A `const input = yield request;` declaration and an assignment are not in it. |
 | Chained promise calls | One call statement. Its callee path joins the whole chain, so only an identical chain repeats a run. |
 | `describe`, `it`, `test` and hooks | Test blocks, not invocations, so `separate-test-blocks` owns the gaps between them. A call to a test root is a test block even where that rule is off, and a name that is also an assertion root is a test block. |
