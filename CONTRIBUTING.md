@@ -119,9 +119,13 @@ vale --glob='!**/{bin,obj,artifacts}/**' .
 
 ### Column widths
 
-- `TextWidthTable.cs` in `Markup.Core` holds the display width of each code point, which every width rule counts by.
-  It is generated, so never edit it by hand: run [`Update-TextWidths.ps1`](.github/scripts/Update-TextWidths.ps1) with the Unicode version to read,
-  such as `-Version 17.0.0`, and commit the table with the version in the message.
+Every width rule counts columns as the pinned CSharpier does, through `TextColumns` in `Markup.Core`,
+which reads the wide code units from `TextWidthTable.cs` beside it.
+
+The table is generated, so never edit it by hand: when `.config/dotnet-tools.json` pins another CSharpier,
+run [`Update-TextWidths.ps1`](.github/scripts/Update-TextWidths.ps1), which asks that CSharpier for the width of each code unit,
+and commit the table with the CSharpier version in the message.
+`ColumnCountGuardTests` runs the pinned CSharpier on lines at its print width and one column past it, so a table that has drifted fails there.
 
 ### Site
 

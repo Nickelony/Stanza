@@ -757,7 +757,7 @@ public sealed partial class FormatterClaimGuardTests
 	private static string FileName(int index, string source) =>
 		index + (source.StartsWith('<') ? ".csproj" : ".cs");
 
-	private static (int ExitCode, string Error) RunCSharpier(string directory)
+	internal static (int ExitCode, string Error) RunCSharpier(string directory)
 	{
 		// The tool is pinned in .config/dotnet-tools.json, so the command runs from the repository root.
 		ProcessStartInfo start = new(DotnetHost.Executable)

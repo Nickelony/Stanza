@@ -548,6 +548,41 @@ public sealed class UseExpressionBodyForSingleLineMemberTests
 		Assert.IsEmpty(wideName.Diagnostics, "The ideographs make the signature with the arrow 24 columns wide.");
 	}
 
+	// The 35 check marks are 35 code units of one column each for CSharpier, so the member is 75 columns wide with its tab.
+	[TestMethod]
+	public async Task ACheckMarkCountsOneColumnLikeItsCodeUnitTowardTheWidth()
+	{
+		string marks = string.Concat(Enumerable.Repeat(char.ConvertFromUtf32(0x2705), 35));
+
+		string block = $$"""
+			class C
+			{
+				public static string Status()
+				{
+					return "{{marks}}";
+				}
+			}
+			""";
+
+		string oneLine = $$"""
+			class C
+			{
+				public static string Status() => "{{marks}}";
+			}
+			""";
+
+		string broken = $$"""
+			class C
+			{
+				public static string Status() =>
+					"{{marks}}";
+			}
+			""";
+
+		RoslynTestHarness.AssertFixedText(oneLine, await RunCollapseAsync(block, 75, "either"));
+		RoslynTestHarness.AssertFixedText(broken, await RunCollapseAsync(block, 74, "either"));
+	}
+
 	private static Task<AnalyzerRunResult> ReportNamedMemberAsync(string name)
 	{
 		string source = $$"""

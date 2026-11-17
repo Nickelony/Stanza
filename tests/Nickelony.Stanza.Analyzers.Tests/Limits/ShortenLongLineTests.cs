@@ -128,7 +128,7 @@ public sealed class ShortenLongLineTests
 	[TestMethod]
 	public async Task AWideCharacterCountsTwoColumnsSoAShortLineOfUnitsCanRunPastTheWidth()
 	{
-		// 75 code units, as the pinned CSharpier counts them: 45 narrow ones and 30 ideographs of two columns, 105 in all.
+		// 75 code units: the 45 of the marker and the filler count one column each, and CSharpier lists the 30 ideographs as two, so 105 columns.
 		string comment = "// " + new string('a', 42) + string.Concat(Enumerable.Repeat(Text(0x6771), 30));
 
 		Assert.AreEqual(75, comment.Length);
@@ -158,15 +158,16 @@ public sealed class ShortenLongLineTests
 	}
 
 	[TestMethod]
-	public async Task ACombiningMarkAndAZeroWidthCharacterAddNoColumn()
+	public async Task ACombiningMarkAndAZeroWidthCharacterCountOneColumnEachLikeAnyCodeUnit()
 	{
-		// 18 columns in 60 code units: a letter, a combining accent, a zero width space and a joiner, over and over.
-		string comment = "// " + string.Concat(Enumerable.Repeat("a" + Text(0x0301, 0x200B, 0x200D), 14)) + "a";
+		// A letter, a combining accent, a zero width space and a joiner, over and over: 4 columns for each 4 code units.
+		string unit = "a" + Text(0x0301, 0x200B, 0x200D);
 
-		AnalyzerRunResult result = await ReportAsync(comment + "\n");
+		AnalyzerRunResult fits = await ReportAsync("// " + string.Concat(Enumerable.Repeat(unit, 9)) + "a\n");
+		AnalyzerRunResult past = await ReportAsync("// " + string.Concat(Enumerable.Repeat(unit, 9)) + "aa\n");
 
-		Assert.IsGreaterThan(40, comment.Length);
-		Assert.IsEmpty(result.Diagnostics);
+		Assert.IsEmpty(fits.Diagnostics, "The marker, its space and 37 code units are 40 columns.");
+		Assert.HasCount(1, past.Diagnostics);
 	}
 
 	[TestMethod]
@@ -466,11 +467,11 @@ public sealed class ShortenLongLineTests
 	}
 
 	[TestMethod]
-	public async Task ACharacterOutsideTheBasicPlaneTakesTwoColumns()
+	public async Task ACharacterOutsideTheBasicPlaneTakesTwoCodeUnitsAndSoTwoColumns()
 	{
 		string emoji = char.ConvertFromUtf32(0x1F600);
 
-		// Each one is two UTF-16 code units, so 19 of them take 38 columns and pass the width of 40 by one with the marker.
+		// Each one is two UTF-16 code units of one column each, so 19 of them take 38 columns and pass the width of 40 by one with the marker.
 		AnalyzerRunResult fits = await ReportAsync(
 			"// " + string.Concat(Enumerable.Repeat(emoji, 18)) + "\n"
 		);
@@ -481,6 +482,27 @@ public sealed class ShortenLongLineTests
 
 		Assert.IsEmpty(fits.Diagnostics);
 		Assert.HasCount(1, past.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task AnEmojiOfTheBasicPlaneThatCSharpierDoesNotListWideTakesOneColumn()
+	{
+		// U+2705 is one code unit, so CSharpier counts it one column, though a terminal shows it in two.
+		string check = Text(0x2705);
+
+		AnalyzerRunResult fits = await ReportAsync(
+			"// " + string.Concat(Enumerable.Repeat(check, 97)) + "\n",
+			width: null
+		);
+
+		AnalyzerRunResult past = await ReportAsync(
+			"// " + string.Concat(Enumerable.Repeat(check, 98)) + "\n",
+			width: null
+		);
+
+		Assert.IsEmpty(fits.Diagnostics, "The marker, its space and 97 check marks are 100 columns.");
+		Assert.HasCount(1, past.Diagnostics);
+		Assert.AreEqual(check, LimitFixtures.Text(past.Diagnostics[0]));
 	}
 
 	[TestMethod]

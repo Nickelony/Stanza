@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.Bodies;
@@ -76,6 +77,61 @@ public sealed class BreakExpressionOffSignatureLineTests
 			);
 
 		Assert.IsEmpty(result.Diagnostics);
+	}
+
+	// A code point is written as its number, so no file holds the character itself.
+	private static string Repeated(int codePoint, int count) =>
+		string.Concat(Enumerable.Repeat(char.ConvertFromUtf32(codePoint), count));
+
+	// One code unit counts one column as CSharpier counts it, so this member is 75 columns wide with its tab,
+	// where a terminal would show the 35 check marks in 70.
+	// CSharpier joins it to one line, so a rule that broke it would be fought by the formatter.
+	[TestMethod]
+	public async Task ACheckMarkCountsOneColumnLikeItsCodeUnit()
+	{
+		string source = $$"""
+			class C
+			{
+				public static string Status() => "{{Repeated(0x2705, 35)}}";
+			}
+			""";
+
+		AnalyzerRunResult fits = await RoslynTestHarness.ReportAsync<BreakExpressionOffSignatureLineAnalyzer>(
+			source,
+			analyzerConfigOptions: Width(75)
+		);
+
+		AnalyzerRunResult oneShort = await RoslynTestHarness.ReportAsync<BreakExpressionOffSignatureLineAnalyzer>(
+			source,
+			analyzerConfigOptions: Width(74)
+		);
+
+		Assert.IsEmpty(fits.Diagnostics);
+		Assert.HasCount(1, oneShort.Diagnostics);
+	}
+
+	[TestMethod]
+	public async Task AnIdeographCountsTwoColumnsAsCSharpierCountsIt()
+	{
+		string source = $$"""
+			class C
+			{
+				public static string Status() => "{{Repeated(0x6771, 35)}}";
+			}
+			""";
+
+		AnalyzerRunResult fits = await RoslynTestHarness.ReportAsync<BreakExpressionOffSignatureLineAnalyzer>(
+			source,
+			analyzerConfigOptions: Width(110)
+		);
+
+		AnalyzerRunResult oneShort = await RoslynTestHarness.ReportAsync<BreakExpressionOffSignatureLineAnalyzer>(
+			source,
+			analyzerConfigOptions: Width(109)
+		);
+
+		Assert.IsEmpty(fits.Diagnostics, "The member is 4 + 34 + 70 + 2 = 110 columns.");
+		Assert.HasCount(1, oneShort.Diagnostics);
 	}
 
 	[TestMethod]

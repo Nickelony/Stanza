@@ -1,183 +1,160 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-	Writes TextWidthTable.cs, the display widths of Unicode code points, from the Unicode Character Database.
+	Writes TextWidthTable.cs, the code units that the pinned CSharpier counts as two columns.
 
 .DESCRIPTION
-	A character is wide (2 columns) when its East Asian Width is W or F, and zero width (0 columns) when it is a combining mark (Mn, Me),
-	a zero width space, joiner or non-joiner, or a word joiner; a zero width character wins over a wide one.
-	Every other character is one column.
-	The emoji variation bases are the characters that an emoji variation selector (U+FE0F) turns into two columns.
-
-.PARAMETER Version
-	The Unicode version to read, such as 17.0.0.
+	Asks CharacterSizeCalculator.CalculateWidth of the CSharpier that .config/dotnet-tools.json pins, through reflection,
+	for the width of every UTF-16 code unit, and writes the first and last code unit of each run of wide ones.
+	CSharpier is MIT licensed (https://github.com/belav/csharpier).
+	It counts every other code unit as one column, so the table holds nothing else.
+	A build of a small program loads the tool's assembly, so the .NET SDK that runs the tool must be installed.
 
 .PARAMETER Output
 	The file to write, which defaults to the table of the markup engine.
 
 .EXAMPLE
-	./.github/scripts/Update-TextWidths.ps1 -Version 17.0.0
+	./.github/scripts/Update-TextWidths.ps1
 #>
 [CmdletBinding()]
 param(
-	[Parameter(Mandatory = $true)]
-	[ValidatePattern('^\d+\.\d+\.\d+$')]
-	[string] $Version,
-
 	[string] $Output = (Join-Path $PSScriptRoot '../../src/Nickelony.Stanza.Markup.Core/TextWidthTable.cs')
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$root = "https://www.unicode.org/Public/$Version/ucd"
-$limit = 0x110000
-$widths = New-Object 'byte[]' $limit
+$root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
+$manifest = Get-Content -LiteralPath (Join-Path $root '.config/dotnet-tools.json') -Raw | ConvertFrom-Json
+$version = $manifest.tools.csharpier.version
 
-for ($point = 0; $point -lt $limit; $point++)
+# The restore puts the pinned tool in the package directory, whose layout names the target framework of its assemblies.
+Push-Location $root
+
+try
 {
-	$widths[$point] = 1
+	& dotnet tool restore
+	if ($LASTEXITCODE -ne 0) { throw 'dotnet tool restore failed.' }
+}
+finally
+{
+	Pop-Location
 }
 
-function Read-Ranges([string] $Url, [string[]] $Values)
-{
-	$pattern = '^([0-9A-F]+)(?:\.\.([0-9A-F]+))?\s*;\s*(\w+)'
+$packages = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { Join-Path $HOME '.nuget/packages' }
+$tool = Get-ChildItem -LiteralPath (Join-Path $packages "csharpier/$version/tools") -Directory | Select-Object -First 1
+$assembly = Join-Path $tool.FullName 'any/CSharpier.Core.dll'
 
-	foreach ($line in (Invoke-RestMethod -Uri $Url).Split("`n"))
+if (-not (Test-Path -LiteralPath $assembly))
+{
+	throw "CSharpier $version has no CSharpier.Core.dll at $assembly."
+}
+
+$work = Join-Path ([System.IO.Path]::GetTempPath()) ('stanza-text-widths-' + [Guid]::NewGuid().ToString('N'))
+[void] (New-Item -ItemType Directory -Path $work)
+
+try
+{
+	$project = @"
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>$($tool.Name)</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+</Project>
+"@
+
+	$program = @'
+using System.Reflection;
+
+Assembly assembly = Assembly.LoadFrom(args[0]);
+Type type = assembly.GetType("CSharpier.Core.Utilities.CharacterSizeCalculator")!;
+MethodInfo method = type.GetMethod("CalculateWidth", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)!;
+Func<char, int> width = (Func<char, int>)Delegate.CreateDelegate(typeof(Func<char, int>), method);
+
+int first = -1;
+
+for (int unit = 0; unit <= 0x10000; unit++)
+{
+	int columns = unit == 0x10000 ? 1 : width((char)unit);
+
+	if (columns is not (1 or 2))
 	{
-		if ($line -match $pattern -and $Values -contains $Matches[3])
-		{
-			$first = [Convert]::ToInt32($Matches[1], 16)
-			$last = if ($Matches[2]) { [Convert]::ToInt32($Matches[2], 16) } else { $first }
-
-			[pscustomobject] @{ First = $first; Last = $last }
-		}
-	}
-}
-
-foreach ($range in Read-Ranges "$root/EastAsianWidth.txt" @('W', 'F'))
-{
-	for ($point = $range.First; $point -le $range.Last; $point++)
-	{
-		$widths[$point] = 2
-	}
-}
-
-$zero = @(Read-Ranges "$root/extracted/DerivedGeneralCategory.txt" @('Mn', 'Me'))
-$zero += [pscustomobject] @{ First = 0x200B; Last = 0x200D }
-$zero += [pscustomobject] @{ First = 0x2060; Last = 0x2060 }
-
-foreach ($range in $zero)
-{
-	for ($point = $range.First; $point -le $range.Last; $point++)
-	{
-		$widths[$point] = 0
-	}
-}
-
-# A lone surrogate is read as one column, whatever the table says.
-for ($point = 0xD800; $point -le 0xDFFF; $point++)
-{
-	$widths[$point] = 1
-}
-
-function Get-Runs([int] $Width)
-{
-	$runs = New-Object 'System.Collections.Generic.List[int]'
-	$point = 0
-
-	while ($point -lt $limit)
-	{
-		if ($widths[$point] -ne $Width)
-		{
-			$point++
-			continue
-		}
-
-		$start = $point
-
-		while ($point + 1 -lt $limit -and $widths[$point + 1] -eq $Width)
-		{
-			$point++
-		}
-
-		$runs.Add($start)
-		$runs.Add($point)
-		$point++
+		throw new InvalidOperationException($"U+{unit:X4} is {columns} columns, which the table cannot hold.");
 	}
 
-	return , $runs
+	if (columns == 2 && first < 0)
+	{
+		first = unit;
+	}
+	else if (columns == 1 && first >= 0)
+	{
+		Console.WriteLine($"{first} {unit - 1}");
+		first = -1;
+	}
 }
+'@
 
-# The characters of the digits, the number sign and the asterisk only take the emoji style after a keycap, so they stay one column.
-$bases = New-Object 'System.Collections.Generic.SortedSet[int]'
-$variationFile = Invoke-RestMethod -Uri "$root/emoji/emoji-variation-sequences.txt"
+	[System.IO.File]::WriteAllText((Join-Path $work 'widths.csproj'), $project)
+	[System.IO.File]::WriteAllText((Join-Path $work 'Program.cs'), $program)
 
-foreach ($line in $variationFile.Split("`n"))
+	$lines = & dotnet run --project (Join-Path $work 'widths.csproj') --configuration Release -- $assembly
+	if ($LASTEXITCODE -ne 0) { throw 'The program that reads the widths failed.' }
+}
+finally
 {
-	if ($line -match '^([0-9A-F]+) FE0F\s*;')
-	{
-		$base = [Convert]::ToInt32($Matches[1], 16)
-
-		if ($widths[$base] -eq 1 -and $base -gt 0x7F)
-		{
-			[void] $bases.Add($base)
-		}
-	}
+	Remove-Item -LiteralPath $work -Recurse -Force
 }
 
-function Format-Array([string] $Name, [string] $Summary, $Values)
+$values = New-Object 'System.Collections.Generic.List[int]'
+
+foreach ($line in $lines)
 {
-	$lines = New-Object 'System.Collections.Generic.List[string]'
-	$lines.Add("`t/// <summary>$Summary</summary>")
-	$lines.Add("`tpublic static readonly int[] $Name =")
-	$lines.Add("`t[")
-
-	$row = ''
-
-	foreach ($value in $Values)
-	{
-		$item = '0x{0:X}, ' -f $value
-
-		if ($row.Length + $item.Length -gt 100)
-		{
-			$lines.Add("`t`t" + $row.TrimEnd())
-			$row = ''
-		}
-
-		$row += $item
-	}
-
-	if ($row.Length -gt 0)
-	{
-		$lines.Add("`t`t" + $row.TrimEnd())
-	}
-
-	$lines.Add("`t];")
-
-	return $lines
+	$parts = "$line".Trim().Split(' ')
+	$values.Add([int] $parts[0])
+	$values.Add([int] $parts[1])
 }
+
+if ($values.Count -eq 0 -or $values.Count % 2 -ne 0)
+{
+	throw 'The program wrote no ranges.'
+}
+
+$rows = New-Object 'System.Collections.Generic.List[string]'
+$row = ''
+
+foreach ($value in $values)
+{
+	$item = '0x{0:X}, ' -f $value
+
+	if ($row.Length + $item.Length -gt 100)
+	{
+		$rows.Add("`t`t" + $row.TrimEnd())
+		$row = ''
+	}
+
+	$row += $item
+}
+
+$rows.Add("`t`t" + $row.TrimEnd())
 
 $text = New-Object 'System.Collections.Generic.List[string]'
 $text.Add('// <auto-generated>')
-$text.Add("// Generated by .github/scripts/Update-TextWidths.ps1 from the Unicode Character Database $Version; edit the script, not this file.")
+$text.Add("// Generated by .github/scripts/Update-TextWidths.ps1 from CharacterSizeCalculator of CSharpier $version; edit the script, not this file.")
 $text.Add('// </auto-generated>')
 $text.Add('namespace Nickelony.Stanza.Markup.Core;')
 $text.Add('')
-$text.Add("/// <summary>The display widths of code points from Unicode $Version, as the ranges of the characters that are not one column.</summary>")
+$text.Add("/// <summary>The code units that CSharpier $version counts as two columns, as the first and last of each run.</summary>")
 $text.Add('internal static class TextWidthTable')
 $text.Add('{')
+$text.Add("`tpublic static readonly int[] WideRanges =")
+$text.Add("`t[")
 
-foreach ($line in (Format-Array 'WideRanges' 'The first and last code point of each run of wide characters, in order.' (Get-Runs 2))) { $text.Add($line) }
+foreach ($line in $rows) { $text.Add($line) }
 
-$text.Add('')
-
-foreach ($line in (Format-Array 'ZeroRanges' 'The first and last code point of each run of zero width characters, in order.' (Get-Runs 0))) { $text.Add($line) }
-
-$text.Add('')
-
-foreach ($line in (Format-Array 'EmojiVariationBases' 'The one column characters that the emoji variation selector turns into two, in order.' $bases)) { $text.Add($line) }
-
+$text.Add("`t];")
 $text.Add('}')
 
 [System.IO.File]::WriteAllText((Resolve-Path -LiteralPath (Split-Path $Output)).Path + [System.IO.Path]::DirectorySeparatorChar + (Split-Path $Output -Leaf), (($text -join "`r`n") + "`r`n"), (New-Object System.Text.UTF8Encoding $false))

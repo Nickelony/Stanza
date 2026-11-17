@@ -7,9 +7,9 @@ namespace Nickelony.Stanza.Markup.Core.Tests;
 public sealed class TextColumnsTests
 {
 	[TestMethod]
-	public void ATabCountsItsWidthAndAnEmojiCountsTwo()
+	public void ATabCountsItsWidthAndAnEmojiOutsideTheBasicPlaneCountsTwo()
 	{
-		// An emoji is wide, so it counts two, and it takes two code units too.
+		// The emoji takes two code units, and each counts one.
 		Assert.AreEqual(4 + 1 + 2, TextColumns.GetColumns("\ta\U0001F600", tabColumns: 4));
 	}
 
@@ -22,53 +22,82 @@ public sealed class TextColumnsTests
 	[DataRow(0x3042, 2, "a hiragana")]
 	[DataRow(0xAC00, 2, "a Hangul syllable")]
 	[DataRow(0xFF21, 2, "a fullwidth Latin capital")]
-	[DataRow(0x20000, 2, "a CJK ideograph outside the basic plane")]
-	[DataRow(0x1F600, 2, "an emoji")]
+	[DataRow(0x2329, 2, "a left-pointing angle bracket, which CSharpier lists")]
+	[DataRow(0x20000, 2, "a CJK ideograph outside the basic plane, which is two code units of one column each")]
+	[DataRow(0x1F600, 2, "an emoji outside the basic plane, which is two code units of one column each")]
+	[DataRow(0x2705, 1, "a check mark emoji of the basic plane, which CSharpier does not list")]
+	[DataRow(0x231A, 1, "a watch emoji of the basic plane, which CSharpier does not list")]
 	[DataRow(0xFF61, 1, "a halfwidth form")]
 	[DataRow(0x00B1, 1, "an ambiguous sign")]
 	[DataRow(0x2460, 1, "an ambiguous circled digit")]
-	[DataRow(0x1D400, 1, "a mathematical letter, which is one column in two code units")]
-	[DataRow(0x0301, 0, "a combining accent")]
-	[DataRow(0x200B, 0, "a zero width space")]
-	[DataRow(0x200C, 0, "a zero width non-joiner")]
-	[DataRow(0x200D, 0, "a zero width joiner")]
-	[DataRow(0xFE0F, 0, "a variation selector")]
-	[DataRow(0xE0100, 0, "a variation selector of the supplement")]
-	public void ACharacterCountsTheColumnsATerminalShowsIt(int codePoint, int expected, string what) =>
+	[DataRow(0x1D400, 2, "a mathematical letter, which is two code units")]
+	[DataRow(0x0301, 1, "a combining accent")]
+	[DataRow(0x200B, 1, "a zero width space")]
+	[DataRow(0x200D, 1, "a zero width joiner")]
+	[DataRow(0xFE0F, 1, "a variation selector")]
+	[DataRow(0xE0100, 2, "a variation selector of the supplement")]
+	public void ACharacterCountsOneColumnPerCodeUnitAndTwoWhenCSharpierListsItWide(int codePoint, int expected, string what) =>
 		Assert.AreEqual(expected, TextColumns.GetColumns(Text(codePoint), tabColumns: 4), what);
 
 	[TestMethod]
-	public void ACombiningMarkAddsNoColumnToItsBase()
+	public void ASequenceOfSeveralCodePointsCountsEachOfItsCodeUnits()
 	{
-		Assert.AreEqual(1, TextColumns.GetColumns(Text('e', 0x0301), tabColumns: 4));
-		Assert.AreEqual(2, TextColumns.GetColumns(Text(0x304B, 0x3099), tabColumns: 4), "A combining kana mark wins over the wide width it also has.");
+		Assert.AreEqual(2, TextColumns.GetColumns(Text('e', 0x0301), tabColumns: 4), "A combining mark counts one.");
+		Assert.AreEqual(4, TextColumns.GetColumns(Text(0x304B, 0x3099), tabColumns: 4), "A kana and its voicing mark both lie in a range that CSharpier lists wide.");
+		Assert.AreEqual(2, TextColumns.GetColumns(Text(0x2764, 0xFE0F), tabColumns: 4), "A heart and its selector count one each.");
+
+		// A family of three: each emoji takes two code units and each joiner one.
+		Assert.AreEqual(8, TextColumns.GetColumns(Text(0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F467), tabColumns: 4));
+	}
+
+	// CSharpier 1.3.0 lists these ranges, first and last code unit of each, in CharacterSizeCalculator.CalculateWidth.
+	private static readonly int[] s_csharpierWideRanges =
+	[
+		0x1100, 0x115F, 0x2329, 0x232A, 0x2E80, 0x303E, 0x3040, 0xA4CF, 0xAC00, 0xD7A3,
+		0xF900, 0xFAFF, 0xFE10, 0xFE19, 0xFE30, 0xFE6F, 0xFF00, 0xFF60, 0xFFE0, 0xFFE6,
+	];
+
+	[TestMethod]
+	public void TheTableHoldsTheRangesOfTheWideCharactersOfCSharpier1_3_0() =>
+		CollectionAssert.AreEqual(s_csharpierWideRanges, TextWidthTable.WideRanges);
+
+	[TestMethod]
+	public void EachEdgeOfARangeIsWideAndTheCodeUnitBesideItIsNot()
+	{
+		for (int index = 0; index < s_csharpierWideRanges.Length; index += 2)
+		{
+			int first = s_csharpierWideRanges[index];
+			int last = s_csharpierWideRanges[index + 1];
+
+			Assert.AreEqual(1, TextColumns.GetColumns(((char)(first - 1)).ToString(), tabColumns: 4), $"U+{first - 1:X4} is before a range.");
+			Assert.AreEqual(2, TextColumns.GetColumns(((char)first).ToString(), tabColumns: 4), $"U+{first:X4} starts a range.");
+			Assert.AreEqual(2, TextColumns.GetColumns(((char)last).ToString(), tabColumns: 4), $"U+{last:X4} ends a range.");
+			Assert.AreEqual(1, TextColumns.GetColumns(((char)(last + 1)).ToString(), tabColumns: 4), $"U+{last + 1:X4} is past a range.");
+		}
 	}
 
 	[TestMethod]
-	public void AnEmojiPresentationSequenceCountsTwoColumns()
+	public void ASurrogateCountsOneColumnWhetherOrNotItHasItsPair()
 	{
-		Assert.AreEqual(1, TextColumns.GetColumns(Text(0x2764), tabColumns: 4), "The heart alone is text style.");
-		Assert.AreEqual(2, TextColumns.GetColumns(Text(0x2764, 0xFE0F), tabColumns: 4));
-		Assert.AreEqual(2, TextColumns.GetColumns(Text(0x00A9, 0xFE0F), tabColumns: 4));
-		Assert.AreEqual(2, TextColumns.GetColumns(Text(0x1F600, 0xFE0F), tabColumns: 4), "A wide base stays at two.");
-		Assert.AreEqual(1, TextColumns.GetColumns(Text('#', 0xFE0F), tabColumns: 4), "A digit or a sign takes the emoji style only in a keycap.");
-		Assert.AreEqual(0, TextColumns.GetColumns(Text(0xFE0F), tabColumns: 4));
-	}
-
-	[TestMethod]
-	public void AZeroWidthJoinerSequenceCountsItsEmojiAndNoMore()
-	{
-		// A family of three: each emoji counts two and the joiners none.
-		Assert.AreEqual(6, TextColumns.GetColumns(Text(0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F467), tabColumns: 4));
-	}
-
-	[TestMethod]
-	public void ASurrogatePairIsOneCodePointAndALoneSurrogateOneColumn()
-	{
-		Assert.AreEqual(2, TextColumns.GetColumns("\U0001F600", tabColumns: 4));
+		Assert.AreEqual(2, TextColumns.GetColumns(Text(0x1F600), tabColumns: 4));
 		Assert.AreEqual(1, TextColumns.GetColumns(((char)0xD83D).ToString(), tabColumns: 4));
 		Assert.AreEqual(1, TextColumns.GetColumns(((char)0xDE00).ToString(), tabColumns: 4));
 		Assert.AreEqual(2, TextColumns.GetColumns(((char)0xDE00).ToString() + ((char)0xD83D), tabColumns: 4));
+	}
+
+	[TestMethod]
+	public void TheColumnsOfTwoPartsAddUpToTheColumnsOfTheWholeAtAnySplit()
+	{
+		// StanzaText measures the text before a span and the span itself apart, so no split may change the sum.
+		string text = "a" + Text(0x1F600, 0x6771, 0x2705, 0xFE0F, 0x0301) + "\tb";
+
+		for (int split = 0; split <= text.Length; split++)
+		{
+			int before = TextColumns.GetColumns(text[..split], tabColumns: 4);
+			int after = TextColumns.GetColumns(text[split..], tabColumns: 4, startColumn: before);
+
+			Assert.AreEqual(TextColumns.GetColumns(text, tabColumns: 4), before + after, $"The split at {split} changed the sum.");
+		}
 	}
 
 	[TestMethod]
@@ -92,21 +121,12 @@ public sealed class TextColumnsTests
 	}
 
 	[TestMethod]
-	public void ThePairOfASurrogateIsOneCharacterToTheOffsetPastAColumn()
+	public void TheOffsetPastAColumnIsAtTheHighSurrogateOfAPairThatEndsPastIt()
 	{
 		string text = "ab" + char.ConvertFromUtf32(0x1F600) + "c";
 
-		Assert.AreEqual(2, TextColumns.FindOffsetPastColumn(text, tabColumns: 4, maxColumns: 3), "The offset is that of the high surrogate.");
+		Assert.AreEqual(2, TextColumns.FindOffsetPastColumn(text, tabColumns: 4, maxColumns: 3), "The pair ends at column 4, so the offset is that of the high surrogate.");
 		Assert.AreEqual(4, TextColumns.FindOffsetPastColumn(text, tabColumns: 4, maxColumns: 4));
-	}
-
-	[TestMethod]
-	public void AVariationSelectorThatWidensABaseMovesTheOffsetToTheBase()
-	{
-		string text = "ab" + Text(0x2764, 0xFE0F);
-
-		Assert.AreEqual(2, TextColumns.FindOffsetPastColumn(text, tabColumns: 4, maxColumns: 3), "The widened base ends at column 4.");
-		Assert.AreEqual(-1, TextColumns.FindOffsetPastColumn(text, tabColumns: 4, maxColumns: 4));
 	}
 
 	[TestMethod]
@@ -123,17 +143,16 @@ public sealed class TextColumnsTests
 	[TestMethod]
 	public void ATableRangeIsSortedAndDoesNotOverlap()
 	{
-		foreach (int[] ranges in new[] { TextWidthTable.WideRanges, TextWidthTable.ZeroRanges })
+		int[] ranges = TextWidthTable.WideRanges;
+
+		Assert.AreEqual(0, ranges.Length % 2);
+
+		for (int index = 0; index < ranges.Length; index += 2)
 		{
-			Assert.AreEqual(0, ranges.Length % 2);
+			Assert.IsLessThanOrEqualTo(ranges[index + 1], ranges[index], $"Range {index / 2} ends before it starts.");
 
-			for (int index = 0; index < ranges.Length; index += 2)
-			{
-				Assert.IsLessThanOrEqualTo(ranges[index + 1], ranges[index], $"Range {index / 2} ends before it starts.");
-
-				if (index > 0)
-					Assert.IsGreaterThan(ranges[index - 1], ranges[index], $"Range {index / 2} is not past the one before it.");
-			}
+			if (index > 0)
+				Assert.IsGreaterThan(ranges[index - 1], ranges[index], $"Range {index / 2} is not past the one before it.");
 		}
 	}
 

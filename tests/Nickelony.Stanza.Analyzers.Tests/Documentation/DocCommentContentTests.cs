@@ -87,13 +87,17 @@ public sealed class DocCommentContentTests
 
 	[TestMethod]
 	[CrossCutting]
-	public async Task AnEmojiAndACjkCharacterCountTwoColumns()
+	public async Task AnEmojiOfTwoCodeUnitsAndACjkCharacterCountTwoColumnsAndACheckMarkOne()
 	{
+		// CSharpier counts a code unit as one column and lists the CJK ideographs as two,
+		// so the emoji of two code units takes two, and the check mark of one code unit takes one.
 		// A single-line summary is 27 columns of tab, markers and tags around its text, and the width is 100.
 		(string Glyph, int Columns, int Over)[] cases =
 		[
 			("\U0001F600", 2, 0),
 			("\U0001F600", 2, 1),
+			(char.ConvertFromUtf32(0x2705), 1, 0),
+			(char.ConvertFromUtf32(0x2705), 1, 1),
 			("漢", 2, 0),
 			("漢", 2, 1),
 		];
