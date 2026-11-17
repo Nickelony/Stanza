@@ -425,7 +425,7 @@ public sealed partial class ConvergenceTests
 			JumpRuleSet(),
 
 			"""
-				#pragma warning disable ZA0009
+				#pragma warning disable ZA0013
 				a = 1;
 
 				b = 2;
@@ -436,7 +436,7 @@ public sealed partial class ConvergenceTests
 				""",
 
 			"""
-				#pragma warning disable ZA0009
+				#pragma warning disable ZA0013
 				a = 1;
 				b = 2;
 				c = 3;
@@ -640,7 +640,7 @@ public sealed partial class ConvergenceTests
 
 		Dictionary<string, string> options = new() { ["stanza_max_loose_run_size"] = $"{limit}" };
 
-		// The Fix All of ZA0052 runs before the one of ZA0009 in the first order and after it in the second.
+		// The Fix All of ZA0052 runs before the one of ZA0013 in the first order and after it in the second.
 		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(
 			expected: fixedSource,
 			source,

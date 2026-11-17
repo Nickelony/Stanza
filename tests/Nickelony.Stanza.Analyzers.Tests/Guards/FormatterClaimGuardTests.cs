@@ -119,9 +119,9 @@ public sealed partial class FormatterClaimGuardTests
 		["the blank line between declarators", "ZA0171", Statements, Erases],
 		["the blank line before a clause keyword", "ZA0201", Statements, Erases],
 		["the brace padding", "ZA0203", Members, Erases],
-		["the blank line below a switch label", "ZA0207", Statements, Keeps],
-		["the empty block", "ZA0204", Members, Erases],
-		["the extra blank lines", "ZA0056", Members, Erases],
+		["the blank line below a switch label", "ZA0204", Statements, Keeps],
+		["the empty block", "ZA0205", Members, Erases],
+		["the extra blank lines", "ZA0051", Members, Erases],
 		["the comma after the last enum member added", "ZA0198", Members, Erases],
 		["the comma after the last enum member removed", "ZA0199", Members, Erases],
 		["the blank line between switch sections", "ZA0111", Statements, Keeps],
@@ -129,14 +129,14 @@ public sealed partial class FormatterClaimGuardTests
 		["the blank line between object initializer members", "ZA0131", Statements, Keeps],
 		["the blank line around a region marker", "ZA0401", Members, Keeps],
 		["the blank line around a conditional block", "ZA0402", Members, Keeps],
-		["the blank line around a suppression block", "ZA0406", Statements, Keeps],
-		["the blank line inside a suppression block", "ZA0407", Statements, Keeps],
-		["the blank line above a jump statement", "ZA0009", Statements, Keeps],
-		["the blank line beside the base call", "ZA0010", Members, Keeps],
+		["the blank line around a suppression block", "ZA0403", Statements, Keeps],
+		["the blank line inside a suppression block", "ZA0404", Statements, Keeps],
+		["the blank line above a jump statement", "ZA0013", Statements, Keeps],
+		["the blank line beside the base call", "ZA0014", Members, Keeps],
 		["the blank line below the guard clauses", "ZA0011", Statements, Keeps],
 	];
 
-	// Each row holds an empty block body below its header, as ZA0204 leaves it, and the line CSharpier writes for it.
+	// Each row holds an empty block body below its header, as ZA0205 leaves it, and the line CSharpier writes for it.
 	public static IEnumerable<object[]> EmptyBodies { get; } =
 	[
 		[

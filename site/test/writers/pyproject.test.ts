@@ -20,12 +20,12 @@ describe('the [tool.stanza] table the page writes', () => {
 	});
 
 	it('lists the rules it adds to the level in enable and the rules it removes in disable, by code', () => {
-		const text = written({ level: 'minimal', rules: { ZA3008: 'error', ZA3001: 'none', ZA3011: 'error', ZA3015: 'none' } });
-		expect(text).toBe(['[tool.stanza]', 'level = "minimal"', 'enable = ["ZA3008", "ZA3011"]', 'disable = ["ZA3015"]', ''].join('\n'));
+		const text = written({ level: 'minimal', rules: { ZA3009: 'error', ZA3001: 'none', ZA3011: 'error', ZA3019: 'none' } });
+		expect(text).toBe(['[tool.stanza]', 'level = "minimal"', 'enable = ["ZA3009", "ZA3011"]', 'disable = ["ZA3019"]', ''].join('\n'));
 	});
 
 	it('writes no entry for a rule set to what the level gives, or disabled where the level leaves it off', () => {
-		expect(written({ rules: { ZA3001: 'error', ZA3012: 'none' } })).toBe('[tool.stanza]\n');
+		expect(written({ rules: { ZA3001: 'error', ZA3016: 'none' } })).toBe('[tool.stanza]\n');
 	});
 
 	it('writes the keys that differ from their default, as TOML', () => {
@@ -38,10 +38,10 @@ describe('the [tool.stanza] table the page writes', () => {
 
 	it('enables an opt-in rule at every level, because no level holds it', () => {
 		for (const level of ['none', 'minimal', 'moderate', 'strong'] as const) {
-			expect(written({ level, rules: { ZA3054: 'error' } })).toContain('enable = ["ZA3054"]');
+			expect(written({ level, rules: { ZA3055: 'error' } })).toContain('enable = ["ZA3055"]');
 		}
 
-		expect(written({ level: 'strong', rules: { ZA3054: 'none' } })).toBe(['[tool.stanza]', 'level = "strong"', ''].join('\n'));
+		expect(written({ level: 'strong', rules: { ZA3055: 'none' } })).toBe(['[tool.stanza]', 'level = "strong"', ''].join('\n'));
 	});
 
 	it('writes a number key as a number, only while it differs from its default', () => {
@@ -111,11 +111,11 @@ describe('the lines the preview shows for Python', () => {
 		const config: Config = {
 			...emptyConfig('error'),
 			level: 'strong',
-			rules: { ZA3011: 'none', ZA3012: 'none' },
+			rules: { ZA3011: 'none', ZA3016: 'none' },
 			options: { 'guard-roots': 'check_argument' },
 		};
 
-		expect(pyprojectRuleLines(realPython, rule('ZA3011'), config)).toEqual(['disable = ["ZA3011", "ZA3012"]']);
+		expect(pyprojectRuleLines(realPython, rule('ZA3011'), config)).toEqual(['disable = ["ZA3011", "ZA3016"]']);
 		expect(pyprojectRuleLines(realPython, rule('ZA3001'), config)).toEqual([]);
 		expect(pyprojectOptionLines(option('guard-roots'), config)).toEqual(['guard-roots = ["check_argument"]']);
 		expect(pyprojectOptionLines(option('exclude'), config)).toEqual([]);

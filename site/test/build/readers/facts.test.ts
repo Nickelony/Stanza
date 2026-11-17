@@ -33,7 +33,7 @@ describe('the conflict facts of the pages', () => {
 			expect(undone, id).toContain(id);
 		}
 
-		for (const id of ['ZA0002', 'ZA0152', 'ZA0198', 'ZA2008', 'ZA2005', 'ZA0404']) {
+		for (const id of ['ZA0002', 'ZA0152', 'ZA0198', 'ZA2008', 'ZA2005', 'ZA0406']) {
 			expect(undone, id).not.toContain(id);
 		}
 	});

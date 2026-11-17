@@ -24,7 +24,7 @@ public sealed partial class ConvergenceTests
 			.. PresetFiles
 				.ReadTable()
 				.ReadEnabled(level)
-				.Where(id => string.CompareOrdinal(id, "ZA0001") >= 0 && string.CompareOrdinal(id, "ZA0056") <= 0),
+				.Where(id => string.CompareOrdinal(id, "ZA0001") >= 0 && string.CompareOrdinal(id, "ZA0051") <= 0),
 
 			.. rules.Select(rule => rule.Id),
 		];
@@ -59,7 +59,7 @@ public sealed partial class ConvergenceTests
 		[
 			"the declaration rule reads a dependent gap as joined before the keeper removes its blank line",
 			"strong",
-			"ZA0002,ZA0064",
+			"ZA0002,ZA0061",
 			"",
 			"var a = Find(id);\nstring b = a + text;\nstring c = Parse(text);\n\nstring d = c + text;\nreturn d;",
 			"var a = Find(id);\nstring b = a + text;\nstring c = Parse(text);\nstring d = c + text;\n\nreturn d;",
@@ -68,7 +68,7 @@ public sealed partial class ConvergenceTests
 		[
 			"the jump rule reads the stanza above a jump with the dependent gaps joined",
 			"strong",
-			"ZA0009,ZA0064",
+			"ZA0013,ZA0061",
 			"",
 			"var v = Find(id);\n\nvar w = Parse(v);\n\nvar x = Parse(w);\nif (w == null) return null;\nreturn w;",
 			"var v = Find(id);\nvar w = Parse(v);\nvar x = Parse(w);\n\nif (w == null) return null;\nreturn w;",
@@ -77,7 +77,7 @@ public sealed partial class ConvergenceTests
 		[
 			"the assignment rule reads a receiver group as joined before the keeper removes its blank line",
 			"strong",
-			"ZA0008,ZA0063",
+			"ZA0009,ZA0064",
 			"stanza_receiver_roots=db",
 			"_total = id;\ndb.Count = 1;\n\ndb.Count = 2;\nreturn text;",
 			"_total = id;\ndb.Count = 1;\ndb.Count = 2;\n\nreturn text;",
@@ -86,7 +86,7 @@ public sealed partial class ConvergenceTests
 		[
 			"the dependent bindings keeper writes no blank line inside a checked stanza",
 			"strong",
-			"ZA0018,ZA0064",
+			"ZA0012,ZA0061",
 			"",
 			"Audit();\nvar a = Parse(text);\n\nvar b = a.Trim();\nvar order = Find(id);\nif (order == null) return null;\nAudit();\nreturn order + b;",
 			"Audit();\n\nvar a = Parse(text);\nvar b = a.Trim();\n\nvar order = Find(id);\nif (order == null) return null;\n\nAudit();\nreturn order + b;",
@@ -95,7 +95,7 @@ public sealed partial class ConvergenceTests
 		[
 			"a stanza that ends where the next starts asks for their shared gap once",
 			"strong",
-			"ZA0018",
+			"ZA0012",
 			"",
 			"Audit();\nArgumentNullException.ThrowIfNull(text);\nvar s = Find(id);\nDebug.Assert(s != null);\nAudit();\nreturn s;",
 			"Audit();\n\nArgumentNullException.ThrowIfNull(text);\n\nvar s = Find(id);\nDebug.Assert(s != null);\nAudit();\n\nreturn s;",
@@ -104,7 +104,7 @@ public sealed partial class ConvergenceTests
 		[
 			"a body that opens with a throw helper asks for the gap below it once",
 			"moderate",
-			"ZA0018",
+			"ZA0012",
 			"",
 			"ArgumentNullException.ThrowIfNull(text);\nvar s = Find(id);\nDebug.Assert(s != null);\nAudit();\nreturn s;",
 			"ArgumentNullException.ThrowIfNull(text);\n\nvar s = Find(id);\nDebug.Assert(s != null);\nAudit();\nreturn s;",
@@ -122,7 +122,7 @@ public sealed partial class ConvergenceTests
 		[
 			"the checked stanza rule owns the gap above a kept group that the receiver rule asks for too",
 			"minimal",
-			"ZA0018,ZA0019,ZA0064",
+			"ZA0012,ZA0010,ZA0061",
 			"stanza_receiver_roots=*",
 			"var svc = new Svc();\nsvc.Write(id);\nsvc.Close();\nvar a = Find(id);\nstring b = a + text;\nif (b == null)\n{\n\treturn null;\n}\nreturn b;",
 			"var svc = new Svc();\n\nsvc.Write(id);\nsvc.Close();\n\nvar a = Find(id);\nstring b = a + text;\nif (b == null)\n{\n\treturn null;\n}\n\nreturn b;",
@@ -131,7 +131,7 @@ public sealed partial class ConvergenceTests
 		[
 			"a declaration a keeper joins to the unit above it is no lone one, so its group gets no blank line above it",
 			"moderate",
-			"ZA0064",
+			"ZA0061",
 			"",
 			"Audit();\nvar a = Find(id);\nstring b = a + text;\nvar c = Parse(text);\nvar d = Parse(text);\nreturn d;",
 			"Audit();\nvar a = Find(id);\nstring b = a + text;\n\nvar c = Parse(text);\nvar d = Parse(text);\n\nreturn d;",
@@ -140,7 +140,7 @@ public sealed partial class ConvergenceTests
 		[
 			"a lone declaration above multi-line seeds is set apart at the moderate level whichever blank line is written first",
 			"moderate",
-			"ZA0059",
+			"ZA0063",
 			"",
 			"string v6 = id + text;\nvar v7 = Find(id);\nint n = 0;\nint m = 1;\nforeach (char item in v7)\n{\n\tn += item;\n\tm += n;\n}\nreturn null;",
 			"string v6 = id + text;\n\nvar v7 = Find(id);\n\nint n = 0;\nint m = 1;\nforeach (char item in v7)\n{\n\tn += item;\n\tm += n;\n}\n\nreturn null;",
@@ -149,7 +149,7 @@ public sealed partial class ConvergenceTests
 		[
 			"a lone declaration above multi-line seeds is set apart at the strong level whichever blank line is written first",
 			"strong",
-			"ZA0059",
+			"ZA0063",
 			"",
 			"string v6 = id + text;\nvar v7 = Find(id);\nint n = 0;\nint m = 1;\nforeach (char item in v7)\n{\n\tn += item;\n\tm += n;\n}\nreturn null;",
 			"string v6 = id + text;\n\nvar v7 = Find(id);\n\nint n = 0;\nint m = 1;\nforeach (char item in v7)\n{\n\tn += item;\n\tm += n;\n}\n\nreturn null;",
@@ -158,7 +158,7 @@ public sealed partial class ConvergenceTests
 		[
 			"a lone declaration above a guarded dependent group is set apart whichever blank line is written first",
 			"strong",
-			"ZA0058,ZA0064",
+			"ZA0058,ZA0061",
 			"",
 			"Audit();\nstring v7 = id + text;\nvar a = Find(id);\nvar b = Parse(a);\nif (b == null)\n{\n\treturn null;\n}\nreturn v7;",
 			"Audit();\n\nstring v7 = id + text;\n\nvar a = Find(id);\nvar b = Parse(a);\nif (b == null)\n{\n\treturn null;\n}\n\nreturn v7;",
@@ -199,7 +199,7 @@ public sealed partial class ConvergenceTests
 		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(expected: fixedSource, source, options, name);
 	}
 
-	// The example of the ZA0018 page, which the rule writes alone at either level that holds the rules beside it.
+	// The example of the ZA0012 page, which the rule writes alone at either level that holds the rules beside it.
 	[TestMethod]
 	[DataRow("moderate")]
 	[DataRow("strong")]
@@ -270,7 +270,7 @@ public sealed partial class ConvergenceTests
 	[
 		DiagnosticDescriptors.SeparateCheckedStanza,
 		DiagnosticDescriptors.SeparateReceiverGroups,
-		DiagnosticDescriptors.KeepChainOfGuardClausesTogether,
+		DiagnosticDescriptors.KeepGuardClausesTogether,
 		DiagnosticDescriptors.KeepGuardWithBinding,
 		DiagnosticDescriptors.KeepAccumulatorWithLoop,
 		DiagnosticDescriptors.KeepJumpWithBinding,

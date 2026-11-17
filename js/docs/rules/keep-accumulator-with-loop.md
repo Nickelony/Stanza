@@ -90,8 +90,8 @@ function average(cart) {
 
 ## C# counterpart
 
-[ZA0059 - Keep an accumulator with its loop](https://github.com/Nickelony/Stanza/wiki/ZA0059-Keep-an-accumulator-with-its-loop).
+[ZA0063 - Keep an accumulator with its loop](https://github.com/Nickelony/Stanza/wiki/ZA0063-Keep-an-accumulator-with-its-loop).
 
 ## Python counterpart
 
-[ZA3059 - keep-accumulator-with-loop](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3059-keep-accumulator-with-loop.md).
+[ZA3063 - keep-accumulator-with-loop](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3063-keep-accumulator-with-loop.md).

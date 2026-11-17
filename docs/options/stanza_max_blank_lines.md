@@ -1,8 +1,8 @@
 # stanza_max_blank_lines
 
-Controls how many blank lines in a row a [run](https://github.com/Nickelony/Stanza/wiki/ZA0056-Collapse-extra-blank-lines) of C# code may keep.
+Controls how many blank lines in a row a [run](https://github.com/Nickelony/Stanza/wiki/ZA0051-Collapse-extra-blank-lines) of C# code may keep.
 Default: `1`.
-Read by [`ZA0056`](https://github.com/Nickelony/Stanza/wiki/ZA0056-Collapse-extra-blank-lines), whose page says which runs it counts.
+Read by [`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Collapse-extra-blank-lines), whose page says which runs it counts.
 
 | Value                                           | Effect                                    |
 | ----------------------------------------------- | ----------------------------------------- |

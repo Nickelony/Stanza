@@ -30,22 +30,22 @@ private int limit;
   A directive keeps its gap as [the gap rules](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#a-comment-or-a-directive-in-a-gap) say.
 - The gap of an enum member starts below its comma, so a comment that trails the comma ends a run.
 - A container where a conditional directive can change the runs from one [view](https://github.com/Nickelony/Stanza/wiki/Terms) to another is left as written,
-  on the terms [`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Keep-the-two-units-of-a-container-together) states.
+  on the terms [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-the-two-units-of-a-container-together) states.
 - A run never takes in a member that sits tight against its other neighbor, so the blank line that sets that group apart stays.
   A member tight against a neighbor that a rule asks to set apart, as `ZA0001` does beside a multi-line member, still joins the run.
 - The rule never removes a blank line that another rule would write back.
 - The [grouping rules](https://github.com/Nickelony/Stanza/wiki/Terms) ask for a blank line around a run of declarations of one type, of members of one kind
   and of members that share their access, `static` and `readonly` modifiers.
 - [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-multi-line-constructs) asks for one beside a multi-line member,
-  [`ZA0015`](https://github.com/Nickelony/Stanza/wiki/ZA0015-Separate-the-import-section) below the imports,
-  [`ZA0401`](https://github.com/Nickelony/Stanza/wiki/ZA0401-Separate-the-region-marker-from-its-neighbors) beside a region marker and
-  [`ZA0012`](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-a-commented-sibling) above a comment.
+  [`ZA0019`](https://github.com/Nickelony/Stanza/wiki/ZA0019-Separate-the-import-section) below the imports,
+  [`ZA0401`](https://github.com/Nickelony/Stanza/wiki/ZA0401-Separate-a-region-marker) beside a region marker and
+  [`ZA0016`](https://github.com/Nickelony/Stanza/wiki/ZA0016-Separate-a-commented-sibling) above a comment.
 - A gap stays blank when gathering it would leave a grouping rule asking for a blank line that is not there now.
 - A rule that is [off](https://github.com/Nickelony/Stanza/wiki/Terms) at a gap hands it back, so the gap counts as loose again.
-- A container of two members belongs to [`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Keep-the-two-units-of-a-container-together) where that rule is on.
-- The gap below a file-scoped namespace header belongs to [`ZA0017`](https://github.com/Nickelony/Stanza/wiki/ZA0017-Separate-a-file-scoped-namespace-declaration-from-its-first-member),
+- A container of two members belongs to [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-the-two-units-of-a-container-together) where that rule is on.
+- The gap below a file-scoped namespace header belongs to [`ZA0021`](https://github.com/Nickelony/Stanza/wiki/ZA0021-Separate-the-file-scoped-namespace),
   and the elements of a delimited list keep their blank lines.
-- Where [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-members-together) is on and has a run in the container, this rule leaves the container to it.
+- Where [`ZA0056`](https://github.com/Nickelony/Stanza/wiki/ZA0056-Keep-a-run-of-members-together) is on and has a run in the container, this rule leaves the container to it.
   That fix joins its run first and writes the blank lines the runs of the container ask for, so this rule then reads the text it leaves.
-- A blank line that `ZA0055` leaves as a [section break](https://github.com/Nickelony/Stanza/wiki/Terms) or [declines](https://github.com/Nickelony/Stanza/wiki/Terms) as a move stays as written,
+- A blank line that `ZA0056` leaves as a [section break](https://github.com/Nickelony/Stanza/wiki/Terms) or [declines](https://github.com/Nickelony/Stanza/wiki/Terms) as a move stays as written,
   since it sits beside a tight member or comes back.

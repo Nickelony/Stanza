@@ -51,4 +51,4 @@ import { parse } from './parse.ts';
 
 ## C# counterpart
 
-[ZA0016 - Separate the import directive groups](https://github.com/Nickelony/Stanza/wiki/ZA0016-Separate-the-import-directive-groups).
+[ZA0020 - Separate the import groups](https://github.com/Nickelony/Stanza/wiki/ZA0020-Separate-the-import-groups).

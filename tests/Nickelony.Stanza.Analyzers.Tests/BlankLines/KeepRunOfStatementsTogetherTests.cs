@@ -1387,11 +1387,11 @@ public sealed class KeepRunOfStatementsTogetherTests
 			{
 				void M()
 				{
-			#pragma warning disable ZA0054
+			#pragma warning disable ZA0055
 					DoThing(1);
 
 					DoThing(2);
-			#pragma warning restore ZA0054
+			#pragma warning restore ZA0055
 				}
 
 				void DoThing(int value) { }

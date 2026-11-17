@@ -1,11 +1,11 @@
-"""ZA3051: removes the blank line between the only two single-line units of a container."""
+"""ZA3054: removes the blank line between the only two single-line units of a container."""
 
 from __future__ import annotations
 
 from nickelony_stanza.rules.base import Rule
 
 RULE = Rule(
-    code="ZA3051",
+    code="ZA3054",
     name="keep-two-units-together",
     level="moderate",
     message="Remove the blank line between these two lines.",

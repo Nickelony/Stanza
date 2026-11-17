@@ -25,7 +25,7 @@ def test_root_and_path_runs_share_one_boundary_owner(
     comparison: ReceiverComparison, invocations: bool, separator: bool, keeper: bool
 ) -> None:
     source = "object.first()\nobject.second()\nobject.child.first()\nobject.child.second()\n"
-    rules = [code for code, enabled in [("ZA3004", invocations), ("ZA3019", separator), ("ZA3063", keeper)] if enabled]
+    rules = [code for code, enabled in [("ZA3004", invocations), ("ZA3010", separator), ("ZA3064", keeper)] if enabled]
 
     expected = (
         source.replace("object.child.first()", "\nobject.child.first()")
@@ -44,7 +44,7 @@ def test_root_and_path_runs_share_one_boundary_owner(
     findings = lint(source, config)
 
     assert [finding.code for finding in findings] == (
-        ["ZA3004" if invocations else "ZA3019"] if source != expected else []
+        ["ZA3004" if invocations else "ZA3010"] if source != expected else []
     )
 
 
@@ -56,7 +56,7 @@ def test_mixed_writes_and_calls_use_the_owning_path(comparison: ReceiverComparis
     if comparison == "path":
         expected = expected.replace("object.child.name", "\nobject.child.name")
 
-    result = fix(source, Config.create("none", enable=["ZA3019", "ZA3063"], options=receiver_options(comparison)))
+    result = fix(source, Config.create("none", enable=["ZA3010", "ZA3064"], options=receiver_options(comparison)))
 
     assert result.text == expected
     assert result.passes == 1
@@ -66,35 +66,35 @@ def test_receiver_keeping_overrides_a_mixed_family_edge_and_transfers_it_above_t
     source = "prepare()\nobject.a = 1\nobject.b = 2\nobject.save()\nfinish()\n"
     expected = source.replace("prepare()\n", "prepare()\n\n")
 
-    assert fix_with(source, "ZA3008", "ZA3063", options=receiver_options("path")) == expected
+    assert fix_with(source, "ZA3009", "ZA3064", options=receiver_options("path")) == expected
 
 
 def test_receiver_separator_terminates_ordinary_assignment_runs() -> None:
     source = "object.a = 1\nobject.b = 2\nobject.child.a = 1\nobject.child.b = 2\n"
     options = receiver_options("path")
 
-    assert fix_with(source, "ZA3008", "ZA3054", options=options) == source
+    assert fix_with(source, "ZA3009", "ZA3055", options=options) == source
 
-    config = Config.create("none", enable=["ZA3008", "ZA3019", "ZA3054"], options=options)
+    config = Config.create("none", enable=["ZA3009", "ZA3010", "ZA3055"], options=options)
     result = fix(source, config)
 
     assert result.text == source.replace("object.child.a", "\nobject.child.a")
     assert result.passes == 1
-    assert [finding.code for finding in lint(source, config)] == ["ZA3008"]
+    assert [finding.code for finding in lint(source, config)] == ["ZA3009"]
 
 
 def test_singletons_alone_are_not_new_stanzas() -> None:
     source = "logger.info('start')\ndb.add(cart)\ncache.clear()\n"
-    assert fix_with(source, "ZA3019", options=receiver_options()) == source
+    assert fix_with(source, "ZA3010", options=receiver_options()) == source
 
     source = "logger.info('start')\ndb.add(cart)\ndb.save()\ncache.clear()\n"
     expected = source.replace("db.add(cart)", "\ndb.add(cart)").replace("cache.clear()", "\ncache.clear()")
 
-    assert fix_with(source, "ZA3019", "ZA3052", options=receiver_options()) == expected
+    assert fix_with(source, "ZA3010", "ZA3052", options=receiver_options()) == expected
 
 
 @pytest.mark.parametrize(
-    ("consumer", "owner"), [((), "ZA3006"), (("ZA3052",), "ZA3006"), (("ZA3054",), "ZA3006"), (("ZA3004",), "ZA3004")]
+    ("consumer", "owner"), [((), "ZA3006"), (("ZA3052",), "ZA3006"), (("ZA3055",), "ZA3006"), (("ZA3004",), "ZA3004")]
 )
 def test_selected_awaits_stay_one_separated_run_and_only_a_receiver_rule_takes_them_over(
     consumer: tuple[str, ...], owner: str
@@ -130,7 +130,7 @@ def test_a_selected_call_and_await_share_one_receiver_run(receiver: str, selecte
     ],
 )
 def test_unsupported_or_protected_operations_are_not_joined(source: str) -> None:
-    assert fix_with(source, "ZA3063", options=receiver_options()) == source
+    assert fix_with(source, "ZA3064", options=receiver_options()) == source
 
 
 @pytest.mark.parametrize(
@@ -138,7 +138,7 @@ def test_unsupported_or_protected_operations_are_not_joined(source: str) -> None
 )
 def test_supported_direct_owners_keep_their_calls(receiver: str) -> None:
     source = f"{receiver}.add()\n\n{receiver}.save()\n"
-    assert fix_with(source, "ZA3063", options=receiver_options()) == source.replace("\n\n", "\n")
+    assert fix_with(source, "ZA3064", options=receiver_options()) == source.replace("\n\n", "\n")
 
 
 @pytest.mark.parametrize(
@@ -160,7 +160,7 @@ def test_selection_uses_normalized_segments_and_ordinary_dotted_globs(
     source = f"{receiver}.add()\n\n{receiver}.save()\n"
     expected = source.replace("\n\n", "\n") if selected else source
 
-    assert fix_with(source, "ZA3063", options=receiver_options(roots=roots)) == expected
+    assert fix_with(source, "ZA3064", options=receiver_options(roots=roots)) == expected
 
 
 @pytest.mark.parametrize(
@@ -169,7 +169,7 @@ def test_selection_uses_normalized_segments_and_ordinary_dotted_globs(
 )
 def test_member_writes_and_event_calls_can_share_a_root(statement: str) -> None:
     source = statement + "\n\ndb.save()\n"
-    assert fix_with(source, "ZA3063", options=receiver_options()) == source.replace("\n\n", "\n")
+    assert fix_with(source, "ZA3064", options=receiver_options()) == source.replace("\n\n", "\n")
 
 
 @pytest.mark.parametrize(
@@ -178,14 +178,14 @@ def test_member_writes_and_event_calls_can_share_a_root(statement: str) -> None:
 )
 def test_declarations_annotation_only_and_ambiguous_writes_are_not_absorbed(statement: str) -> None:
     source = statement + "\n\ndb.save()\n"
-    assert fix_with(source, "ZA3063", options=receiver_options()) == source
+    assert fix_with(source, "ZA3064", options=receiver_options()) == source
 
 
 def test_selective_receiver_keeping_leaves_logger_gaps_alone() -> None:
     source = "async def f():\n    logger.info('one')\n\n    logger.info('two')\n    db.add(cart)\n\n    await db.flush()\n    finish()\n"
     expected = source.replace("    db.add(cart)\n\n", "\n    db.add(cart)\n").replace("    finish()", "\n    finish()")
 
-    assert fix_with(source, "ZA3004", "ZA3006", "ZA3063", options=receiver_options(roots=("db",))) == expected
+    assert fix_with(source, "ZA3004", "ZA3006", "ZA3064", options=receiver_options(roots=("db",))) == expected
 
 
 @pytest.mark.parametrize(
@@ -196,12 +196,12 @@ def test_selective_receiver_keeping_leaves_logger_gaps_alone() -> None:
     ],
 )
 def test_authored_sections_are_preserved(source: str) -> None:
-    assert fix_with(source, "ZA3063", options=receiver_options()) == source
+    assert fix_with(source, "ZA3064", options=receiver_options()) == source
 
 
 def test_one_receiver_finding_removes_every_eligible_gap_of_its_component() -> None:
     source = "db.a()\n\ndb.b()\n\ndb.c()\ndb.d()\n"
-    config = Config.create("none", enable=["ZA3063"], options=receiver_options())
+    config = Config.create("none", enable=["ZA3064"], options=receiver_options())
     findings = lint(source, config)
 
     assert len(findings) == 1
@@ -216,7 +216,7 @@ def test_one_receiver_finding_removes_every_eligible_gap_of_its_component() -> N
 @pytest.mark.parametrize("reverse", [False, True])
 def test_individual_receiver_fixes_and_batch_fixes_agree(reverse: bool) -> None:
     source = "db.a()\n\ndb.b()\n\ndb.c()\ndb.d()\ncache.a()\n\ncache.b()\n\ncache.c()\ncache.d()\n"
-    config = Config.create("none", enable=["ZA3019", "ZA3063"], options=receiver_options("path"))
+    config = Config.create("none", enable=["ZA3010", "ZA3064"], options=receiver_options("path"))
     expected = fix(source, config).text
     current = source
 
@@ -233,10 +233,10 @@ def test_individual_receiver_fixes_and_batch_fixes_agree(reverse: bool) -> None:
 
 
 def test_a_noqa_hands_one_receiver_gap_to_the_run_keeper() -> None:
-    source = "db.a()\n\ndb.b()\n\ndb.c()  # noqa: ZA3063\n"
+    source = "db.a()\n\ndb.b()\n\ndb.c()  # noqa: ZA3064\n"
     expected = source.replace("\n\n", "\n")
 
-    assert fix_with(source, "ZA3063", "ZA3004", "ZA3054", options=receiver_options()) == expected
+    assert fix_with(source, "ZA3064", "ZA3004", "ZA3055", options=receiver_options()) == expected
 
 
 @pytest.mark.parametrize(
@@ -248,7 +248,7 @@ def test_the_comparison_key_compares_roots_unless_it_asks_for_paths(table: dict[
     options = config_from_table({"receiver-roots": ["object"], **table}).options
     expected = source.replace("object.child.first()", "\nobject.child.first()") if splits else source
 
-    assert fix_with(source, "ZA3019", options=options) == expected
+    assert fix_with(source, "ZA3010", options=options) == expected
 
 
 def test_the_comparison_key_refuses_another_word() -> None:
@@ -258,10 +258,10 @@ def test_the_comparison_key_refuses_another_word() -> None:
 
 def test_class_member_containers_are_outside_receiver_geometry() -> None:
     source = "class C:\n    db.a()\n\n    db.b()\n    db.child.a()\n    db.child.b()\n"
-    assert fix_with(source, "ZA3019", "ZA3063", options=receiver_options("path")) == source
+    assert fix_with(source, "ZA3010", "ZA3064", options=receiver_options("path")) == source
 
 
-@pytest.mark.parametrize("rules", [("ZA3063",), ("ZA3004", "ZA3054")])
+@pytest.mark.parametrize("rules", [("ZA3064",), ("ZA3004", "ZA3055")])
 def test_guard_helpers_are_not_reclassified_by_wildcard_receiver_selection(rules: tuple[str, ...]) -> None:
     source = "guard.first(value)\n\nguard.second(value)\n"
     options = Options(receiver_roots=("*",), guard_roots=("guard",))
@@ -276,7 +276,7 @@ def test_ordinary_receiver_runs_respect_comment_and_directive_barriers_without_r
 ) -> None:
     source = "prepare()\ndb.add()\n" + middle + "db.save()\ndone()\n"
     expected = source if middle else source.replace("db.add()", "\ndb.add()").replace("done()", "\ndone()")
-    config = Config.create("none", enable=["ZA3004", "ZA3054"], options=receiver_options(comparison, ("db",)))
+    config = Config.create("none", enable=["ZA3004", "ZA3055"], options=receiver_options(comparison, ("db",)))
     result = fix(source, config)
 
     assert result.text == expected
@@ -291,7 +291,7 @@ def test_ordinary_receiver_runs_respect_trailing_comments_without_rule19() -> No
 def test_same_line_receiver_operations_do_not_form_a_run_across_a_joined_gap() -> None:
     source = "prepare()\ndb.first(); db.second()\ndone()\n"
 
-    for rules in [("ZA3004",), ("ZA3019",), ("ZA3004", "ZA3019", "ZA3063")]:
+    for rules in [("ZA3004",), ("ZA3010",), ("ZA3004", "ZA3010", "ZA3064")]:
         assert fix_with(source, *rules, options=receiver_options()) == source
 
 
@@ -321,9 +321,9 @@ def test_a_multiline_selected_call_cannot_invent_a_run_with_one_following_await(
     [
         [],
         ["ZA3004"],
-        ["ZA3004", "ZA3008", "ZA3052"],
-        ["ZA3004", "ZA3008", "ZA3054"],
-        ["ZA3004", "ZA3008", "ZA3052", "ZA3054"],
+        ["ZA3004", "ZA3009", "ZA3052"],
+        ["ZA3004", "ZA3009", "ZA3055"],
+        ["ZA3004", "ZA3009", "ZA3052", "ZA3055"],
     ],
 )
 @pytest.mark.parametrize(
@@ -341,7 +341,7 @@ def test_a_section_of_a_receiver_group_is_kept_from_every_other_rule(
 
     config = Config.create(
         "none",
-        enable=["ZA3063", *generic, *(["ZA3019"] if separator else [])],
+        enable=["ZA3064", *generic, *(["ZA3010"] if separator else [])],
         options=Options(receiver_roots=("db",), receiver_comparison=comparison, max_loose_run_size=1),
     )
 
@@ -363,7 +363,7 @@ def test_a_section_of_a_receiver_group_adds_no_border_of_its_own(
 
     config = Config.create(
         "none",
-        enable=["ZA3063", "ZA3004", "ZA3008", "ZA3052", "ZA3054", *(["ZA3019"] if separator else [])],
+        enable=["ZA3064", "ZA3004", "ZA3009", "ZA3052", "ZA3055", *(["ZA3010"] if separator else [])],
         options=Options(receiver_roots=("db",), receiver_comparison=comparison, max_loose_run_size=1),
     )
 
@@ -386,7 +386,7 @@ def test_receiver_group_fixes_keep_the_middle_section_in_any_order(mode: str) ->
 
     config = Config.create(
         "none",
-        enable=["ZA3063", "ZA3004", "ZA3054", "ZA3052"],
+        enable=["ZA3064", "ZA3004", "ZA3055", "ZA3052"],
         options=Options(receiver_roots=("db",), max_loose_run_size=1),
     )
 
@@ -399,7 +399,7 @@ def test_receiver_group_fixes_keep_the_middle_section_in_any_order(mode: str) ->
 @pytest.mark.parametrize("keeper", [False, True])
 def test_only_an_enabled_receiver_keeper_protects_a_section_of_a_run(keeper: bool) -> None:
     source = "db.field = 1\ndb.first()\n\ndb.second()\ndb.field = 2\n"
-    rules = ["ZA3004", "ZA3054", *(["ZA3063"] if keeper else [])]
+    rules = ["ZA3004", "ZA3055", *(["ZA3064"] if keeper else [])]
     config = Config.create("none", enable=rules, options=Options(receiver_roots=("db",)))
 
     assert fix(source, config).text == (
@@ -411,8 +411,8 @@ def test_only_an_enabled_receiver_keeper_protects_a_section_of_a_run(keeper: boo
 @pytest.mark.parametrize(
     ("keeper", "group"),
     [
-        ("ZA3063", "db.open()\n\ndb.count = 1\n\nawait db.flush()"),
-        ("ZA3064", "text = await read()\n\nlines = text.split()\n\nwords = count(lines)"),
+        ("ZA3064", "db.open()\n\ndb.count = 1\n\nawait db.flush()"),
+        ("ZA3061", "text = await read()\n\nlines = text.split()\n\nwords = count(lines)"),
     ],
 )
 def test_a_kept_group_ends_the_loose_run_below_it(level: Level, keeper: str, group: str) -> None:

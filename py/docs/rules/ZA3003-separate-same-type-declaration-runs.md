@@ -30,10 +30,10 @@ show(title)
 - A declaration with no neighbor of its type forms no run of its own,
   so it gets a blank line only where a neighboring run begins or ends.
 - The rule judges the statements of a module, a function and a block.
-  A class body is judged by [`ZA3013`](ZA3013-separate-member-groups.md), which reads fields and attributes.
+  A class body is judged by [`ZA3017`](ZA3017-separate-member-groups.md), which reads fields and attributes.
 - [`ZA3002`](ZA3002-separate-declaration-runs.md) asks for the same blank line at the ends of a run of declarations,
   and this rule adds the one between two runs of different types.
-- [`ZA3054`](ZA3054-keep-statement-runs-together.md) removes the blank lines inside a run of one type where it is enabled.
+- [`ZA3055`](ZA3055-keep-statement-runs-together.md) removes the blank lines inside a run of one type where it is enabled.
 
 ## C# counterpart
 

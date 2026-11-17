@@ -43,7 +43,7 @@ internal static class BlankLineDirectives
 		);
 	}
 
-	/// <summary>Whether ZA0406 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <summary>Whether ZA0403 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
 	/// <remarks>
 	/// A <c>disable</c> or a <c>restore</c> decides, and a padded block counts both directives of the pair.
 	/// </remarks>

@@ -84,7 +84,11 @@ public sealed class SeparateYieldRunsTests
 				yield return 2;
 				""",
 		],
+	];
 
+	// Each row is a run of another kind that stands directly above a run of yields, though its rule has the higher ID, and the rule that owns the gap between them.
+	public static IEnumerable<object[]> LaterRuns { get; } =
+	[
 		[
 			"event subscriptions",
 			DiagnosticDescriptors.SeparateEventSubscriptionRuns,
@@ -385,6 +389,44 @@ public sealed class SeparateYieldRunsTests
 	}
 
 	[TestMethod]
+	[DynamicData(
+		nameof(LaterRuns),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task TheYieldRuleOwnsTheGapBetweenALaterRunAndAYieldRun(
+		string name,
+		DiagnosticDescriptor later,
+		string body,
+		string fixedBody
+	)
+	{
+		string source = Method(body);
+		string fixedSource = Method(fixedBody);
+
+		AnalyzerRunResult both = await RoslynTestHarness.RunRunRulesAsync(
+			source,
+			TestRuleSets.WithOneOff(on: [DiagnosticDescriptors.SeparateYieldRuns, later])
+		);
+
+		Assert.HasCount(1, both.Diagnostics, name);
+		Assert.AreEqual(DiagnosticDescriptors.SeparateYieldRuns.Id, both.Diagnostics[0].Id, name);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, both, name);
+
+		// With the yield rule off, the rule of the later run takes the gap and writes the same text.
+		AnalyzerRunResult handedOver = await RoslynTestHarness.RunRunRulesAsync(
+			source,
+			TestRuleSets.WithOneOff(on: [later], off: DiagnosticDescriptors.SeparateYieldRuns)
+		);
+
+		Assert.HasCount(1, handedOver.Diagnostics, name);
+		Assert.AreEqual(later.Id, handedOver.Diagnostics[0].Id, name);
+
+		RoslynTestHarness.AssertFixedText(fixedSource, handedOver, name);
+	}
+
+	[TestMethod]
 	public async Task TheAwaitRuleOwnsTheGapBetweenAnAwaitRunAndAYieldRun()
 	{
 		string source = AsyncMethod(
@@ -505,7 +547,7 @@ public sealed class SeparateYieldRunsTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.SeparateYieldRuns,
-				DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors
+				DiagnosticDescriptors.SeparateRegionMarker
 			)
 		);
 

@@ -19,7 +19,7 @@ When a call rule is enabled, the formatter runs last as well, as the [next secti
 The two orders can still end in different texts when a rule removes a blank line.
 A formatter can join a statement onto one line, as Black does with a backslash continuation,
 and a blank line that a rule wrote beside the multi-line statement then stands beside a single-line statement.
-The next run of `ZA3054` or `ZA3052` removes it, so those rules want the formatter to run first.
+The next run of `ZA3055` or `ZA3052` removes it, so those rules want the formatter to run first.
 
 ## Names and line width
 
@@ -90,9 +90,9 @@ The rules never ask for a blank line at these gaps and never remove one, because
 | --- | --- | --- |
 | Above and below a `def` or `class`, a decorator and a block that ends in one | Two blank lines at the top level, one in a body | None. |
 | Between the methods of a class, and between an attribute and a method | One blank line | None. |
-| Below the module docstring | Exactly one blank line | [`ZA3017`](rules/ZA3017-separate-file-header.md) asks for one. |
-| Below a class docstring | Exactly one blank line | [`ZA3013`](rules/ZA3013-separate-member-groups.md) asks for one. |
-| Below a run of imports, when a statement follows at the same depth | One blank line, and Ruff keeps a second one | [`ZA3015`](rules/ZA3015-separate-import-section.md) asks for one. |
+| Below the module docstring | Exactly one blank line | [`ZA3021`](rules/ZA3021-separate-file-header.md) asks for one. |
+| Below a class docstring | Exactly one blank line | [`ZA3017`](rules/ZA3017-separate-member-groups.md) asks for one. |
+| Below a run of imports, when a statement follows at the same depth | One blank line, and Ruff keeps a second one | [`ZA3019`](rules/ZA3019-separate-import-section.md) asks for one. |
 | Between a block that ends in a function or class and the `elif`, `else`, `except` or `finally` that continues it | One blank line | None. |
 | Between a `case` clause that ends in a function or class and the next clause | One blank line from Black, and none from Ruff | [`ZA3111`](rules/ZA3111-separate-multi-line-cases.md) adds it where it is missing, and [`ZA3112`](rules/ZA3112-keep-multi-line-cases-together.md) leaves it. |
 | Between the header of a block that is no function or class, such as an `if` or a `try`, and a function or class that opens it | One blank line | None. |
@@ -101,7 +101,7 @@ The rules never ask for a blank line at these gaps and never remove one, because
 - A gap beside a function or class includes the gap below a block whose last statement is one, such as an `if` that ends in a nested `def`.
 - Overload stubs, as in `@overload` followed by `def f(a: int) -> int: ...`, keep the zero or two blank lines the file had.
   They are definitions, so the rules leave them.
-- `ZA3017`, `ZA3013` and `ZA3015` ask for the blank line the formatter forces anyway, so they matter for a project that runs no formatter.
+- `ZA3021`, `ZA3017` and `ZA3019` ask for the blank line the formatter forces anyway, so they matter for a project that runs no formatter.
 
 ## Gaps the formatters leave free
 
@@ -114,7 +114,7 @@ Black and Ruff keep one blank line between statements in a body and add none, so
 - between two `case` clauses of a `match` statement, which [`ZA3111`](rules/ZA3111-separate-multi-line-cases.md) may add
   and [`ZA3112`](rules/ZA3112-keep-multi-line-cases-together.md) and [`ZA3113`](rules/ZA3113-keep-single-line-cases-together.md) may remove;
 - between a function docstring and the statement below it, and between the two statements that follow a docstring,
-  which [`ZA3051`](rules/ZA3051-keep-two-units-together.md) may remove;
+  which [`ZA3054`](rules/ZA3054-keep-two-units-together.md) may remove;
 - between a block header and the first line of its body, which [`ZA3203`](rules/ZA3203-remove-block-padding.md) may remove:
   `ruff format` removes it under every header but `def`, Black keeps it under every header, and both remove it above a function or class docstring;
 - between a comment and the statement it leads, which no rule touches.
@@ -123,7 +123,7 @@ Black and Ruff keep one blank line between statements in a body and add none, so
 
 - A blank line below a function docstring is never added, because pydocstyle `D202` forbids it and Ruff enforces `D202` where the project enables it.
 - A region between `# fmt: off` and `# fmt: on` keeps its blank lines, as the [quirks](Quirks.md#comments) say.
-- `ZA3051` skips a container that holds an import, a definition, a shebang or a module or class docstring, because the formatter forces the gap there.
+- `ZA3054` skips a container that holds an import, a definition, a shebang or a module or class docstring, because the formatter forces the gap there.
   Without that skip, the rule would remove a blank line the formatter writes back.
 
 ## Other tools
@@ -131,7 +131,7 @@ Black and Ruff keep one blank line between statements in a body and add none, so
 - pycodestyle `E301` to `E306` ask for the blank lines around definitions, which the formatters already write.
   `E303` rejects more than two blank lines at the top level and more than one in a body, and the rules never write more than one.
 - `isort` and Ruff `I001` order and group the imports, and own the blank lines between import groups.
-  `ZA3015` owns only the blank line below the last import of a run.
+  `ZA3019` owns only the blank line below the last import of a run.
 - Tools that rewrite code, such as `autoflake`, run before the rules, and the rules never move a statement.
 
 The tests run Black 26 and Ruff 0.17 with their default style and a line length of 88.

@@ -154,7 +154,7 @@ public sealed partial class ConvergenceTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.GatherRunOfLooseStatements,
-				DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors
+				DiagnosticDescriptors.SeparateRegionMarker
 			),
 
 			"""
@@ -217,7 +217,7 @@ public sealed partial class ConvergenceTests
 
 		[
 			"a declaration run beside a conditional block keeps its gaps before ZA0402 writes the ones around the block",
-			TestRuleSets.Only(DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors),
+			TestRuleSets.Only(DiagnosticDescriptors.SeparateConditionalBlock),
 
 			"""
 				#define TRACE
@@ -508,7 +508,7 @@ public sealed partial class ConvergenceTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.GatherRunOfLooseMembers,
-				DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+				DiagnosticDescriptors.SeparateConditionalBlock
 			),
 
 			"""
@@ -546,7 +546,7 @@ public sealed partial class ConvergenceTests
 		],
 
 		[
-			"the gap below the imports is written by ZA0015 before the members below it are gathered",
+			"the gap below the imports is written by ZA0019 before the members below it are gathered",
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.GatherRunOfLooseMembers,
@@ -575,7 +575,7 @@ public sealed partial class ConvergenceTests
 		],
 
 		[
-			"an assignment above a subscription run keeps its tight gap whichever of ZA0008 and ZA0007 fixes first",
+			"an assignment above a subscription run keeps its tight gap whichever of ZA0009 and ZA0008 fixes first",
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.SeparateEventSubscriptionRuns,
@@ -628,7 +628,7 @@ public sealed partial class ConvergenceTests
 		],
 
 		[
-			"a same-type run that the modifier rule splits is split there whichever of ZA0014 and ZA0003 fixes first",
+			"a same-type run that the modifier rule splits is split there whichever of ZA0018 and ZA0003 fixes first",
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.SeparateModifierGroups,
@@ -930,7 +930,7 @@ public sealed partial class ConvergenceTests
 		],
 
 		[
-			"assignments beside await runs settle whichever of ZA0008 and ZA0006 fixes first",
+			"assignments beside await runs settle whichever of ZA0009 and ZA0006 fixes first",
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.SeparateAssignmentRuns,
@@ -981,7 +981,7 @@ public sealed partial class ConvergenceTests
 		],
 
 		[
-			"subscriptions beside await runs settle whichever of ZA0007 and ZA0006 fixes first",
+			"subscriptions beside await runs settle whichever of ZA0008 and ZA0006 fixes first",
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.SeparateEventSubscriptionRuns,
@@ -1028,7 +1028,7 @@ public sealed partial class ConvergenceTests
 		],
 
 		[
-			"a base call beside calls of its name settles whichever of ZA0004 and ZA0010 fixes first",
+			"a base call beside calls of its name settles whichever of ZA0004 and ZA0014 fixes first",
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.SeparateInvocationRuns,
@@ -1071,7 +1071,7 @@ public sealed partial class ConvergenceTests
 		],
 
 		[
-			"base calls beside guards and jumps settle whichever of ZA0009, ZA0010 and ZA0011 fixes first",
+			"base calls beside guards and jumps settle whichever of ZA0013, ZA0014 and ZA0011 fixes first",
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.SeparateJumpStatement,

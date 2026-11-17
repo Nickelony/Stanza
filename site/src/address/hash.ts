@@ -20,7 +20,7 @@ export interface HashState {
 	selection: Selection | null;
 }
 
-/** Writes the configuration as a hash such as `ZA0014=w&stanza_max_line_length=120`, which a link can carry. */
+/** Writes the configuration as a hash such as `ZA0018=w&stanza_max_line_length=120`, which a link can carry. */
 export function encodeHash<S>(catalog: Catalog<S>, state: HashState, language: Language): string {
 	const params = new URLSearchParams();
 

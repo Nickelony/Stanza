@@ -33,4 +33,4 @@ class Widget {
 
 ## C# counterpart
 
-[ZA0013 - Separate member groups](https://github.com/Nickelony/Stanza/wiki/ZA0013-Separate-member-groups).
+[ZA0017 - Separate member groups](https://github.com/Nickelony/Stanza/wiki/ZA0017-Separate-member-groups).

@@ -22,7 +22,7 @@ public void Process()
 ```
 
 - Only whitespace is removed, and a directive in the [gap](https://github.com/Nickelony/Stanza/wiki/Terms) leaves it alone.
-- Whitespace between the braces of an empty block or type body belongs to [`ZA0204`](https://github.com/Nickelony/Stanza/wiki/ZA0204-Collapse-empty-blocks).
+- Whitespace between the braces of an empty block or type body belongs to [`ZA0205`](https://github.com/Nickelony/Stanza/wiki/ZA0205-Collapse-empty-blocks).
 - With a comment in the gap, the blank lines before the first comment go.
   Before a closing brace the blank lines below the last comment go too, and the blank lines between comments stay.
 - A block statement that follows a sibling leaves the gap above its opening brace to the blank line rules,

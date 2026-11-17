@@ -22,10 +22,10 @@ This page lists the syntax the packages do not inspect and the cases they leave 
   so that gap goes unreported. Disable `ZA0001` in `.editorconfig`, or silence it with a pragma, instead.
 - **Preprocessor directives.** A gap touched by a directive is left unchanged,
   except around a region marker, a conditional block and a suppression block, which
-  [ZA0401](https://github.com/Nickelony/Stanza/wiki/ZA0401-Separate-the-region-marker-from-its-neighbors),
-  [ZA0402](https://github.com/Nickelony/Stanza/wiki/ZA0402-Separate-the-conditional-block-from-its-neighbors) and
-  [ZA0406](https://github.com/Nickelony/Stanza/wiki/ZA0406-Separate-a-suppression-block) separate,
-  and except for a run of blank lines past the cap of [ZA0056](https://github.com/Nickelony/Stanza/wiki/ZA0056-Collapse-extra-blank-lines).
+  [ZA0401](https://github.com/Nickelony/Stanza/wiki/ZA0401-Separate-a-region-marker),
+  [ZA0402](https://github.com/Nickelony/Stanza/wiki/ZA0402-Separate-a-conditional-block) and
+  [ZA0403](https://github.com/Nickelony/Stanza/wiki/ZA0403-Separate-a-suppression-block) separate,
+  and except for a run of blank lines past the cap of [ZA0051](https://github.com/Nickelony/Stanza/wiki/ZA0051-Collapse-extra-blank-lines).
 - **Positional patterns and designations are not inspected.** `(> 0, var y)` and `var (a, b)` are neither a tuple literal nor a tuple type,
   so the delimited list rules leave their gaps alone.
 - **The markup rules need a non-interpolated multi-line raw string literal that parses as one document**,

@@ -34,6 +34,6 @@ size = 2;
 - The count covers the siblings of one run, not of the whole container, so a comment or a multi-line sibling starts the count again.
 - The rules share the limit and read separate parts of a file. `ZA0052` counts its top-level statements, and `ZA0053` counts the members below them.
   Imports count for neither.
-- With a limit of `1`, a container of two siblings belongs to [`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Keep-the-two-units-of-a-container-together) where it judges the container.
-  The loose run rules judge the pair where `ZA0051` is off, or where it skips a container that holds a local function.
-- Neither rule judges a container where a conditional directive can change the runs, on the terms [`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Keep-the-two-units-of-a-container-together) states.
+- With a limit of `1`, a container of two siblings belongs to [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-the-two-units-of-a-container-together) where it judges the container.
+  The loose run rules judge the pair where `ZA0054` is off, or where it skips a container that holds a local function.
+- Neither rule judges a container where a conditional directive can change the runs, on the terms [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-the-two-units-of-a-container-together) states.

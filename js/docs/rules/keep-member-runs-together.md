@@ -56,4 +56,4 @@ The example runs with [`separate-member-groups`](separate-member-groups.md) enab
 
 ## C# counterpart
 
-[ZA0055 - Keep a run of members together](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-members-together).
+[ZA0056 - Keep a run of members together](https://github.com/Nickelony/Stanza/wiki/ZA0056-Keep-a-run-of-members-together).

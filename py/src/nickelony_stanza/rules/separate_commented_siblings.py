@@ -1,4 +1,4 @@
-"""ZA3012: separates a comment that leads a single-line statement from the sibling above it."""
+"""ZA3016: separates a comment that leads a single-line statement from the sibling above it."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3012",
+    code="ZA3016",
     name="separate-commented-siblings",
     level="strong",
     message="Add a blank line above this comment.",

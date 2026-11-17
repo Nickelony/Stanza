@@ -1,4 +1,4 @@
-"""ZA3019: Separate consecutive direct operations selected by their receiver."""
+"""ZA3010: Separate consecutive direct operations selected by their receiver."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3019",
+    code="ZA3010",
     name="separate-receiver-groups",
     level="opt-in",
     message="Add a blank line beside this receiver group.",

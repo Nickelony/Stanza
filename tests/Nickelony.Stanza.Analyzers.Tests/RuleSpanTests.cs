@@ -383,7 +383,7 @@ public sealed class RuleSpanTests
 		],
 
 		[
-			DiagnosticDescriptors.KeepChainOfGuardClausesTogether.Id,
+			DiagnosticDescriptors.KeepGuardClausesTogether.Id,
 
 			"""
 				void M()
@@ -633,7 +633,7 @@ public sealed class RuleSpanTests
 		],
 
 		[
-			DiagnosticDescriptors.SeparateImportDirectiveGroups.Id,
+			DiagnosticDescriptors.SeparateImportGroups.Id,
 
 			"""
 				global using System;
@@ -646,7 +646,7 @@ public sealed class RuleSpanTests
 		],
 
 		[
-			DiagnosticDescriptors.SeparateFileScopedNamespaceDeclarationFromFirstMember.Id,
+			DiagnosticDescriptors.SeparateFileScopedNamespace.Id,
 
 			"""
 				namespace N;
@@ -1064,7 +1064,7 @@ public sealed class RuleSpanTests
 		],
 
 		[
-			DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt.Id,
+			DiagnosticDescriptors.SeparateClauseKeywords.Id,
 
 			"""
 				if (options.ValidateOnLoad)
@@ -1257,7 +1257,7 @@ public sealed class RuleSpanTests
 		],
 
 		[
-			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors.Id,
+			DiagnosticDescriptors.SeparateRegionMarker.Id,
 
 			"""
 				class C
@@ -1344,7 +1344,7 @@ public sealed class RuleSpanTests
 		],
 
 		[
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors.Id,
+			DiagnosticDescriptors.SeparateConditionalBlock.Id,
 
 			"""
 				class C

@@ -299,7 +299,7 @@ public sealed class SeparateBaseCallTests
 
 		AnalyzerRunResult both = await RoslynTestHarness.ReportAllAsync(source, rules);
 
-		Assert.IsEmpty(baseCall.Diagnostics, "ZA0012 owns the gap above the comment.");
+		Assert.IsEmpty(baseCall.Diagnostics, "ZA0016 owns the gap above the comment.");
 		Assert.HasCount(1, both.Diagnostics);
 		Assert.AreEqual(DiagnosticDescriptors.SeparateCommentedSibling.Id, both.Diagnostics[0].Id);
 	}
@@ -338,7 +338,7 @@ public sealed class SeparateBaseCallTests
 			Alone()
 		);
 
-		Assert.IsEmpty(on.Diagnostics, "ZA0051 owns the gap of a body of two statements.");
+		Assert.IsEmpty(on.Diagnostics, "ZA0054 owns the gap of a body of two statements.");
 		Assert.HasCount(1, off.Diagnostics);
 
 		RoslynTestHarness.AssertFixedText(Method("base.OnStart();\n\na = 1;"), off);
@@ -439,12 +439,12 @@ public sealed class SeparateBaseCallTests
 			rules
 		);
 
-		Assert.IsEmpty(jump.Diagnostics, "This rule owns the gap, so ZA0009 leaves it.");
+		Assert.IsEmpty(jump.Diagnostics, "This rule owns the gap, so ZA0013 leaves it.");
 
 		Assert.HasCount(
 			1,
 			jumpAlone.Diagnostics,
-			"With this rule off, ZA0009 asks for the gap above the jump."
+			"With this rule off, ZA0013 asks for the gap above the jump."
 		);
 
 		Assert.HasCount(1, baseCall.Diagnostics);
@@ -547,11 +547,11 @@ public sealed class SeparateBaseCallTests
 	public async Task APragmaThatSilencesTheRuleLeavesTheCallsToTheRunRules()
 	{
 		string source =
-			"#pragma warning disable ZA0010\n"
+			"#pragma warning disable ZA0014\n"
 			+ Method("base.Clear();\n_first.Clear();\nUse(0);", "public override void Clear()");
 
 		string fixedSource =
-			"#pragma warning disable ZA0010\n"
+			"#pragma warning disable ZA0014\n"
 			+ Method("base.Clear();\n_first.Clear();\n\nUse(0);", "public override void Clear()");
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(
@@ -566,7 +566,7 @@ public sealed class SeparateBaseCallTests
 		);
 	}
 
-	// ZA0010 alone: the rules that share its gaps are off unless a test names them.
+	// ZA0014 alone: the rules that share its gaps are off unless a test names them.
 	private static Dictionary<string, ReportDiagnostic> Alone(
 		params DiagnosticDescriptor[] alsoOn
 	) => WithShippedRulesOff([DiagnosticDescriptors.SeparateBaseCall, .. alsoOn]);

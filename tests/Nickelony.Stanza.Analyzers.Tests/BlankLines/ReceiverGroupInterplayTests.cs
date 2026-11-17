@@ -28,36 +28,36 @@ public sealed class ReceiverGroupInterplayTests
 	{
 		["root: none"] = WrittenCalls,
 		["root: ZA0004"] = WrittenCalls,
-		["root: ZA0019"] = WrittenCalls,
-		["root: ZA0054"] = WrittenCalls,
-		["root: ZA0063"] = TightCalls,
-		["root: ZA0004,ZA0019"] = WrittenCalls,
-		["root: ZA0004,ZA0054"] = TightCalls,
-		["root: ZA0004,ZA0063"] = TightCalls,
-		["root: ZA0019,ZA0054"] = WrittenCalls,
-		["root: ZA0019,ZA0063"] = TightCalls,
-		["root: ZA0054,ZA0063"] = TightCalls,
-		["root: ZA0004,ZA0019,ZA0054"] = TightCalls,
-		["root: ZA0004,ZA0019,ZA0063"] = TightCalls,
-		["root: ZA0004,ZA0054,ZA0063"] = TightCalls,
-		["root: ZA0019,ZA0054,ZA0063"] = TightCalls,
-		["root: ZA0004,ZA0019,ZA0054,ZA0063"] = TightCalls,
+		["root: ZA0010"] = WrittenCalls,
+		["root: ZA0055"] = WrittenCalls,
+		["root: ZA0064"] = TightCalls,
+		["root: ZA0004,ZA0010"] = WrittenCalls,
+		["root: ZA0004,ZA0055"] = TightCalls,
+		["root: ZA0004,ZA0064"] = TightCalls,
+		["root: ZA0010,ZA0055"] = WrittenCalls,
+		["root: ZA0010,ZA0064"] = TightCalls,
+		["root: ZA0055,ZA0064"] = TightCalls,
+		["root: ZA0004,ZA0010,ZA0055"] = TightCalls,
+		["root: ZA0004,ZA0010,ZA0064"] = TightCalls,
+		["root: ZA0004,ZA0055,ZA0064"] = TightCalls,
+		["root: ZA0010,ZA0055,ZA0064"] = TightCalls,
+		["root: ZA0004,ZA0010,ZA0055,ZA0064"] = TightCalls,
 		["path: none"] = WrittenCalls,
 		["path: ZA0004"] = WrittenCalls,
-		["path: ZA0019"] = SeparatedCalls,
-		["path: ZA0054"] = WrittenCalls,
-		["path: ZA0063"] = TightCalls,
-		["path: ZA0004,ZA0019"] = SeparatedCalls,
-		["path: ZA0004,ZA0054"] = GroupedCalls,
-		["path: ZA0004,ZA0063"] = GroupedCalls,
-		["path: ZA0019,ZA0054"] = SeparatedCalls,
-		["path: ZA0019,ZA0063"] = GroupedCalls,
-		["path: ZA0054,ZA0063"] = TightCalls,
-		["path: ZA0004,ZA0019,ZA0054"] = GroupedCalls,
-		["path: ZA0004,ZA0019,ZA0063"] = GroupedCalls,
-		["path: ZA0004,ZA0054,ZA0063"] = GroupedCalls,
-		["path: ZA0019,ZA0054,ZA0063"] = GroupedCalls,
-		["path: ZA0004,ZA0019,ZA0054,ZA0063"] = GroupedCalls,
+		["path: ZA0010"] = SeparatedCalls,
+		["path: ZA0055"] = WrittenCalls,
+		["path: ZA0064"] = TightCalls,
+		["path: ZA0004,ZA0010"] = SeparatedCalls,
+		["path: ZA0004,ZA0055"] = GroupedCalls,
+		["path: ZA0004,ZA0064"] = GroupedCalls,
+		["path: ZA0010,ZA0055"] = SeparatedCalls,
+		["path: ZA0010,ZA0064"] = GroupedCalls,
+		["path: ZA0055,ZA0064"] = TightCalls,
+		["path: ZA0004,ZA0010,ZA0055"] = GroupedCalls,
+		["path: ZA0004,ZA0010,ZA0064"] = GroupedCalls,
+		["path: ZA0004,ZA0055,ZA0064"] = GroupedCalls,
+		["path: ZA0010,ZA0055,ZA0064"] = GroupedCalls,
+		["path: ZA0004,ZA0010,ZA0055,ZA0064"] = GroupedCalls,
 	};
 
 	public static IEnumerable<object[]> ReceiverPolicies { get; } =
@@ -125,7 +125,7 @@ public sealed class ReceiverGroupInterplayTests
 
 	[TestMethod]
 	[CrossCutting]
-	[DataRow("ZA0019")]
+	[DataRow("ZA0010")]
 	[DataRow("ZA0004")]
 	public async Task APlannedReceiverBoundaryOpensTheLoneJumpBindingInTheFirstAnalysis(
 		string separator
@@ -166,7 +166,7 @@ public sealed class ReceiverGroupInterplayTests
 			""";
 
 		Dictionary<string, ReportDiagnostic> rules = TestRuleSets.OnSuppressingAllOthers([
-			separator == "ZA0019"
+			separator == "ZA0010"
 				? DiagnosticDescriptors.SeparateReceiverGroups
 				: DiagnosticDescriptors.SeparateInvocationRuns,
 
@@ -211,7 +211,7 @@ public sealed class ReceiverGroupInterplayTests
 
 	[TestMethod]
 	[CrossCutting]
-	[DataRow("ZA0019")]
+	[DataRow("ZA0010")]
 	[DataRow("ZA0004")]
 	public async Task APlannedReceiverBoundaryOpensInitializationInTheFirstAnalysis(
 		string separator
@@ -254,7 +254,7 @@ public sealed class ReceiverGroupInterplayTests
 			""";
 
 		Dictionary<string, ReportDiagnostic> rules = TestRuleSets.OnSuppressingAllOthers([
-			separator == "ZA0019"
+			separator == "ZA0010"
 				? DiagnosticDescriptors.SeparateReceiverGroups
 				: DiagnosticDescriptors.SeparateInvocationRuns,
 

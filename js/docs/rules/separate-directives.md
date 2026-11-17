@@ -24,5 +24,5 @@ run();
 
 ## C# counterpart
 
-[ZA0017 - Separate a file-scoped namespace declaration from its first member](https://github.com/Nickelony/Stanza/wiki/ZA0017-Separate-a-file-scoped-namespace-declaration-from-its-first-member),
+[ZA0021 - Separate the file-scoped namespace](https://github.com/Nickelony/Stanza/wiki/ZA0021-Separate-the-file-scoped-namespace),
 the header of a C# file.

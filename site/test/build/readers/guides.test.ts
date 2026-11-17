@@ -456,7 +456,7 @@ describe('the catalog of Python Stanza', () => {
 		});
 
 		expect(options.get('exclude')).toMatchObject({ kind: 'list', defaultValue: null });
-		expect(options.get('guard-roots')?.rules).toEqual(['ZA3010', 'ZA3011', 'ZA3018', 'ZA3057', 'ZA3058']);
+		expect(options.get('guard-roots')?.rules).toEqual(['ZA3014', 'ZA3011', 'ZA3012', 'ZA3057', 'ZA3058']);
 
 		expect(options.get('formatter')).toMatchObject({
 			kind: 'enum',
@@ -521,27 +521,27 @@ describe('the catalog of Python Stanza', () => {
 		const byId = new Map(realPython.rules.map((rule) => [rule.id, rule]));
 
 		expect(byId.get('ZA3001')?.options).toEqual([]);
-		expect(byId.get('ZA3010')?.options).toEqual(['guard-roots']);
+		expect(byId.get('ZA3014')?.options).toEqual(['guard-roots']);
 		expect(byId.get('ZA3005')?.options).toEqual(['assertion-roots']);
-		expect(byId.get('ZA3017')?.options).toEqual([]);
+		expect(byId.get('ZA3021')?.options).toEqual([]);
 	});
 
 	it('lists the rules no level enables as opt-in, which the tool does not apply by default', () => {
 		const optIn = realPython.rules.filter((rule) => rule.level === 'opt-in');
 
 		expect(optIn.map((rule) => rule.id)).toEqual([
-			'ZA3018',
-			'ZA3019',
-			'ZA3054',
+			'ZA3012',
+			'ZA3010',
 			'ZA3055',
+			'ZA3056',
 			'ZA3057',
 			'ZA3058',
+			'ZA3063',
 			'ZA3059',
 			'ZA3060',
-			'ZA3061',
 			'ZA3062',
-			'ZA3063',
 			'ZA3064',
+			'ZA3061',
 			'ZA3112',
 			'ZA3201',
 		]);
@@ -562,7 +562,7 @@ describe('the catalog of Python Stanza', () => {
 	});
 
 	it('shows the examples whose labels are comments of Python', () => {
-		const header = realPython.rules.find((rule) => rule.id === 'ZA3017')!;
+		const header = realPython.rules.find((rule) => rule.id === 'ZA3021')!;
 
 		expect(header.examples[0]?.before.code).toContain('#!/usr/bin/env python');
 		expect(header.examples[0]?.afters).toHaveLength(1);
@@ -639,7 +639,7 @@ describe('the catalog of Python Stanza', () => {
 			/Configuration\.md: the default of formatter is not one of the values/,
 		);
 
-		failsOnPython('rules:ZA3009-separate-jump-statements.md', (text) => text.replace('# Before', '# Earlier'), /ZA3009-separate-jump-statements\.md/);
+		failsOnPython('rules:ZA3013-separate-jump-statements.md', (text) => text.replace('# Before', '# Earlier'), /ZA3013-separate-jump-statements\.md/);
 	});
 
 	it('fails with the file when the words of a key in the code and on the page differ', () => {

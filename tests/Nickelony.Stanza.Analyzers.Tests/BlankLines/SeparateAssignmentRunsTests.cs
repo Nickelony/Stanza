@@ -516,7 +516,7 @@ public sealed class SeparateAssignmentRunsTests
 
 				TestRuleSets.WithOneOff(
 					on: [DiagnosticDescriptors.SeparateAssignmentRuns],
-					off: DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+					off: DiagnosticDescriptors.SeparateConditionalBlock
 				)
 			);
 
@@ -548,7 +548,7 @@ public sealed class SeparateAssignmentRunsTests
 
 				TestRuleSets.Only(
 					DiagnosticDescriptors.SeparateAssignmentRuns,
-					DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+					DiagnosticDescriptors.SeparateConditionalBlock
 				)
 			);
 
@@ -579,7 +579,7 @@ public sealed class SeparateAssignmentRunsTests
 
 				TestRuleSets.Only(
 					DiagnosticDescriptors.SeparateAssignmentRuns,
-					DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors
+					DiagnosticDescriptors.SeparateRegionMarker
 				)
 			);
 
@@ -1524,7 +1524,7 @@ public sealed class SeparateAssignmentRunsTests
 		RoslynTestHarness.AssertFixedText(types + WithMarksBlank(template), result, $"{name}:");
 	}
 
-	// The anchors as their owner wrote them, and with a blank line inside the first run, which ZA0054 owns.
+	// The anchors as their owner wrote them, and with a blank line inside the first run, which ZA0055 owns.
 	[TestMethod]
 	[DataRow("")]
 	[DataRow("\n")]

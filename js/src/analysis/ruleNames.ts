@@ -20,9 +20,9 @@ export const addOrder = [
 	'separate-invocation-runs',
 	'separate-assertion-runs',
 	'separate-await-runs',
+	'separate-yield-runs',
 	'separate-assignment-runs',
 	'separate-receiver-groups',
-	'separate-yield-runs',
 ] as const;
 
 /** The rules that remove a blank line a rule of the other list would not write back, in the order that decides which of them reports a gap. */

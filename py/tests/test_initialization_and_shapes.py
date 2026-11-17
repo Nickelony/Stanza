@@ -41,7 +41,7 @@ def test_receiver_roots_join_sync_and_awaited_calls_in_one_run() -> None:
         "    finish()", "\n    finish()"
     )
 
-    assert fix_with(source, "ZA3004", "ZA3006", "ZA3054", options=Options(receiver_roots=("self.db",))) == expected
+    assert fix_with(source, "ZA3004", "ZA3006", "ZA3055", options=Options(receiver_roots=("self.db",))) == expected
 
 
 def test_receiver_roots_preserve_different_meaningful_roots() -> None:
@@ -59,8 +59,8 @@ def test_unpacking_declarations_can_form_a_separate_run(rule: str) -> None:
     source = "first, set_first = load()\nsecond, set_second = load()\ncount = 12\nname = 'test'\n"
     expected = source.replace("count = 12", "\ncount = 12")
 
-    assert fix_with(source, rule, "ZA3054", options=Options(declaration_shapes="split")) == expected
-    assert fix_with(source, rule, "ZA3054") == source
+    assert fix_with(source, rule, "ZA3055", options=Options(declaration_shapes="split")) == expected
+    assert fix_with(source, rule, "ZA3055") == source
 
 
 def test_grouping_options_are_loaded_from_configuration() -> None:
@@ -89,8 +89,8 @@ def test_a_kept_declaration_run_can_remove_the_initialization_anchor() -> None:
     source = "def f():\n    count = 1\n\n    item = Item()\n\n    item.start()\n    finish()\n"
     expected = source.replace("    count = 1\n\n", "    count = 1\n")
 
-    assert fix_with(source, "ZA3062", "ZA3002", "ZA3054") == expected
-    assert fix_with(expected, "ZA3062", "ZA3002", "ZA3054") == expected
+    assert fix_with(source, "ZA3062", "ZA3002", "ZA3055") == expected
+    assert fix_with(expected, "ZA3062", "ZA3002", "ZA3055") == expected
 
 
 @pytest.mark.parametrize("roots", [("*",), ("self.db",), ("db",)])
@@ -101,7 +101,7 @@ def test_receiver_grouping_uses_the_first_root_after_self(roots: tuple[str, ...]
         "    finish()", "\n    finish()"
     )
 
-    assert fix_with(source, "ZA3004", "ZA3006", "ZA3054", options=Options(receiver_roots=roots)) == expected
+    assert fix_with(source, "ZA3004", "ZA3006", "ZA3055", options=Options(receiver_roots=roots)) == expected
 
 
 def test_direct_self_calls_have_no_concrete_receiver_root() -> None:
@@ -147,7 +147,7 @@ def test_a_noqa_leaves_an_initialization_apart_from_its_call(silenced: bool) -> 
 @pytest.mark.parametrize("receiver_keeper", [False, True])
 def test_an_initialization_joins_its_call_in_the_pass_that_gathers_nothing_above_it(receiver_keeper: bool) -> None:
     source = "def f(sid):\n    audit()\n\n    svc = Service(sid)\n\n    svc.start()\n\n    svc.run()\n"
-    rules = ["ZA3062", *(["ZA3063"] if receiver_keeper else [])]
+    rules = ["ZA3062", *(["ZA3064"] if receiver_keeper else [])]
     config = Config.create("strong", enable=rules, options=Options(receiver_roots=("*",)))
     expected = source.replace("Service(sid)\n\n", "Service(sid)\n")
 

@@ -44,4 +44,4 @@ log('fourth');
 
 ## C# counterpart
 
-[ZA0054 - Keep a run of statements together](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together).
+[ZA0055 - Keep a run of statements together](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-statements-together).

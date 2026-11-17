@@ -15,9 +15,9 @@ from tests.helpers import JUMP_KEEPERS
 RELATIONSHIPS = {
     "ZA3057": "if not first:\n    return\n{gap}if not second:\n    return\nuse(first, second)\n",
     "ZA3058": "value = get()\n{gap}if not value:\n    return\nuse(value)\n",
-    "ZA3059": "total = 0\n{gap}for x in xs:\n    total += x\nuse(total)\n",
-    "ZA3060": "result = compute()\n{gap}return result\n",
-    "ZA3061": "value = get()\n{gap}assert value is not None\nuse(value)\n",
+    "ZA3063": "total = 0\n{gap}for x in xs:\n    total += x\nuse(total)\n",
+    "ZA3059": "result = compute()\n{gap}return result\n",
+    "ZA3060": "value = get()\n{gap}assert value is not None\nuse(value)\n",
     "ZA3062": "item = Item()\n{gap}item.start()\nitem.save()\ndone()\n",
 }
 
@@ -29,7 +29,7 @@ PREFIXES = [
     "first = 1\n\nsecond = 2\n\nthird = 3\n",
 ]
 
-NATIVE = ("ZA3001", "ZA3003", "ZA3005", "ZA3006", "ZA3008", "ZA3009", "ZA3011", "ZA3018")
+NATIVE = ("ZA3001", "ZA3003", "ZA3005", "ZA3006", "ZA3009", "ZA3013", "ZA3011", "ZA3012")
 
 
 def _body(prefix: str, pair: str, upper: str, inner: str) -> str:
@@ -55,8 +55,8 @@ def test_receiver_and_relationship_policies_settle_in_one_pass(
     ):
         rules = [relationship, "ZA3002"]
 
-        rules.extend(code for code, on in zip(("ZA3019", "ZA3063"), receivers, strict=True) if on)
-        rules.extend(code for code, on in zip(("ZA3004", "ZA3052", "ZA3054"), generic, strict=True) if on)
+        rules.extend(code for code, on in zip(("ZA3010", "ZA3064"), receivers, strict=True) if on)
+        rules.extend(code for code, on in zip(("ZA3004", "ZA3052", "ZA3055"), generic, strict=True) if on)
 
         if all(receivers) and all(generic):
             rules.extend(NATIVE)
@@ -79,7 +79,7 @@ def test_a_receiver_boundary_can_open_a_lone_result_stanza_in_the_same_pass() ->
         "compute()\n\n", "compute()\n"
     )
 
-    config = Config.create("none", enable=["ZA3019", "ZA3060"], options=Options(receiver_roots=("db",)))
+    config = Config.create("none", enable=["ZA3010", "ZA3059"], options=Options(receiver_roots=("db",)))
     result = fix(source, config)
 
     assert result.text == expected
@@ -89,7 +89,7 @@ def test_a_receiver_boundary_can_open_a_lone_result_stanza_in_the_same_pass() ->
 def test_a_result_binding_is_not_lone_when_a_run_keeper_removes_its_upper_border() -> None:
     source = "def f():\n    first = 1\n\n    result = compute()\n\n    return result\n"
     expected = source.replace("    first = 1\n\n", "    first = 1\n")
-    config = Config.create("none", enable=["ZA3002", "ZA3054", "ZA3060", "ZA3009"])
+    config = Config.create("none", enable=["ZA3002", "ZA3055", "ZA3059", "ZA3013"])
     result = fix(source, config)
 
     assert result.text == expected
@@ -99,23 +99,23 @@ def test_a_result_binding_is_not_lone_when_a_run_keeper_removes_its_upper_border
 def test_gathering_leaves_the_loose_prefix_outside_a_kept_seed_and_loop() -> None:
     source = "def f(xs):\n    first = 1\n\n    second = 2\n\n    third = 3\n\n    total = 0\n\n    for x in xs:\n        total += x\n    use(total)\n"
     expected = source.replace("    total = 0\n\n", "    total = 0\n")
-    config = Config.create("none", enable=["ZA3002", "ZA3052", "ZA3059"])
+    config = Config.create("none", enable=["ZA3002", "ZA3052", "ZA3063"])
     result = fix(source, config)
 
     assert result.text == expected
     assert result.passes == 1
 
 
-@pytest.mark.parametrize("keeper", ["ZA3063", "ZA3064"])
+@pytest.mark.parametrize("keeper", ["ZA3064", "ZA3061"])
 def test_a_noqa_on_one_edge_of_a_kept_group_leaves_that_edge_to_the_next_rule(keeper: str) -> None:
-    body = "db.a()\n\ndb.b()\n\ndb.c()" if keeper == "ZA3063" else "a = load()\n\nb = use(a)\n\nc = use(b)"
+    body = "db.a()\n\ndb.b()\n\ndb.c()" if keeper == "ZA3064" else "a = load()\n\nb = use(a)\n\nc = use(b)"
     source = body + f"  # noqa: {keeper}\n"
-    generic = ["ZA3004"] if keeper == "ZA3063" else ["ZA3002"]
-    config = Config.create("none", enable=[keeper, "ZA3054", *generic], options=Options(receiver_roots=("db",)))
+    generic = ["ZA3004"] if keeper == "ZA3064" else ["ZA3002"]
+    config = Config.create("none", enable=[keeper, "ZA3055", *generic], options=Options(receiver_roots=("db",)))
     expected = source.replace("\n\n", "\n")
     findings = lint(source, config)
 
-    assert [finding.code for finding in findings] == [keeper, "ZA3054"]
+    assert [finding.code for finding in findings] == [keeper, "ZA3055"]
     assert apply_edits(SourceFile(source), findings) == expected
     assert fix(source, config).text == expected
     assert lint(expected, config) == []
@@ -123,12 +123,12 @@ def test_a_noqa_on_one_edge_of_a_kept_group_leaves_that_edge_to_the_next_rule(ke
 
 @pytest.mark.parametrize(("keeper", "body"), JUMP_KEEPERS)
 def test_keepers_jumps_and_run_rules_settle_in_one_pass_in_any_combination(keeper: str, body: str) -> None:
-    variants = ("ZA3002", "ZA3004", "ZA3019", "ZA3052", "ZA3054")
+    variants = ("ZA3002", "ZA3004", "ZA3010", "ZA3052", "ZA3055")
 
     for choices, prefix in product(
         product((False, True), repeat=len(variants)), ("", "prepare()\n\n", "first = 1\n\nsecond = 2\n\n")
     ):
-        rules = [keeper, "ZA3009", "ZA3060", *[code for code, on in zip(variants, choices, strict=True) if on]]
+        rules = [keeper, "ZA3013", "ZA3059", *[code for code, on in zip(variants, choices, strict=True) if on]]
         source = _body(prefix, body, "", "")
         config = Config.create("none", enable=rules, options=Options(receiver_roots=("db",), max_loose_run_size=1))
         result = fix(source, config)
@@ -139,9 +139,9 @@ def test_keepers_jumps_and_run_rules_settle_in_one_pass_in_any_combination(keepe
 
 @pytest.mark.parametrize("silenced", [False, True])
 def test_a_noqa_silences_one_border_of_a_receiver_group(silenced: bool) -> None:
-    comment = "  # noqa: ZA3019" if silenced else ""
+    comment = "  # noqa: ZA3010" if silenced else ""
     source = f"prepare()\ndb.first()\ndb.second()\nfinish(){comment}\n"
     expected = source.replace("prepare()\n", "prepare()\n\n")
-    config = Config.create("none", enable=["ZA3019"], options=Options(receiver_roots=("db",)))
+    config = Config.create("none", enable=["ZA3010"], options=Options(receiver_roots=("db",)))
 
     assert fix(source, config).text == (expected if silenced else expected.replace("db.second()\n", "db.second()\n\n"))

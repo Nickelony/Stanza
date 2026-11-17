@@ -545,7 +545,7 @@ public sealed class SeparateAwaitRunsTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.SeparateAwaitRuns,
-				DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors
+				DiagnosticDescriptors.SeparateRegionMarker
 			)
 		);
 
@@ -630,7 +630,7 @@ public sealed class SeparateAwaitRunsTests
 	[TestMethod]
 	[DataRow("ZA0006")]
 	[DataRow("ZA0052")]
-	[DataRow("ZA0054")]
+	[DataRow("ZA0055")]
 	public async Task ReceiverSelectorsDoNotSuppressAnAwaitRunWithoutAConsumer(string companion)
 	{
 		const string source = """

@@ -1,4 +1,4 @@
-"""ZA3063: Keep consecutive direct operations on a selected receiver together, except between sections."""
+"""ZA3064: Keep consecutive direct operations on a selected receiver together, except between sections."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3063",
+    code="ZA3064",
     name="keep-receiver-groups-together",
     level="opt-in",
     message="Remove the blank lines inside this receiver group.",

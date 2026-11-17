@@ -1,8 +1,8 @@
 # stanza_local_function_modifiers
 
-Controls whether [`ZA0021`](https://github.com/Nickelony/Stanza/wiki/ZA0021-Separate-local-function-runs) splits a run of local functions between `static` ones and the others.
+Controls whether [`ZA0015`](https://github.com/Nickelony/Stanza/wiki/ZA0015-Separate-local-function-runs) splits a run of local functions between `static` ones and the others.
 Default: `merge`.
-Read by [`ZA0021`](https://github.com/Nickelony/Stanza/wiki/ZA0021-Separate-local-function-runs), and by [`ZA0052`](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) and [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) where `ZA0021` is on.
+Read by [`ZA0015`](https://github.com/Nickelony/Stanza/wiki/ZA0015-Separate-local-function-runs), and by [`ZA0052`](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) and [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-statements-together) where `ZA0015` is on.
 
 | Value         | Effect                                                         |
 | ------------- | -------------------------------------------------------------- |
@@ -39,4 +39,4 @@ int Offset(int v) => v + shift;
 - A `static` local function cannot capture a local or a parameter of its method,
   so the split sets apart the functions that stand alone from those that read their method.
 - The other modifiers never split a run: `async`, `unsafe` and `extern` are ignored, and `static async` counts as `static`.
-- A multi-line local function has no run, as [`ZA0021`](https://github.com/Nickelony/Stanza/wiki/ZA0021-Separate-local-function-runs) says, so it ends the runs beside it whatever this value says.
+- A multi-line local function has no run, as [`ZA0015`](https://github.com/Nickelony/Stanza/wiki/ZA0015-Separate-local-function-runs) says, so it ends the runs beside it whatever this value says.

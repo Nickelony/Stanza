@@ -439,11 +439,11 @@ public sealed class SeparateReceiverGroupsTests
 			{
 				void M(dynamic db, dynamic cache)
 				{
-			#pragma warning disable ZA0019
+			#pragma warning disable ZA0010
 					db.A();
 					db.B();
 					cache.C();
-			#pragma warning restore ZA0019
+			#pragma warning restore ZA0010
 				}
 			}
 			""";
@@ -453,12 +453,12 @@ public sealed class SeparateReceiverGroupsTests
 			{
 				void M(dynamic db, dynamic cache)
 				{
-			#pragma warning disable ZA0019
+			#pragma warning disable ZA0010
 					db.A();
 					db.B();
 
 					cache.C();
-			#pragma warning restore ZA0019
+			#pragma warning restore ZA0010
 				}
 			}
 			""";

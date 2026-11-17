@@ -881,7 +881,7 @@ public sealed class RemoveDirectiveBlockPaddingTests
 	public async Task APragmaThatSilencesTheRuleLeavesTheBlockAsWritten()
 	{
 		const string source = """
-			#pragma warning disable ZA0407
+			#pragma warning disable ZA0404
 			class C
 			{
 				private int _total;
@@ -1064,8 +1064,8 @@ public sealed class RemoveDirectiveBlockPaddingTests
 				toggled:
 				[
 					DiagnosticDescriptors.RemoveDirectiveBlockPadding,
-					DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
-					DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+					DiagnosticDescriptors.SeparateRegionMarker,
+					DiagnosticDescriptors.SeparateConditionalBlock,
 					DiagnosticDescriptors.SeparateSuppressionBlock,
 					DiagnosticDescriptors.RemoveEmptyRegions,
 				],
@@ -1117,8 +1117,8 @@ public sealed class RemoveDirectiveBlockPaddingTests
 				toggled:
 				[
 					DiagnosticDescriptors.RemoveDirectiveBlockPadding,
-					DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
-					DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+					DiagnosticDescriptors.SeparateRegionMarker,
+					DiagnosticDescriptors.SeparateConditionalBlock,
 					DiagnosticDescriptors.SeparateSuppressionBlock,
 				],
 
@@ -1170,8 +1170,8 @@ public sealed class RemoveDirectiveBlockPaddingTests
 				foreach (string suppression in new[] { "padded", "tight" })
 				{
 					RunOptions options = new([
-						new SeparateRegionMarkerFromNeighborsAnalyzer(),
-						new SeparateConditionalBlockFromNeighborsAnalyzer(),
+						new SeparateRegionMarkerAnalyzer(),
+						new SeparateConditionalBlockAnalyzer(),
 						new SeparateSuppressionBlockAnalyzer(),
 						new RemoveDirectiveBlockPaddingAnalyzer(),
 						new SeparateDeclarationRunsAnalyzer(),
@@ -1179,8 +1179,8 @@ public sealed class RemoveDirectiveBlockPaddingTests
 					])
 					{
 						DiagnosticOptions = TestRuleSets.Only(
-							DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
-							DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+							DiagnosticDescriptors.SeparateRegionMarker,
+							DiagnosticDescriptors.SeparateConditionalBlock,
 							DiagnosticDescriptors.SeparateSuppressionBlock,
 							DiagnosticDescriptors.RemoveDirectiveBlockPadding,
 							DiagnosticDescriptors.SeparateDeclarationRuns,
@@ -1250,8 +1250,8 @@ public sealed class RemoveDirectiveBlockPaddingTests
 				toggled:
 				[
 					DiagnosticDescriptors.RemoveDirectiveBlockPadding,
-					DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
-					DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+					DiagnosticDescriptors.SeparateRegionMarker,
+					DiagnosticDescriptors.SeparateConditionalBlock,
 					DiagnosticDescriptors.SeparateSuppressionBlock,
 				],
 
@@ -1324,8 +1324,8 @@ public sealed class RemoveDirectiveBlockPaddingTests
 					DiagnosticDescriptors.SeparateInvocationRuns,
 					DiagnosticDescriptors.CollapseExtraBlankLines,
 					DiagnosticDescriptors.RemoveDirectiveBlockPadding,
-					DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
-					DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+					DiagnosticDescriptors.SeparateRegionMarker,
+					DiagnosticDescriptors.SeparateConditionalBlock,
 					DiagnosticDescriptors.SeparateSuppressionBlock,
 				],
 
@@ -1393,15 +1393,15 @@ public sealed class RemoveDirectiveBlockPaddingTests
 			""";
 
 		RunOptions options = new([
-			new SeparateRegionMarkerFromNeighborsAnalyzer(),
-			new SeparateConditionalBlockFromNeighborsAnalyzer(),
+			new SeparateRegionMarkerAnalyzer(),
+			new SeparateConditionalBlockAnalyzer(),
 			new SeparateSuppressionBlockAnalyzer(),
 			new RemoveDirectiveBlockPaddingAnalyzer(),
 		])
 		{
 			DiagnosticOptions = TestRuleSets.Only(
-				DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
-				DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+				DiagnosticDescriptors.SeparateRegionMarker,
+				DiagnosticDescriptors.SeparateConditionalBlock,
 				DiagnosticDescriptors.SeparateSuppressionBlock,
 				DiagnosticDescriptors.RemoveDirectiveBlockPadding
 			),
@@ -1471,15 +1471,15 @@ public sealed class RemoveDirectiveBlockPaddingTests
 			""";
 
 		RunOptions options = new([
-			new SeparateRegionMarkerFromNeighborsAnalyzer(),
-			new SeparateConditionalBlockFromNeighborsAnalyzer(),
+			new SeparateRegionMarkerAnalyzer(),
+			new SeparateConditionalBlockAnalyzer(),
 			new SeparateSuppressionBlockAnalyzer(),
 			new RemoveDirectiveBlockPaddingAnalyzer(),
 		])
 		{
 			DiagnosticOptions = TestRuleSets.Only(
-				DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
-				DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+				DiagnosticDescriptors.SeparateRegionMarker,
+				DiagnosticDescriptors.SeparateConditionalBlock,
 				DiagnosticDescriptors.SeparateSuppressionBlock,
 				DiagnosticDescriptors.RemoveDirectiveBlockPadding
 			),

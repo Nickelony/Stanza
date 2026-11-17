@@ -60,7 +60,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "C4", "PIE", "PT"]
 
 [tool.stanza]
 level = "strong"
-enable = ["ZA3055"]
+enable = ["ZA3056"]
 exclude = ["tests/corpus/**"]
 # The code here passes its arguments by position, so the rules that name them stay off until it names them itself.
 disable = ["ZA3501", "ZA3502"]

@@ -1,4 +1,4 @@
-"""ZA3017: separates the shebang, the encoding line and the module docstring from the code below."""
+"""ZA3021: separates the shebang, the encoding line and the module docstring from the code below."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3017",
+    code="ZA3021",
     name="separate-file-header",
     level="minimal",
     message="Add a blank line below the file header.",

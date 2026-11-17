@@ -38,4 +38,4 @@ const stream = new MemoryStream(bytes);
 
 ## C# counterpart
 
-[ZA0064 - Keep dependent bindings together](https://github.com/Nickelony/Stanza/wiki/ZA0064-Keep-dependent-bindings-together).
+[ZA0061 - Keep dependent bindings together](https://github.com/Nickelony/Stanza/wiki/ZA0061-Keep-dependent-bindings-together).

@@ -22,9 +22,9 @@ internal static class BlankLineOwnership
 		(BlankLineGrouping.RunFamily.Invocation, DiagnosticDescriptors.SeparateInvocationRuns),
 		(BlankLineGrouping.RunFamily.Assertion, DiagnosticDescriptors.SeparateAssertionRuns),
 		(BlankLineGrouping.RunFamily.Await, DiagnosticDescriptors.SeparateAwaitRuns),
+		(BlankLineGrouping.RunFamily.Yield, DiagnosticDescriptors.SeparateYieldRuns),
 		(BlankLineGrouping.RunFamily.Subscription, DiagnosticDescriptors.SeparateEventSubscriptionRuns),
 		(BlankLineGrouping.RunFamily.Assignment, DiagnosticDescriptors.SeparateAssignmentRuns),
-		(BlankLineGrouping.RunFamily.Yield, DiagnosticDescriptors.SeparateYieldRuns),
 		(BlankLineGrouping.RunFamily.LocalFunction, DiagnosticDescriptors.SeparateLocalFunctionRuns),
 	];
 
@@ -249,7 +249,7 @@ internal static class BlankLineOwnership
 	}
 
 	/// <summary>
-	/// Whether a tight rule that ZA0012 defers to is on above a unit, unless a pragma silences it there.
+	/// Whether a tight rule that ZA0016 defers to is on above a unit, unless a pragma silences it there.
 	/// </summary>
 	public static bool IsGapAboveOwnedByTightRule(ContainerContext container, int boundary, StanzaRule commentedSibling)
 	{
@@ -397,8 +397,8 @@ internal static class BlankLineOwnership
 	public static GapOwners ReadGapOwners(ContainerContext container, StanzaRule rule)
 	{
 		StanzaRule multiLine = rule.GetDeferral(DiagnosticDescriptors.SeparateMultiLineConstructs);
-		StanzaRule regionMarker = rule.GetDeferral(DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors);
-		StanzaRule conditionalBlock = rule.GetDeferral(DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors);
+		StanzaRule regionMarker = rule.GetDeferral(DiagnosticDescriptors.SeparateRegionMarker);
+		StanzaRule conditionalBlock = rule.GetDeferral(DiagnosticDescriptors.SeparateConditionalBlock);
 		StanzaRule suppressionBlock = rule.GetDeferral(DiagnosticDescriptors.SeparateSuppressionBlock);
 		StanzaRule commentedSibling = rule.GetDeferral(DiagnosticDescriptors.SeparateCommentedSibling);
 

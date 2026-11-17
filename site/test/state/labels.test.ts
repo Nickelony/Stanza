@@ -22,7 +22,7 @@ describe('the summary of the form', () => {
 
 describe('the label of a rule that follows the level', () => {
 	const moderate = rule('ZA0002');
-	const strong = rule('ZA0014', { onByDefault: false });
+	const strong = rule('ZA0018', { onByDefault: false });
 
 	it('names the severity the level gives the rule', () => {
 		expect(ruleDefaultLabel(moderate, config({}), csharp)).toBe('Level (Suggestion)');
@@ -48,7 +48,7 @@ describe('the label of a rule that follows the level', () => {
 
 	it('follows what the csharpier formatter does to the strong level', () => {
 		const undone = rule('ZA0001', { level: 'strong', csharpier: 'off' });
-		const added = rule('ZA0054', { level: 'opt-in', onByDefault: false, csharpier: 'on' });
+		const added = rule('ZA0055', { level: 'opt-in', onByDefault: false, csharpier: 'on' });
 
 		expect(ruleDefaultLabel(undone, config({ level: 'strong' }), csharp)).toBe('Level (Suggestion)');
 		expect(ruleDefaultLabel(undone, config({ level: 'strong', formatter: 'csharpier' }), csharp)).toBe('Level (Off)');

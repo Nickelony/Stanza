@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Nickelony.Stanza.Analyzers.BlankLines;
 
-/// <summary>Reads the runs of event subscriptions, which bind a semantic model while ZA0007 is on.</summary>
+/// <summary>Reads the runs of event subscriptions, which bind a semantic model while ZA0008 is on.</summary>
 /// <remarks>
 /// Only the symbol tells <c>Click += OnClick;</c> from <c>count += step;</c>.
 /// </remarks>

@@ -595,7 +595,7 @@ public sealed class SeparateSuppressionBlockTests
 	public async Task APragmaThatSilencesTheRuleLeavesTheBlockAsWritten()
 	{
 		const string source = """
-			#pragma warning disable ZA0406
+			#pragma warning disable ZA0403
 			class C
 			{
 				private int _total;

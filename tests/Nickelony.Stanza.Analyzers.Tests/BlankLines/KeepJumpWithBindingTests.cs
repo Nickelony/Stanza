@@ -527,13 +527,13 @@ public sealed class KeepJumpWithBindingTests
 			{
 				int M(int x)
 				{
-			#pragma warning disable ZA0060
+			#pragma warning disable ZA0059
 					System.GC.KeepAlive(x);
 
 					int y = x + 1;
 
 					return y;
-			#pragma warning restore ZA0060
+			#pragma warning restore ZA0059
 				}
 			}
 			""";
@@ -548,7 +548,7 @@ public sealed class KeepJumpWithBindingTests
 		Assert.IsEmpty(reported.Diagnostics);
 
 		AnalyzerRunResult unsilenced = await RoslynTestHarness.ReportAllAsync(
-			source.Replace("#pragma warning disable ZA0060", string.Empty),
+			source.Replace("#pragma warning disable ZA0059", string.Empty),
 			rules
 		);
 

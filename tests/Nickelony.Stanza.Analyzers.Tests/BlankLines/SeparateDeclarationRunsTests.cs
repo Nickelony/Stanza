@@ -388,7 +388,7 @@ public sealed class SeparateDeclarationRunsTests
 
 				TestRuleSets.WithOneOff(
 					on: [],
-					off: DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+					off: DiagnosticDescriptors.SeparateConditionalBlock
 				)
 			);
 
@@ -905,7 +905,7 @@ public sealed class SeparateDeclarationRunsTests
 			}
 			""";
 
-		string regionMarker = DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors.Id;
+		string regionMarker = DiagnosticDescriptors.SeparateRegionMarker.Id;
 
 		AnalyzerRunResult disabled =
 			await RoslynTestHarness.RunAsync<SeparateDeclarationRunsAnalyzer>(
@@ -947,9 +947,9 @@ public sealed class SeparateDeclarationRunsTests
 			await RoslynTestHarness.ReportAsync<SeparateDeclarationRunsAnalyzer>(source);
 
 		AnalyzerRunResult markers =
-			await RoslynTestHarness.ReportAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(
+			await RoslynTestHarness.ReportAsync<SeparateRegionMarkerAnalyzer>(
 				source,
-				TestRuleSets.Only(DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors)
+				TestRuleSets.Only(DiagnosticDescriptors.SeparateRegionMarker)
 			);
 
 		Assert.IsEmpty(runs.Diagnostics, "The marker still ends the run.");
@@ -986,7 +986,7 @@ public sealed class SeparateDeclarationRunsTests
 			""";
 
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+			DiagnosticDescriptors.SeparateConditionalBlock
 		);
 
 		AnalyzerRunResult alone = await RoslynTestHarness.RunAsync<SeparateDeclarationRunsAnalyzer>(
@@ -1036,7 +1036,7 @@ public sealed class SeparateDeclarationRunsTests
 			""";
 
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+			DiagnosticDescriptors.SeparateConditionalBlock
 		);
 
 		AnalyzerRunResult alone = await RoslynTestHarness.RunAsync<SeparateDeclarationRunsAnalyzer>(
@@ -1089,7 +1089,7 @@ public sealed class SeparateDeclarationRunsTests
 			""";
 
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+			DiagnosticDescriptors.SeparateConditionalBlock
 		);
 
 		AnalyzerRunResult alone = await RoslynTestHarness.RunAsync<SeparateDeclarationRunsAnalyzer>(
@@ -1134,7 +1134,7 @@ public sealed class SeparateDeclarationRunsTests
 			""";
 
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+			DiagnosticDescriptors.SeparateConditionalBlock
 		);
 
 		AnalyzerRunResult alone = await RoslynTestHarness.RunAsync<SeparateDeclarationRunsAnalyzer>(
@@ -1182,7 +1182,7 @@ public sealed class SeparateDeclarationRunsTests
 
 				TestRuleSets.WithOneOff(
 					on: [],
-					off: DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+					off: DiagnosticDescriptors.SeparateConditionalBlock
 				)
 			);
 
@@ -1234,7 +1234,7 @@ public sealed class SeparateDeclarationRunsTests
 			""";
 
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+			DiagnosticDescriptors.SeparateConditionalBlock
 		);
 
 		foreach (string symbols in new[] { string.Empty, "#define A\n" })

@@ -42,22 +42,22 @@ public sealed partial class FormatterSettingsGuardTests
 	private static readonly string[] s_disabled =
 	[
 		"ZA1001",
-		// The tree writes a guard tight against the statements around it, which ZA0018 sets apart.
-		"ZA0018",
 		// The receiver rules judge only the receivers stanza_receiver_roots names, and the tree names none.
-		"ZA0019",
-		"ZA0063",
+		"ZA0010",
+		"ZA0064",
+		// The tree writes a guard tight against the statements around it, which ZA0012 sets apart.
+		"ZA0012",
 		// The tree sets apart, at many sites each, neighboring guards for ZA0057, a guard and its binding
-		// for ZA0058, a seed and its loop for ZA0059, a lone binding and its jump for ZA0060,
-		// a binding and its narrowing assertion for ZA0061, an initialization and its first call for ZA0062,
-		// and a binding and the binding that reads it for ZA0064.
+		// for ZA0058, a lone binding and its jump for ZA0059, a binding and its narrowing assertion for ZA0060,
+		// a binding and the binding that reads it for ZA0061, an initialization and its first call for ZA0062
+		// and a seed and its loop for ZA0063.
 		"ZA0057",
 		"ZA0058",
 		"ZA0059",
 		"ZA0060",
 		"ZA0061",
 		"ZA0062",
-		"ZA0064",
+		"ZA0063",
 		"ZA0101",
 		"ZA0112",
 		"ZA0122",
@@ -100,7 +100,7 @@ public sealed partial class FormatterSettingsGuardTests
 		string[] offInTests =
 		[
 			"ZA0052",
-			"ZA0054",
+			"ZA0055",
 			"ZA2001",
 			"ZA2003",
 			"ZA2006",

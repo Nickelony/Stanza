@@ -172,7 +172,7 @@ public sealed class CrossRuleTests
 			[DiagnosticDescriptors.SeparateSameTypeDeclarationRuns.Id] = 2,
 			[DiagnosticDescriptors.SeparateMemberGroups.Id] = 1,
 			[DiagnosticDescriptors.SeparateImportSection.Id] = 1,
-			[DiagnosticDescriptors.SeparateFileScopedNamespaceDeclarationFromFirstMember.Id] = 1,
+			[DiagnosticDescriptors.SeparateFileScopedNamespace.Id] = 1,
 			[DiagnosticDescriptors.SeparateMultiLineConstructs.Id] = 1,
 			[DiagnosticDescriptors.SeparateMultiLineSwitchSections.Id] = 1,
 			[DiagnosticDescriptors.SeparateMultiLineSwitchExpressionArms.Id] = 1,
@@ -180,7 +180,7 @@ public sealed class CrossRuleTests
 			[DiagnosticDescriptors.UseBracesConsistently.Id] = 1,
 			[DiagnosticDescriptors.KeepClauseKeywordsAdjacent.Id] = 1,
 			[DiagnosticDescriptors.CollapseEmptyBlocks.Id] = 2,
-			[DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors.Id] = 2,
+			[DiagnosticDescriptors.SeparateRegionMarker.Id] = 2,
 			[DiagnosticDescriptors.BreakExpressionOffSignatureLine.Id] = 1,
 		};
 

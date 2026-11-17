@@ -36,7 +36,7 @@ describe('the compact form of a link', () => {
 	});
 
 	it('refuses a link it would not write back as it stood', () => {
-		const odd = `<a href="${wikiUrl}/ZA0006-Separate-await-runs" target="_blank" rel="noopener" data-select="ZA0007">x</a>`;
+		const odd = `<a href="${wikiUrl}/ZA0006-Separate-await-runs" target="_blank" rel="noopener" data-select="ZA0008">x</a>`;
 		expect(() => compactHtml(odd)).toThrowError(/cannot be written in the compact form/);
 	});
 });

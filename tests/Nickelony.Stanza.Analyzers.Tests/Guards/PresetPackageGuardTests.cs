@@ -98,8 +98,8 @@ public sealed partial class PresetPackageGuardTests
 	[
 		"ZA0203",
 		"ZA0111",
-		"ZA0051",
-		"ZA0012",
+		"ZA0054",
+		"ZA0016",
 		"ZA0151",
 		"ZA0152",
 	];
@@ -201,7 +201,7 @@ public sealed partial class PresetPackageGuardTests
 
 		Assert.AreEqual("warning", overlay.FindLevel("ZA0152"), "The overlay lost to the level.");
 		Assert.IsNull(overlay.FindLevel("ZA0151"), "The overlay did not turn ZA0151 off.");
-		Assert.AreEqual("warning", overlay.FindLevel("ZA0051"), "The level did not apply.");
+		Assert.AreEqual("warning", overlay.FindLevel("ZA0054"), "The level did not apply.");
 
 		Assert.DoesNotContain(
 			"MultipleGlobalAnalyzerKeys",
@@ -214,7 +214,7 @@ public sealed partial class PresetPackageGuardTests
 
 			"root = true\n[*.cs]\n"
 				+ "dotnet_diagnostic.ZA0152.severity = none\n"
-				+ "dotnet_diagnostic.ZA0051.severity = none\n"
+				+ "dotnet_diagnostic.ZA0054.severity = none\n"
 		);
 
 		BuildResult editorConfig = await consumer.BuildAsync(properties);
@@ -224,7 +224,7 @@ public sealed partial class PresetPackageGuardTests
 			"An .editorconfig line lost to the overlay."
 		);
 
-		Assert.IsNull(editorConfig.FindLevel("ZA0051"), "An .editorconfig line lost to the level.");
+		Assert.IsNull(editorConfig.FindLevel("ZA0054"), "An .editorconfig line lost to the level.");
 		Assert.AreEqual("warning", editorConfig.FindLevel("ZA0111"), "The level did not apply.");
 
 		consumer.Write(".editorconfig", "root = true\n");
@@ -234,7 +234,7 @@ public sealed partial class PresetPackageGuardTests
 
 			"is_global = true\n"
 				+ "dotnet_diagnostic.ZA0152.severity = error\n"
-				+ "dotnet_diagnostic.ZA0051.severity = error\n"
+				+ "dotnet_diagnostic.ZA0054.severity = error\n"
 		);
 
 		BuildResult globalConfig = await consumer.BuildAsync(properties);
@@ -247,7 +247,7 @@ public sealed partial class PresetPackageGuardTests
 
 		Assert.AreEqual(
 			"error",
-			globalConfig.FindLevel("ZA0051"),
+			globalConfig.FindLevel("ZA0054"),
 			"A .globalconfig lost to the level."
 		);
 

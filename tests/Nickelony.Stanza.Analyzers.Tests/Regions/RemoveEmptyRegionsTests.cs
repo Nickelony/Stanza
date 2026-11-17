@@ -137,7 +137,7 @@ public sealed class RemoveEmptyRegionsTests
 			}
 			""";
 
-		// The regions go and leave an empty body, which the default rule ZA0204 collapses in its own fix.
+		// The regions go and leave an empty body, which the default rule ZA0205 collapses in its own fix.
 		using IDisposable skipped = RoslynTestHarness.SkippingDefaultRules();
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<RemoveEmptyRegionsAnalyzer>(

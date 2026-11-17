@@ -30,10 +30,10 @@ limit = 3
 - A gap that a relationship keeper joins, such as the one [`ZA3058`](ZA3058-keep-guard-with-binding.md) removes above a guard,
   reads as tight, so the statements beside it are no part of a run.
 - A jump statement, an import, a function and a class are no part of a run.
-  The gap above a jump stays blank, and the gap that [`ZA3015`](ZA3015-separate-import-section.md) asks for below the imports stays too.
+  The gap above a jump stays blank, and the gap that [`ZA3019`](ZA3019-separate-import-section.md) asks for below the imports stays too.
 - The rule judges the statements of a module, a function and a block.
   The fields and attributes of a class body belong to [`ZA3053`](ZA3053-gather-loose-members.md).
-- A container of exactly two statements belongs to [`ZA3051`](ZA3051-keep-two-units-together.md).
+- A container of exactly two statements belongs to [`ZA3054`](ZA3054-keep-two-units-together.md).
 - A region between `# fmt: off` and `# fmt: on` keeps its blank lines.
 
 ## Options

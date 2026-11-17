@@ -90,7 +90,7 @@ public sealed class LineEndingTests
 			"class C\r\n{\r\n\tint a;\r\n\r\n\t#region Fields\n\n\tint b;\n\n\t#endregion\n}\r\n";
 
 		AnalyzerRunResult result =
-			await RoslynTestHarness.RunAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(source);
+			await RoslynTestHarness.RunAsync<SeparateRegionMarkerAnalyzer>(source);
 
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}

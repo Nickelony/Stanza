@@ -11,35 +11,35 @@ ZA0003  | Formatting | Disabled | Separate same-type declaration runs.
 ZA0004  | Formatting | Info     | Separate invocation runs.
 ZA0005  | Formatting | Info     | Separate assertion runs.
 ZA0006  | Formatting | Disabled | Separate await runs.
-ZA0007  | Formatting | Disabled | Separate event subscription runs.
-ZA0008  | Formatting | Disabled | Separate assignment runs.
-ZA0009  | Formatting | Disabled | Separate a jump statement.
-ZA0010  | Formatting | Disabled | Separate the base call.
+ZA0007  | Formatting | Disabled | Separate yield runs.
+ZA0008  | Formatting | Disabled | Separate event subscription runs.
+ZA0009  | Formatting | Disabled | Separate assignment runs.
+ZA0010  | Formatting | Disabled | Separate receiver groups.
 ZA0011  | Formatting | Disabled | Separate the guard clauses.
-ZA0012  | Formatting | Disabled | Separate a commented sibling.
-ZA0013  | Formatting | Info     | Separate member groups.
-ZA0014  | Formatting | Disabled | Separate modifier groups.
-ZA0015  | Formatting | Info     | Separate the import section.
-ZA0016  | Formatting | Disabled | Separate the import directive groups.
-ZA0017  | Formatting | Info     | Separate a file-scoped namespace declaration from its first member.
-ZA0018  | Formatting | Disabled | Separate a checked stanza.
-ZA0019  | Formatting | Disabled | Separate receiver groups.
-ZA0020  | Formatting | Disabled | Separate yield runs.
-ZA0021  | Formatting | Disabled | Separate local function runs.
-ZA0051  | Formatting | Disabled | Keep the two units of a container together.
+ZA0012  | Formatting | Disabled | Separate a checked stanza.
+ZA0013  | Formatting | Disabled | Separate a jump statement.
+ZA0014  | Formatting | Disabled | Separate the base call.
+ZA0015  | Formatting | Disabled | Separate local function runs.
+ZA0016  | Formatting | Disabled | Separate a commented sibling.
+ZA0017  | Formatting | Info     | Separate member groups.
+ZA0018  | Formatting | Disabled | Separate modifier groups.
+ZA0019  | Formatting | Info     | Separate the import section.
+ZA0020  | Formatting | Disabled | Separate the import groups.
+ZA0021  | Formatting | Info     | Separate the file-scoped namespace.
+ZA0051  | Formatting | Info     | Collapse extra blank lines.
 ZA0052  | Formatting | Disabled | Gather a run of loose statements.
 ZA0053  | Formatting | Disabled | Gather a run of loose members.
-ZA0054  | Formatting | Disabled | Keep a run of statements together.
-ZA0055  | Formatting | Disabled | Keep a run of members together.
-ZA0056  | Formatting | Info     | Collapse extra blank lines.
-ZA0057  | Formatting | Disabled | Keep a chain of guard clauses together.
+ZA0054  | Formatting | Disabled | Keep the two units of a container together.
+ZA0055  | Formatting | Disabled | Keep a run of statements together.
+ZA0056  | Formatting | Disabled | Keep a run of members together.
+ZA0057  | Formatting | Disabled | Keep guard clauses together.
 ZA0058  | Formatting | Disabled | Keep a guard with its binding.
-ZA0059  | Formatting | Disabled | Keep an accumulator with its loop.
-ZA0060  | Formatting | Disabled | Keep a jump with its binding.
-ZA0061  | Formatting | Disabled | Keep a narrowing assertion with its binding.
+ZA0059  | Formatting | Disabled | Keep a jump with its binding.
+ZA0060  | Formatting | Disabled | Keep a narrowing assertion with its binding.
+ZA0061  | Formatting | Disabled | Keep dependent bindings together.
 ZA0062  | Formatting | Disabled | Keep an initialization with its calls.
-ZA0063  | Formatting | Disabled | Keep a receiver group together.
-ZA0064  | Formatting | Disabled | Keep dependent bindings together.
+ZA0063  | Formatting | Disabled | Keep an accumulator with its loop.
+ZA0064  | Formatting | Disabled | Keep a receiver group together.
 ZA0101  | Formatting | Disabled | Separate multi-line accessors.
 ZA0102  | Formatting | Info     | Keep multi-line accessors together.
 ZA0103  | Formatting | Info     | Keep single-line accessors together.
@@ -66,13 +66,13 @@ ZA0172  | Formatting | Disabled | Keep multi-line declarators together.
 ZA0173  | Formatting | Info     | Keep single-line declarators together.
 ZA0198  | Formatting | Disabled | Add a trailing comma.
 ZA0199  | Formatting | Disabled | Remove the trailing comma.
-ZA0201  | Formatting | Disabled | Separate a clause keyword from the brace before it.
+ZA0201  | Formatting | Disabled | Separate clause keywords.
 ZA0202  | Formatting | Info     | Keep clause keywords adjacent.
 ZA0203  | Formatting | Info     | Remove brace padding.
-ZA0204  | Formatting | Info     | Collapse empty blocks.
-ZA0205  | Formatting | Info     | Use braces consistently.
-ZA0206  | Formatting | Disabled | Remove redundant braces.
-ZA0207  | Formatting | Info     | Remove switch label padding.
+ZA0204  | Formatting | Info     | Remove switch label padding.
+ZA0205  | Formatting | Info     | Collapse empty blocks.
+ZA0206  | Formatting | Info     | Use braces consistently.
+ZA0207  | Formatting | Disabled | Remove redundant braces.
 ZA0301  | Formatting | Info     | Use a block body for a multi-line member.
 ZA0302  | Formatting | Disabled | Use an expression body for a single-line member.
 ZA0303  | Formatting | Disabled | Use a block body for a multi-line value member.
@@ -80,13 +80,13 @@ ZA0304  | Formatting | Disabled | Use an expression body for a single-line value
 ZA0305  | Formatting | Info     | Break the expression off the signature line.
 ZA0306  | Formatting | Disabled | Keep the arrow on the signature line.
 ZA0307  | Formatting | Disabled | Put the arrow on the line after the signature.
-ZA0401  | Formatting | Info     | Separate the region marker from its neighbors.
-ZA0402  | Formatting | Info     | Separate the conditional block from its neighbors.
-ZA0403  | Formatting | Disabled | Name the closing region directive.
-ZA0404  | Formatting | Disabled | Name the closing conditional directive.
-ZA0405  | Formatting | Info     | Remove empty regions.
-ZA0406  | Formatting | Info     | Separate a suppression block.
-ZA0407  | Formatting | Info     | Remove directive block padding.
+ZA0401  | Formatting | Info     | Separate a region marker.
+ZA0402  | Formatting | Info     | Separate a conditional block.
+ZA0403  | Formatting | Info     | Separate a suppression block.
+ZA0404  | Formatting | Info     | Remove directive block padding.
+ZA0405  | Formatting | Disabled | Name the closing region directive.
+ZA0406  | Formatting | Disabled | Name the closing conditional directive.
+ZA0407  | Formatting | Info     | Remove empty regions.
 ZA0501  | Formatting | Disabled | Name the arguments of a call.
 ZA0502  | Formatting | Disabled | Name the literal arguments of a call.
 ZA0503  | Formatting | Disabled | Remove a redundant argument name.

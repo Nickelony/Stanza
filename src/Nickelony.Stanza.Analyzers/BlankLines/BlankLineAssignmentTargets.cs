@@ -91,7 +91,7 @@ internal static class BlankLineAssignmentTargets
 			IPropertySymbol { IsIndexer: true } => BlankLineGrouping.AssignmentKind.Element,
 			IPropertySymbol => BlankLineGrouping.AssignmentKind.Property,
 			ILocalSymbol or IParameterSymbol => BlankLineGrouping.AssignmentKind.Local,
-			// A field-like event written with `=` writes its delegate field, and a subscription is left to ZA0007.
+			// A field-like event written with `=` writes its delegate field, and a subscription is left to ZA0008.
 			IEventSymbol => subscribes ? BlankLineGrouping.AssignmentKind.None : BlankLineGrouping.AssignmentKind.Field,
 			_ => BlankLineGrouping.AssignmentKind.None,
 		};

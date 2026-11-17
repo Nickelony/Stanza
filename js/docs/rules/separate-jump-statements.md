@@ -34,4 +34,4 @@ One line above keeps the jump tight: `const order = load(id);` directly above `r
 
 ## C# counterpart
 
-[ZA0009 - Separate a jump statement](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-a-jump-statement).
+[ZA0013 - Separate a jump statement](https://github.com/Nickelony/Stanza/wiki/ZA0013-Separate-a-jump-statement).

@@ -27,19 +27,19 @@ describe('a rule setting', () => {
 			rules: { [id]: severity },
 		});
 
-		// ZA0002 is moderate, so the default level enables it as a suggestion; ZA0014 is strong, so the default level leaves it off.
+		// ZA0002 is moderate, so the default level enables it as a suggestion; ZA0018 is strong, so the default level leaves it off.
 		expect(isRuleChanged(two, emptyConfig())).toBe(false);
 		expect(isRuleChanged(two, set('ZA0002', 'suggestion'))).toBe(false);
 		expect(isRuleChanged(two, set('ZA0002', 'warning'))).toBe(true);
 		expect(isRuleChanged(two, set('ZA0002', 'none'))).toBe(true);
-		expect(isRuleChanged(fourteen, set('ZA0014', 'none'))).toBe(false);
-		expect(isRuleChanged(fourteen, set('ZA0014', 'suggestion'))).toBe(true);
+		expect(isRuleChanged(fourteen, set('ZA0018', 'none'))).toBe(false);
+		expect(isRuleChanged(fourteen, set('ZA0018', 'suggestion'))).toBe(true);
 	});
 
 	it('reads the state from the level, and from the setting once there is one', () => {
 		expect(effectiveState(two, emptyConfig())).toBe('suggestion');
 		expect(effectiveState(fourteen, emptyConfig())).toBe('off');
-		expect(effectiveState(fourteen, { ...emptyConfig(), rules: { ZA0014: 'silent' } })).toBe('silent');
+		expect(effectiveState(fourteen, { ...emptyConfig(), rules: { ZA0018: 'silent' } })).toBe('silent');
 		expect(effectiveState(two, { ...emptyConfig(), rules: { ZA0002: 'none' } })).toBe('none');
 		expect(effectiveState(fourteen, { ...emptyConfig(), level: 'strong', severity: 'error' })).toBe('error');
 	});
@@ -47,7 +47,7 @@ describe('a rule setting', () => {
 	it('counts what differs from the level and the defaults', () => {
 		const config = {
 			...emptyConfig(),
-			rules: { ZA0002: 'warning' as const, ZA0014: 'suggestion' as const },
+			rules: { ZA0002: 'warning' as const, ZA0018: 'suggestion' as const },
 			options: { stanza_max_line_length: '100', stanza_doc_indent_size: '2' },
 		};
 

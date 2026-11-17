@@ -162,24 +162,24 @@ def test_the_levels_hold_the_levels_below_them() -> None:
 
     assert rules_of_level("none") == ()
     assert minimal < moderate < strong
-    assert {rule.code for rule in rules_of_level("minimal")} == {"ZA3015", "ZA3017", "ZA3113", "ZA3202", "ZA3203"}
+    assert {rule.code for rule in rules_of_level("minimal")} == {"ZA3019", "ZA3021", "ZA3113", "ZA3202", "ZA3203"}
     assert PAIR_RULE in moderate
 
     assert {rule.code for rule in ALL_RULES if rule.level == "opt-in"} == {
-        "ZA3054",
         "ZA3055",
+        "ZA3056",
         "ZA3057",
         "ZA3058",
+        "ZA3063",
         "ZA3059",
         "ZA3060",
-        "ZA3061",
         "ZA3062",
         "ZA3112",
         "ZA3201",
-        "ZA3018",
-        "ZA3019",
-        "ZA3063",
+        "ZA3012",
+        "ZA3010",
         "ZA3064",
+        "ZA3061",
     }
 
     assert {rule.code for rule in ALL_RULES if rule.level != "opt-in"} == {rule.code for rule in strong}
@@ -200,15 +200,15 @@ def test_the_first_enabled_rule_in_the_owner_order_reports_a_gap() -> None:
 def test_a_rule_that_is_off_hands_its_gap_to_the_next_rule() -> None:
     text = "print(a)\n# note\nb = 2\nc = 3\n"
 
-    assert [f.code for f in findings_with(text, "ZA3012", "ZA3002")] == ["ZA3012"]
+    assert [f.code for f in findings_with(text, "ZA3016", "ZA3002")] == ["ZA3016"]
     assert [f.code for f in findings_with(text, "ZA3002")] == ["ZA3002"]
 
 
 def test_the_jump_rule_ends_its_stanza_at_a_gap_another_rule_asks_for() -> None:
     text = "def f():\n    a = 1\n    b = 2\n    print(a)\n    return b\n"
 
-    assert fix_with(text, "ZA3009") == "def f():\n    a = 1\n    b = 2\n    print(a)\n\n    return b\n"
-    assert fix_with(text, "ZA3009", "ZA3002") == "def f():\n    a = 1\n    b = 2\n\n    print(a)\n    return b\n"
+    assert fix_with(text, "ZA3013") == "def f():\n    a = 1\n    b = 2\n    print(a)\n\n    return b\n"
+    assert fix_with(text, "ZA3013", "ZA3002") == "def f():\n    a = 1\n    b = 2\n\n    print(a)\n    return b\n"
 
 
 def test_a_configuration_with_no_rule_finds_nothing() -> None:

@@ -21,12 +21,12 @@ PAGES = ROOT / "docs" / "rules"
 FENCE = "```"
 
 # The rules that keep a run read the runs of the rules that group it, so their examples run with one of those enabled.
-COMPANIONS = {"ZA3054": ("ZA3004",), "ZA3055": ("ZA3013",)}
+COMPANIONS = {"ZA3055": ("ZA3004",), "ZA3056": ("ZA3017",)}
 
 EXAMPLE_OPTIONS = {
     "ZA3057": Options(guard_roots=("check_order",)),
-    "ZA3019": Options(receiver_roots=("*",), receiver_comparison="path"),
-    "ZA3063": Options(receiver_roots=("*",), receiver_comparison="path"),
+    "ZA3010": Options(receiver_roots=("*",), receiver_comparison="path"),
+    "ZA3064": Options(receiver_roots=("*",), receiver_comparison="path"),
 }
 
 # The keys that hold a long list of patterns, which the page states in a sentence of its own.

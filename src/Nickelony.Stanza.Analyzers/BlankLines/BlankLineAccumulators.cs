@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Nickelony.Stanza.Analyzers.BlankLines;
 
-/// <summary>Reads the seeds above a loop that it builds, which ZA0059 keeps with the loop as one group.</summary>
+/// <summary>Reads the seeds above a loop that it builds, which ZA0063 keeps with the loop as one group.</summary>
 /// <remarks>
 /// A group is the single-line seeds directly above the loop, with only whitespace in their gaps.
 /// </remarks>

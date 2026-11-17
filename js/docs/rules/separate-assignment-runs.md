@@ -31,6 +31,6 @@ initialize();
 
 ## C# counterpart
 
-[ZA0008 - Separate assignment runs](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-assignment-runs),
+[ZA0009 - Separate assignment runs](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-assignment-runs),
 without [`stanza_assignment_targets`](https://github.com/Nickelony/Stanza/wiki/stanza_assignment_targets),
 because the split by field, property, local and element needs a symbol and the default of that key does not split.

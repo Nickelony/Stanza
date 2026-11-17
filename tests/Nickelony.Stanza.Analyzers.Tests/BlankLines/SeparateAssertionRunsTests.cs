@@ -503,7 +503,7 @@ public sealed class SeparateAssertionRunsTests
 
 				TestRuleSets.WithOneOff(
 					on: [DiagnosticDescriptors.SeparateAssertionRuns],
-					off: DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+					off: DiagnosticDescriptors.SeparateConditionalBlock
 				)
 			);
 
@@ -539,7 +539,7 @@ public sealed class SeparateAssertionRunsTests
 
 				TestRuleSets.Only(
 					DiagnosticDescriptors.SeparateAssertionRuns,
-					DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+					DiagnosticDescriptors.SeparateConditionalBlock
 				)
 			);
 
@@ -549,7 +549,7 @@ public sealed class SeparateAssertionRunsTests
 
 				TestRuleSets.WithOneOff(
 					on: [],
-					off: DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+					off: DiagnosticDescriptors.SeparateConditionalBlock
 				)
 			);
 
@@ -590,7 +590,7 @@ public sealed class SeparateAssertionRunsTests
 
 				TestRuleSets.Only(
 					DiagnosticDescriptors.SeparateAssertionRuns,
-					DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors
+					DiagnosticDescriptors.SeparateRegionMarker
 				)
 			);
 
@@ -600,7 +600,7 @@ public sealed class SeparateAssertionRunsTests
 
 				TestRuleSets.WithOneOff(
 					on: [],
-					off: DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors
+					off: DiagnosticDescriptors.SeparateRegionMarker
 				)
 			);
 

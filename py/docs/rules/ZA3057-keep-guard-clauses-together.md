@@ -69,7 +69,7 @@ def close(order):
 
 ## C# counterpart
 
-[ZA0057 - Keep a chain of guard clauses together](https://github.com/Nickelony/Stanza/wiki/ZA0057-Keep-a-chain-of-guard-clauses-together).
+[ZA0057 - Keep guard clauses together](https://github.com/Nickelony/Stanza/wiki/ZA0057-Keep-guard-clauses-together).
 
 ## JS counterpart
 

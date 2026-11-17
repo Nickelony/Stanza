@@ -32,5 +32,5 @@ string leadingTrivia = string.Empty;
   so it gets a blank line only where a neighboring run begins or ends.
 - A [gap](https://github.com/Nickelony/Stanza/wiki/Terms) that another [grouping rule](https://github.com/Nickelony/Stanza/wiki/Terms) owns is left to that rule
   unless that rule is [off](https://github.com/Nickelony/Stanza/wiki/Terms) there.
-- A run ends where one of those rules asks for a blank line, so `static int a; int b; string c;` holds no `int` run while `ZA0014` is on.
-- [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) and [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-members-together) remove the blank lines inside a run of declarations of one type where they are on.
+- A run ends where one of those rules asks for a blank line, so `static int a; int b; string c;` holds no `int` run while `ZA0018` is on.
+- [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-statements-together) and [`ZA0056`](https://github.com/Nickelony/Stanza/wiki/ZA0056-Keep-a-run-of-members-together) remove the blank lines inside a run of declarations of one type where they are on.

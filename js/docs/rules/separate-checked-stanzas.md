@@ -56,8 +56,8 @@ function ship(id) {
 
 ## C# counterpart
 
-[ZA0018 - Separate a checked stanza](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-a-checked-stanza).
+[ZA0012 - Separate a checked stanza](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-a-checked-stanza).
 
 ## Python counterpart
 
-[ZA3018 - separate-checked-stanzas](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3018-separate-checked-stanzas.md).
+[ZA3012 - separate-checked-stanzas](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3012-separate-checked-stanzas.md).

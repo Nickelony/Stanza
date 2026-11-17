@@ -25,7 +25,7 @@ public sealed class StanzaPragmasTests
 
 		Assert.IsTrue(IsSilenced(tree, "1591", position));
 		Assert.IsTrue(IsSilenced(tree, "ZA0001", position));
-		Assert.IsFalse(IsSilenced(tree, "ZA0013", position));
+		Assert.IsFalse(IsSilenced(tree, "ZA0017", position));
 	}
 
 	// The compiler ignores a directive in a branch the build leaves out, so it silences nothing.

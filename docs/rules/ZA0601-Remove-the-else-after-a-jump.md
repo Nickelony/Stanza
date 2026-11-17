@@ -61,10 +61,10 @@ else if (root.IsEmpty)
 - Otherwise they keep their indentation, and the layout step of [`stanza-format`](https://github.com/Nickelony/Stanza/wiki/Format-command-reference#steps) settles it.
 - The fix writes the blank lines [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-multi-line-constructs) asks for around the chain and the statements it frees,
   as [A blank line a fix leaves behind](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#a-blank-line-a-fix-leaves-behind) says.
-- The rule waits while [`ZA0205`](https://github.com/Nickelony/Stanza/wiki/ZA0205-Use-braces-consistently) has braces to add to the chain,
+- The rule waits while [`ZA0206`](https://github.com/Nickelony/Stanza/wiki/ZA0206-Use-braces-consistently) has braces to add to the chain,
   so the two reach the same text in either order.
-- [`ZA0206`](https://github.com/Nickelony/Stanza/wiki/ZA0206-Remove-redundant-braces) leaves the same text whether it runs before or after.
-- The blank line that [`ZA0201`](https://github.com/Nickelony/Stanza/wiki/ZA0201-Separate-a-clause-keyword-from-the-brace-before-it) and
+- [`ZA0207`](https://github.com/Nickelony/Stanza/wiki/ZA0207-Remove-redundant-braces) leaves the same text whether it runs before or after.
+- The blank line that [`ZA0201`](https://github.com/Nickelony/Stanza/wiki/ZA0201-Separate-clause-keywords) and
   [`ZA0202`](https://github.com/Nickelony/Stanza/wiki/ZA0202-Keep-clause-keywords-adjacent) settle before an `else` goes with the `else`.
 - `IDE0046` reports an `if` that returns on both paths whether or not the `else` stands, so it reports the result of this fix too.
 - `IDE0045` reports only the assignment form, which has no jump to end the branch.

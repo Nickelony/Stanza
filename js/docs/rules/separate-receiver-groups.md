@@ -42,4 +42,4 @@ The [invocation settings](separate-invocation-runs.md#settings) define selection
 
 ## C# counterpart
 
-[ZA0019 - Separate receiver groups](https://github.com/Nickelony/Stanza/wiki/ZA0019-Separate-receiver-groups).
+[ZA0010 - Separate receiver groups](https://github.com/Nickelony/Stanza/wiki/ZA0010-Separate-receiver-groups).

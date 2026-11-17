@@ -22,8 +22,8 @@ BODY_KINDS = frozenset({"function", "block"})
 
 # Why a gap is not free for the rules that add blank lines:
 # "definition": a formatter forces the blank lines beside a function or class.
-# "module-header": the preamble and the module docstring, which ZA3017 owns.
-# "class-docstring": the blank line a formatter forces below a class docstring, which ZA3013 owns.
+# "module-header": the preamble and the module docstring, which ZA3021 owns.
+# "class-docstring": the blank line a formatter forces below a class docstring, which ZA3017 owns.
 # "function-docstring": pydocstyle D202 forbids a blank line below a function docstring.
 Restriction = Literal["definition", "module-header", "class-docstring", "function-docstring"]
 

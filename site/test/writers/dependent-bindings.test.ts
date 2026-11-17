@@ -8,13 +8,13 @@ import { realCatalog, realJavascript, realPython } from '../fixtures.ts';
 
 describe('dependent binding configuration', () => {
 	it('exports the C# keeper independently of global run keeping and receiver selection', () => {
-		const config = { ...emptyConfig(), rules: { ZA0064: 'warning' as const } };
+		const config = { ...emptyConfig(), rules: { ZA0061: 'warning' as const } };
 		const text = generateEditorConfig(realCatalog, config);
 
-		expect(text).toContain('dotnet_diagnostic.ZA0064.severity = warning');
-		expect(text).not.toContain('dotnet_diagnostic.ZA0054.severity =');
+		expect(text).toContain('dotnet_diagnostic.ZA0061.severity = warning');
+		expect(text).not.toContain('dotnet_diagnostic.ZA0055.severity =');
 		expect(text).not.toContain('stanza_receiver_roots =');
-		expect(realCatalog.rules.find((rule) => rule.id === 'ZA0064')?.opposite).toBeUndefined();
+		expect(realCatalog.rules.find((rule) => rule.id === 'ZA0061')?.opposite).toBeUndefined();
 	});
 
 	it('exports the JavaScript keeper without enabling receiver or global keeping policies', () => {
@@ -28,10 +28,10 @@ describe('dependent binding configuration', () => {
 	});
 
 	it('exports the Python keeper as an opt-in code with no required extra settings', () => {
-		const config = { ...emptyConfig('error'), rules: { ZA3064: 'error' as const } };
+		const config = { ...emptyConfig('error'), rules: { ZA3061: 'error' as const } };
 		const text = generatePyproject(realPython, config);
 
-		expect(text).toBe('[tool.stanza]\nenable = ["ZA3064"]\n');
-		expect(realPython.rules.find((rule) => rule.id === 'ZA3064')?.opposite).toBeUndefined();
+		expect(text).toBe('[tool.stanza]\nenable = ["ZA3061"]\n');
+		expect(realPython.rules.find((rule) => rule.id === 'ZA3061')?.opposite).toBeUndefined();
 	});
 });

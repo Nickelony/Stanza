@@ -321,13 +321,13 @@ public sealed class KeepNarrowingAssertionWithBindingTests
 			{
 				void M(string? input)
 				{
-			#pragma warning disable ZA0061
+			#pragma warning disable ZA0060
 					string? text = string.Concat(
 						input,
 						"x");
 					System.Diagnostics.Debug.Assert(text != null);
 					System.GC.KeepAlive(text);
-			#pragma warning restore ZA0061
+			#pragma warning restore ZA0060
 				}
 			}
 			""";
@@ -337,14 +337,14 @@ public sealed class KeepNarrowingAssertionWithBindingTests
 			{
 				void M(string? input)
 				{
-			#pragma warning disable ZA0061
+			#pragma warning disable ZA0060
 					string? text = string.Concat(
 						input,
 						"x");
 
 					System.Diagnostics.Debug.Assert(text != null);
 					System.GC.KeepAlive(text);
-			#pragma warning restore ZA0061
+			#pragma warning restore ZA0060
 				}
 			}
 			""";

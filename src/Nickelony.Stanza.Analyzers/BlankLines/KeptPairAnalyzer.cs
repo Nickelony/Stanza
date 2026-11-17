@@ -4,7 +4,7 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 
 /// <summary>Base of a rule that removes the blank line between a pair of statements it keeps together.</summary>
 /// <remarks>
-/// Separating rules leave a claimed gap alone, and a gap ZA0051, ZA0052 or ZA0054 reports is theirs.
+/// Separating rules leave a claimed gap alone, and a gap ZA0052, ZA0054 or ZA0055 reports is theirs.
 /// </remarks>
 internal abstract class KeptPairAnalyzer(StanzaRule rule) : StanzaRuleAnalyzer(rule)
 {

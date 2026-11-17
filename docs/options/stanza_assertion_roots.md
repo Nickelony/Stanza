@@ -5,7 +5,7 @@ or a name in its receiver chain (`Verify` in `Verify.That(...)`).
 Default: `Assert`, `Expect`, `Should`.
 Read by [`ZA0005`](https://github.com/Nickelony/Stanza/wiki/ZA0005-Separate-assertion-runs), which groups assertion runs by them,
 and by `ZA0004` and `ZA0006`, which leave an assertion to it.
-[`ZA0018`](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-a-checked-stanza) and [`ZA0061`](https://github.com/Nickelony/Stanza/wiki/ZA0061-Keep-a-narrowing-assertion-with-its-binding) read it to tell an assertion phase, a run of assertions of a test, from a narrowing assertion.
+[`ZA0012`](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-a-checked-stanza) and [`ZA0060`](https://github.com/Nickelony/Stanza/wiki/ZA0060-Keep-a-narrowing-assertion-with-its-binding) read it to tell an assertion phase, a run of assertions of a test, from a narrowing assertion.
 
 | Value                             | Effect                                                        |
 | --------------------------------- | ------------------------------------------------------------- |

@@ -6,7 +6,7 @@ import { catalog, option, sample } from '../fixtures.ts';
 
 describe('the selection of an ID', () => {
 	it('names a rule by its ID and an option by its key, and nothing for an unknown name', () => {
-		expect(selectionOf(sample, 'ZA0014')).toEqual({ kind: 'rule', id: 'ZA0014' });
+		expect(selectionOf(sample, 'ZA0018')).toEqual({ kind: 'rule', id: 'ZA0018' });
 		expect(selectionOf(sample, 'stanza_doc_indent_size')).toEqual({ kind: 'option', id: 'stanza_doc_indent_size' });
 		expect(selectionOf(sample, 'ZA9999')).toBeNull();
 		expect(selectionOf(sample, '')).toBeNull();
@@ -53,7 +53,7 @@ describe('whether a selection is a changed row', () => {
 	it('is false for one left at its default, one set to its default, and one the catalog lacks', () => {
 		const atDefault = { ...config, options: { stanza_max_line_length: '100' } };
 
-		expect(isSelectionChanged(sample, config, { kind: 'rule', id: 'ZA0014' })).toBe(false);
+		expect(isSelectionChanged(sample, config, { kind: 'rule', id: 'ZA0018' })).toBe(false);
 		expect(isSelectionChanged(sample, config, { kind: 'option', id: 'stanza_doc_indent_size' })).toBe(false);
 		expect(isSelectionChanged(sample, atDefault, { kind: 'option', id: 'stanza_max_line_length' })).toBe(false);
 		expect(isSelectionChanged(sample, config, { kind: 'rule', id: 'ZA9999' })).toBe(false);
@@ -62,9 +62,9 @@ describe('whether a selection is a changed row', () => {
 
 describe('the first changed selection of a tab', () => {
 	it('names the first rule or option the configuration changes, in catalog order', () => {
-		const config = { ...emptyConfig(), rules: { ZA0014: 'error' as const }, options: { stanza_doc_indent_size: '4', stanza_max_line_length: '120' } };
+		const config = { ...emptyConfig(), rules: { ZA0018: 'error' as const }, options: { stanza_doc_indent_size: '4', stanza_max_line_length: '120' } };
 
-		expect(firstChangedSelection(sample, config, 'rule')).toEqual({ kind: 'rule', id: 'ZA0014' });
+		expect(firstChangedSelection(sample, config, 'rule')).toEqual({ kind: 'rule', id: 'ZA0018' });
 		expect(firstChangedSelection(sample, config, 'option')).toEqual({ kind: 'option', id: 'stanza_max_line_length' });
 	});
 

@@ -553,7 +553,7 @@ public sealed class SeparateLocalFunctionRunsTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.SeparateLocalFunctionRuns,
-				DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+				DiagnosticDescriptors.SeparateConditionalBlock
 			)
 		);
 

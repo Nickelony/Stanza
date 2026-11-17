@@ -25,4 +25,4 @@ export const config = parse(await readFile('a.json', 'utf8'));
 
 ## C# counterpart
 
-[ZA0015 - Separate the import section](https://github.com/Nickelony/Stanza/wiki/ZA0015-Separate-the-import-section).
+[ZA0019 - Separate the import section](https://github.com/Nickelony/Stanza/wiki/ZA0019-Separate-the-import-section).

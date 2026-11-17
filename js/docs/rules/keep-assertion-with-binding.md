@@ -49,8 +49,8 @@ it('loads the order', () => {
 
 ## C# counterpart
 
-[ZA0061 - Keep a narrowing assertion with its binding](https://github.com/Nickelony/Stanza/wiki/ZA0061-Keep-a-narrowing-assertion-with-its-binding).
+[ZA0060 - Keep a narrowing assertion with its binding](https://github.com/Nickelony/Stanza/wiki/ZA0060-Keep-a-narrowing-assertion-with-its-binding).
 
 ## Python counterpart
 
-[ZA3061 - keep-assertion-with-binding](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3061-keep-assertion-with-binding.md).
+[ZA3060 - keep-assertion-with-binding](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3060-keep-assertion-with-binding.md).

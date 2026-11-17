@@ -338,7 +338,7 @@ public sealed class SeparateMemberGroupsTests
 			""";
 
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+			DiagnosticDescriptors.SeparateConditionalBlock
 		);
 
 		AnalyzerRunResult alone = await RoslynTestHarness.RunAsync<SeparateMemberGroupsAnalyzer>(

@@ -36,4 +36,4 @@ return total;
 - A declaration on its own, directly above a run, takes its blank line from the rule of that run, this rule included,
   and stays tight against the run while that rule is [off](https://github.com/Nickelony/Stanza/wiki/Terms).
 - A gap where two runs meet goes to the rule with the lower ID, as [One run of statements, several owners](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#one-run-of-statements-several-owners) says.
-- [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) and [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-members-together) remove the blank lines inside a run of declarations where they are on.
+- [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-statements-together) and [`ZA0056`](https://github.com/Nickelony/Stanza/wiki/ZA0056-Keep-a-run-of-members-together) remove the blank lines inside a run of declarations where they are on.

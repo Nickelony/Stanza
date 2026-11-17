@@ -257,8 +257,8 @@ public sealed class KeepInitializationWithCallsTests
 			"class ReviewItem { public void Check() {} } class C { ReviewItem M() {\nvar item = new ReviewItem();\n\nitem.Check();\nreturn item;\n} }";
 
 		source = barrier
-			? source.Replace("return item;", "#pragma warning disable ZA0009\nreturn item;")
-			: "#pragma warning disable ZA0009\n" + source;
+			? source.Replace("return item;", "#pragma warning disable ZA0013\nreturn item;")
+			: "#pragma warning disable ZA0013\n" + source;
 
 		string fixedSource = source.Replace("ReviewItem();\n\n", "ReviewItem();\n");
 

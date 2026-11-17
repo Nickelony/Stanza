@@ -92,7 +92,7 @@ internal static class BlankLineGaps
 			&& StanzaSyntax.GetLeadingUnit(next).StartLineIndex - SiblingGaps.GetGapStartLineIndex(previous, next) == 1;
 	}
 
-	/// <summary>Whether ZA0012 keeps a blank line above a single-line unit, written or not.</summary>
+	/// <summary>Whether ZA0016 keeps a blank line above a single-line unit, written or not.</summary>
 	/// <remarks>
 	/// The grouping rules end a run here in every fix order, though that rule reports only a comment directly above.
 	/// </remarks>

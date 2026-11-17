@@ -1,4 +1,4 @@
-"""ZA3013: separates the docstring and the runs of fields and attributes of a class body."""
+"""ZA3017: separates the docstring and the runs of fields and attributes of a class body."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3013",
+    code="ZA3017",
     name="separate-member-groups",
     level="moderate",
     message="Add a blank line between this member group and its neighbor.",

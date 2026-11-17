@@ -297,12 +297,12 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0013"),
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
-			Run(className: "BraceFamilyTests", method: "Drives", rule: "ZA0013", reported: []),
+			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0017"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0017"),
+			Run(className: "BraceFamilyTests", method: "Drives", rule: "ZA0017", reported: []),
 		];
 
-		List<string> problems = FindProblems(runs, Homes(("ZA0013", "SeparateMemberGroupsTests")));
+		List<string> problems = FindProblems(runs, Homes(("ZA0017", "SeparateMemberGroupsTests")));
 
 		Assert.HasCount(1, problems);
 		Assert.Contains("BraceFamilyTests.Drives", problems[0]);
@@ -313,15 +313,15 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0013"),
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
-			Run(className: "BraceFamilyTests", method: "Vehicle", rule: "ZA0013", reported: []),
-			Run(className: "BraceFamilyTests", method: "Drives", rule: "ZA0013", reported: []),
+			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0017"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0017"),
+			Run(className: "BraceFamilyTests", method: "Vehicle", rule: "ZA0017", reported: []),
+			Run(className: "BraceFamilyTests", method: "Drives", rule: "ZA0017", reported: []),
 		];
 
 		List<string> problems = FindProblems(
 			runs,
-			Homes(("ZA0013", "SeparateMemberGroupsTests")),
+			Homes(("ZA0017", "SeparateMemberGroupsTests")),
 			crossCutting: ImmutableHashSet.Create(new RecordedTest("BraceFamilyTests", "Vehicle"))
 		);
 
@@ -334,13 +334,13 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0013"),
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
+			Run(className: "SeparateMemberGroupsTests", method: "Reproduces", rule: "ZA0017"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0017"),
 
 			Run(
 				className: "SeparateMemberGroupsTests",
 				method: "Counts",
-				rule: "ZA0013",
+				rule: "ZA0017",
 				read: false,
 				fixedTheSource: true
 			),
@@ -348,12 +348,12 @@ public sealed class RuleTestCoverageTests
 			Run(
 				className: "SeparateMemberGroupsTests",
 				method: "Pins",
-				rule: "ZA0013",
+				rule: "ZA0017",
 				fixedTheSource: true
 			),
 		];
 
-		List<string> problems = FindProblems(runs, Homes(("ZA0013", "SeparateMemberGroupsTests")));
+		List<string> problems = FindProblems(runs, Homes(("ZA0017", "SeparateMemberGroupsTests")));
 
 		Assert.HasCount(1, problems);
 		Assert.Contains("SeparateMemberGroupsTests.Counts", problems[0]);
@@ -364,7 +364,7 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: "SeparateMemberGroupsTests", method: "Reports", rule: "ZA0013"),
+			Run(className: "SeparateMemberGroupsTests", method: "Reports", rule: "ZA0017"),
 			Run(className: "SeparateMultiLineConstructsTests", method: "Reports", rule: "ZA0001"),
 			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0001"),
 		];
@@ -373,13 +373,13 @@ public sealed class RuleTestCoverageTests
 			runs,
 
 			Homes(
-				("ZA0013", "SeparateMemberGroupsTests"),
+				("ZA0017", "SeparateMemberGroupsTests"),
 				("ZA0001", "SeparateMultiLineConstructsTests")
 			)
 		);
 
 		Assert.HasCount(1, problems);
-		Assert.Contains("ZA0013", problems[0]);
+		Assert.Contains("ZA0017", problems[0]);
 		Assert.Contains("quiet", problems[0]);
 	}
 
@@ -391,15 +391,15 @@ public sealed class RuleTestCoverageTests
 			Run(
 				className: "SeparateMemberGroupsTests",
 				method: "Unread",
-				rule: "ZA0013",
+				rule: "ZA0017",
 				read: false
 			),
 
 			Run(
 				className: "SeparateMemberGroupsTests",
 				method: "Mixed",
-				rule: "ZA0013",
-				reported: ["ZA0013", "ZA0001"]
+				rule: "ZA0017",
+				reported: ["ZA0017", "ZA0001"]
 			),
 
 			Run(
@@ -408,7 +408,7 @@ public sealed class RuleTestCoverageTests
 				rule: "ZA0001"
 			),
 
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0017"),
 			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0001"),
 		];
 
@@ -416,13 +416,13 @@ public sealed class RuleTestCoverageTests
 			runs,
 
 			Homes(
-				("ZA0013", "SeparateMemberGroupsTests"),
+				("ZA0017", "SeparateMemberGroupsTests"),
 				("ZA0001", "SeparateMultiLineConstructsTests")
 			)
 		);
 
 		Assert.HasCount(1, problems);
-		Assert.Contains("ZA0013", problems[0]);
+		Assert.Contains("ZA0017", problems[0]);
 	}
 
 	[TestMethod]
@@ -457,11 +457,11 @@ public sealed class RuleTestCoverageTests
 	{
 		RecordedRun[] runs =
 		[
-			Run(className: nameof(RuleSpanTests), method: "Reports", rule: "ZA0013"),
-			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0013"),
+			Run(className: nameof(RuleSpanTests), method: "Reports", rule: "ZA0017"),
+			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0017"),
 			Run(className: "SiblingRuleSetContractTests", method: "Rows", rule: "ZA0001"),
 			Run(className: "SeparateMultiLineConstructsTests", method: "Separates", rule: "ZA0001"),
-			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0013"),
+			Quiet(className: "SeparateMemberGroupsTests", rule: "ZA0017"),
 			Quiet(className: "SeparateMultiLineConstructsTests", rule: "ZA0001"),
 		];
 
@@ -469,7 +469,7 @@ public sealed class RuleTestCoverageTests
 			runs,
 
 			Homes(
-				("ZA0013", "SeparateMemberGroupsTests"),
+				("ZA0017", "SeparateMemberGroupsTests"),
 				("ZA0001", "SeparateMultiLineConstructsTests")
 			),
 
@@ -479,7 +479,7 @@ public sealed class RuleTestCoverageTests
 		);
 
 		Assert.HasCount(1, problems);
-		Assert.Contains("ZA0013", problems[0]);
+		Assert.Contains("ZA0017", problems[0]);
 		Assert.Contains("reproduced", problems[0]);
 	}
 

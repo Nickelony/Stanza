@@ -1,4 +1,4 @@
-"""ZA3060: removes the blank line between a lone binding and the jump that uses what it binds."""
+"""ZA3059: removes the blank line between a lone binding and the jump that uses what it binds."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3060",
+    code="ZA3059",
     name="keep-jump-with-binding",
     level="opt-in",
     message="Remove the blank line between this binding and the jump that uses it.",

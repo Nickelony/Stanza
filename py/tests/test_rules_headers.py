@@ -319,15 +319,15 @@ def test_the_gap_below_a_header_is_independent_of_the_gaps_between_the_statement
     text = "def f():\n\n    a = 1\n\n    return a\n"
 
     assert fix_with(text, RULE) == "def f():\n    a = 1\n\n    return a\n"
-    assert fix_with(text, RULE, "ZA3051") == "def f():\n    a = 1\n    return a\n"
-    assert fix_with(text, "ZA3051") == "def f():\n\n    a = 1\n    return a\n"
+    assert fix_with(text, RULE, "ZA3054") == "def f():\n    a = 1\n    return a\n"
+    assert fix_with(text, "ZA3054") == "def f():\n\n    a = 1\n    return a\n"
 
 
 def test_a_docstring_then_the_header_gap_and_the_pair_gap_settle_together() -> None:
     text = 'def f():\n\n    """Doc."""\n\n    a = 1\n\n    return a\n'
-    assert fix_with(text, RULE, "ZA3051") == 'def f():\n    """Doc."""\n\n    a = 1\n    return a\n'
+    assert fix_with(text, RULE, "ZA3054") == 'def f():\n    """Doc."""\n\n    a = 1\n    return a\n'
 
 
 def test_a_class_docstring_keeps_the_blank_line_the_member_rule_asks_for() -> None:
     text = 'class K:\n\n    """Doc."""\n    x = 1\n    y = 2\n'
-    assert fix_with(text, RULE, "ZA3013") == 'class K:\n    """Doc."""\n\n    x = 1\n    y = 2\n'
+    assert fix_with(text, RULE, "ZA3017") == 'class K:\n    """Doc."""\n\n    x = 1\n    y = 2\n'

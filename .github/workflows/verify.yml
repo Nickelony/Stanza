@@ -371,7 +371,7 @@ jobs:
             Remove-Item Class1.cs -Force
             Pop-Location
 
-            # ZA0013 reports the missing blank line before the property,
+            # ZA0017 reports the missing blank line before the property,
             # and the namespace and the static methods keep CA1050 and CA1822 quiet, so the Stanza fix is the one change a run makes.
             $broken = @(
               'namespace Consumer;'
@@ -403,7 +403,7 @@ jobs:
               throw "The consumer build failed (exit code $LASTEXITCODE).`n$build"
             }
 
-            if ($build -notmatch 'warning ZA0013') {
+            if ($build -notmatch 'warning ZA0017') {
               throw "The analyzer package reported nothing in a consumer build, so the package carries no analyzer."
             }
 
@@ -429,7 +429,7 @@ jobs:
               $written = @(Get-Content Consumer/Smoke.cs)
 
               if (($written -join "`n") -ne ($fixed -join "`n")) {
-                throw "$name did not write the ZA0013 fix, so the analyzer package's fixes did not load:`n$($written -join "`n")"
+                throw "$name did not write the ZA0017 fix, so the analyzer package's fixes did not load:`n$($written -join "`n")"
               }
 
               & $tool --check
@@ -512,7 +512,7 @@ jobs:
               throw "The consumer build on Roslyn $floor failed (exit code $LASTEXITCODE).`n$build"
             }
 
-            if ($build -notmatch 'warning ZA0013') {
+            if ($build -notmatch 'warning ZA0017') {
               throw "The analyzer package reported nothing on Roslyn $floor, so its analyzers did not load there."
             }
 
@@ -540,7 +540,7 @@ jobs:
               throw "The build on Roslyn $below did not warn that the compiler is below the floor.`n$build"
             }
 
-            if ($build -match 'warning ZA0013') {
+            if ($build -match 'warning ZA0017') {
               throw "The analyzer package reported on Roslyn $below, so the floor is lower than the package says.`n$build"
             }
           }

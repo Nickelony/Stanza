@@ -1079,7 +1079,7 @@ public sealed class SeparateGuardClausesTests
 			Alone()
 		);
 
-		Assert.IsEmpty(on.Diagnostics, "ZA0051 removes the blank line of such a container.");
+		Assert.IsEmpty(on.Diagnostics, "ZA0054 removes the blank line of such a container.");
 		Assert.HasCount(1, off.Diagnostics);
 	}
 
@@ -1154,7 +1154,7 @@ public sealed class SeparateGuardClausesTests
 
 		Assert.IsEmpty(
 			guard.Diagnostics,
-			"ZA0008 reports the gap above its run, so this rule stays quiet."
+			"ZA0009 reports the gap above its run, so this rule stays quiet."
 		);
 
 		Assert.HasCount(2, runs.Diagnostics);
@@ -1162,7 +1162,7 @@ public sealed class SeparateGuardClausesTests
 		Assert.HasCount(
 			1,
 			off.Diagnostics,
-			"Where ZA0008 is off, this rule writes the blank line."
+			"Where ZA0009 is off, this rule writes the blank line."
 		);
 	}
 
@@ -1191,7 +1191,7 @@ public sealed class SeparateGuardClausesTests
 
 		Assert.IsEmpty(
 			guard.Diagnostics,
-			"ZA0007 reports the gap above its run, so this rule stays quiet."
+			"ZA0008 reports the gap above its run, so this rule stays quiet."
 		);
 
 		Assert.HasCount(2, runs.Diagnostics);
@@ -1199,7 +1199,7 @@ public sealed class SeparateGuardClausesTests
 		Assert.HasCount(
 			1,
 			off.Diagnostics,
-			"Where ZA0007 is off, this rule writes the blank line."
+			"Where ZA0008 is off, this rule writes the blank line."
 		);
 	}
 
@@ -1247,18 +1247,18 @@ public sealed class SeparateGuardClausesTests
 
 		AnalyzerRunResult on = await RoslynTestHarness.ReportAsync<SeparateGuardClausesAnalyzer>(
 			source,
-			Alone(DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors)
+			Alone(DiagnosticDescriptors.SeparateRegionMarker)
 		);
 
 		AnalyzerRunResult marker =
-			await RoslynTestHarness.ReportAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(
+			await RoslynTestHarness.ReportAsync<SeparateRegionMarkerAnalyzer>(
 				source,
-				Alone(DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors)
+				Alone(DiagnosticDescriptors.SeparateRegionMarker)
 			);
 
 		Dictionary<string, ReportDiagnostic> rules = Alone();
 
-		rules[DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors.Id] =
+		rules[DiagnosticDescriptors.SeparateRegionMarker.Id] =
 			ReportDiagnostic.Suppress;
 
 		AnalyzerRunResult off = await RoslynTestHarness.ReportAsync<SeparateGuardClausesAnalyzer>(
@@ -1278,13 +1278,13 @@ public sealed class SeparateGuardClausesTests
 
 		AnalyzerRunResult on = await RoslynTestHarness.ReportAsync<SeparateGuardClausesAnalyzer>(
 			source,
-			Alone(DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors)
+			Alone(DiagnosticDescriptors.SeparateConditionalBlock)
 		);
 
 		AnalyzerRunResult block =
-			await RoslynTestHarness.ReportAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+			await RoslynTestHarness.ReportAsync<SeparateConditionalBlockAnalyzer>(
 				source,
-				Alone(DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors)
+				Alone(DiagnosticDescriptors.SeparateConditionalBlock)
 			);
 
 		AnalyzerRunResult off = await RoslynTestHarness.ReportAsync<SeparateGuardClausesAnalyzer>(
@@ -1318,13 +1318,13 @@ public sealed class SeparateGuardClausesTests
 			Alone()
 		);
 
-		Assert.IsEmpty(guard.Diagnostics, "ZA0012 asks for the blank line above the comment.");
+		Assert.IsEmpty(guard.Diagnostics, "ZA0016 asks for the blank line above the comment.");
 		Assert.HasCount(1, sibling.Diagnostics);
 
 		Assert.HasCount(
 			1,
 			off.Diagnostics,
-			"Where ZA0012 is off, this rule writes the blank line above the comment."
+			"Where ZA0016 is off, this rule writes the blank line above the comment."
 		);
 	}
 
@@ -1365,7 +1365,7 @@ public sealed class SeparateGuardClausesTests
 
 		AnalyzerRunResult both = await RoslynTestHarness.ReportAllAsync(source, rules);
 
-		Assert.IsEmpty(guard.Diagnostics, "ZA0009 asks for the gap, so this rule stays quiet.");
+		Assert.IsEmpty(guard.Diagnostics, "ZA0013 asks for the gap, so this rule stays quiet.");
 		Assert.HasCount(1, jump.Diagnostics);
 		Assert.HasCount(1, both.Diagnostics);
 
@@ -1448,9 +1448,9 @@ public sealed class SeparateGuardClausesTests
 			"""
 			if (x == 0) return;
 			if (x == 1) return;
-			#pragma warning disable ZA0009
+			#pragma warning disable ZA0013
 			return;
-			#pragma warning restore ZA0009
+			#pragma warning restore ZA0013
 			"""
 		);
 

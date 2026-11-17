@@ -10,7 +10,7 @@ from nickelony_stanza.analysis.sections import partition_sections
 from nickelony_stanza.analysis.syntax import matches_any
 from nickelony_stanza.options import Options
 
-RECEIVER_CONSUMERS = frozenset({"ZA3004", "ZA3019", "ZA3063"})
+RECEIVER_CONSUMERS = frozenset({"ZA3004", "ZA3010", "ZA3064"})
 
 
 def _direct_path(node: ast.expr) -> list[str]:

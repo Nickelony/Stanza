@@ -393,8 +393,8 @@ def analyze(
         options=options,
         families=families,
         receiver_calls=bool(options.receiver_roots) and not codes.isdisjoint(RECEIVER_CONSUMERS),
-        receiver_separation=bool(options.receiver_roots) and "ZA3019" in codes,
-        imported_names=read_imported_names(source.tree) if "ZA3059" in codes else frozenset(),
+        receiver_separation=bool(options.receiver_roots) and "ZA3010" in codes,
+        imported_names=read_imported_names(source.tree) if "ZA3063" in codes else frozenset(),
     )
 
     receivers_by_container: dict[int, ReceiverGroups] = {}
@@ -423,9 +423,9 @@ def analyze(
         key = id(container)
 
         if key not in sections_by_container:
-            sections = receivers_of(container).sections if "ZA3063" in codes else frozenset()
+            sections = receivers_of(container).sections if "ZA3064" in codes else frozenset()
 
-            if "ZA3064" in codes:
+            if "ZA3061" in codes:
                 sections |= dependent_bindings_of(container).sections
 
             sections_by_container[key] = sections

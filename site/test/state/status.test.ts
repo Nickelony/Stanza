@@ -8,7 +8,7 @@ import { config, markupConfig, option, rule, sample } from '../fixtures.ts';
 
 describe('the status of a rule', () => {
 	const moderate = rule('ZA0002');
-	const strong = rule('ZA0014', { onByDefault: false });
+	const strong = rule('ZA0018', { onByDefault: false });
 
 	it('says that a rule the level enables reports at the picked severity, with no line to write', () => {
 		expect(ruleStatus(csharp, sample, moderate, config({}))).toEqual({
@@ -31,9 +31,9 @@ describe('the status of a rule', () => {
 	});
 
 	it('gives the line of a rule the visitor set, and the severity it reports at', () => {
-		expect(ruleStatus(csharp, sample, strong, config({ rules: { ZA0014: 'warning' } }))).toEqual({
+		expect(ruleStatus(csharp, sample, strong, config({ rules: { ZA0018: 'warning' } }))).toEqual({
 			text: 'Warning. Reports as a warning in the IDE and in a build. Enabled from the strong level.',
-			line: 'dotnet_diagnostic.ZA0014.severity = warning',
+			line: 'dotnet_diagnostic.ZA0018.severity = warning',
 			off: false,
 		});
 	});
@@ -50,7 +50,7 @@ describe('the status of a rule', () => {
 	});
 
 	it('names the level that never enables an opt-in rule', () => {
-		expect(ruleStatus(csharp, sample, rule('ZA0054', { level: 'opt-in', onByDefault: false }), config({ level: 'strong' })).text).toBe(
+		expect(ruleStatus(csharp, sample, rule('ZA0055', { level: 'opt-in', onByDefault: false }), config({ level: 'strong' })).text).toBe(
 			'Off at this level: the rule reports nothing until a line enables it. No level enables it.',
 		);
 	});

@@ -453,12 +453,12 @@ public sealed class CollapseExtraBlankLinesTests
 			{
 				private int _total;
 
-			#pragma warning disable ZA0056
+			#pragma warning disable ZA0051
 
 
 
 				private int _count;
-			#pragma warning restore ZA0056
+			#pragma warning restore ZA0051
 			}
 			""";
 

@@ -39,7 +39,7 @@ def close(order):
 
 A pattern is a shell-style glob that matches the dotted path of the callee or any name along it, as the [configuration page](../Configuration.md#patterns) says.
 Unlike the exact names of the C# and JS roots, it can match a family of helpers.
-[`ZA3010`](ZA3010-separate-base-call.md) reads the list too, to find where the guards before a base call end.
+[`ZA3014`](ZA3014-separate-base-call.md) reads the list too, to find where the guards before a base call end.
 
 ## C# counterpart
 

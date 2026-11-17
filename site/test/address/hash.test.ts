@@ -16,14 +16,14 @@ describe('the address hash', () => {
 			...emptyConfig(),
 			everySetting: true,
 			markupSection: false,
-			rules: { ZA0014: 'warning' as const, ZA0002: 'none' as const },
+			rules: { ZA0018: 'warning' as const, ZA0002: 'none' as const },
 			options: { stanza_assertion_roots: 'Verify, Assert' },
 		};
 
-		const hash = encodeHash(sample, { config, selection: { kind: 'rule', id: 'ZA0014' } }, csharp);
+		const hash = encodeHash(sample, { config, selection: { kind: 'rule', id: 'ZA0018' } }, csharp);
 
-		expect(hash).toBe('ZA0002=n&ZA0014=w&stanza_assertion_roots=Verify%2C+Assert&all=1&markup=0&sel=ZA0014');
-		expect(decodeHash(sample, `#${hash}`, csharp)).toEqual({ config, selection: { kind: 'rule', id: 'ZA0014' } });
+		expect(hash).toBe('ZA0002=n&ZA0018=w&stanza_assertion_roots=Verify%2C+Assert&all=1&markup=0&sel=ZA0018');
+		expect(decodeHash(sample, `#${hash}`, csharp)).toEqual({ config, selection: { kind: 'rule', id: 'ZA0018' } });
 	});
 
 	it('carries the level, the formatter and the severity, and drops each that is the default', () => {
@@ -37,9 +37,9 @@ describe('the address hash', () => {
 	});
 
 	it('drops a key the catalog does not know, a letter that is no severity, and a value the page does not allow', () => {
-		const state = decodeHash(sample, '#ZA9999=w&ZA0002=x&ZA0014=s&stanza_max_line_length=wide&stanza_multi_line_member_part=body&sel=ZA9999', csharp);
+		const state = decodeHash(sample, '#ZA9999=w&ZA0002=x&ZA0018=s&stanza_max_line_length=wide&stanza_multi_line_member_part=body&sel=ZA9999', csharp);
 
-		expect(state.config.rules).toEqual({ ZA0014: 'suggestion' });
+		expect(state.config.rules).toEqual({ ZA0018: 'suggestion' });
 		expect(state.config.options).toEqual({ stanza_multi_line_member_part: 'body' });
 		expect(state.selection).toBeNull();
 	});
@@ -52,22 +52,22 @@ describe('the address hash', () => {
 describe('an address the visitor edits', () => {
 	const current: AppState = {
 		config: { ...emptyConfig(), rules: { ZA0002: 'none' } },
-		selection: { kind: 'rule', id: 'ZA0014' },
+		selection: { kind: 'rule', id: 'ZA0018' },
 		query: 'blank',
 		changedOnly: true,
 		variant: 1,
 	};
 
 	it('replaces the configuration and opens the selection it names on the first variant', () => {
-		const next = { ...current, ...patchFromHash(sample, 'ZA0014=e&sel=stanza_max_line_length', csharp) };
+		const next = { ...current, ...patchFromHash(sample, 'ZA0018=e&sel=stanza_max_line_length', csharp) };
 
-		expect(next.config.rules).toEqual({ ZA0014: 'error' });
+		expect(next.config.rules).toEqual({ ZA0018: 'error' });
 		expect(next.selection).toEqual({ kind: 'option', id: 'stanza_max_line_length' });
 		expect(next.variant).toBe(0);
 	});
 
 	it('opens the selection on the first variant when it names the one already shown', () => {
-		expect({ ...current, ...patchFromHash(sample, 'sel=ZA0014', csharp) }.variant).toBe(0);
+		expect({ ...current, ...patchFromHash(sample, 'sel=ZA0018', csharp) }.variant).toBe(0);
 	});
 
 	it('keeps the selection and its variant when it names none, or one the catalog lacks', () => {

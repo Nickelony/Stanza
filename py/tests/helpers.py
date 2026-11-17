@@ -79,10 +79,10 @@ def function_of(body: str, parameters: str = "") -> str:
 
 # A keeper and a body where the keeper joins the gap above the unit right above a jump, so the jump rule reads that join.
 JUMP_KEEPERS = [
-    ("ZA3061", "value = get()\n\nassert value is not None\nreturn value"),
+    ("ZA3060", "value = get()\n\nassert value is not None\nreturn value"),
     ("ZA3062", "value = Item()\n\nvalue.start()\nreturn value"),
-    ("ZA3063", "db.first()\n\ndb.second()\nreturn db"),
-    ("ZA3064", "value = get()\n\nnext_value = use(value)\nreturn next_value"),
+    ("ZA3064", "db.first()\n\ndb.second()\nreturn db"),
+    ("ZA3061", "value = get()\n\nnext_value = use(value)\nreturn next_value"),
 ]
 
 

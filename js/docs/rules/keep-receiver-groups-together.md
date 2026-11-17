@@ -31,4 +31,4 @@ The [invocation settings](separate-invocation-runs.md#settings) define selection
 
 ## C# counterpart
 
-[ZA0063 - Keep a receiver group together](https://github.com/Nickelony/Stanza/wiki/ZA0063-Keep-a-receiver-group-together).
+[ZA0064 - Keep a receiver group together](https://github.com/Nickelony/Stanza/wiki/ZA0064-Keep-a-receiver-group-together).

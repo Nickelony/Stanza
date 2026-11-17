@@ -1012,7 +1012,7 @@ public sealed class RemoveRedundantBracesTests
 		Assert.IsEmpty(result.Diagnostics);
 	}
 
-	// ZA0205 braces the view with the multi-line branch, so taking the braces off in the other view would never settle.
+	// ZA0206 braces the view with the multi-line branch, so taking the braces off in the other view would never settle.
 	[TestMethod]
 	[DataRow("")]
 	[DataRow("#define B\n")]

@@ -26,4 +26,4 @@ read();
 
 ## C# counterpart
 
-[ZA0012 - Separate a commented sibling](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-a-commented-sibling).
+[ZA0016 - Separate a commented sibling](https://github.com/Nickelony/Stanza/wiki/ZA0016-Separate-a-commented-sibling).

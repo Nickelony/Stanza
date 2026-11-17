@@ -1,4 +1,4 @@
-"""ZA3061: removes the blank line between a statement that binds a name and the assert that narrows that name."""
+"""ZA3060: removes the blank line between a statement that binds a name and the assert that narrows that name."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3061",
+    code="ZA3060",
     name="keep-assertion-with-binding",
     level="opt-in",
     message="Remove the blank line between this binding and the assert that narrows it.",

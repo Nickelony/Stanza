@@ -223,7 +223,7 @@ export function catalog(rules: Rule<Snippet>[], options: Option<Snippet>[], pair
 
 /** Two rules and four options, which the tests of the form, the address and the selection read. */
 export const sample = catalog(
-	[rule('ZA0002'), rule('ZA0014', { tier: 'suggestion', onByDefault: false })],
+	[rule('ZA0002'), rule('ZA0018', { tier: 'suggestion', onByDefault: false })],
 
 	[
 		option('stanza_max_line_length'),

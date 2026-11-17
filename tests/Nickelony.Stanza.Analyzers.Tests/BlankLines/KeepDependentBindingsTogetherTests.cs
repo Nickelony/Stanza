@@ -421,11 +421,11 @@ public sealed class KeepDependentBindingsTogetherTests
 	public async Task APragmaBarrierDoesNotBecomePartOfAWholeChainFix()
 	{
 		string source = BuildSource(
-			"var a = Get();\n\nvar b = Next(a);\n#pragma warning disable ZA0064\n\nvar c = Next(b);\n\nvar d = Next(c);"
+			"var a = Get();\n\nvar b = Next(a);\n#pragma warning disable ZA0061\n\nvar c = Next(b);\n\nvar d = Next(c);"
 		);
 
 		string fixedSource = BuildSource(
-			"var a = Get();\nvar b = Next(a);\n#pragma warning disable ZA0064\n\nvar c = Next(b);\n\nvar d = Next(c);"
+			"var a = Get();\nvar b = Next(a);\n#pragma warning disable ZA0061\n\nvar c = Next(b);\n\nvar d = Next(c);"
 		);
 
 		AnalyzerRunResult result =

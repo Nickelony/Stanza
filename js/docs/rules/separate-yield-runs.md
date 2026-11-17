@@ -31,4 +31,4 @@ function* pages(list: string[]) {
 
 ## C# counterpart
 
-[ZA0020 - Separate yield runs](https://github.com/Nickelony/Stanza/wiki/ZA0020-Separate-yield-runs).
+[ZA0007 - Separate yield runs](https://github.com/Nickelony/Stanza/wiki/ZA0007-Separate-yield-runs).

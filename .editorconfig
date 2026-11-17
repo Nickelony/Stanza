@@ -15,7 +15,7 @@ insert_final_newline = true
 # with `none` exactly for its `disabled` array, and the `[tests/**/*.cs]` pins match its `offInTests` array.
 # A `none` rule ships off and stays off: it is the half of a pair whose other half is on, a rule that asks for a shape the tree does not write,
 # or a rule that reports so many sites that the tree is not rewritten for it, as ZA1001 does.
-# Stanza's own code is the extreme example of its rules working together, so it runs the opt-in rules ZA0054 and ZA0055 that no level enables.
+# Stanza's own code is the extreme example of its rules working together, so it runs the opt-in rules ZA0055 and ZA0056 that no level enables.
 # A rule added or disabled changes its pin and those arrays together.
 
 # Blank lines between units.
@@ -28,16 +28,16 @@ dotnet_diagnostic.ZA0006.severity = warning
 dotnet_diagnostic.ZA0007.severity = warning
 dotnet_diagnostic.ZA0008.severity = warning
 dotnet_diagnostic.ZA0009.severity = warning
-dotnet_diagnostic.ZA0010.severity = warning
+dotnet_diagnostic.ZA0010.severity = none
 dotnet_diagnostic.ZA0011.severity = warning
-dotnet_diagnostic.ZA0012.severity = warning
+dotnet_diagnostic.ZA0012.severity = none
 dotnet_diagnostic.ZA0013.severity = warning
 dotnet_diagnostic.ZA0014.severity = warning
 dotnet_diagnostic.ZA0015.severity = warning
 dotnet_diagnostic.ZA0016.severity = warning
 dotnet_diagnostic.ZA0017.severity = warning
-dotnet_diagnostic.ZA0018.severity = none
-dotnet_diagnostic.ZA0019.severity = none
+dotnet_diagnostic.ZA0018.severity = warning
+dotnet_diagnostic.ZA0019.severity = warning
 dotnet_diagnostic.ZA0020.severity = warning
 dotnet_diagnostic.ZA0021.severity = warning
 dotnet_diagnostic.ZA0051.severity = warning
@@ -101,7 +101,7 @@ dotnet_diagnostic.ZA0305.severity = warning
 dotnet_diagnostic.ZA0306.severity = warning
 dotnet_diagnostic.ZA0307.severity = none
 
-# Regions and conditional blocks.
+# Directives.
 dotnet_diagnostic.ZA0401.severity = warning
 dotnet_diagnostic.ZA0402.severity = warning
 dotnet_diagnostic.ZA0403.severity = warning
@@ -620,9 +620,9 @@ dotnet_diagnostic.ZA2008.severity = none
 dotnet_diagnostic.ZA2009.severity = none
 dotnet_diagnostic.ZA2010.severity = none
 
-# A test sets its arrange, act and assert steps apart with blank lines, which ZA0052 would gather and ZA0054 would join.
+# A test sets its arrange, act and assert steps apart with blank lines, which ZA0052 would gather and ZA0055 would join.
 dotnet_diagnostic.ZA0052.severity = none
-dotnet_diagnostic.ZA0054.severity = none
+dotnet_diagnostic.ZA0055.severity = none
 
 # MSTest finds a test class only when it is public.
 dotnet_diagnostic.CA1515.severity = none

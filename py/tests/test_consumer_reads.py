@@ -84,7 +84,7 @@ def test_consumers_use_the_preceding_binding_only_for_an_outer_value_read(
 
         source = f"def f(values):\n    x = load()\n\n    {jump[consumer]}\n"
         expected = source.replace("load()\n\n", "load()\n") if reads else source
-        codes = ["ZA3060"]
+        codes = ["ZA3059"]
     elif consumer == "guard":
         source = f"def f(values):\n    x = load()\n\n    if predicate({expression}):\n        return\n    use(x)\n"
         expected = source.replace("load()\n\n", "load()\n") if reads else source
@@ -94,7 +94,7 @@ def test_consumers_use_the_preceding_binding_only_for_an_outer_value_read(
         source = f"def f(values):\n    audit()\n    x = load()\n    {check}\n    use(x)\n"
         expected = source.replace("audit()\n", "audit()\n\n") if reads else source.replace("load()\n", "load()\n\n")
         expected = expected.replace("    use(x)", "\n    use(x)")
-        codes = ["ZA3018"]
+        codes = ["ZA3012"]
 
     config = Config.create("none", enable=codes, options=Options(guard_roots=("check",)))
 
@@ -112,7 +112,7 @@ def test_outer_captures_do_not_cross_comment_or_directive_barriers(consumer: str
     tail = "return lambda: x" if consumer == "jump" else "if predicate(lambda: x):\n    return\nuse(x)"
     body = "x = load()\n\n" + barrier + tail
     source = "def f():\n" + "".join("    " + line + "\n" if line else "\n" for line in body.splitlines())
-    config = Config.create("none", enable=["ZA3060" if consumer == "jump" else "ZA3058"])
+    config = Config.create("none", enable=["ZA3059" if consumer == "jump" else "ZA3058"])
 
     assert fix(source, config).text == source
     assert lint(source, config) == []

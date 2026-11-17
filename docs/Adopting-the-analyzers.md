@@ -33,7 +33,7 @@ Adopting the analyzers in a codebase that already has code takes a few steps, an
    Only their own `.editorconfig` lines enable the markup rules, since no level holds them.
 
 `dotnet format analyzers --severity info` applies the fixes of every analyzer in the project.
-To apply only Stanza's, name its rules, as in `dotnet format analyzers --diagnostics ZA0013 ZA0001 --severity info`.
+To apply only Stanza's, name its rules, as in `dotnet format analyzers --diagnostics ZA0017 ZA0001 --severity info`.
 
 Until the codebase is formatted, [`stanza-format --check --since origin/main`](https://github.com/Nickelony/Stanza/wiki/Format-command-reference#since-a-ref)
 gates the files a branch changed alone, and the CI checkout needs the history of that ref.
@@ -50,7 +50,7 @@ The level and the severity belong to the project, so this section holds what the
 stanza_max_line_length = 100
 
 # Disable one rule of the level for the whole solution.
-dotnet_diagnostic.ZA0205.severity = none
+dotnet_diagnostic.ZA0206.severity = none
 ```
 
 A rule's own line wins over the level, as the [presets page](https://github.com/Nickelony/Stanza/wiki/Presets#what-wins-over-a-level) says.

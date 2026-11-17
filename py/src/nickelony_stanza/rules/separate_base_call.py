@@ -1,4 +1,4 @@
-"""ZA3010: separates the base call that opens or closes a method from the statements beside it."""
+"""ZA3014: separates the base call that opens or closes a method from the statements beside it."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3010",
+    code="ZA3014",
     name="separate-base-call",
     level="strong",
     message="Add a blank line beside this base call.",

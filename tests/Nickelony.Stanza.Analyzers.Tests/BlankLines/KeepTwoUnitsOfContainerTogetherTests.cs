@@ -476,7 +476,7 @@ public sealed class KeepTwoUnitsOfContainerTogetherTests
 				DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
 			],
 
-			off: DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+			off: DiagnosticDescriptors.SeparateConditionalBlock
 		);
 
 		// Without `B` the block holds three statements, so the grouping rule asks for the blank line.

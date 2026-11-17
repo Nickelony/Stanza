@@ -128,7 +128,7 @@ def test_standard_input_is_fixed_to_standard_output(monkeypatch: pytest.MonkeyPa
 
 def test_the_rules_command_lists_every_rule(capsys: pytest.CaptureFixture[str]) -> None:
     assert run(["rules"]) == 0
-    assert "ZA3051" in capsys.readouterr().out
+    assert "ZA3054" in capsys.readouterr().out
 
 
 def test_the_rules_command_names_the_opt_in_level(capsys: pytest.CaptureFixture[str]) -> None:
@@ -174,17 +174,17 @@ def test_the_command_line_adds_to_the_rules_of_the_configuration(
     monkeypatch.chdir(tmp_path)
 
     assert run(["check", str(path)]) == 0
-    assert run(["check", str(path), "--enable", "ZA3012"]) == 1
-    assert run(["check", str(path), "--enable", "ZA3012", "--disable", "ZA3012"]) == 0
+    assert run(["check", str(path), "--enable", "ZA3016"]) == 1
+    assert run(["check", str(path), "--enable", "ZA3016", "--disable", "ZA3016"]) == 0
 
 
 def test_a_rule_the_configuration_disables_stays_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _write(tmp_path, "pyproject.toml", '[tool.stanza]\nlevel = "strong"\ndisable = ["ZA3012"]\n')
+    _write(tmp_path, "pyproject.toml", '[tool.stanza]\nlevel = "strong"\ndisable = ["ZA3016"]\n')
     path = _write(tmp_path, "a.py", "x = 1\nrun()\n# note\nlog(x)\n")
     monkeypatch.chdir(tmp_path)
 
     assert run(["check", str(path)]) == 0
-    assert run(["check", str(path), "--enable", "ZA3012"]) == 0
+    assert run(["check", str(path), "--enable", "ZA3016"]) == 0
 
 
 def test_a_bad_configuration_exits_with_two(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

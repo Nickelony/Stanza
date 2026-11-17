@@ -305,7 +305,7 @@ public sealed partial class ConvergenceTests
 		DiagnosticDescriptors.SeparateAssertionRuns,
 		DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
 		DiagnosticDescriptors.SeparateMultiLineConstructs,
-		DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+		DiagnosticDescriptors.SeparateConditionalBlock,
 	];
 
 	private static readonly LooseCorpus s_statementCorpus = new(
@@ -353,9 +353,9 @@ public sealed partial class ConvergenceTests
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
 			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
 			DiagnosticDescriptors.SeparateImportSection,
-			DiagnosticDescriptors.SeparateFileScopedNamespaceDeclarationFromFirstMember,
-			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+			DiagnosticDescriptors.SeparateFileScopedNamespace,
+			DiagnosticDescriptors.SeparateRegionMarker,
+			DiagnosticDescriptors.SeparateConditionalBlock,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 		],
 
@@ -398,7 +398,7 @@ public sealed partial class ConvergenceTests
 
 		[
 			DiagnosticDescriptors.GatherRunOfLooseMembers,
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+			DiagnosticDescriptors.SeparateConditionalBlock,
 		],
 
 		[
@@ -416,9 +416,9 @@ public sealed partial class ConvergenceTests
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
 			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
 			DiagnosticDescriptors.SeparateImportSection,
-			DiagnosticDescriptors.SeparateFileScopedNamespaceDeclarationFromFirstMember,
-			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+			DiagnosticDescriptors.SeparateFileScopedNamespace,
+			DiagnosticDescriptors.SeparateRegionMarker,
+			DiagnosticDescriptors.SeparateConditionalBlock,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 		],
 
@@ -453,7 +453,7 @@ public sealed partial class ConvergenceTests
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
 			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
 			DiagnosticDescriptors.SeparateImportSection,
-			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
+			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateJumpStatement,
 		],
@@ -491,7 +491,7 @@ public sealed partial class ConvergenceTests
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
 			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
 			DiagnosticDescriptors.SeparateImportSection,
-			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
+			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateJumpStatement,
 		],
@@ -511,13 +511,13 @@ public sealed partial class ConvergenceTests
 		DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
 		DiagnosticDescriptors.SeparateMultiLineConstructs,
 		DiagnosticDescriptors.SeparateImportSection,
-		DiagnosticDescriptors.SeparateFileScopedNamespaceDeclarationFromFirstMember,
-		DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
+		DiagnosticDescriptors.SeparateFileScopedNamespace,
+		DiagnosticDescriptors.SeparateRegionMarker,
 		DiagnosticDescriptors.SeparateAwaitRuns,
 		DiagnosticDescriptors.SeparateEventSubscriptionRuns,
 		DiagnosticDescriptors.SeparateAssignmentRuns,
 		DiagnosticDescriptors.SeparateModifierGroups,
-		DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+		DiagnosticDescriptors.SeparateConditionalBlock,
 		DiagnosticDescriptors.SeparateCommentedSibling,
 	];
 

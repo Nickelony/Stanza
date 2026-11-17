@@ -55,4 +55,4 @@ class Panel extends Widget {
 
 ## C# counterpart
 
-[ZA0010 - Separate the base call](https://github.com/Nickelony/Stanza/wiki/ZA0010-Separate-the-base-call).
+[ZA0014 - Separate the base call](https://github.com/Nickelony/Stanza/wiki/ZA0014-Separate-the-base-call).

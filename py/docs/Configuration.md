@@ -8,7 +8,7 @@ A rule that both name stays off, because `disable` applies last.
 ```toml
 [tool.stanza]
 level = "strong"
-enable = ["ZA3012"]
+enable = ["ZA3016"]
 disable = ["separate-guard-clauses"]
 exclude = ["migrations/**", "build/"]
 formatter = "ruff"
@@ -46,7 +46,7 @@ The [`ZA3501` page](rules/ZA3501-name-call-arguments.md#options) owns the effect
 | `receiver-roots` | `[]` | The patterns that select the receivers whose direct operations form groups, as [Receiver groups](#receiver-groups) says. |
 | `receiver-comparison` | `"root"` | What an owner is compared by: `root` for its first name or `path` for the whole owner. |
 | `declaration-shapes` | `"merge"` | Whether tuple and list unpacking share the ordinary declaration runs: `merge` or `split`. |
-| `guard-roots` | `[]` | The patterns that make a bare call a guard, for `ZA3011` and for the guards `ZA3010` skips. |
+| `guard-roots` | `[]` | The patterns that make a bare call a guard, for `ZA3011` and for the guards `ZA3014` skips. |
 | `subscription-roots` | see below | The patterns that make a call a subscription. |
 | `max-loose-run-size` | `3` | The most statements or members a loose run holds before `ZA3052` and `ZA3053` join it. `0` turns both off. |
 | `named-argument-min-arguments` | `4` | The fewest arguments a call writes before `ZA3501` names them, from 0 to 1000. `0` turns the rule off. |
@@ -70,7 +70,7 @@ The default `subscription-roots` are `connect`, `disconnect`, `subscribe`, `unsu
 A call that matches `assertion-roots` is an assertion before it is a subscription.
 
 The default `guard-roots` list is empty, so only an `if` that jumps and an `assert` are guards.
-`ZA3011` reads the list for the guards that open a block, and `ZA3010` for the guards it skips before it judges a base call.
+`ZA3011` reads the list for the guards that open a block, and `ZA3014` for the guards it skips before it judges a base call.
 
 The roots of the C# analyzers and JS Stanza are exact names, but these are globs on the dotted path or on any name along it.
 Python test frameworks name assertions by family, such as `assertEqual`, `assert_called_once` and `pytest.raises`.
@@ -81,7 +81,7 @@ The C# analyzers read an empty value as the defaults and spell no roots as `none
 
 ## Receiver groups
 
-`receiver-roots` selects the receivers whose direct operations form groups for `ZA3004`, `ZA3019` and `ZA3063`.
+`receiver-roots` selects the receivers whose direct operations form groups for `ZA3004`, `ZA3010` and `ZA3064`.
 A pattern is a case-sensitive glob, matched against the dotted owner of an operation or against any one name of it.
 `"*"` selects every receiver, an empty list selects none, and a pattern that is blank, or blank once `self.` or `cls.` is dropped, is refused.
 
@@ -98,12 +98,12 @@ A pattern is a case-sensitive glob, matched against the dotted owner of an opera
 - A multi-line operation, a comment, a directive or a gap a formatter owns ends a group. A class body has no groups.
 - An assertion and a guard helper are no operations. A subscription call on the receiver joins its group,
   and the other grouping rules still read it as a subscription.
-- The calls on a selected receiver form one run for `ZA3004`, awaited or not, only while `ZA3004`, `ZA3019` or `ZA3063`
+- The calls on a selected receiver form one run for `ZA3004`, awaited or not, only while `ZA3004`, `ZA3010` or `ZA3064`
   is enabled. Otherwise `ZA3006` reads an awaited call as it reads any other.
 
 ## Declaration shapes
 
-`declaration-shapes = "split"` gives tuple and list unpacking their own declaration runs for `ZA3002`, `ZA3003` and `ZA3054`.
+`declaration-shapes = "split"` gives tuple and list unpacking their own declaration runs for `ZA3002`, `ZA3003` and `ZA3055`.
 `merge` lets an unpacking assignment share a run with an ordinary one.
 
 ## Opt-in rules
@@ -112,7 +112,7 @@ A rule whose level is opt-in belongs to no preset, so `enable` or `--enable` tur
 `ZA3201` and `ZA3202`, and `ZA3111` and `ZA3112`, are pairs that do opposite things at one gap,
 so naming one half replaces the other at the level.
 [The pair table](Rule-map.md#pairs-and-their-default-halves) says which half owns the gap when both are named.
-The rules that keep a run, `ZA3054` and `ZA3055`, judge the runs of the grouping rules that are enabled.
+The rules that keep a run, `ZA3055` and `ZA3056`, judge the runs of the grouping rules that are enabled.
 
 ## Command line
 

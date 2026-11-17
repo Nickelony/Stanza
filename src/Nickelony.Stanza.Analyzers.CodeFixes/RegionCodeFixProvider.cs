@@ -10,7 +10,7 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 {
 	private static readonly FixTable s_fixes = new([
 		FixRow.For(
-			DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors,
+			DiagnosticDescriptors.SeparateRegionMarker,
 			"Add the blank line",
 
 			FromCarriedChange(
@@ -25,7 +25,7 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 		),
 
 		FixRow.For(
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+			DiagnosticDescriptors.SeparateConditionalBlock,
 			"Add the blank line",
 
 			FromCarriedChange(

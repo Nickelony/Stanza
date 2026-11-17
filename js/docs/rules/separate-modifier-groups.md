@@ -47,4 +47,4 @@ class Session {
 
 ## C# counterpart
 
-[ZA0014 - Separate modifier groups](https://github.com/Nickelony/Stanza/wiki/ZA0014-Separate-modifier-groups).
+[ZA0018 - Separate modifier groups](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-modifier-groups).

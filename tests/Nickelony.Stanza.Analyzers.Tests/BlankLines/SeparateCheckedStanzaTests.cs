@@ -397,7 +397,7 @@ public sealed class SeparateCheckedStanzaTests
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.OnSuppressingAllOthers([
 			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateGuardClauses,
-			DiagnosticDescriptors.KeepChainOfGuardClausesTogether,
+			DiagnosticDescriptors.KeepGuardClausesTogether,
 		]);
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(source, rules);
@@ -443,7 +443,7 @@ public sealed class SeparateCheckedStanzaTests
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.OnSuppressingAllOthers([
 			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateJumpStatement,
-			DiagnosticDescriptors.KeepChainOfGuardClausesTogether,
+			DiagnosticDescriptors.KeepGuardClausesTogether,
 		]);
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunIterativelyAsync(source, rules);
@@ -647,7 +647,7 @@ public sealed class SeparateCheckedStanzaTests
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.OnSuppressingAllOthers([
 			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.KeepGuardWithBinding,
-			DiagnosticDescriptors.KeepChainOfGuardClausesTogether,
+			DiagnosticDescriptors.KeepGuardClausesTogether,
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
 		]);
 
@@ -662,7 +662,7 @@ public sealed class SeparateCheckedStanzaTests
 
 	[TestMethod]
 	[DataRow(true, "ZA0001")]
-	[DataRow(false, "ZA0018")]
+	[DataRow(false, "ZA0012")]
 	public async Task ATransferredMultiLineBoundaryHasOneOwner(bool multiLine, string owner)
 	{
 		const string source = """
@@ -704,7 +704,7 @@ public sealed class SeparateCheckedStanzaTests
 
 	[TestMethod]
 	[DataRow(true, "ZA0001")]
-	[DataRow(false, "ZA0018")]
+	[DataRow(false, "ZA0012")]
 	public async Task ACheckedBorderEndsAnOtherwiseRepeatedDeclarationRun(
 		bool multiLine,
 		string owner
@@ -923,13 +923,13 @@ public sealed class SeparateCheckedStanzaTests
 			{
 				void M(int x)
 				{
-			#pragma warning disable ZA0018
+			#pragma warning disable ZA0012
 					System.GC.KeepAlive(x);
 					int w = x;
 					int y = x + 1;
 					if (y == 0) return;
 					System.GC.KeepAlive(y + w);
-			#pragma warning restore ZA0018
+			#pragma warning restore ZA0012
 				}
 			}
 			""";
@@ -939,7 +939,7 @@ public sealed class SeparateCheckedStanzaTests
 			{
 				void M(int x)
 				{
-			#pragma warning disable ZA0018
+			#pragma warning disable ZA0012
 					System.GC.KeepAlive(x);
 
 					int w = x;
@@ -947,7 +947,7 @@ public sealed class SeparateCheckedStanzaTests
 
 					if (y == 0) return;
 					System.GC.KeepAlive(y + w);
-			#pragma warning restore ZA0018
+			#pragma warning restore ZA0012
 				}
 			}
 			""";

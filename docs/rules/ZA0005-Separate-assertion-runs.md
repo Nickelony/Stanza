@@ -28,4 +28,4 @@ Cleanup();
 - With this rule off, a run of assertions stays tight, and [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-invocation-runs) does not take it over.
 - An awaited assertion, such as `await Assert.ThrowsAsync<T>(Act);`, stays an assertion
   where [`ZA0006`](https://github.com/Nickelony/Stanza/wiki/ZA0006-Separate-await-runs) is on.
-- [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) removes the blank lines inside a run of assertions where it is on.
+- [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-statements-together) removes the blank lines inside a run of assertions where it is on.

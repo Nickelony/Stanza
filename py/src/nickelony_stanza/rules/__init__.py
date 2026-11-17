@@ -92,7 +92,7 @@ KEEP_ORDER: tuple[Rule, ...] = (
     gather_loose_members.RULE,
 )
 
-# The relationship rules, which alone judge a container of two single-line units while ZA3051 is off.
+# The relationship rules, which alone judge a container of two single-line units while ZA3054 is off.
 TWO_UNIT_RULES: tuple[Rule, ...] = (
     keep_assertion_with_binding.RULE,
     keep_guard_clauses_together.RULE,

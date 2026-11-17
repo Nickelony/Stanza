@@ -472,7 +472,7 @@ public sealed class KeepReceiverGroupTogetherTests
 	)
 	{
 		string source =
-			(silenced ? "#pragma warning disable ZA0063\n" : string.Empty)
+			(silenced ? "#pragma warning disable ZA0064\n" : string.Empty)
 			+ "class C { void M(dynamic db) {\ndb.A();\ndb.B();\n\ndb.C();\ndb.D();\n} }";
 
 		var observations = new List<(int Sections, bool Reads)>();
@@ -523,10 +523,10 @@ public sealed class KeepReceiverGroupTogetherTests
 	public async Task ADirectiveSplitsAWholeReceiverFixAndKeepsTheSilencedSectionWritten()
 	{
 		const string source =
-			"class C { void M(dynamic db) {\ndb.A();\n\ndb.B();\n#pragma warning disable ZA0063\n\ndb.C();\n\ndb.D();\n} }";
+			"class C { void M(dynamic db) {\ndb.A();\n\ndb.B();\n#pragma warning disable ZA0064\n\ndb.C();\n\ndb.D();\n} }";
 
 		const string fixedSource =
-			"class C { void M(dynamic db) {\ndb.A();\ndb.B();\n#pragma warning disable ZA0063\n\ndb.C();\n\ndb.D();\n} }";
+			"class C { void M(dynamic db) {\ndb.A();\ndb.B();\n#pragma warning disable ZA0064\n\ndb.C();\n\ndb.D();\n} }";
 
 		AnalyzerRunResult result =
 			await RoslynTestHarness.RunAsync<KeepReceiverGroupTogetherAnalyzer>(

@@ -1,4 +1,4 @@
-"""ZA3059: removes the blank line between the bindings that seed accumulators and the loop that builds them."""
+"""ZA3063: removes the blank line between the bindings that seed accumulators and the loop that builds them."""
 
 from __future__ import annotations
 
@@ -111,7 +111,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3059",
+    code="ZA3063",
     name="keep-accumulator-with-loop",
     level="opt-in",
     message="Remove the blank line between this accumulator and the loop that builds it.",

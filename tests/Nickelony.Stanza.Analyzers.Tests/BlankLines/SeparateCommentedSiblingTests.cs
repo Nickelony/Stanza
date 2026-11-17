@@ -1290,7 +1290,7 @@ public sealed class SeparateCommentedSiblingTests
 		],
 
 		[
-			DiagnosticDescriptors.SeparateImportDirectiveGroups,
+			DiagnosticDescriptors.SeparateImportGroups,
 			null,
 
 			"""
@@ -1807,7 +1807,7 @@ public sealed class SeparateCommentedSiblingTests
 		],
 
 		[
-			DiagnosticDescriptors.SeparateImportDirectiveGroups,
+			DiagnosticDescriptors.SeparateImportGroups,
 
 			$$"""
 				#pragma warning disable {{DiagnosticDescriptors.SeparateCommentedSibling.Id}}

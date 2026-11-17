@@ -1,4 +1,4 @@
-"""ZA3064: keeps consecutive initialized bindings that consume the preceding bound value."""
+"""ZA3061: keeps consecutive initialized bindings that consume the preceding bound value."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3064",
+    code="ZA3061",
     name="keep-dependent-bindings-together",
     level="opt-in",
     message="Remove the blank lines inside this dependent binding chain.",

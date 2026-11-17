@@ -1,8 +1,8 @@
 # stanza_assignment_targets
 
-Controls whether [`ZA0008`](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-assignment-runs) splits a run of assignments by target kind, which is what each one writes: a field, a property, a local or an element.
+Controls whether [`ZA0009`](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-assignment-runs) splits a run of assignments by target kind, which is what each one writes: a field, a property, a local or an element.
 Default: `merge`.
-Read by [`ZA0008`](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-assignment-runs), and by [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) where `ZA0008` is on.
+Read by [`ZA0009`](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-assignment-runs), and by [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-statements-together) where `ZA0009` is on.
 
 | Value         | Effect                                                                      |
 | ------------- | --------------------------------------------------------------------------- |
@@ -75,7 +75,7 @@ _end.Movement = AnchorMovement.AfterInsertion;
 - A deconstruction whose targets are of one kind joins that kind, and a discard among them adds no kind.
   One of several kinds, such as `(_total, count) = Read();`, stands alone, so it ends the run above it and the run below it.
 - A target that does not bind, as in code that does not compile, a member of a `dynamic` value, a discard such as `_ = value;`
-  and a [subscription](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-assignment-runs) have no kind.
+  and a [subscription](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-assignment-runs) have no kind.
 - A target with no kind joins the runs on both sides, as it would under `merge`, so code that stops compiling asks for no new blank line.
   So `_a = 1; _b = 2; _ = x; Count = 3; Count = 4;` with the fields `_a` and `_b` and the property `Count` is one run, with no split.
 - A null-conditional assignment such as `item?.Name = name;` takes the kind of its member in C# 14.
@@ -85,5 +85,5 @@ _end.Movement = AnchorMovement.AfterInsertion;
 - [Which rule owns which gap](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#one-run-of-statements-several-owners) says which rule owns the gaps beside a run,
   including the ones the split adds.
 - Only `split` reads a semantic model, once for each assignment statement,
-  and only while `ZA0008` is on, whether it or a rule that reads its runs asks.
+  and only while `ZA0009` is on, whether it or a rule that reads its runs asks.
   So `merge` reads syntax alone.

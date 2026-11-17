@@ -29,14 +29,14 @@ describe('the level table', () => {
 	it('reads a level and a CSharpier mark for each rule, past the comments and blank lines', () => {
 		const rows = parseLevels(
 			file,
-			['# A note.', '', 'ZA0001 moderate', 'ZA0012 strong   csharpier-off', 'ZA0142\topt-in csharpier-on', 'ZA0054 opt-in', ''].join('\r\n'),
+			['# A note.', '', 'ZA0001 moderate', 'ZA0016 strong   csharpier-off', 'ZA0142\topt-in csharpier-on', 'ZA0055 opt-in', ''].join('\r\n'),
 		);
 
 		expect([...rows]).toEqual([
 			['ZA0001', { level: 'moderate', csharpier: null }],
-			['ZA0012', { level: 'strong', csharpier: 'off' }],
+			['ZA0016', { level: 'strong', csharpier: 'off' }],
 			['ZA0142', { level: 'opt-in', csharpier: 'on' }],
-			['ZA0054', { level: 'opt-in', csharpier: null }],
+			['ZA0055', { level: 'opt-in', csharpier: null }],
 		]);
 	});
 
@@ -170,8 +170,8 @@ describe('filling the form from a level', () => {
 
 		expect(changedCount(realCatalog, picks)).toBe(0);
 
-		// ZA0001 is on at strong, so a setting that says suggestion changes nothing; none turns it off; ZA0054 is opt-in, so any severity enables it.
-		picks = { ...picks, rules: { ZA0001: 'suggestion', ZA0002: 'none', ZA0054: 'suggestion', ZA0055: 'none' } };
+		// ZA0001 is on at strong, so a setting that says suggestion changes nothing; none turns it off; ZA0055 is opt-in, so any severity enables it.
+		picks = { ...picks, rules: { ZA0001: 'suggestion', ZA0002: 'none', ZA0055: 'suggestion', ZA0056: 'none' } };
 
 		expect(changedCount(realCatalog, picks)).toBe(2);
 	});
@@ -210,7 +210,7 @@ describe('the note on which level enables a rule', () => {
 	it('names the level of a plain rule whatever the formatter', () => {
 		for (const formatter of formatters) {
 			expect(enabledNote(find('ZA0001'), formatter)).toBe(' Enabled from the moderate level.');
-			expect(enabledNote(find('ZA0054'), formatter)).toBe(' No level enables it.');
+			expect(enabledNote(find('ZA0055'), formatter)).toBe(' No level enables it.');
 		}
 	});
 

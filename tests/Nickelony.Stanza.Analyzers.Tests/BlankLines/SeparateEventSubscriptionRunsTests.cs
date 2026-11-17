@@ -743,7 +743,7 @@ public sealed class SeparateEventSubscriptionRunsTests
 
 				TestRuleSets.WithOneOff(
 					on: [DiagnosticDescriptors.SeparateEventSubscriptionRuns],
-					off: DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+					off: DiagnosticDescriptors.SeparateConditionalBlock
 				)
 			);
 
@@ -775,7 +775,7 @@ public sealed class SeparateEventSubscriptionRunsTests
 
 				TestRuleSets.Only(
 					DiagnosticDescriptors.SeparateEventSubscriptionRuns,
-					DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors
+					DiagnosticDescriptors.SeparateConditionalBlock
 				)
 			);
 
@@ -806,7 +806,7 @@ public sealed class SeparateEventSubscriptionRunsTests
 
 				TestRuleSets.Only(
 					DiagnosticDescriptors.SeparateEventSubscriptionRuns,
-					DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors
+					DiagnosticDescriptors.SeparateRegionMarker
 				)
 			);
 

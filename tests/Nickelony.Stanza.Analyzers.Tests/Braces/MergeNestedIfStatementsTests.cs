@@ -1214,7 +1214,7 @@ public sealed class MergeNestedIfStatementsTests
 	{
 		string source = Method("if (c0)\n{\n\tif (c1\n\t\t&& c2)\n\t\tDoThing();\n}");
 
-		// ZA0205 braces the inner body, which its head spans lines, then this rule merges, with the head left over two lines.
+		// ZA0206 braces the inner body, which its head spans lines, then this rule merges, with the head left over two lines.
 		string fixedSource = Method("if (c0 && c1\n\t&& c2)\n{\n\tDoThing();\n}");
 
 		Assert.AreEqual(fixedSource, await RoslynTestHarness.AssertFixesAgreeAsync(source, Rule));

@@ -262,14 +262,14 @@ public sealed partial class ConvergenceTests
 		[
 			DiagnosticDescriptors.RemoveElseAfterJump,
 			DiagnosticDescriptors.MergeNestedIfStatements,
-			DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt,
+			DiagnosticDescriptors.SeparateClauseKeywords,
 		],
 
 		[
 			DiagnosticDescriptors.RemoveElseAfterJump,
 			DiagnosticDescriptors.MergeNestedIfStatements,
 			DiagnosticDescriptors.RemoveRedundantBraces,
-			DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt,
+			DiagnosticDescriptors.SeparateClauseKeywords,
 		],
 
 		[
@@ -344,7 +344,7 @@ public sealed partial class ConvergenceTests
 				&& (
 					Array.IndexOf(
 						rules,
-						DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt
+						DiagnosticDescriptors.SeparateClauseKeywords
 					) >= 0
 					|| Array.IndexOf(rules, DiagnosticDescriptors.KeepClauseKeywordsAdjacent) >= 0
 				);
@@ -438,7 +438,7 @@ public sealed partial class ConvergenceTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.RemoveElseAfterJump,
-				DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt
+				DiagnosticDescriptors.SeparateClauseKeywords
 			),
 
 			"if (loose > 0)\n{\n\treturn;\n}\nelse\n{\n\tDoThing();\n}",
@@ -500,7 +500,7 @@ public sealed partial class ConvergenceTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.RemoveRedundantBraces,
-				DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt
+				DiagnosticDescriptors.SeparateClauseKeywords
 			),
 
 			"if (loose > 0)\n{\n\tDoThing();\n}\nelse\n{\n\tBuild(1);\n}",
@@ -524,7 +524,7 @@ public sealed partial class ConvergenceTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.RemoveRedundantBraces,
-				DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt
+				DiagnosticDescriptors.SeparateClauseKeywords
 			),
 
 			"if (loose > 0)\n{\n\tDoThing();\n}\n\nelse\n{\n\tBuild(1);\n}",
@@ -536,7 +536,7 @@ public sealed partial class ConvergenceTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.RemoveRedundantBraces,
-				DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt
+				DiagnosticDescriptors.SeparateClauseKeywords
 			),
 
 			"do\n{\n\tDoThing();\n}\nwhile (loose > 0);",
@@ -560,7 +560,7 @@ public sealed partial class ConvergenceTests
 
 			TestRuleSets.Only(
 				DiagnosticDescriptors.RemoveRedundantBraces,
-				DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt
+				DiagnosticDescriptors.SeparateClauseKeywords
 			),
 
 			"if (loose > 0)\n{\n\tDoThing();\n}\n// Otherwise.\nelse\n{\n\tBuild(1);\n}",

@@ -334,7 +334,7 @@ public sealed class KeepClauseKeywordsAdjacentTests
 
 		Assert.IsEmpty(
 			result.Diagnostics.Where(diagnostic =>
-				diagnostic.Id == DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt.Id
+				diagnostic.Id == DiagnosticDescriptors.SeparateClauseKeywords.Id
 			)
 		);
 

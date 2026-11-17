@@ -52,9 +52,9 @@ This page maps which code does what, for a contributor who changes a rule or a t
 
 | Rule IDs | Directory | Fix provider |
 | --- | --- | --- |
-| `ZA0001`-`ZA0021`, `ZA0051`-`ZA0064`, `ZA0101`-`ZA0173`, `ZA0201`-`ZA0203`, `ZA0207` | `BlankLines/` | `BlankLineCodeFixProvider` |
+| `ZA0001`-`ZA0021`, `ZA0051`-`ZA0064`, `ZA0101`-`ZA0173`, `ZA0201`-`ZA0204` | `BlankLines/` | `BlankLineCodeFixProvider` |
 | `ZA0198`-`ZA0199` | `Commas/` | `CommaCodeFixProvider` |
-| `ZA0204`-`ZA0206`, `ZA0601`-`ZA0602` | `Braces/` | `BraceCodeFixProvider` |
+| `ZA0205`-`ZA0207`, `ZA0601`-`ZA0602` | `Braces/` | `BraceCodeFixProvider` |
 | `ZA0301`-`ZA0307` | `Bodies/` | `BodyCodeFixProvider` |
 | `ZA0401`-`ZA0407` | `Regions/` | `RegionCodeFixProvider` |
 | `ZA0501`-`ZA0503` | `Arguments/` | `ArgumentCodeFixProvider` |
@@ -98,8 +98,8 @@ and the trailing-comma pair of "Delimited lists" is in `Commas/`.
 - `BlankLineGuards` and `BlankLineJumps` read the guard clauses and jump statements that ask for a blank line above them.
 - `BlankLineOwnership` reads which rule owns a gap and `BlankLineGrouping` the run borders of the grouping rules,
   while `BlankLineLooseRuns` and `BlankLineKeptRuns` read the [loose and kept runs](https://github.com/Nickelony/Stanza/wiki/Terms) of single-line siblings.
-- `BlankLineKeptPairs` reads the gaps the keep rules claim inside their [kept groups](https://github.com/Nickelony/Stanza/wiki/Terms), `BlankLineCheckedStanzas` the stanzas of `ZA0018`
-  and `BlankLineReceiverGroups` the groups of `ZA0019` and `ZA0063`, so `BlankLineOwnership` can tell every other rule which gaps are taken.
+- `BlankLineKeptPairs` reads the gaps the keep rules claim inside their [kept groups](https://github.com/Nickelony/Stanza/wiki/Terms), `BlankLineCheckedStanzas` the stanzas of `ZA0012`
+  and `BlankLineReceiverGroups` the groups of `ZA0010` and `ZA0064`, so `BlankLineOwnership` can tell every other rule which gaps are taken.
 
 These files pass sets of boundaries around, and the names of the sets mean:
 

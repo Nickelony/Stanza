@@ -30,7 +30,7 @@ internal readonly record struct GapOwners(
 	ImmutableHashSet<int>? DisplacedBoundaries = null
 )
 {
-	/// <summary>Whether an owner keeps the boundary, as ZA0007 and ZA0010 do beside their units.</summary>
+	/// <summary>Whether an owner keeps the boundary, as ZA0008 and ZA0014 do beside their units.</summary>
 	/// <remarks>
 	/// A gap inside a kept group is joined, so no owner keeps it.
 	/// </remarks>

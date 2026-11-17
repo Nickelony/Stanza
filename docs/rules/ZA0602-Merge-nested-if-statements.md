@@ -67,7 +67,7 @@ if (a && b && c)
 - A variable that the inner condition declares joins the scope around the outer `if`.
   The `if` statements stay apart when that scope reads its name elsewhere, in the outer condition or in disabled text included.
 - The fix moves the body out one indent step for each head the merge loses.
-  It treats the token after the closing brace, a directive in or around the statement and the order of the [`ZA0205`](https://github.com/Nickelony/Stanza/wiki/ZA0205-Use-braces-consistently) and [`ZA0206`](https://github.com/Nickelony/Stanza/wiki/ZA0206-Remove-redundant-braces) fixes
+  It treats the token after the closing brace, a directive in or around the statement and the order of the [`ZA0206`](https://github.com/Nickelony/Stanza/wiki/ZA0206-Use-braces-consistently) and [`ZA0207`](https://github.com/Nickelony/Stanza/wiki/ZA0207-Remove-redundant-braces) fixes
   as [`ZA0601`](https://github.com/Nickelony/Stanza/wiki/ZA0601-Remove-the-else-after-a-jump) does.
 - The fix writes the blank lines [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-multi-line-constructs) asks for around the pair,
   as [A blank line a fix leaves behind](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#a-blank-line-a-fix-leaves-behind) says.

@@ -20,9 +20,9 @@ internal static class BlankLineGrouping
 		Invocation,
 		Assertion,
 		Await,
+		Yield,
 		Subscription,
 		Assignment,
-		Yield,
 		LocalFunction,
 	}
 
@@ -309,9 +309,9 @@ internal static class BlankLineGrouping
 		);
 	}
 
-	/// <summary>Whether ZA0012 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <summary>Whether ZA0016 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
 	/// <remarks>
-	/// A pragma that silences ZA0012 over the gap leaves it inside the run, as <c>none</c> does.
+	/// A pragma that silences ZA0016 over the gap leaves it inside the run, as <c>none</c> does.
 	/// </remarks>
 	private static bool IsCommentedSiblingGap(
 		ImmutableArray<SyntaxNode> siblings,
@@ -814,9 +814,9 @@ internal static class BlankLineGrouping
 			RunKind.Call or RunKind.ReceiverCall => RunFamily.Invocation,
 			RunKind.Assertion => RunFamily.Assertion,
 			RunKind.Await => RunFamily.Await,
+			RunKind.Yield => RunFamily.Yield,
 			RunKind.Subscription => RunFamily.Subscription,
 			RunKind.Assignment => RunFamily.Assignment,
-			RunKind.Yield => RunFamily.Yield,
 			RunKind.LocalFunction => RunFamily.LocalFunction,
 			_ => null,
 		};
@@ -1089,9 +1089,9 @@ internal static class BlankLineGrouping
 		ReceiverCall,
 		Assertion,
 		Await,
+		Yield,
 		Subscription,
 		Assignment,
-		Yield,
 		LocalFunction,
 	}
 

@@ -360,7 +360,7 @@ public sealed class BareDiagnosticFixTests
 
 		[
 			"the region rule of a tight region",
-			new SeparateRegionMarkerFromNeighborsAnalyzer(),
+			new SeparateRegionMarkerAnalyzer(),
 			OffersAFix,
 			new Dictionary<string, string> { ["stanza_region_padding"] = "tight" },
 
@@ -380,7 +380,7 @@ public sealed class BareDiagnosticFixTests
 
 		[
 			"the conditional block rule of a padded block",
-			new SeparateConditionalBlockFromNeighborsAnalyzer(),
+			new SeparateConditionalBlockAnalyzer(),
 			OffersAFix,
 			new Dictionary<string, string> { ["stanza_conditional_block_padding"] = "padded" },
 
@@ -1065,9 +1065,9 @@ public sealed class BareDiagnosticFixTests
 			""";
 
 		AnalyzerRunResult result =
-			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<SeparateRegionMarkerFromNeighborsAnalyzer>(
+			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<SeparateRegionMarkerAnalyzer>(
 				source,
-				Only(DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors)
+				Only(DiagnosticDescriptors.SeparateRegionMarker)
 			);
 
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
@@ -1103,9 +1103,9 @@ public sealed class BareDiagnosticFixTests
 			""";
 
 		AnalyzerRunResult result =
-			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<SeparateConditionalBlockFromNeighborsAnalyzer>(
+			await RoslynTestHarness.RunFixWithoutAdditionalLocationsAsync<SeparateConditionalBlockAnalyzer>(
 				source,
-				Only(DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors)
+				Only(DiagnosticDescriptors.SeparateConditionalBlock)
 			);
 
 		RoslynTestHarness.AssertFixedText(fixedSource, result);

@@ -24,7 +24,7 @@ public sealed partial class PresetGuardTests
 	private static readonly string[] s_strongRulesTheRepositoryRunsOff = ["ZA0303", "ZA0502"];
 
 	// The opt-in rules that the repository pins on, since Stanza's own code is the extreme example of its rules working together.
-	private static readonly string[] s_optInRulesTheRepositoryRuns = ["ZA0054", "ZA0055"];
+	private static readonly string[] s_optInRulesTheRepositoryRuns = ["ZA0055", "ZA0056"];
 
 	// A rule that never settles beside CSharpier, so no level enables it under either formatter value:
 	// ZA0199 removes the comma that CSharpier writes back, and ZA1001 has no fix and would report a width that CSharpier owns.

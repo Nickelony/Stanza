@@ -49,12 +49,12 @@ public sealed class RulePageExampleGuardTests
 			+ "\tstring path;\n\n",
 
 		// The split reads the symbol each assignment writes, so the option page needs fields, properties and an array to bind.
-		["ZA0008"] =
+		["ZA0009"] =
 			"\tint _count;\n\tstring _name;\n\tstring[] _items = new string[2];\n\n"
 			+ "\tstring Title { get; set; }\n\n\tint Size { get; set; }\n\n",
 
 		// The subscription rule reads the symbol of the event, so the example needs one to bind.
-		["ZA0007"] =
+		["ZA0008"] =
 			"\tevent Action Saved;\n\tevent Action Closed;\n\n"
 			+ "\tvoid OnSaved() { }\n\tvoid OnClosed() { }\n\n",
 	};
@@ -63,7 +63,7 @@ public sealed class RulePageExampleGuardTests
 	private static readonly Dictionary<string, string> s_optionPages = new(StringComparer.Ordinal)
 	{
 		["stanza_markup_max_blank_lines"] = "ZA2006",
-		["stanza_max_blank_lines"] = "ZA0056",
+		["stanza_max_blank_lines"] = "ZA0051",
 		["stanza_max_ternary_operators"] = "ZA1007",
 		["stanza_max_logical_operators"] = "ZA1005",
 		["stanza_max_nesting_depth"] = "ZA1004",
@@ -74,18 +74,18 @@ public sealed class RulePageExampleGuardTests
 		["stanza_comment_banner_min_run"] = "ZA0951",
 		["stanza_max_line_length"] = "ZA0302",
 		["stanza_max_loose_run_size"] = "ZA0052",
-		["stanza_min_lines_to_name_endif"] = "ZA0404",
+		["stanza_min_lines_to_name_endif"] = "ZA0406",
 		["stanza_named_argument_min_arguments"] = "ZA0501",
 		["stanza_named_argument_literals"] = "ZA0502",
-		["stanza_assignment_targets"] = "ZA0008",
+		["stanza_assignment_targets"] = "ZA0009",
 		["stanza_declaration_shapes"] = "ZA0002",
 		["stanza_declaration_typing"] = "ZA0002",
-		["stanza_local_function_modifiers"] = "ZA0021",
-		["stanza_receiver_roots"] = "ZA0054",
-		["stanza_receiver_comparison"] = "ZA0019",
+		["stanza_local_function_modifiers"] = "ZA0015",
+		["stanza_receiver_roots"] = "ZA0055",
+		["stanza_receiver_comparison"] = "ZA0010",
 		["stanza_region_padding"] = "ZA0401",
 		["stanza_conditional_block_padding"] = "ZA0402",
-		["stanza_suppression_block_padding"] = "ZA0406",
+		["stanza_suppression_block_padding"] = "ZA0403",
 	};
 
 	// An option an example needs beyond the defaults, keyed by its page and a part of its marker.
@@ -96,7 +96,7 @@ public sealed class RulePageExampleGuardTests
 	)[] s_options =
 	[
 		(
-			"ZA0019",
+			"ZA0010",
 			string.Empty,
 
 			new Dictionary<string, string>
@@ -107,7 +107,7 @@ public sealed class RulePageExampleGuardTests
 		),
 
 		(
-			"ZA0063",
+			"ZA0064",
 			string.Empty,
 			new Dictionary<string, string> { ["stanza_receiver_roots"] = "db" }
 		),
@@ -264,7 +264,7 @@ public sealed class RulePageExampleGuardTests
 		),
 
 		(
-			"ZA0407",
+			"ZA0404",
 			"with tight regions",
 			new Dictionary<string, string> { ["stanza_region_padding"] = "tight" }
 		),
@@ -292,22 +292,22 @@ public sealed class RulePageExampleGuardTests
 	private static readonly (string Page, string Marker, string[] Rules)[] s_alsoRun =
 	[
 		("stanza_receiver_roots", string.Empty, ["ZA0004", "ZA0006"]),
-		// ZA0002 writes the gap above the first property, and ZA0013 the one above the method.
-		("ZA0013", string.Empty, ["ZA0002"]),
+		// ZA0002 writes the gap above the first property, and ZA0017 the one above the method.
+		("ZA0017", string.Empty, ["ZA0002"]),
 		// ZA0002 would pair the declaration that the comment splits off with the call below it.
-		("ZA0012", string.Empty, ["ZA0002"]),
+		("ZA0016", string.Empty, ["ZA0002"]),
 		("ZA0305", "with ZA0307 enabled", ["ZA0307"]),
 		// ZA0003 reads the width and the height apart from the name, which the examples show.
-		("ZA0054", string.Empty, ["ZA0003"]),
+		("ZA0055", string.Empty, ["ZA0003"]),
 	];
 
 	// The rules that ship on and that an example runs with off, keyed by its page and a part of its marker.
 	private static readonly (string Page, string Marker, string[] Rules)[] s_alsoOff =
 	[
-		("ZA0019", string.Empty, ["ZA0004"]),
+		("ZA0010", string.Empty, ["ZA0004"]),
 		("stanza_receiver_comparison", string.Empty, ["ZA0004"]),
 		// ZA0133 owns the gaps of an initializer while it is on, so the list example shows this rule with it off.
-		("ZA0012", string.Empty, ["ZA0133"]),
+		("ZA0016", string.Empty, ["ZA0133"]),
 	];
 
 	public static IEnumerable<object[]> AfterExamples { get; } =

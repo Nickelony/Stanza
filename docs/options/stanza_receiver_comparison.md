@@ -2,7 +2,7 @@
 
 Controls whether selected receivers match by the first name of their path or by their full owner path.
 Default: `root`.
-Read by [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-invocation-runs), [`ZA0019`](https://github.com/Nickelony/Stanza/wiki/ZA0019-Separate-receiver-groups) and [`ZA0063`](https://github.com/Nickelony/Stanza/wiki/ZA0063-Keep-a-receiver-group-together).
+Read by [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-invocation-runs), [`ZA0010`](https://github.com/Nickelony/Stanza/wiki/ZA0010-Separate-receiver-groups) and [`ZA0064`](https://github.com/Nickelony/Stanza/wiki/ZA0064-Keep-a-receiver-group-together).
 
 | Value         | Effect                                                                               |
 | ------------- | ------------------------------------------------------------------------------------ |
@@ -10,7 +10,7 @@ Read by [`ZA0004`](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-invo
 | `path`        | the complete receiver path is compared, without the called method or assigned member |
 | anything else | as `root`                                                                            |
 
-With `stanza_receiver_roots = item` and [`ZA0019`](https://github.com/Nickelony/Stanza/wiki/ZA0019-Separate-receiver-groups) enabled:
+With `stanza_receiver_roots = item` and [`ZA0010`](https://github.com/Nickelony/Stanza/wiki/ZA0010-Separate-receiver-groups) enabled:
 
 ```csharp
 // Before - root leaves it as written

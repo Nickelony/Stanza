@@ -1,4 +1,4 @@
-"""ZA3020: separates a run of yield statements."""
+"""ZA3007: separates a run of yield statements."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from nickelony_stanza.rules.base import Rule
 from nickelony_stanza.rules.claims import claim_run_boundary
 
 RULE = Rule(
-    code="ZA3020",
+    code="ZA3007",
     name="separate-yield-runs",
     level="strong",
     message="Add a blank line between this yield run and its neighbor.",

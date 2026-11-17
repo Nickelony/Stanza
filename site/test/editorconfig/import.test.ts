@@ -9,7 +9,7 @@ import { catalog, markupConfig, option, realCatalog, realMarkup, rule } from '..
 const small = catalog(
 	[
 		rule('ZA0002'),
-		rule('ZA0014', { tier: 'suggestion', onByDefault: false }),
+		rule('ZA0018', { tier: 'suggestion', onByDefault: false }),
 		rule('ZA2001', { onByDefault: false, markupOnByDefault: true, readByMarkup: true }),
 	],
 
@@ -26,13 +26,13 @@ const read = (text: string, current: Config = emptyConfig()) => importEditorConf
 describe('an imported .editorconfig', () => {
 	it('fills in the rules and options of a C# section', () => {
 		const result = read(
-			['[*.cs]', 'dotnet_diagnostic.ZA0014.severity = warning', 'dotnet_diagnostic.ZA0002.severity = none', 'stanza_max_line_length = 120', ''].join(
+			['[*.cs]', 'dotnet_diagnostic.ZA0018.severity = warning', 'dotnet_diagnostic.ZA0002.severity = none', 'stanza_max_line_length = 120', ''].join(
 				'\n',
 			),
 		);
 
 		expect(result.refused).toBeNull();
-		expect(result.config.rules).toEqual({ ZA0014: 'warning', ZA0002: 'none' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning', ZA0002: 'none' });
 		expect(result.config.options).toEqual({ stanza_max_line_length: '120' });
 		expect(result.skipped).toEqual([]);
 		expect(result.rules).toBe(2);
@@ -40,7 +40,7 @@ describe('an imported .editorconfig', () => {
 	});
 
 	it('leaves a rule set to default at its default', () => {
-		expect(read('[*.cs]\ndotnet_diagnostic.ZA0014.severity = default\n').config.rules).toEqual({});
+		expect(read('[*.cs]\ndotnet_diagnostic.ZA0018.severity = default\n').config.rules).toEqual({});
 	});
 
 	it('leaves an option at the value its page gives as the default', () => {
@@ -48,37 +48,37 @@ describe('an imported .editorconfig', () => {
 	});
 
 	it('reads the keys without regard to case, as an .editorconfig does', () => {
-		const result = read('[*.CS]\nDOTNET_DIAGNOSTIC.za0014.SEVERITY = Warning\nSTANZA_MAX_LINE_LENGTH = 90\n');
+		const result = read('[*.CS]\nDOTNET_DIAGNOSTIC.za0018.SEVERITY = Warning\nSTANZA_MAX_LINE_LENGTH = 90\n');
 
-		expect(result.config.rules).toEqual({ ZA0014: 'warning' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
 		expect(result.config.options).toEqual({ stanza_max_line_length: '90' });
 	});
 
 	it('cuts a trailing # comment from an option and from a severity', () => {
-		const result = read('[*.cs]\nstanza_max_line_length = 120 # same as csharpier\ndotnet_diagnostic.ZA0014.severity = warning # team\n');
+		const result = read('[*.cs]\nstanza_max_line_length = 120 # same as csharpier\ndotnet_diagnostic.ZA0018.severity = warning # team\n');
 
 		expect(result.config.options).toEqual({ stanza_max_line_length: '120' });
-		expect(result.config.rules).toEqual({ ZA0014: 'warning' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
 		expect(result.skipped).toEqual([]);
 	});
 
 	it('cuts a trailing ; comment from an option and from a severity', () => {
-		const result = read('[*.cs]\nstanza_max_line_length = 120 ; same as csharpier\ndotnet_diagnostic.ZA0014.severity = warning ; team\n');
+		const result = read('[*.cs]\nstanza_max_line_length = 120 ; same as csharpier\ndotnet_diagnostic.ZA0018.severity = warning ; team\n');
 
 		expect(result.config.options).toEqual({ stanza_max_line_length: '120' });
-		expect(result.config.rules).toEqual({ ZA0014: 'warning' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
 		expect(result.skipped).toEqual([]);
 	});
 
 	it('cuts a comment from a section header', () => {
-		expect(read('[*.cs] # C# files\ndotnet_diagnostic.ZA0014.severity = warning\n').config.rules).toEqual({ ZA0014: 'warning' });
+		expect(read('[*.cs] # C# files\ndotnet_diagnostic.ZA0018.severity = warning\n').config.rules).toEqual({ ZA0018: 'warning' });
 	});
 
 	it('reads a colon as the separator of a key and its value, as stanza-markup does', () => {
-		const result = read('[*.cs]\nstanza_max_line_length: 120\ndotnet_diagnostic.ZA0014.severity : warning\n');
+		const result = read('[*.cs]\nstanza_max_line_length: 120\ndotnet_diagnostic.ZA0018.severity : warning\n');
 
 		expect(result.config.options).toEqual({ stanza_max_line_length: '120' });
-		expect(result.config.rules).toEqual({ ZA0014: 'warning' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
 		expect(result.skipped).toEqual([]);
 	});
 
@@ -90,32 +90,32 @@ describe('an imported .editorconfig', () => {
 	});
 
 	it('reads a refactoring severity as silent, which Roslyn treats as another name for it', () => {
-		const result = read('[*.cs]\ndotnet_diagnostic.ZA0014.severity = refactoring\ndotnet_diagnostic.ZA0002.severity = Refactoring\n');
+		const result = read('[*.cs]\ndotnet_diagnostic.ZA0018.severity = refactoring\ndotnet_diagnostic.ZA0002.severity = Refactoring\n');
 
-		expect(result.config.rules).toEqual({ ZA0014: 'silent', ZA0002: 'silent' });
+		expect(result.config.rules).toEqual({ ZA0018: 'silent', ZA0002: 'silent' });
 		expect(result.skipped).toEqual([]);
 	});
 
 	it('lets a later line win over an earlier one', () => {
-		const result = read('[*.cs]\ndotnet_diagnostic.ZA0014.severity = warning\n[*.cs]\ndotnet_diagnostic.ZA0014.severity = error\n');
-		expect(result.config.rules).toEqual({ ZA0014: 'error' });
+		const result = read('[*.cs]\ndotnet_diagnostic.ZA0018.severity = warning\n[*.cs]\ndotnet_diagnostic.ZA0018.severity = error\n');
+		expect(result.config.rules).toEqual({ ZA0018: 'error' });
 	});
 
 	it('reads a file with a byte order mark, CRLF and old Mac line ends, and blanks', () => {
-		const text = '﻿# a comment\r\n\r\n; another\r\n[*.cs]\r\ndotnet_diagnostic.ZA0014.severity = warning\rstanza_max_line_length=90\r\n';
+		const text = '﻿# a comment\r\n\r\n; another\r\n[*.cs]\r\ndotnet_diagnostic.ZA0018.severity = warning\rstanza_max_line_length=90\r\n';
 		const result = read(text);
 
-		expect(result.config.rules).toEqual({ ZA0014: 'warning' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
 		expect(result.config.options).toEqual({ stanza_max_line_length: '90' });
 		expect(result.skipped).toEqual([]);
 	});
 
 	it('reads the lines above the first section, which a .globalconfig puts them in', () => {
-		expect(read('is_global = true\ndotnet_diagnostic.ZA0014.severity = warning\n').config.rules).toEqual({ ZA0014: 'warning' });
+		expect(read('is_global = true\ndotnet_diagnostic.ZA0018.severity = warning\n').config.rules).toEqual({ ZA0018: 'warning' });
 	});
 
 	it.each(['[*]', '[*.cs]', '[*.{cs,vb}]', '[**.cs]', '[**/*.cs]', '[*.{vb, cs}]'])('reads the section %s, which matches C# files', (header) => {
-		expect(read(`${header}\ndotnet_diagnostic.ZA0014.severity = warning\n`).config.rules).toEqual({ ZA0014: 'warning' });
+		expect(read(`${header}\ndotnet_diagnostic.ZA0018.severity = warning\n`).config.rules).toEqual({ ZA0018: 'warning' });
 	});
 
 	it('reads a markup section and takes the markup keys from it', () => {
@@ -154,17 +154,17 @@ describe('an imported .editorconfig', () => {
 	});
 
 	it('writes the markup section only when the file has one', () => {
-		expect(read('[*.cs]\ndotnet_diagnostic.ZA0014.severity = warning\n').config.markupSection).toBe(false);
+		expect(read('[*.cs]\ndotnet_diagnostic.ZA0018.severity = warning\n').config.markupSection).toBe(false);
 		expect(read('[*.xml]\nstanza_markup_enabled = false\n').config.markupSection).toBe(true);
 	});
 
 	it('keeps the choices of the page that no file holds', () => {
 		const current: Config = { ...emptyConfig(), everySetting: true, formatter: 'csharpier', rules: { ZA0002: 'none' } };
-		const result = read('[*.cs]\ndotnet_diagnostic.ZA0014.severity = warning\n', current);
+		const result = read('[*.cs]\ndotnet_diagnostic.ZA0018.severity = warning\n', current);
 
 		expect(result.config.everySetting).toBe(true);
 		expect(result.config.formatter).toBe('csharpier');
-		expect(result.config.rules).toEqual({ ZA0014: 'warning' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
 	});
 
 	describe('against a level', () => {
@@ -181,16 +181,16 @@ describe('an imported .editorconfig', () => {
 			const text = [
 				'[*.cs]',
 				'dotnet_diagnostic.ZA0003.severity = warning',
-				'dotnet_diagnostic.ZA0054.severity = none',
-				'dotnet_diagnostic.ZA0014.severity = error',
+				'dotnet_diagnostic.ZA0055.severity = none',
+				'dotnet_diagnostic.ZA0018.severity = error',
 				'dotnet_diagnostic.ZA0001.severity = suggestion',
 				'',
 			].join('\n');
 
 			const result = importEditorConfig(realCatalog, text, strong);
 
-			// ZA0003 is strong, so warning is its state; ZA0054 is opt-in, so none is its state; the other two differ.
-			expect(result.config.rules).toEqual({ ZA0014: 'error', ZA0001: 'suggestion' });
+			// ZA0003 is strong, so warning is its state; ZA0055 is opt-in, so none is its state; the other two differ.
+			expect(result.config.rules).toEqual({ ZA0018: 'error', ZA0001: 'suggestion' });
 			expect(result.rules).toBe(2);
 			expect(result.skipped).toEqual([]);
 		});
@@ -219,7 +219,7 @@ describe('an imported .editorconfig', () => {
 
 	it('does not change the configuration it was given', () => {
 		const current = emptyConfig();
-		read('[*.cs]\ndotnet_diagnostic.ZA0014.severity = warning\n', current);
+		read('[*.cs]\ndotnet_diagnostic.ZA0018.severity = warning\n', current);
 
 		expect(current).toEqual(emptyConfig());
 	});
@@ -236,9 +236,9 @@ describe('an imported .editorconfig', () => {
 
 describe('an import that skips', () => {
 	it('names an unknown rule and an unknown key with their lines', () => {
-		const result = read('[*.cs]\ndotnet_diagnostic.ZA9999.severity = warning\nstanza_wide = 3\ndotnet_diagnostic.ZA0014.severity = warning\n');
+		const result = read('[*.cs]\ndotnet_diagnostic.ZA9999.severity = warning\nstanza_wide = 3\ndotnet_diagnostic.ZA0018.severity = warning\n');
 
-		expect(result.config.rules).toEqual({ ZA0014: 'warning' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
 		expect(result.skipped.map((note) => note.line)).toEqual([2, 3]);
 		expect(result.skipped[0]!.reason).toMatch(/no rule/i);
 		expect(result.skipped[1]!.reason).toMatch(/no option/i);
@@ -248,11 +248,11 @@ describe('an import that skips', () => {
 		'names the severity "%s", which an .editorconfig does not give a rule',
 
 		(value) => {
-			const result = read(`[*.cs]\ndotnet_diagnostic.ZA0014.severity = ${value}\n`);
+			const result = read(`[*.cs]\ndotnet_diagnostic.ZA0018.severity = ${value}\n`);
 
 			expect(result.config.rules).toEqual({});
 			expect(result.skipped).toHaveLength(1);
-			expect(result.skipped[0]).toMatchObject({ line: 2, text: `dotnet_diagnostic.ZA0014.severity = ${value}`.trimEnd() });
+			expect(result.skipped[0]).toMatchObject({ line: 2, text: `dotnet_diagnostic.ZA0018.severity = ${value}`.trimEnd() });
 		},
 	);
 
@@ -265,27 +265,27 @@ describe('an import that skips', () => {
 	});
 
 	it('names a line that is no setting, and a header it cannot read', () => {
-		const result = read('[*.cs]\nthis is not a setting\n= value\nstanza_max_line_length\n[unclosed\ndotnet_diagnostic.ZA0014.severity = warning\n');
+		const result = read('[*.cs]\nthis is not a setting\n= value\nstanza_max_line_length\n[unclosed\ndotnet_diagnostic.ZA0018.severity = warning\n');
 
 		expect(result.skipped.map((note) => note.line)).toEqual([2, 3, 4, 5]);
-		expect(result.config.rules).toEqual({ ZA0014: 'warning' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
 	});
 
 	it('skips a section scoped to a path or to other files, and names each Stanza line in it by one note', () => {
 		const result = read(
 			[
 				'[tests/**/*.cs]',
-				'dotnet_diagnostic.ZA0014.severity = none',
+				'dotnet_diagnostic.ZA0018.severity = none',
 				'stanza_max_line_length = 200',
 				'[*.json]',
 				'dotnet_diagnostic.ZA0002.severity = none',
 				'[*.cs]',
-				'dotnet_diagnostic.ZA0014.severity = warning',
+				'dotnet_diagnostic.ZA0018.severity = warning',
 				'',
 			].join('\n'),
 		);
 
-		expect(result.config.rules).toEqual({ ZA0014: 'warning' });
+		expect(result.config.rules).toEqual({ ZA0018: 'warning' });
 		expect(result.config.options).toEqual({});
 		expect(result.skipped.map((note) => note.line)).toEqual([1, 4]);
 		expect(result.skipped[0]!.reason).toContain('2 Stanza lines');
@@ -293,7 +293,7 @@ describe('an import that skips', () => {
 	});
 
 	it('says nothing about a section it skips that holds no Stanza line', () => {
-		const result = read('[tests/**/*.cs]\nindent_style = tab\n[*.cs]\ndotnet_diagnostic.ZA0014.severity = warning\n');
+		const result = read('[tests/**/*.cs]\nindent_style = tab\n[*.cs]\ndotnet_diagnostic.ZA0018.severity = warning\n');
 
 		expect(result.skipped).toEqual([]);
 		expect(result.ignored).toBe(1);
@@ -361,7 +361,7 @@ describe('an import that cannot be read', () => {
 			'#',
 			';',
 			'dotnet_diagnostic.',
-			'ZA0014',
+			'ZA0018',
 			'.severity',
 			'stanza_max_line_length',
 			'warning',
@@ -401,7 +401,7 @@ describe('an import that cannot be read', () => {
 
 describe('the report of an import', () => {
 	it('says what was applied, skipped and left alone', () => {
-		const result = read('[*.cs]\ndotnet_diagnostic.ZA0014.severity = warning\nstanza_wide = 1\nindent_style = tab\nroot = true\n');
+		const result = read('[*.cs]\ndotnet_diagnostic.ZA0018.severity = warning\nstanza_wide = 1\nindent_style = tab\nroot = true\n');
 
 		expect(summarize(result, '.editorconfig')).toBe(
 			"Imported 1 rule setting and 0 options from .editorconfig. 1 line skipped, listed below. 2 lines of other settings were not Stanza's and left alone.",
@@ -490,12 +490,12 @@ describe('an import of a key the tool has no default for', () => {
 describe('an import of what the page wrote', () => {
 	const configs: Config[] = [
 		emptyConfig(),
-		{ ...emptyConfig(), rules: { ZA0002: 'none', ZA0014: 'suggestion', ZA2001: 'warning' }, options: { stanza_max_line_length: '120' } },
+		{ ...emptyConfig(), rules: { ZA0002: 'none', ZA0018: 'suggestion', ZA2001: 'warning' }, options: { stanza_max_line_length: '120' } },
 
 		{
 			...emptyConfig(),
 			markupSection: false,
-			rules: { ZA0014: 'silent' },
+			rules: { ZA0018: 'silent' },
 			options: { stanza_named_argument_match: 'require', stanza_assertion_roots: 'Verify, Assert' },
 		},
 
@@ -548,13 +548,13 @@ describe('an import of what the page wrote', () => {
 
 	it('reports the sections scoped to a path', () => {
 		const back = read(
-			['[*.cs]', 'dotnet_diagnostic.ZA0014.severity = warning', '', '[tests/**/*.cs]', 'dotnet_diagnostic.ZA0014.severity = none', ''].join('\n'),
+			['[*.cs]', 'dotnet_diagnostic.ZA0018.severity = warning', '', '[tests/**/*.cs]', 'dotnet_diagnostic.ZA0018.severity = none', ''].join('\n'),
 		);
 
 		expect(back.refused).toBeNull();
 		expect(back.rules).toBe(1);
 		expect(back.skipped.some((note) => note.text === '[tests/**/*.cs]')).toBe(true);
-		expect(back.config.rules['ZA0014']).toBeDefined();
+		expect(back.config.rules['ZA0018']).toBeDefined();
 	});
 
 	it('shows the conflicts of an imported file that enables both halves of two pairs and a rule CSharpier undoes', () => {

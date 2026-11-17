@@ -1,8 +1,8 @@
 # stanza_min_lines_to_name_endif
 
-Controls how many lines a conditional block holds before [`ZA0404`](https://github.com/Nickelony/Stanza/wiki/ZA0404-Name-the-closing-conditional-directive) names its `#endif`.
+Controls how many lines a conditional block holds before [`ZA0406`](https://github.com/Nickelony/Stanza/wiki/ZA0406-Name-the-closing-conditional-directive) names its `#endif`.
 Default: `10`.
-Read by [`ZA0404`](https://github.com/Nickelony/Stanza/wiki/ZA0404-Name-the-closing-conditional-directive).
+Read by [`ZA0406`](https://github.com/Nickelony/Stanza/wiki/ZA0406-Name-the-closing-conditional-directive).
 
 | Value                                           | Effect                                                       |
 | ----------------------------------------------- | ------------------------------------------------------------ |

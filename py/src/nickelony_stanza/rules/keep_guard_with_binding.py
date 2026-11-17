@@ -12,7 +12,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
     if container.kind not in BODY_KINDS or container.gaps[index].has_comment:
         return False
 
-    # The checked stanza holds every binding an `if` or a helper guard reads; an `assert` belongs to ZA3061.
+    # The checked stanza holds every binding an `if` or a helper guard reads; an `assert` belongs to ZA3060.
     _, guarded_bindings, _ = find_checked_stanza_gaps(container, context)
 
     return index in guarded_bindings

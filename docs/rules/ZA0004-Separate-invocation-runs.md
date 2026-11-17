@@ -30,4 +30,4 @@ return options;
 - A declaration on its own, directly above a run of calls, takes its blank line from this rule,
   and stays tight against the run while this rule is [off](https://github.com/Nickelony/Stanza/wiki/Terms).
 - A gap where two runs meet goes to the rule with the lower ID, as [One run of statements, several owners](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#one-run-of-statements-several-owners) says.
-- [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) removes the blank lines inside a run of calls where it is on.
+- [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-statements-together) removes the blank lines inside a run of calls where it is on.

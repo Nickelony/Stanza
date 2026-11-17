@@ -22,7 +22,7 @@ internal static class BlankLineKeptPairs
 	/// </summary>
 	private static readonly ImmutableArray<StanzaRule> s_rules =
 	[
-		StanzaRules.KeepChainOfGuardClausesTogether,
+		StanzaRules.KeepGuardClausesTogether,
 		StanzaRules.KeepGuardWithBinding,
 		StanzaRules.KeepAccumulatorWithLoop,
 		StanzaRules.KeepJumpWithBinding,
@@ -89,7 +89,7 @@ internal static class BlankLineKeptPairs
 		if (!IsWhitespaceGap(previous, next, container.CancellationToken))
 			return false;
 
-		if (rule.Descriptor == DiagnosticDescriptors.KeepChainOfGuardClausesTogether)
+		if (rule.Descriptor == DiagnosticDescriptors.KeepGuardClausesTogether)
 			return IsKeptGuard(previous, container.Options) && IsKeptGuard(next, container.Options);
 
 		if (rule.Descriptor == DiagnosticDescriptors.KeepDependentBindingsTogether)

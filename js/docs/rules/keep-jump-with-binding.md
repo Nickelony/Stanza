@@ -51,8 +51,8 @@ function total(order) {
 
 ## C# counterpart
 
-[ZA0060 - Keep a jump with its binding](https://github.com/Nickelony/Stanza/wiki/ZA0060-Keep-a-jump-with-its-binding).
+[ZA0059 - Keep a jump with its binding](https://github.com/Nickelony/Stanza/wiki/ZA0059-Keep-a-jump-with-its-binding).
 
 ## Python counterpart
 
-[ZA3060 - keep-jump-with-binding](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3060-keep-jump-with-binding.md).
+[ZA3059 - keep-jump-with-binding](https://github.com/Nickelony/Stanza/blob/main/py/docs/rules/ZA3059-keep-jump-with-binding.md).

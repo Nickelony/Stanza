@@ -435,7 +435,7 @@ def is_stanza_anchor_stable(
     if index == 0:
         return True
 
-    if context.is_held_by("ZA3064", index - 1):
+    if context.is_held_by("ZA3061", index - 1):
         return False
 
     # A run keeper reads the borders before a displaced separation moves, so a kept candidate is no border to it.
@@ -445,7 +445,7 @@ def is_stanza_anchor_stable(
     memo = cast("dict[str, object]", context.memo.setdefault(memo_key, {}))
 
     return not (
-        "ZA3054" in context.enabled_codes
+        "ZA3055" in context.enabled_codes
         and claim_kept_run(STATEMENT_KINDS)(
             container, index - 1, replace(context, memo=memo, is_claimed_by_others=is_run_border)
         )

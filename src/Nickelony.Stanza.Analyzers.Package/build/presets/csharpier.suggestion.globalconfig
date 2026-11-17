@@ -5,7 +5,7 @@
 is_global = true
 global_level = -99
 
-dotnet_diagnostic.ZA0012.severity = none
+dotnet_diagnostic.ZA0016.severity = none
 dotnet_diagnostic.ZA0141.severity = none
 dotnet_diagnostic.ZA0142.severity = suggestion
 dotnet_diagnostic.ZA0151.severity = none

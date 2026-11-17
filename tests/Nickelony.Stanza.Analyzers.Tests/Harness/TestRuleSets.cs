@@ -49,7 +49,7 @@ internal static class TestRuleSets
 	// A first half whose partner ships on or is left off too, and two rules that read an off rule.
 	private static readonly DiagnosticDescriptor[] s_optionalRulesOutsidePairs =
 	[
-		DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt,
+		DiagnosticDescriptors.SeparateClauseKeywords,
 		DiagnosticDescriptors.KeepArrowOnSignatureLine,
 		DiagnosticDescriptors.KeepSingleLineMarkupElementsTogether,
 		DiagnosticDescriptors.LayOutItemsOfDocumentationList,
@@ -59,7 +59,7 @@ internal static class TestRuleSets
 	private static readonly DiagnosticDescriptor[] s_rewritingRulesOutsideRegistry =
 	[
 		DiagnosticDescriptors.UseBracesConsistently,
-		DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt,
+		DiagnosticDescriptors.SeparateClauseKeywords,
 		DiagnosticDescriptors.CollapseEmptyBlocks,
 	];
 
@@ -217,7 +217,7 @@ internal static class TestRuleSets
 		Only([
 			.. s_secondHalves.Where(rule => !IsMarkupFix(rule.Fix)).Select(rule => rule.Descriptor),
 			.. SiblingRuleSets.All.Select(siblings => siblings.KeepSingleLine),
-			DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt,
+			DiagnosticDescriptors.SeparateClauseKeywords,
 			DiagnosticDescriptors.LayOutItemsOfDocumentationList,
 		]);
 
@@ -230,7 +230,7 @@ internal static class TestRuleSets
 	internal static IReadOnlyDictionary<string, ReportDiagnostic> ClauseRulesEnabled { get; } =
 		Only(
 			DiagnosticDescriptors.KeepClauseKeywordsAdjacent,
-			DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt
+			DiagnosticDescriptors.SeparateClauseKeywords
 		);
 
 	internal static IReadOnlyDictionary<string, ReportDiagnostic> TagRulesEnabled { get; } =

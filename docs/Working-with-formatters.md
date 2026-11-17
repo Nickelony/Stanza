@@ -50,7 +50,7 @@ A rule that disagrees with CSharpier falls into one of two groups:
   so a [separating rule](https://github.com/Nickelony/Stanza/wiki/Terms) for a list disagrees with it.
 - **The accessor [gap](https://github.com/Nickelony/Stanza/wiki/Terms)**: CSharpier drops the blank line between accessors whatever their shape,
   so the separating accessor rule disagrees with it.
-- **A commented sibling in a list** ([`ZA0012`](https://github.com/Nickelony/Stanza/wiki/ZA0012-Separate-a-commented-sibling)):
+- **A commented sibling in a list** ([`ZA0016`](https://github.com/Nickelony/Stanza/wiki/ZA0016-Separate-a-commented-sibling)):
   CSharpier drops the blank line the rule writes above a comment in an argument, parameter, tuple, declarator, array initializer or accessor list.
   It keeps the line among statements, members, enum members, object initializers, switch arms and switch sections.
 - **The blank line inside a padded conditional block** ([`stanza_conditional_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_conditional_block_padding)):
@@ -96,17 +96,17 @@ var handlers = new IHandler[]
 - **Switch sections, switch expression arms, object initializer members, region markers, conditional blocks, suppression blocks and jump statements**:
   CSharpier keeps the blank lines the separating rules write.
 - **Brace padding and empty blocks**: CSharpier already writes what these rules ask for.
-- **Directive block padding** ([`ZA0407`](https://github.com/Nickelony/Stanza/wiki/ZA0407-Remove-directive-block-padding)):
+- **Directive block padding** ([`ZA0404`](https://github.com/Nickelony/Stanza/wiki/ZA0404-Remove-directive-block-padding)):
   CSharpier writes no blank line inside a region marker, a conditional block or a suppression block,
   and it keeps those it finds, except above an `#elif`, an `#else` or an `#endif` that a member follows.
   The removal stays.
-- **Switch label padding** ([`ZA0207`](https://github.com/Nickelony/Stanza/wiki/ZA0207-Remove-switch-label-padding)): CSharpier keeps a blank line below a label as written, so it leaves the removal in place.
+- **Switch label padding** ([`ZA0204`](https://github.com/Nickelony/Stanza/wiki/ZA0204-Remove-switch-label-padding)): CSharpier keeps a blank line below a label as written, so it leaves the removal in place.
 - **The trailing comma** ([`ZA0198`](https://github.com/Nickelony/Stanza/wiki/ZA0198-Add-a-trailing-comma)):
   CSharpier writes the comma after the last element of every list it breaks across lines, apart from a property pattern, which it keeps as written,
   and drops it from a list it joins on one line.
-- **The closing conditional directive** ([`ZA0404`](https://github.com/Nickelony/Stanza/wiki/ZA0404-Name-the-closing-conditional-directive)):
+- **The closing conditional directive** ([`ZA0406`](https://github.com/Nickelony/Stanza/wiki/ZA0406-Name-the-closing-conditional-directive)):
   CSharpier leaves the comment after an `#endif` as written.
-- **Extra blank lines** ([`ZA0056`](https://github.com/Nickelony/Stanza/wiki/ZA0056-Collapse-extra-blank-lines)):
+- **Extra blank lines** ([`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Collapse-extra-blank-lines)):
   CSharpier cuts each run to one blank line, so the rule agrees with it at the default cap and disagrees at a cap above `1`.
 - **Documentation comments**: CSharpier leaves them as written.
 - **Markup element padding and the spaced slash** ([`ZA2005`](https://github.com/Nickelony/Stanza/wiki/ZA2005-Remove-markup-element-padding), [`ZA2008`](https://github.com/Nickelony/Stanza/wiki/ZA2008-Separate-the-slash-of-a-self-closing-markup-element)):
@@ -141,10 +141,10 @@ The built-in IDE style rules write code too:
 
 - `csharp_style_expression_bodied_*` set to `true` prefers expression bodies,
   the opposite of ZA0301 and ZA0303 for a multi-line member.
-- `csharp_prefer_braces = true` makes ZA0206 report nothing,
-  and `csharp_prefer_braces = false` makes ZA0205 report nothing.
-- `csharp_prefer_braces = when_multiline`, or no value, leaves both ZA0205 and ZA0206 reporting.
-- `csharp_preserve_single_line_blocks = false` makes ZA0204 report nothing.
+- `csharp_prefer_braces = true` makes ZA0207 report nothing,
+  and `csharp_prefer_braces = false` makes ZA0206 report nothing.
+- `csharp_prefer_braces = when_multiline`, or no value, leaves both ZA0206 and ZA0207 reporting.
+- `csharp_preserve_single_line_blocks = false` makes ZA0205 report nothing.
 - `csharp_style_allow_embedded_statements_on_same_line_experimental = false` makes `IDE2001` move an empty block body below its header,
   but CSharpier writes it on the header's line, as in `for (...) { }`.
   Under CSharpier, write the body as `;` on its own line or as a block that holds a comment, which both keep.

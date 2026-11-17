@@ -1,4 +1,4 @@
-"""ZA3018: separates a guard chain and the bindings it checks from neighboring statements."""
+"""ZA3012: separates a guard chain and the bindings it checks from neighboring statements."""
 
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
         is_claimed_by_others=lambda gap_index: (gap_index in borders) or context.is_claimed_by_others(gap_index),
     )
 
-    return not ("ZA3009" in context.enabled_codes and claim_jump_gap(container, index, jump_context))
+    return not ("ZA3013" in context.enabled_codes and claim_jump_gap(container, index, jump_context))
 
 
 RULE = Rule(
-    code="ZA3018",
+    code="ZA3012",
     name="separate-checked-stanzas",
     level="opt-in",
     message="Add a blank line beside this checked stanza.",

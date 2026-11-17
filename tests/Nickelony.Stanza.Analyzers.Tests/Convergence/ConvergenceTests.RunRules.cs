@@ -474,7 +474,7 @@ public sealed partial class ConvergenceTests
 		],
 
 		[
-			"a commented field assignment is set apart by ZA0012 and the property run by the split",
+			"a commented field assignment is set apart by ZA0016 and the property run by the split",
 
 			new[]
 			{
@@ -522,7 +522,7 @@ public sealed partial class ConvergenceTests
 		],
 
 		[
-			"a run of subscriptions between split runs is ZA0007's at both ends",
+			"a run of subscriptions between split runs is ZA0008's at both ends",
 
 			new[]
 			{

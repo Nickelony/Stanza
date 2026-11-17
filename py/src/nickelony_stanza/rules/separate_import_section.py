@@ -1,4 +1,4 @@
-"""ZA3015: separates a run of imports from the first statement below it."""
+"""ZA3019: separates a run of imports from the first statement below it."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def _claim(container: Container, index: int, context: ClaimContext) -> bool:
 
 
 RULE = Rule(
-    code="ZA3015",
+    code="ZA3019",
     name="separate-import-section",
     level="minimal",
     message="Add a blank line below the imports.",

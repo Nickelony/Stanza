@@ -45,31 +45,31 @@ A rule writes a blank line or removes one, and the role decides what it owns and
 | --- | --- | --- | --- |
 | `separate` | The rules that add a blank line. | A gap with no blank line. | Reports the gap in the owner order. |
 | `keep` | The rules that keep a pair or a group tight. | A gap that holds only blank lines. | Wins, so no `separate` rule sees the gap as asked for. |
-| `keep-run` | The rules that keep a run, `ZA3054` and `ZA3055`. | A gap that holds only blank lines. | Yields every gap a `separate` rule asks for, and holds its gap against a moved separation. |
+| `keep-run` | The rules that keep a run, `ZA3055` and `ZA3056`. | A gap that holds only blank lines. | Yields every gap a `separate` rule asks for, and holds its gap against a moved separation. |
 | `gather` | The rules that gather a loose run, `ZA3052` and `ZA3053`. | A gap that holds only blank lines. | Yields every gap a `separate` rule asks for, a moved separation included. |
 
 - `ZA3202` and `ZA3112` are the tight halves of the [pairs](Rule-map.md#pairs-and-their-default-halves), and `ZA3113` and `ZA3203` are in no pair.
 - Naming one half of a pair in `enable` replaces the other half at a level where `Rule.opposite` links them.
 - `_read_claims` asks the roles in phases, each reading the claims before it: the keepers that read no rule,
   the separating rules, the keepers that read them, the `keep-run` rules, the displaced separations, then `gather`.
-- `ZA3009` reads through the joins the keepers make in the same fix. While `ZA3009` or `ZA3018` is enabled,
-  `ZA3060` and `ZA3062` are asked once early, with a memo of their own, so that early answer leaves their final one alone.
-- `ZA3018` and `ZA3009` read the separating rules, so they are asked after the others, in owner order:
-  `ZA3018` yields the gap above a jump only where `ZA3009` asks for it once every other separator has asked.
-- `ZA3060` and `ZA3062` keep a binding only while the blank line above it stays.
-  They preview `ZA3054` without the separation a kept binding displaces.
+- `ZA3013` reads through the joins the keepers make in the same fix. While `ZA3012` or `ZA3013` is enabled,
+  `ZA3059` and `ZA3062` are asked once early, with a memo of their own, so that early answer leaves their final one alone.
+- `ZA3012` and `ZA3013` read the separating rules, so they are asked after the others, in owner order:
+  `ZA3012` yields the gap above a jump only where `ZA3013` asks for it once every other separator has asked.
+- `ZA3059` and `ZA3062` keep a binding only while the blank line above it stays.
+  They preview `ZA3055` without the separation a kept binding displaces.
 - `ZA3052` and `ZA3053` read a gap any keeper joins as tight, so a unit beside it is no loose unit.
 - A separation a keeper displaces moves as [the rule map](Rule-map.md#separation-a-keeper-displaces) says.
   The session finds the upper gap of each kept group once, so a long chain stays linear.
 - A `# noqa` that silences a relationship keeper drops its claim before any separation moves,
   so the gap is judged as if the keeper were off there and the next rule may own it.
 - The engine reads that `# noqa` from `Noqa`, and turns off before analysis a relationship keeper a file-wide comment silences.
-- `ZA3018`, `ZA3058` and `ZA3061` share one reading of the checked stanzas of a container.
+- `ZA3012`, `ZA3058` and `ZA3060` share one reading of the checked stanzas of a container.
 - The guard and jump rules read the values of an expression through `read_value_names`:
   a lambda or comprehension local reads nothing outside, while a free capture, a default or the first iterable does.
 - The session reads the receiver groups and the dependent-binding chains of a container once.
-  While `ZA3063` or `ZA3064` is enabled, the sections of its groups end the runs the grouping rules read.
-- `ZA3051` is a `keep` rule that the session handles on its own, because it judges a whole container.
+  While `ZA3061` or `ZA3064` is enabled, the sections of its groups end the runs the grouping rules read.
+- `ZA3054` is a `keep` rule that the session handles on its own, because it judges a whole container.
   While it is off, only the relationship keepers judge such a container.
 
 ## Restricted gaps
@@ -79,19 +79,19 @@ A gap is restricted when a formatter or a convention owns it, and only the rule 
 | Restriction | Gap | May ask |
 | --- | --- | --- |
 | `definition` | Beside a function or class, below a block that ends in one, or below the header of a block that is no function or class and opens with one. | No rule. |
-| `module-header` | Below the shebang, the encoding line or the module docstring. | `ZA3017` |
-| `class-docstring` | Below a class docstring. | `ZA3013` |
+| `module-header` | Below the shebang, the encoding line or the module docstring. | `ZA3021` |
+| `class-docstring` | Below a class docstring. | `ZA3017` |
 | `function-docstring` | Below a function docstring. | No rule. |
 
 The gap before a clause keyword is `definition` when the block above ends in a function or class, because the formatters write a blank line there.
 
 A function docstring above exactly two statements does not count as a unit,
-so `ZA3051` judges the two statements as a pair and the other rules ask for nothing in that container.
+so `ZA3054` judges the two statements as a pair and the other rules ask for nothing in that container.
 
 ## Fixes
 
 - A gap finding inserts a line ending above the next unit's leading comments or deletes blank lines.
-- A finding of `ZA3063` or `ZA3064` deletes the blank lines of every gap of its group,
+- A finding of `ZA3061` or `ZA3064` deletes the blank lines of every gap of its group,
   so fixing one finding cannot leave a section that changes the others; a gap a `# noqa` silences is no part of the group.
 - A call finding carries one insertion for each argument it names, and an insertion writes `name=` at a column of a line.
 - The edits of one pass never overlap, because each gap and each call has one owner, so the engine applies them together,

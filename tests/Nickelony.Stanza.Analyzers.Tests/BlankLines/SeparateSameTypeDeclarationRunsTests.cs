@@ -596,7 +596,7 @@ public sealed class SeparateSameTypeDeclarationRunsTests
 			""";
 
 		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.Only(
-			DiagnosticDescriptors.SeparateConditionalBlockFromNeighbors,
+			DiagnosticDescriptors.SeparateConditionalBlock,
 			DiagnosticDescriptors.SeparateSameTypeDeclarationRuns
 		);
 

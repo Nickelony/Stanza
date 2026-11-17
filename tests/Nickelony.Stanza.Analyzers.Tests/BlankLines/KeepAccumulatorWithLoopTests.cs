@@ -808,14 +808,14 @@ public sealed class KeepAccumulatorWithLoopTests
 			{
 				void M(int[] xs)
 				{
-			#pragma warning disable ZA0059
+			#pragma warning disable ZA0063
 					System.GC.KeepAlive(xs);
 					var sum = 0;
 					foreach (var x in xs)
 					{
 						sum += x;
 					}
-			#pragma warning restore ZA0059
+			#pragma warning restore ZA0063
 				}
 			}
 			""";
@@ -825,7 +825,7 @@ public sealed class KeepAccumulatorWithLoopTests
 			{
 				void M(int[] xs)
 				{
-			#pragma warning disable ZA0059
+			#pragma warning disable ZA0063
 					System.GC.KeepAlive(xs);
 					var sum = 0;
 
@@ -833,7 +833,7 @@ public sealed class KeepAccumulatorWithLoopTests
 					{
 						sum += x;
 					}
-			#pragma warning restore ZA0059
+			#pragma warning restore ZA0063
 				}
 			}
 			""";

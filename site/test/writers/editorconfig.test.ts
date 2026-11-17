@@ -12,7 +12,7 @@ import { catalog, config, markupConfig, option, realCatalog, realMarkup, rule } 
 const small = catalog(
 	[
 		rule('ZA0002'),
-		rule('ZA0014', { tier: 'suggestion', onByDefault: false, group: 'Group B', tierText: 'Suggestion, off by default' }),
+		rule('ZA0018', { tier: 'suggestion', onByDefault: false, group: 'Group B', tierText: 'Suggestion, off by default' }),
 		rule('ZA0202', { tier: 'suggestion', onByDefault: true, group: 'Group B' }),
 		rule('ZA2001', { onByDefault: false, markupOnByDefault: true, readByMarkup: true, group: 'Group B' }),
 		rule('ZA2002', { onByDefault: false, readByMarkup: true, group: 'Group B' }),
@@ -43,9 +43,9 @@ describe('the lines a preview shows', () => {
 	});
 
 	it('are the line the generator writes for a chosen rule or option', () => {
-		const chosen = config({ rules: { ZA0014: 'warning' }, options: { stanza_max_line_length: '120' } });
+		const chosen = config({ rules: { ZA0018: 'warning' }, options: { stanza_max_line_length: '120' } });
 
-		expect(writtenRuleLines(three!, chosen)).toEqual(['dotnet_diagnostic.ZA0014.severity = warning']);
+		expect(writtenRuleLines(three!, chosen)).toEqual(['dotnet_diagnostic.ZA0018.severity = warning']);
 		expect(writtenOptionLines(lineLength!, chosen)).toEqual(['stanza_max_line_length = 120']);
 	});
 
@@ -53,7 +53,7 @@ describe('the lines a preview shows', () => {
 		const every = config({ everySetting: true, markupSection: false });
 
 		expect(writtenRuleLines(zero!, every)).toEqual(['dotnet_diagnostic.ZA0002.severity = suggestion']);
-		expect(writtenRuleLines(three!, every)).toEqual(['# dotnet_diagnostic.ZA0014.severity = suggestion']);
+		expect(writtenRuleLines(three!, every)).toEqual(['# dotnet_diagnostic.ZA0018.severity = suggestion']);
 		expect(writtenOptionLines(lineLength!, every)).toEqual(['stanza_max_line_length = 100']);
 		expect(writtenOptionLines(docLineLength!, every)).toEqual([]);
 	});
@@ -87,17 +87,17 @@ describe('the generated .editorconfig', () => {
 			'[*.cs]\ndotnet_diagnostic.ZA0002.severity = warning\n',
 		);
 
-		expect(generateEditorConfig(small, config({ rules: { ZA0002: 'suggestion', ZA0014: 'none' }, markupSection: false }))).toBe(nothing);
+		expect(generateEditorConfig(small, config({ rules: { ZA0002: 'suggestion', ZA0018: 'none' }, markupSection: false }))).toBe(nothing);
 	});
 
 	it('writes a rule that differs, and the line that enables an off-by-default rule', () => {
-		const text = generateEditorConfig(small, config({ rules: { ZA0002: 'none', ZA0014: 'warning', ZA0202: 'warning' }, markupSection: false }));
+		const text = generateEditorConfig(small, config({ rules: { ZA0002: 'none', ZA0018: 'warning', ZA0202: 'warning' }, markupSection: false }));
 
 		expect(text).toBe(
 			[
 				'[*.cs]',
 				'dotnet_diagnostic.ZA0002.severity = none',
-				'dotnet_diagnostic.ZA0014.severity = warning',
+				'dotnet_diagnostic.ZA0018.severity = warning',
 				'dotnet_diagnostic.ZA0202.severity = warning',
 				'',
 			].join('\n'),
@@ -105,13 +105,13 @@ describe('the generated .editorconfig', () => {
 	});
 
 	it('writes the severity an off-by-default rule ships at, because that line enables it', () => {
-		expect(generateEditorConfig(small, config({ rules: { ZA0014: 'suggestion' }, markupSection: false }))).toContain(
-			'dotnet_diagnostic.ZA0014.severity = suggestion',
+		expect(generateEditorConfig(small, config({ rules: { ZA0018: 'suggestion' }, markupSection: false }))).toContain(
+			'dotnet_diagnostic.ZA0018.severity = suggestion',
 		);
 	});
 
 	it('writes silent, which enables a rule without reporting it', () => {
-		expect(generateEditorConfig(small, config({ rules: { ZA0014: 'silent' }, markupSection: false }))).toContain('ZA0014.severity = silent');
+		expect(generateEditorConfig(small, config({ rules: { ZA0018: 'silent' }, markupSection: false }))).toContain('ZA0018.severity = silent');
 	});
 
 	it('writes an option only when its value differs from the default', () => {
@@ -178,7 +178,7 @@ describe('the generated .editorconfig', () => {
 	});
 
 	describe('with every setting', () => {
-		const text = generateEditorConfig(small, config({ everySetting: true, rules: { ZA0014: 'warning' } }));
+		const text = generateEditorConfig(small, config({ everySetting: true, rules: { ZA0018: 'warning' } }));
 		const lines = text.split('\n');
 
 		it('writes a rule of the level at the severity of the level', () => {
@@ -192,7 +192,7 @@ describe('the generated .editorconfig', () => {
 		});
 
 		it('writes a chosen rule as an active line', () => {
-			expect(lines).toContain('dotnet_diagnostic.ZA0014.severity = warning');
+			expect(lines).toContain('dotnet_diagnostic.ZA0018.severity = warning');
 		});
 
 		it('writes the default of an option that has a literal one, and skips one that does not', () => {
@@ -223,14 +223,14 @@ describe('the generated .editorconfig for the real rules', () => {
 	it('writes a changed rule and a changed key to the C# section and the section of the markup files', () => {
 		const text = generateEditorConfig(
 			realCatalog,
-			config({ rules: { ZA0014: 'warning', ZA0002: 'none' }, options: { stanza_max_line_length: '120' } }),
+			config({ rules: { ZA0018: 'warning', ZA0002: 'none' }, options: { stanza_max_line_length: '120' } }),
 		);
 
 		expect(text).toBe(
 			[
 				'[*.cs]',
 				'dotnet_diagnostic.ZA0002.severity = none',
-				'dotnet_diagnostic.ZA0014.severity = warning',
+				'dotnet_diagnostic.ZA0018.severity = warning',
 				'',
 				'stanza_max_line_length = 120',
 				'',
@@ -303,10 +303,10 @@ describe('the .editorconfig of a level', () => {
 	it('writes the changes against the level in the section of the analyzer', () => {
 		const text = generateEditorConfig(
 			realCatalog,
-			config({ level: 'strong', rules: { ZA0003: 'none', ZA0054: 'warning', ZA0001: 'suggestion' }, markupSection: false }),
+			config({ level: 'strong', rules: { ZA0003: 'none', ZA0055: 'warning', ZA0001: 'suggestion' }, markupSection: false }),
 		);
 
-		expect(text).toBe(['[*.cs]', 'dotnet_diagnostic.ZA0003.severity = none', 'dotnet_diagnostic.ZA0054.severity = warning', ''].join('\n'));
+		expect(text).toBe(['[*.cs]', 'dotnet_diagnostic.ZA0003.severity = none', 'dotnet_diagnostic.ZA0055.severity = warning', ''].join('\n'));
 	});
 
 	it('keeps the rules that stanza-markup applies by default, since no level turns them off', () => {
@@ -331,7 +331,7 @@ describe('the .editorconfig of a level', () => {
 
 		expect(ruleIds(text).sort()).toEqual(on.sort());
 		expect(text).toContain('dotnet_diagnostic.ZA0001.severity = error');
-		expect(text).toContain('# dotnet_diagnostic.ZA0054.severity = error');
+		expect(text).toContain('# dotnet_diagnostic.ZA0055.severity = error');
 		expect(text).not.toContain('severity = none');
 	});
 
@@ -354,17 +354,17 @@ describe('the .editorconfig of a level', () => {
 	it('writes a setting of the visitor as none even where the rule is off, so it wins over a package level', () => {
 		const text = generateEditorConfig(
 			realCatalog,
-			config({ level: 'strong', everySetting: true, markupSection: false, rules: { ZA0054: 'none', ZA0003: 'none' } }),
+			config({ level: 'strong', everySetting: true, markupSection: false, rules: { ZA0055: 'none', ZA0003: 'none' } }),
 		);
 
-		expect(text).toContain('dotnet_diagnostic.ZA0054.severity = none');
+		expect(text).toContain('dotnet_diagnostic.ZA0055.severity = none');
 		expect(text).toContain('dotnet_diagnostic.ZA0003.severity = none');
 	});
 
 	it('writes the csharpier formatter as the overlay does at the strong level', () => {
 		const text = generateEditorConfig(realCatalog, config({ level: 'strong', formatter: 'csharpier', everySetting: true, markupSection: false }));
 
-		expect(text).toContain('# dotnet_diagnostic.ZA0012.severity = suggestion');
+		expect(text).toContain('# dotnet_diagnostic.ZA0016.severity = suggestion');
 		expect(text).toContain('dotnet_diagnostic.ZA0142.severity = suggestion');
 		expect(text).toContain('# dotnet_diagnostic.ZA0141.severity = suggestion');
 		expect(text).not.toContain('\ndotnet_diagnostic.ZA0141.severity');
@@ -403,7 +403,7 @@ describe('the .editorconfig of a level', () => {
 	it('gives the same delta back from the file it writes', () => {
 		const picks = config({
 			level: 'strong',
-			rules: { ZA0003: 'none', ZA0054: 'warning', ZA0909: 'none', ZA0903: 'error' },
+			rules: { ZA0003: 'none', ZA0055: 'warning', ZA0909: 'none', ZA0903: 'error' },
 			options: { stanza_max_line_length: '120' },
 		});
 

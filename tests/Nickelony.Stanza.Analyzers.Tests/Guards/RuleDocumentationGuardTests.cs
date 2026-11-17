@@ -26,7 +26,7 @@ public sealed partial class RuleDocumentationGuardTests
 			["Delimited lists"] = ("ZA0101", "ZA0199"),
 			["Clauses and braces"] = ("ZA0201", "ZA0299"),
 			["Member bodies"] = ("ZA0301", "ZA0399"),
-			["Regions and conditional blocks"] = ("ZA0401", "ZA0499"),
+			["Directives"] = ("ZA0401", "ZA0499"),
 			["Argument names"] = ("ZA0501", "ZA0599"),
 			["Statement simplification"] = ("ZA0601", "ZA0650"),
 			["Expression style"] = ("ZA0651", "ZA0699"),

@@ -31,7 +31,7 @@ else:
 
 ## C# counterpart
 
-[ZA0201 - Separate a clause keyword from the brace before it](https://github.com/Nickelony/Stanza/wiki/ZA0201-Separate-a-clause-keyword-from-the-brace-before-it).
+[ZA0201 - Separate clause keywords](https://github.com/Nickelony/Stanza/wiki/ZA0201-Separate-clause-keywords).
 
 ## JS counterpart
 

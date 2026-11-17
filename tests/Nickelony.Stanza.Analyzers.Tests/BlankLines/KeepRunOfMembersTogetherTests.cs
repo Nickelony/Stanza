@@ -761,11 +761,11 @@ public sealed class KeepRunOfMembersTogetherTests
 		const string source = """
 			class C
 			{
-			#pragma warning disable ZA0055
+			#pragma warning disable ZA0056
 				int first;
 
 				int second;
-			#pragma warning restore ZA0055
+			#pragma warning restore ZA0056
 			}
 			""";
 

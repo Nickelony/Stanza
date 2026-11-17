@@ -641,7 +641,7 @@ public sealed class KeepGuardWithBindingTests
 
 	[TestMethod]
 	[CrossCutting]
-	[DataRow(true, "ZA0051")]
+	[DataRow(true, "ZA0054")]
 	[DataRow(false, "ZA0058")]
 	public async Task ATwoStatementBlockIsTheTwoUnitRulesOnlyWhileItIsOn(bool twoUnits, string owner)
 	{

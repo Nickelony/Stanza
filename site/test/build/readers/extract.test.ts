@@ -75,7 +75,7 @@ describe('the real pages', () => {
 
 	it('read the tier and the markup default of a rule from its page', () => {
 		expect(ruleOf('ZA0002')).toMatchObject({ tier: 'suggestion', onByDefault: true, csharp: { markupOnByDefault: false } });
-		expect(ruleOf('ZA0014')).toMatchObject({ tier: 'suggestion', onByDefault: false });
+		expect(ruleOf('ZA0018')).toMatchObject({ tier: 'suggestion', onByDefault: false });
 		expect(ruleOf('ZA0202')).toMatchObject({ tier: 'suggestion', onByDefault: true });
 		expect(ruleOf('ZA2001')).toMatchObject({ tier: 'suggestion', onByDefault: false, csharp: { markupOnByDefault: true } });
 		expect(ruleOf('ZA2002')).toMatchObject({ onByDefault: false, csharp: { markupOnByDefault: false } });
@@ -95,7 +95,7 @@ describe('the real pages', () => {
 			'with ZA0307 enabled, the arrow opens its own line',
 		]);
 
-		expect(ruleOf('ZA0013').examples).toHaveLength(2);
+		expect(ruleOf('ZA0017').examples).toHaveLength(2);
 		expect(ruleOf('ZA0903').examples).toHaveLength(2);
 	});
 
@@ -236,7 +236,7 @@ describe('the real pages', () => {
 		expect(optionOf('stanza_assertion_roots').rules).toContain('ZA0005');
 		expect(optionOf('stanza_guard_roots').rules).toContain('ZA0011');
 		expect(optionOf('stanza_named_argument_literals').rules).toContain('ZA0502');
-		expect(optionOf('stanza_assignment_targets').rules).toContain('ZA0008');
+		expect(optionOf('stanza_assignment_targets').rules).toContain('ZA0009');
 		expect(optionOf('stanza_max_line_length').rules).toContain('ZA0305');
 	});
 });
@@ -361,7 +361,7 @@ describe('a page that does not parse', () => {
 	const readmePath = 'src/Nickelony.Stanza.Analyzers/README.md';
 
 	it('fails the build when the heading names another rule', () => {
-		failsOn(rulePath, (text) => text.replace('# ZA0002 - ', '# ZA0013 - '), /heading names ZA0013/);
+		failsOn(rulePath, (text) => text.replace('# ZA0002 - ', '# ZA0017 - '), /heading names ZA0017/);
 	});
 
 	it('fails the build when the tier line is missing', () => {
@@ -373,7 +373,7 @@ describe('a page that does not parse', () => {
 	});
 
 	it('fails the build when the level table has no row for a rule of the readme', () => {
-		failsOn(levelsPath, (text) => text.replace(/^ZA0013 .*\n/m, ''), /ZA0013 has a row in the rule table of the readme but none in the level table/);
+		failsOn(levelsPath, (text) => text.replace(/^ZA0017 .*\n/m, ''), /ZA0017 has a row in the rule table of the readme but none in the level table/);
 	});
 
 	it('fails the build when the level table has a row for a rule with no page', () => {
@@ -383,27 +383,27 @@ describe('a page that does not parse', () => {
 	it('fails the build when the Level column of the readme disagrees with the level table', () => {
 		failsOn(
 			readmePath,
-			(text) => text.replace(/^(\| `ZA0013` .*\| )Moderate( \|)$/m, '$1Strong$2'),
-			/the Level column gives ZA0013 strong, but the level table gives it moderate/,
+			(text) => text.replace(/^(\| `ZA0017` .*\| )Moderate( \|)$/m, '$1Strong$2'),
+			/the Level column gives ZA0017 strong, but the level table gives it moderate/,
 		);
 	});
 
 	it('fails the build when the readme row has no Level column', () => {
-		failsOn(readmePath, (text) => text.replace(/^(\| `ZA0013` .*) \| Moderate \|$/m, '$1 |'), /another number of cells/);
+		failsOn(readmePath, (text) => text.replace(/^(\| `ZA0017` .*) \| Moderate \|$/m, '$1 |'), /another number of cells/);
 	});
 
 	it('fails the build when the Level cell of a readme row is empty', () => {
-		failsOn(readmePath, (text) => text.replace(/^(\| `ZA0013` .*\| )Moderate( \|)$/m, '$1 $2'), /the level "" of ZA0013/);
+		failsOn(readmePath, (text) => text.replace(/^(\| `ZA0017` .*\| )Moderate( \|)$/m, '$1 $2'), /the level "" of ZA0017/);
 	});
 
 	it('fails the build when a rule ships on by its tier but its level does not', () => {
 		const sources = withText(
-			withText(realSources(), levelsPath, (text) => text.replace(/^ZA0013 moderate$/m, 'ZA0013 strong')),
+			withText(realSources(), levelsPath, (text) => text.replace(/^ZA0017 moderate$/m, 'ZA0017 strong')),
 			readmePath,
-			(text) => text.replace(/^(\| `ZA0013` .*\| )Moderate( \|)$/m, '$1Strong$2'),
+			(text) => text.replace(/^(\| `ZA0017` .*\| )Moderate( \|)$/m, '$1Strong$2'),
 		);
 
-		expect(() => extractFromSources(sources)).toThrowError(/levels\.txt: ZA0013 is strong there, so it ships off, but its readme row says on/);
+		expect(() => extractFromSources(sources)).toThrowError(/levels\.txt: ZA0017 is strong there, so it ships off, but its readme row says on/);
 	});
 
 	it('reads No level in the Level column of a markup rule, which has no row in the level table', () => {
@@ -437,8 +437,8 @@ describe('a page that does not parse', () => {
 	it('fails the build when a rule that is no markup rule says No level', () => {
 		failsOn(
 			readmePath,
-			(text) => text.replace(/^(\| `ZA0013` .*\| )Moderate( \|)$/m, '$1No level$2'),
-			/the Level column gives ZA0013 No level, which only a markup rule \(ZA2001 to ZA2010\) has/,
+			(text) => text.replace(/^(\| `ZA0017` .*\| )Moderate( \|)$/m, '$1No level$2'),
+			/the Level column gives ZA0017 No level, which only a markup rule \(ZA2001 to ZA2010\) has/,
 		);
 	});
 
@@ -499,7 +499,7 @@ describe('a page that does not parse', () => {
 	});
 
 	it('fails the build when the readme has no row for the page', () => {
-		failsOn(readmePath, (text) => text.replace(/^\| `ZA0013` .*\n/m, ''), /ZA0013 has no row/, 'docs/rules/ZA0013-Separate-member-groups.md');
+		failsOn(readmePath, (text) => text.replace(/^\| `ZA0017` .*\n/m, ''), /ZA0017 has no row/, 'docs/rules/ZA0017-Separate-member-groups.md');
 	});
 
 	it('fails the build when the readme lists a rule with no page', () => {
@@ -508,7 +508,7 @@ describe('a page that does not parse', () => {
 
 			(text) =>
 				text.replace(
-					/^(\| `ZA0013` .*\n)/m,
+					/^(\| `ZA0017` .*\n)/m,
 					'$1| `ZA0999` | [Adds a blank line](https://github.com/Nickelony/Stanza/wiki/ZA0999-Nothing) | Suggestion | Moderate |\n',
 				),
 

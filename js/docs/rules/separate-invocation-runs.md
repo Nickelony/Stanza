@@ -64,5 +64,5 @@ export default [{ settings: { stanza: { receiverRoots: [], receiverComparison: '
 ## C# counterpart
 
 [ZA0004 - Separate invocation runs](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-invocation-runs)
-and [ZA0007 - Separate event subscription runs](https://github.com/Nickelony/Stanza/wiki/ZA0007-Separate-event-subscription-runs),
+and [ZA0008 - Separate event subscription runs](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-event-subscription-runs),
 because `emitter.on(...)` calls are calls of one helper.

@@ -49,4 +49,4 @@ switch (state) {
 
 ## C# counterpart
 
-[ZA0207 - Remove switch label padding](https://github.com/Nickelony/Stanza/wiki/ZA0207-Remove-switch-label-padding).
+[ZA0204 - Remove switch label padding](https://github.com/Nickelony/Stanza/wiki/ZA0204-Remove-switch-label-padding).

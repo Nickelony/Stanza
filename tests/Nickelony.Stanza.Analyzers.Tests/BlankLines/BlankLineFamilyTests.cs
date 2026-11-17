@@ -332,9 +332,9 @@ public sealed class BlankLineFamilyTests
 		Assert.AreSequenceEqual(
 			[
 				DiagnosticDescriptors.SeparateInvocationRuns.Id,
-				DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors.Id,
-				DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors.Id,
-				DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors.Id,
+				DiagnosticDescriptors.SeparateRegionMarker.Id,
+				DiagnosticDescriptors.SeparateRegionMarker.Id,
+				DiagnosticDescriptors.SeparateRegionMarker.Id,
 			],
 
 			[.. result.Diagnostics.Select(diagnostic => diagnostic.Id).OrderBy(id => id)]
@@ -344,8 +344,8 @@ public sealed class BlankLineFamilyTests
 	}
 
 	[TestMethod]
-	[DataRow("ZA0015", 0, 1)]
-	[DataRow("za0015", 1, 0)]
+	[DataRow("ZA0019", 0, 1)]
+	[DataRow("za0019", 1, 0)]
 	public async Task OnlyAPragmaThatSpellsTheIdExactlyHandsTheImportBoundaryToTheNeighbor(
 		string id,
 		int ownerReports,
@@ -505,7 +505,7 @@ public sealed class BlankLineFamilyTests
 				""",
 
 			null,
-			DiagnosticDescriptors.SeparateFileScopedNamespaceDeclarationFromFirstMember.Id,
+			DiagnosticDescriptors.SeparateFileScopedNamespace.Id,
 		],
 
 		[
@@ -521,7 +521,7 @@ public sealed class BlankLineFamilyTests
 				""",
 
 			TestRuleSets.StandaloneRulesEnabled,
-			DiagnosticDescriptors.SeparateImportDirectiveGroups.Id,
+			DiagnosticDescriptors.SeparateImportGroups.Id,
 		],
 	];
 
@@ -786,16 +786,16 @@ public sealed class BlankLineFamilyTests
 
 		Dictionary<string, ReportDiagnostic> rules = new()
 		{
-			[DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt.Id] =
+			[DiagnosticDescriptors.SeparateClauseKeywords.Id] =
 				ReportDiagnostic.Warn,
 		};
 
 		AnalyzerRunResult spacing = inTheTree
-			? await RoslynTestHarness.ReportAsync<SeparateClauseKeywordFromBraceBeforeItAnalyzer>(
+			? await RoslynTestHarness.ReportAsync<SeparateClauseKeywordsAnalyzer>(
 				adjacent,
 				treeOptions: rules
 			)
-			: await RoslynTestHarness.ReportAsync<SeparateClauseKeywordFromBraceBeforeItAnalyzer>(
+			: await RoslynTestHarness.ReportAsync<SeparateClauseKeywordsAnalyzer>(
 				adjacent,
 				rules
 			);
@@ -846,14 +846,14 @@ public sealed class BlankLineFamilyTests
 
 		Dictionary<string, ReportDiagnostic> rules = new()
 		{
-			[DiagnosticDescriptors.SeparateClauseKeywordFromBraceBeforeIt.Id] =
+			[DiagnosticDescriptors.SeparateClauseKeywords.Id] =
 				ReportDiagnostic.Warn,
 
 			[DiagnosticDescriptors.KeepClauseKeywordsAdjacent.Id] = ReportDiagnostic.Warn,
 		};
 
 		AnalyzerRunResult spacing =
-			await RoslynTestHarness.ReportAsync<SeparateClauseKeywordFromBraceBeforeItAnalyzer>(
+			await RoslynTestHarness.ReportAsync<SeparateClauseKeywordsAnalyzer>(
 				source,
 				treeOptions: rules
 			);

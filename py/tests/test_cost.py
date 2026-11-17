@@ -146,7 +146,7 @@ def test_a_blank_line_run_reads_each_container_once_for_each_relationship_cache(
     body = "".join(f"    a{i} = use(a{i - 1})\n\n    db.child{i // 2}.save()\n" for i in range(1, 100))
     source = f"async def f(a0):\n{body}    item = Item()\n\n    item.check()\n    return item\n"
 
-    rules = ["ZA3004", "ZA3009", "ZA3018", "ZA3019", "ZA3054", "ZA3060", "ZA3062", "ZA3063", "ZA3064"]
+    rules = ["ZA3004", "ZA3013", "ZA3012", "ZA3010", "ZA3055", "ZA3059", "ZA3062", "ZA3064", "ZA3061"]
     options = Options(receiver_roots=("db",), receiver_comparison="path", guard_roots=("check",))
 
     lint(source, Config.create("none", enable=rules, options=options))

@@ -112,7 +112,7 @@ RELATED = [
     "if not a: return\n\nif not xs: return",
 ]
 
-RELATIONSHIP_RULES = ["ZA3018", "ZA3019", *(rule.code for rule in TWO_UNIT_RULES)]
+RELATIONSHIP_RULES = ["ZA3012", "ZA3010", *(rule.code for rule in TWO_UNIT_RULES)]
 
 
 def _generate_related(seed: int) -> str:

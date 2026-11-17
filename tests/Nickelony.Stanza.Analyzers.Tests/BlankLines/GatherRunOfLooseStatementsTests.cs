@@ -2109,7 +2109,7 @@ public sealed partial class GatherRunOfLooseStatementsTests
 			{
 				[DiagnosticDescriptors.GatherRunOfLooseStatements.Id] = ReportDiagnostic.Warn,
 
-				[DiagnosticDescriptors.SeparateRegionMarkerFromNeighbors.Id] =
+				[DiagnosticDescriptors.SeparateRegionMarker.Id] =
 					ReportDiagnostic.Suppress,
 			},
 
@@ -2407,7 +2407,7 @@ public sealed partial class GatherRunOfLooseStatementsTests
 		RoslynTestHarness.AssertFixedText(source, result);
 	}
 
-	// Gathering the two statements makes a stanza of two lines, which ZA0009 then separates from the return.
+	// Gathering the two statements makes a stanza of two lines, which ZA0013 then separates from the return.
 	[TestMethod]
 	public async Task TheGapAboveAJumpStaysBlankWhereGatheringTheRunAboveItMakesTheJumpRuleAskForIt()
 	{

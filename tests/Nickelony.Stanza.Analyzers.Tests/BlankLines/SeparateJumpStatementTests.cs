@@ -923,11 +923,11 @@ public sealed class SeparateJumpStatementTests
 	public async Task APragmaOverTheJumpHandsNothingBackAndSilencesTheRule()
 	{
 		const string body = """
-			#pragma warning disable ZA0009
+			#pragma warning disable ZA0013
 			a = 1;
 			b = 2;
 			return;
-			#pragma warning restore ZA0009
+			#pragma warning restore ZA0013
 			""";
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAsync<SeparateJumpStatementAnalyzer>(
@@ -960,7 +960,7 @@ public sealed class SeparateJumpStatementTests
 				Alone(DiagnosticDescriptors.SeparateInvocationRuns)
 			);
 
-		Assert.IsEmpty(jump.Diagnostics, "ZA0004 reports the gap, so ZA0009 stays quiet.");
+		Assert.IsEmpty(jump.Diagnostics, "ZA0004 reports the gap, so ZA0013 stays quiet.");
 		Assert.HasCount(1, runs.Diagnostics);
 	}
 
@@ -1015,7 +1015,7 @@ public sealed class SeparateJumpStatementTests
 				Alone(DiagnosticDescriptors.SeparateAssignmentRuns)
 			);
 
-		Assert.IsEmpty(jump.Diagnostics, "ZA0008 reports the gap, so ZA0009 stays quiet.");
+		Assert.IsEmpty(jump.Diagnostics, "ZA0009 reports the gap, so ZA0013 stays quiet.");
 		Assert.HasCount(1, runs.Diagnostics);
 	}
 
@@ -1119,7 +1119,7 @@ public sealed class SeparateJumpStatementTests
 				Alone(DiagnosticDescriptors.SeparateCommentedSibling)
 			);
 
-		Assert.IsEmpty(result.Diagnostics, "ZA0012 writes a blank line above the comment.");
+		Assert.IsEmpty(result.Diagnostics, "ZA0016 writes a blank line above the comment.");
 	}
 
 	[TestMethod]
@@ -1343,7 +1343,7 @@ public sealed class SeparateJumpStatementTests
 		Assert.IsEmpty(result.Diagnostics);
 	}
 
-	// ZA0009 alone: the rules that share its gaps are off unless a test names them.
+	// ZA0013 alone: the rules that share its gaps are off unless a test names them.
 	private static Dictionary<string, ReportDiagnostic> Alone(params DiagnosticDescriptor[] alsoOn)
 	{
 		return TestRuleSets.OnSuppressingOthersOf(

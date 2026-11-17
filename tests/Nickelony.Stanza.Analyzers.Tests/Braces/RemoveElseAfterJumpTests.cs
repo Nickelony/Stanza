@@ -1139,7 +1139,7 @@ public sealed class RemoveElseAfterJumpTests
 	{
 		string source = Method("if (c0)\n\treturn;\nelse\n{\n\tCall(1, 2);\n\tCall(3, 4);\n}");
 
-		// ZA0205 braces the chain, then this rule moves the else body out and writes the gap ZA0001 asks for.
+		// ZA0206 braces the chain, then this rule moves the else body out and writes the gap ZA0001 asks for.
 		string fixedSource = Method("if (c0)\n{\n\treturn;\n}\n\nCall(1, 2);\nCall(3, 4);");
 
 		Assert.AreEqual(fixedSource, await RoslynTestHarness.AssertFixesAgreeAsync(source, Rule));

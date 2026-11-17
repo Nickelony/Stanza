@@ -12,7 +12,7 @@ The entries sit under headings by topic.
   or a markup element with child elements.
 - **stanza**: neighboring statements of one block, switch section or file that no blank line separates.
   It spans from the first line of its first statement to the last line of its last,
-  and [`ZA0009`](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-a-jump-statement) judges the one above a jump.
+  and [`ZA0013`](https://github.com/Nickelony/Stanza/wiki/ZA0013-Separate-a-jump-statement) judges the one above a jump.
 
 ## Rules and pairs
 
@@ -20,12 +20,12 @@ The entries sit under headings by topic.
 - **tight rule**: a rule that removes that blank line.
 - **single-line tight rule**: a `Keep single-line ... together` rule, a tight rule in no pair that judges the gaps between the elements
   of one construct, such as arguments or accessors, only when neither element spans more than one line.
-  [`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Keep-the-two-units-of-a-container-together) to `ZA0064` also remove blank lines, but none of them is one.
+  [`ZA0051`](https://github.com/Nickelony/Stanza/wiki/ZA0051-Collapse-extra-blank-lines) to `ZA0064` also remove blank lines, but none of them is one.
 - **pair**: two rules that judge one gap or one construct in opposite ways, such as a separating rule and its tight rule.
 - **owner**: the rule, or the half of a pair, that decides whether a gap holds a blank line. A gap has at most one,
   and [Which rule owns which gap](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap) maps each gap to its owner.
-- **grouping rules**: [`ZA0002`](https://github.com/Nickelony/Stanza/wiki/ZA0002-Separate-declaration-runs) to [`ZA0008`](https://github.com/Nickelony/Stanza/wiki/ZA0008-Separate-assignment-runs),
-  [`ZA0013`](https://github.com/Nickelony/Stanza/wiki/ZA0013-Separate-member-groups) and [`ZA0014`](https://github.com/Nickelony/Stanza/wiki/ZA0014-Separate-modifier-groups), which separate a run from its neighbors
+- **grouping rules**: [`ZA0002`](https://github.com/Nickelony/Stanza/wiki/ZA0002-Separate-declaration-runs) to [`ZA0009`](https://github.com/Nickelony/Stanza/wiki/ZA0009-Separate-assignment-runs),
+  [`ZA0017`](https://github.com/Nickelony/Stanza/wiki/ZA0017-Separate-member-groups) and [`ZA0018`](https://github.com/Nickelony/Stanza/wiki/ZA0018-Separate-modifier-groups), which separate a run from its neighbors
   and leave a gap beside a multi-line unit to [`ZA0001`](https://github.com/Nickelony/Stanza/wiki/ZA0001-Separate-multi-line-constructs).
 - **report-only rule**: a rule that reports a shape and has no code fix, such as
   [`ZA1007`](https://github.com/Nickelony/Stanza/wiki/ZA1007-Break-up-a-long-ternary-chain).
@@ -48,14 +48,14 @@ The entries sit under headings by topic.
   [`ZA0052`](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) gathers one of statements and [`ZA0053`](https://github.com/Nickelony/Stanza/wiki/ZA0053-Gather-a-run-of-loose-members) one of members that holds too many.
 - **kept run**: single-line statements or members that the grouping rules which are on read as one run, blank lines left out.
   The rule that reads two neighbors apart wins, so declarations of two types are two kept runs while [`ZA0003`](https://github.com/Nickelony/Stanza/wiki/ZA0003-Separate-same-type-declaration-runs) is on.
-  [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) and [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-members-together) keep one together.
+  [`ZA0055`](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-statements-together) and [`ZA0056`](https://github.com/Nickelony/Stanza/wiki/ZA0056-Keep-a-run-of-members-together) keep one together.
 - **section** of a kept run: at least two units of the run tight against each other, or a lone unit between two such sections.
   The blank line between two sections, a section break, stays as written.
   A lone unit beside one section is absorbed, so its blank line goes.
 - **move**: a join of a kept run that removes no more blank lines than it writes beyond those the grouping rules already ask for,
   so it only moves a blank line.
 - **decline**: a keep rule declines a move, so it reports nothing and leaves the blank lines of that run as written.
-- **kept group**: the neighboring statements that one of [`ZA0057`](https://github.com/Nickelony/Stanza/wiki/ZA0057-Keep-a-chain-of-guard-clauses-together) to [`ZA0064`](https://github.com/Nickelony/Stanza/wiki/ZA0064-Keep-dependent-bindings-together) holds together, such as a binding and the guard that tests it.
+- **kept group**: the neighboring statements that one of [`ZA0057`](https://github.com/Nickelony/Stanza/wiki/ZA0057-Keep-guard-clauses-together) to [`ZA0064`](https://github.com/Nickelony/Stanza/wiki/ZA0064-Keep-a-receiver-group-together) holds together, such as a binding and the guard that tests it.
   A chain of overlapping pairs is one group, and the rule claims the gaps inside it.
 
 ## Configuration

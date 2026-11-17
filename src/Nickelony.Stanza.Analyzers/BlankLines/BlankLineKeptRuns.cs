@@ -310,7 +310,7 @@ internal static class BlankLineKeptRuns
 	/// </remarks>
 	private sealed class Judge(ContainerContext container, StanzaRule rule, GapOwners gapOwners, bool judgesMembers)
 	{
-		/// <summary>The target reader, none for a member or unless ZA0008 is on and reads `split`.</summary>
+		/// <summary>The target reader, none for a member or unless ZA0009 is on and reads `split`.</summary>
 		private readonly Func<SyntaxNode, BlankLineGrouping.AssignmentTarget>? _readTarget =
 			!judgesMembers
 			&& StanzaRuleState.IsDeferralOn(scope: container, options: container.Options, rule, target: DiagnosticDescriptors.SeparateAssignmentRuns)

@@ -46,7 +46,7 @@ internal sealed class RemoveRedundantBracesAnalyzer()
 		];
 
 		// IDE0011 braces a chain with one braced branch, so a block that keeps its braces keeps those of the chain,
-		// and ZA0205 braces the view with a multi-line branch, so a chain whose branches a directive can change keeps them too.
+		// and ZA0206 braces the view with a multi-line branch, so a chain whose branches a directive can change keeps them too.
 		// Where the option asks for no braces, each block that can lose them does.
 		if (options.PreferBraces is null && (removable.Length < blocked.Length || BraceTargets.HoldsAConditionalBranch(context.Node)))
 			return;

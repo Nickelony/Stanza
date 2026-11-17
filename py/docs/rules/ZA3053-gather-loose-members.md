@@ -25,9 +25,9 @@ class Order:
 - A member is a single-line field, attribute or other statement of a class body.
   A method and a nested class are definitions, and the formatters own the gaps beside them.
 - A loose run, what ends it and its limit are those of [`ZA3052`](ZA3052-gather-loose-statements.md).
-- The blank line below a class docstring stays, because [`ZA3013`](ZA3013-separate-member-groups.md) and the formatters ask for it.
-- While [`ZA3013`](ZA3013-separate-member-groups.md) is enabled, the blank line it asks for between a run of fields and a run of attributes stays, so the run ends there.
-- A class body of exactly two single-line members belongs to [`ZA3051`](ZA3051-keep-two-units-together.md).
+- The blank line below a class docstring stays, because [`ZA3017`](ZA3017-separate-member-groups.md) and the formatters ask for it.
+- While [`ZA3017`](ZA3017-separate-member-groups.md) is enabled, the blank line it asks for between a run of fields and a run of attributes stays, so the run ends there.
+- A class body of exactly two single-line members belongs to [`ZA3054`](ZA3054-keep-two-units-together.md).
 - The statements of a function body belong to [`ZA3052`](ZA3052-gather-loose-statements.md).
 
 ## Options
