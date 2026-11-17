@@ -8,6 +8,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
@@ -61,7 +62,7 @@ def _undo_formatter() -> Formatter:
 
 def _hide_formatters(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(formatter_module, "_which", lambda name: None)
-    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr(formatter_module, "_has_module", lambda name: False)
 
 
 @pytest.mark.parametrize("tool", TOOLS)
@@ -250,7 +251,7 @@ def test_a_formatter_the_table_does_not_know_is_a_configuration_error(
 def _install(monkeypatch: pytest.MonkeyPatch, *names: str) -> None:
     """Makes exactly the named formatters findable, as a path that holds only them would."""
     monkeypatch.setattr(formatter_module, "_which", lambda name: f"/fake/{name}" if name in names else None)
-    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr(formatter_module, "_has_module", lambda name: False)
 
 
 def _plant(directory: Path, name: str) -> Path:
@@ -275,7 +276,7 @@ def test_a_formatter_in_the_current_directory_is_never_started(tmp_path: Path, m
 
     monkeypatch.chdir(checkout)
     monkeypatch.setenv("PATH", os.pathsep.join(entries))
-    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr(formatter_module, "_has_module", lambda name: False)
 
     for name in ("ruff", "black"):
         with pytest.raises(FormatterError, match="not installed"):
@@ -292,13 +293,51 @@ def test_a_formatter_in_the_current_directory_is_never_started(tmp_path: Path, m
         find_formatter("black")
 
 
+@pytest.mark.parametrize("tool", TOOLS)
+def test_a_formatter_module_in_the_current_directory_is_never_run(
+    tool: Literal["ruff", "black"], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if importlib.util.find_spec(tool) is None:
+        pytest.skip(f"{tool} is not installed as a module")
+
+    checkout, empty = tmp_path / "checkout", tmp_path / "empty"
+    checkout.mkdir()
+    empty.mkdir()
+
+    marker = checkout / "ran.txt"
+
+    for name in TOOLS:
+        _write(checkout, f"{name}.py", f"open({str(marker)!r}, 'w').write('planted')\n")
+
+    # No program on the path, so the formatter is the module of this interpreter, which the planted file would shadow.
+    monkeypatch.chdir(checkout)
+    monkeypatch.setenv("PATH", str(empty))
+
+    found = find_formatter(tool)
+
+    assert found is not None
+    assert found.command[0] == sys.executable
+    assert found.format(JOINABLE.encode(), "a.py").decode().replace("\r\n", "\n") == JOINED
+    assert not marker.exists()
+
+
+def test_a_formatter_module_only_in_the_current_directory_is_not_installed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write(tmp_path, "nofmt_ruff.py", "")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.syspath_prepend(str(tmp_path))
+
+    assert not formatter_module._has_module("nofmt_ruff")
+
+
 def test_a_formatter_on_a_relative_path_entry_is_never_started(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     (tmp_path / "bin").mkdir()
     _plant(tmp_path / "bin", "ruff")
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("PATH", "bin")
-    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr(formatter_module, "_has_module", lambda name: False)
 
     with pytest.raises(FormatterError, match="not installed"):
         find_formatter("ruff")

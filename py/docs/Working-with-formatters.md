@@ -50,8 +50,9 @@ stanza-py format --check src tests
   Run the command once more, and disable the rule that fights the formatter if the file stays unsettled.
 - `--check` runs the same steps in memory and writes nothing.
   It names each file it would change and each file that is unsettled, and exits with 1 for either.
-- The formatter is found on the path, never in the current directory, else as a module of the interpreter that runs `stanza-py`.
+- The formatter is found on the path, else as a module of the interpreter that runs `stanza-py`.
   A run that finds no formatter, or whose formatter is not installed, ends with 2 before it reads a file.
+- Neither search looks in the current directory, so a checkout cannot plant a program or a module that `format` then runs.
 - A formatter that refuses a file exits with 2 after the other files are handled.
 - The formatter reads its own configuration for the path of each file, such as `[tool.ruff]` or `[tool.black]`.
 - `--formatter none` and `formatter = "none"` skip the formatter steps, so the command then behaves as `fix`.

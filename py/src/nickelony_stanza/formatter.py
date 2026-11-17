@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import importlib.util
+import importlib.machinery
 import os
 import subprocess
 import sys
@@ -121,14 +121,38 @@ def _which(name: str) -> str | None:
     return None
 
 
+def _safe_path() -> list[str]:
+    """Lists the module search path of this interpreter without the current directory, which a checkout could fill."""
+    current = os.path.normcase(os.path.realpath(os.getcwd()))
+    return [entry for entry in sys.path if os.path.normcase(os.path.realpath(entry or os.getcwd())) != current]
+
+
+def _has_module(name: str) -> bool:
+    return importlib.machinery.PathFinder.find_spec(name, _safe_path()) is not None
+
+
+# Runs a module as `python -m` does, but with the current directory off the search path, so a planted module cannot win.
+# Unlike `-I` and `-P` it keeps the user site-packages and the environment, and it runs on every supported Python.
+_MODULE_RUNNER = """
+import os, runpy, sys
+current = os.path.normcase(os.path.realpath(os.getcwd()))
+sys.path[:] = [p for p in sys.path if os.path.normcase(os.path.realpath(p or os.getcwd())) != current]
+runpy.run_module({name!r}, run_name="__main__", alter_sys=True)
+"""
+
+
+def _module_command(name: str) -> tuple[str, ...]:
+    return (sys.executable, "-c", _MODULE_RUNNER.format(name=name))
+
+
 def _locate(name: str) -> Formatter | None:
     executable = _which(name)
 
     if executable is not None:
         return Formatter(name, (executable,))
 
-    if importlib.util.find_spec(name) is not None:
-        return Formatter(name, (sys.executable, "-m", name))
+    if _has_module(name):
+        return Formatter(name, _module_command(name))
 
     return None
 
