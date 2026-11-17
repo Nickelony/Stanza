@@ -125,6 +125,11 @@ class ModuleInfo:
         return self.scan.patched_attributes
 
     @property
+    def rewrites_namespace(self) -> bool:
+        """Tells whether the module may bind or rebind a name of its own without a statement that binds it."""
+        return self.scan.rewrites_namespace
+
+    @property
     def class_sites(self) -> tuple[ClassSite, ...]:
         """The `class` statements of the module, nested ones included."""
         return self.scan.classes

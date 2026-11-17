@@ -15,6 +15,8 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Literal
 
+from nickelony_stanza.analysis.dynamic import NamespaceWatch
+
 BindingKind = Literal["def", "class", "import", "import_from", "star", "value", "other"]
 ScopeKind = Literal["module", "class", "function", "lambda", "comprehension"]
 
@@ -472,11 +474,15 @@ class ClassSite:
 
 @dataclass(frozen=True)
 class ModuleScan:
-    """What one walk of a module finds: the attributes it stores or patches, and its `class` statements."""
+    """
+    What one walk of a module finds: the attributes it stores or patches, its `class` statements,
+    and whether it may rewrite its own namespace.
+    """
 
     stored_attributes: frozenset[str]
     patched_attributes: frozenset[str]
     classes: tuple[ClassSite, ...]
+    rewrites_namespace: bool
     by_node: dict[int, ClassSite] = field(repr=False, compare=False)
 
 
@@ -513,13 +519,17 @@ def scan_module(tree: ast.Module) -> ModuleScan:
     calls: list[ast.Call] = []
     sites: list[ClassSite] = []
 
-    # Each node travels with the class that mangles its attributes, the prefix of qualified names
-    # and whether a def or class holds it.
-    queue: deque[tuple[ast.AST, str | None, str, bool]] = deque([(tree, None, "", False)])
+    watch = NamespaceWatch()
+
+    # Each node travels with the class that mangles its attributes, the prefix of qualified names,
+    # whether a def or class holds it and whether it stands in the body of a function or lambda.
+    queue: deque[tuple[ast.AST, str | None, str, bool, bool]] = deque([(tree, None, "", False, False)])
 
     while queue:
-        node, class_name, prefix, local = queue.popleft()
+        node, class_name, prefix, local, in_function = queue.popleft()
         kind = type(node)
+
+        watch.visit(node, in_function=in_function)
 
         if isinstance(node, ast.Attribute):
             if isinstance(node.ctx, ast.Store | ast.Del):
@@ -542,13 +552,14 @@ def scan_module(tree: ast.Module) -> ModuleScan:
 
         for name in kind._fields:
             value = getattr(node, name, None)
+            inside = in_function or (name == "body" and isinstance(node, _FunctionDef | ast.Lambda))
 
             if isinstance(value, ast.AST):
                 if type(value) not in _INERT:
-                    queue.append((value, class_name, prefix, local))
+                    queue.append((value, class_name, prefix, local, inside))
             elif isinstance(value, list):
                 queue.extend(
-                    (item, class_name, prefix, local)
+                    (item, class_name, prefix, local, inside)
                     for item in value
                     if isinstance(item, ast.AST) and type(item) not in _INERT
                 )
@@ -565,7 +576,9 @@ def scan_module(tree: ast.Module) -> ModuleScan:
         patched.update(_read_patched_names(call, is_imported))
 
     classes = tuple(sites)
-    return ModuleScan(frozenset(stored), frozenset(patched), classes, {id(site.node): site for site in classes})
+    by_node = {id(site.node): site for site in classes}
+
+    return ModuleScan(frozenset(stored), frozenset(patched), classes, watch.finish(), by_node)
 
 
 def _literal_attribute(node: ast.AST) -> str | None:

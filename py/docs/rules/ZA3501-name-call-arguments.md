@@ -65,6 +65,12 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
 - A name bound more than once, bound inside an `if`, `try`, `with`, loop or `match`, declared `global` elsewhere,
   or bound by no statement the rule reads.
 - A name rebound by a `:=`, even one in a default, a decorator, an annotation or a class base.
+- Every name of a project module that may rewrite its own namespace:
+  one that writes `globals()` (`globals()["f"] = g`, `globals().update(...)`, `globals()` stored or passed to a call),
+  runs `exec` in its own namespace (one with no dict display for its globals, or an `eval` at module level),
+  or reaches `exec`, `eval`, `locals`, `vars` or `globals` by an alias, `getattr` or `builtins`.
+  A read, as in `globals()["f"]`, `globals().get("f")` or `"f" in globals()`, is no write.
+  The standard library and installed packages are not checked: `typing` and `dataclasses` write their own namespaces.
 - A callee wrapped by a decorator the rule does not see through, such as `functools.lru_cache` or a decorator of the project,
   because the wrapper may take other arguments.
 - A module that is missing, compiled, sourceless, unparsable or shadowed, or that a `.pyi` stub stands beside.

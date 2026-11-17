@@ -152,6 +152,7 @@ The resolver reads which parameter each argument fills, from source alone and wi
 
 A name resolves when exactly one statement binds it outside every `if`, `try`, `with`, loop and `match`,
 and no `global` statement or later star import may rebind it.
+A project module that may rewrite its own namespace, as `dynamic.py` reads it, resolves no name.
 `classes.py` reads the method resolution order and the constructor of a class, `scopes.py` the names each scope binds, and `shapes.py` the parameters.
 
 ### Sources and skipped calls
@@ -162,7 +163,7 @@ A top-level name that the roots and the standard library both define is unreadab
 
 A gap in what the resolver sees leaves the call unresolved, so a skip reason names the gap:
 
-- The callee is a value, a name that is rebound or bound conditionally, or a builtin or compiled definition.
+- The callee is a value, a name that is rebound, bound conditionally or rewritten through `globals()`, or a builtin or compiled definition.
 - The module is missing, compiled, sourceless or shadowed, a `.pyi` stub stands beside it, or the options leave out its source.
 - A decorator, a class shape or a call shape that the resolver does not model stands in the way.
 - The callee is a form a type checker reads positionally, or a project module replaces it with a test double.

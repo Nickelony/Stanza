@@ -7,8 +7,12 @@ name is a `TypeError` where the original ran.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
+from nickelony_stanza import Config, fix
+from nickelony_stanza.analysis.projects import Projects
 from tests.helpers import fix_with, run_module
 
 _CLEAR = "__annotations__.clear(); c: int; d: int"
@@ -63,3 +67,87 @@ def test_a_field_named_like_a_namespace_function_or_a_string_that_spells_one_doe
 
     assert named in fixed.splitlines()[-1]
     assert repr(run_module(fixed)["x"]) == repr(run_module(before)["x"])
+
+
+_TARGET = "def target(a, b, c, d):\n    return a + b + c + d\n\n\n"
+_REBIND = "lambda w, x, y, z: w"
+
+_NAMESPACE_WRITES = {
+    "a subscript of globals": f"globals()['target'] = {_REBIND}",
+    "an update of globals": f"globals().update(target={_REBIND})",
+    "a setdefault of globals": f"globals().setdefault('target', {_REBIND})",
+    "a pop of globals": "globals().pop('missing', None)",
+    "a delete of an item of globals": "globals()['extra'] = 1\ndel globals()['extra']",
+    "globals passed to a function": f"def rebind(ns):\n    ns['target'] = {_REBIND}\n\n\nrebind(globals())",
+    "an alias of globals": f"namespace = globals()\nnamespace['target'] = {_REBIND}",
+    "globals inside a function": f"def install():\n    globals()['target'] = {_REBIND}\n\n\ninstall()",
+    "globals through builtins": f"builtins.globals()['target'] = {_REBIND}",
+    "exec of the module": f"exec('target = {_REBIND}')",
+    "exec with globals": f"exec('target = {_REBIND}', globals())",
+    "exec with a name": f"scope = globals()\nexec('target = {_REBIND}', scope)",
+    "exec with a global statement in a function": (
+        f"def install():\n    exec('global target; target = {_REBIND}')\n\n\ninstall()"
+    ),
+    "an eval of a walrus": f"eval('(target := {_REBIND})')",
+    "locals at module level": f"locals()['target'] = {_REBIND}",
+    "vars at module level": f"vars()['target'] = {_REBIND}",
+    "an alias of exec": f"run = exec\nrun('target = {_REBIND}')",
+    "exec passed to map": f"list(map(exec, ['target = {_REBIND}']))",
+    "exec through builtins": f"builtins.exec('target = {_REBIND}')",
+    "exec through getattr": f"getattr(builtins, 'exec')('target = {_REBIND}')",
+    "exec through __builtins__": f"__builtins__['exec']('target = {_REBIND}')",
+    "exec through the builtins module": f"later.exec('target = {_REBIND}')",
+}
+
+
+@pytest.mark.parametrize("write", _NAMESPACE_WRITES.values(), ids=_NAMESPACE_WRITES)
+def test_a_module_that_can_write_its_own_namespace_resolves_no_name(write: str) -> None:
+    before = f"import builtins\nimport builtins as later\n\n{_TARGET}{write}\n\nresult = target(1, 2, 3, 4)\n"
+    expected = run_module(before)["result"]
+
+    fixed = fix_with(before, "ZA3501")
+
+    assert run_module(fixed)["result"] == expected
+    assert fixed == before
+
+
+_NAMESPACE_READS = {
+    "an item of globals": "value = globals()['target']",
+    "a lookup in globals": "found = 'target' in globals()",
+    "a get of globals": "found = globals().get('target')",
+    "the keys of globals": "names = list(globals().keys())",
+    "locals in a function": "def info():\n    return locals()",
+    "vars of an object": "def info(item):\n    return vars(item)",
+    "eval in a function": "def info(x):\n    return eval('x + 1')",
+    "exec with a dict of its own": "exec('value = 1', {})",
+    "exec with a keyword dict of its own": "exec('value = 1', globals={'a': 1})",
+    "an eval method": "def info(model):\n    return model.eval()",
+    "a string that spells exec": "text = 'exec(globals())'",
+}
+
+
+@pytest.mark.parametrize("read", _NAMESPACE_READS.values(), ids=_NAMESPACE_READS)
+def test_a_module_that_only_reads_its_namespace_still_resolves_its_names(read: str) -> None:
+    before = f"{_TARGET}{read}\n\nresult = target(1, 2, 3, 4)\n"
+
+    fixed = fix_with(before, "ZA3501")
+
+    assert fixed.endswith("result = target(a=1, b=2, c=3, d=4)\n")
+    assert run_module(fixed)["result"] == run_module(before)["result"]
+
+
+def test_a_name_of_a_module_that_writes_its_namespace_is_not_resolved_from_another_module(tmp_path: Path) -> None:
+    root = tmp_path / "app"
+    root.mkdir()
+    (root / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+
+    lib = root / "lib.py"
+    main = root / "main.py"
+    config = Config.create("none", enable=["ZA3501"])
+    call = "from lib import target\ntarget(1, 2, 3, 4)\n"
+
+    main.write_text(call, encoding="utf-8")
+    lib.write_text(_TARGET + "globals().update(target=lambda w, x, y, z: w)\n", encoding="utf-8")
+    assert fix(call, config, path=main, projects=Projects()).text == call
+    lib.write_text(_TARGET + "names = list(globals().keys())\n", encoding="utf-8")
+    assert fix(call, config, path=main, projects=Projects()).text.endswith("target(a=1, b=2, c=3, d=4)\n")

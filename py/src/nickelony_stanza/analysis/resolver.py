@@ -3,6 +3,7 @@ Settles the definition a callee expression names, and the parameters a call of i
 
 A name resolves when exactly one statement binds it, outside any `if`, `try`, `with`, loop or `match`,
 and no `global` statement or later star import may rebind it.
+A module of the project that may rewrite its own namespace, as `dynamic.py` reads it, resolves no name.
 A star import binds the names its module exports: those of a literal `__all__`, or else its public names.
 A star import of a module the resolver cannot read hides every name it may bind,
 so a definition after it still resolves and one before it does not.
@@ -211,7 +212,7 @@ class Resolver:
 
         namespace = module.namespace
 
-        if name in namespace.declared_global:
+        if name in namespace.declared_global or (module.source == "project" and module.rewrites_namespace):
             return Skipped(Reason.NAME_REBOUND)
 
         variants, explicit = self.split_overloads(module, namespace.bindings.get(name, []), None)
