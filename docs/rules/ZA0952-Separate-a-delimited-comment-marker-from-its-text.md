@@ -23,7 +23,8 @@ Separates comment text from either marker when the text touches it.
 - The rule leaves a marker alone when a banner run touches it: one punctuation mark or symbol repeated up to a blank or the other marker,
   as in `/*--------*/` and at both ends of a box comment.
   [`stanza_comment_banner_min_run`](https://github.com/Nickelony/Stanza/wiki/stanza_comment_banner_min_run) sets the fewest repeated marks.
-- The run counts the marks after `/*` and before `*/`, so `/*** Options ***/` holds runs of two and becomes `/* ** Options ** */`.
+- The star of each marker counts toward a run of stars, so `/*** Options ***/` holds runs of three and is left alone at the default.
+  A run of other marks counts only the marks between the markers, so `/*-- Options --*/` holds runs of two.
 - A run that touches a word, such as `/*--Options--*/`, is not a banner.
 - The lines between the markers of a delimited comment are the author's,
   so the rule judges only the two ends, and each on its own.

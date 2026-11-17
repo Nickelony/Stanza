@@ -37,7 +37,7 @@ public sealed class SeparateDelimitedCommentMarkerFromTextTests
 	public static IEnumerable<object[]> TouchingMarkers { get; } =
 	[
 		["a sentence", "/*Binds the options of an item*/", "/* Binds the options of an item */"],
-		["a run of two marks", "/*** Options ***/", "/* ** Options ** */"],
+		["a run of two marks", "/*-- Options --*/", "/* -- Options -- */"],
 		["a run that touches a word", "/*--Options--*/", "/* --Options-- */"],
 	];
 
@@ -181,6 +181,7 @@ public sealed class SeparateDelimitedCommentMarkerFromTextTests
 				internal int Bind()
 				{
 					/***** Options *****/
+					/*** Options ***/
 					/*--------*/
 					/*=== Options ===*/
 					/*************
@@ -250,6 +251,34 @@ public sealed class SeparateDelimitedCommentMarkerFromTextTests
 			{
 				/*-- Options --*/
 				/*---- Options ----*/
+				internal int Bind() => 1;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.ReportAsync<SeparateDelimitedCommentMarkerFromTextAnalyzer>(
+				source,
+				DelimitedRuleOnly,
+
+				analyzerConfigOptions: new Dictionary<string, string>
+				{
+					["stanza_comment_banner_min_run"] = value,
+				}
+			);
+
+		Assert.HasCount(expected, result.Diagnostics);
+	}
+
+	// The star of each marker counts toward a run of stars, so `/*** Options ***/` holds runs of three.
+	[TestMethod]
+	[DataRow("3", 0)]
+	[DataRow("4", 2)]
+	public async Task TheStarOfAMarkerCountsTowardARunOfStars(string value, int expected)
+	{
+		const string source = """
+			internal sealed class Sample
+			{
+				/*** Options ***/
 				internal int Bind() => 1;
 			}
 			""";

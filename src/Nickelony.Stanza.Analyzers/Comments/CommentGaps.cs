@@ -165,10 +165,14 @@ internal static class CommentGaps
 
 		List<CommentGap> gaps = [];
 
-		if (!char.IsWhiteSpace(text[textStart]) && !IsMarkRun(text, start: textStart, end: openingEnd, minRun: minBannerRun))
+		// The star of a marker belongs to a run of stars, as it reads to the eye, so `/*** a ***/` holds runs of three.
+		int openingStart = text[textStart] == '*' ? textStart - 1 : textStart;
+		int closingEnd = text[closingStart] == '*' ? textEnd + 1 : textEnd;
+
+		if (!char.IsWhiteSpace(text[textStart]) && !IsMarkRun(text, start: openingStart, end: openingEnd, minRun: minBannerRun))
 			gaps.Add(BuildGapAfterMarker(trivia.FullSpan.Start + textStart, markerLength: DelimiterLength));
 
-		if (!char.IsWhiteSpace(text[textEnd - 1]) && !IsMarkRun(text, start: closingStart, end: textEnd, minRun: minBannerRun))
+		if (!char.IsWhiteSpace(text[textEnd - 1]) && !IsMarkRun(text, start: closingStart, end: closingEnd, minRun: minBannerRun))
 			gaps.Add(BuildGapBeforeMarker(trivia.FullSpan.Start + textEnd, markerLength: DelimiterLength));
 
 		return gaps;

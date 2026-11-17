@@ -29,3 +29,4 @@ At the default, a banner of three marks passes and a shorter run is separated:
 - `//--- Section ---` and `//-=-=-` hold words or more than one mark, so they are not banners.
 - A delimited comment keeps each end that a run touches, which reaches from the marker to a blank or to the other marker,
   so `/***** Options *****/` and a box comment are left alone.
+  The star of the `/*` and `*/` markers counts toward a run of stars, so `/*** Options ***/` is a run of three.
