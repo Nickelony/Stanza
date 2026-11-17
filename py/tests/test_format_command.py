@@ -340,6 +340,7 @@ def test_the_module_runner_takes_the_current_directory_off_the_path_before_it_im
     monkeypatch.chdir(checkout)
 
     command = formatter_module._module_command("ruff")
+
     result = subprocess.run(
         [command[0], "-X", "frozen_modules=off", *command[1:], "format", "--stdin-filename", "a.py", "-"],
         input=JOINABLE.encode(),
