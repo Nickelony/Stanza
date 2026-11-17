@@ -6,6 +6,7 @@ import importlib.util
 import io
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Literal
@@ -318,6 +319,36 @@ def test_a_formatter_module_in_the_current_directory_is_never_run(
     assert found is not None
     assert found.command[0] == sys.executable
     assert found.format(JOINABLE.encode(), "a.py").decode().replace("\r\n", "\n") == JOINED
+    assert not marker.exists()
+
+
+def test_the_module_runner_takes_the_current_directory_off_the_path_before_it_imports_anything(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if importlib.util.find_spec("ruff") is None:
+        pytest.skip("ruff is not installed as a module")
+
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+
+    marker = checkout / "ran.txt"
+
+    # Before Python 3.11 `runpy` is a source file on the path, and `-X frozen_modules=off` makes it one on every version.
+    for name in ["runpy", "ruff"]:
+        _write(checkout, f"{name}.py", f"open({str(marker)!r}, 'a').write('{name}')\n")
+
+    monkeypatch.chdir(checkout)
+
+    command = formatter_module._module_command("ruff")
+    result = subprocess.run(
+        [command[0], "-X", "frozen_modules=off", *command[1:], "format", "--stdin-filename", "a.py", "-"],
+        input=JOINABLE.encode(),
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr.decode()
+    assert result.stdout.decode().replace("\r\n", "\n") == JOINED
     assert not marker.exists()
 
 

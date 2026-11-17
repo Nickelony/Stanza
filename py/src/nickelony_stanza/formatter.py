@@ -133,10 +133,12 @@ def _has_module(name: str) -> bool:
 
 # Runs a module as `python -m` does, but with the current directory off the search path, so a planted module cannot win.
 # Unlike `-I` and `-P` it keeps the user site-packages and the environment, and it runs on every supported Python.
+# It imports `runpy` only after the filter, because before Python 3.11 that module is a file on the search path.
 _MODULE_RUNNER = """
-import os, runpy, sys
+import os, sys
 current = os.path.normcase(os.path.realpath(os.getcwd()))
 sys.path[:] = [p for p in sys.path if os.path.normcase(os.path.realpath(p or os.getcwd())) != current]
+import runpy
 runpy.run_module({name!r}, run_name="__main__", alter_sys=True)
 """
 
