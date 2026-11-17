@@ -23,6 +23,7 @@ describe('the conflict facts of the pages', () => {
 		expect(pairOf('ZA2009')).toEqual({ first: 'ZA2008', second: 'ZA2009', defaultHalf: 'ZA2008', ownerWhenBothEnabled: 'ZA2008' });
 		expect(pairOf('ZA0151')).toEqual({ first: 'ZA0151', second: 'ZA0152', defaultHalf: 'ZA0152', ownerWhenBothEnabled: 'ZA0152' });
 		expect(pairOf('ZA0306')).toEqual({ first: 'ZA0306', second: 'ZA0307', defaultHalf: 'ZA0306', ownerWhenBothEnabled: 'ZA0307' });
+		expect(pairOf('ZA2001')).toEqual({ first: 'ZA2001', second: 'ZA2002', defaultHalf: 'ZA2002', ownerWhenBothEnabled: 'ZA2002' });
 		expect(pairOf('ZA0652')).toEqual({ first: 'ZA0651', second: 'ZA0652', defaultHalf: 'ZA0651', ownerWhenBothEnabled: 'ZA0651' });
 	});
 

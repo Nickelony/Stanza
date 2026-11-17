@@ -8,6 +8,8 @@ import { pages } from '../../src/languages/pages.ts';
 import { python } from '../../src/languages/python.ts';
 import { emptyConfig } from '../../src/state/config.ts';
 import type { AppState } from '../../src/state/store.ts';
+import { generateEslintConfig } from '../../src/writers/eslint-config.ts';
+import { generatePyproject } from '../../src/writers/pyproject.ts';
 import { markupConfig, realCatalog, realJavascript, realMarkup, realPython, sample } from '../fixtures.ts';
 
 describe('the address hash', () => {
@@ -223,14 +225,25 @@ describe('the address hash of the Markup page', () => {
 	});
 
 	it.each([
-		['Python', realPython, python, 'assertion-roots'],
-		['JS', realJavascript, javascript, 'assertionRoots'],
-	] as const)('keeps an explicit empty list of %s apart from a default, through the link', (_name, catalog, language, key) => {
-		const config = { ...emptyConfig(language.defaultSeverity), options: { [key]: '[]' } };
-		const hash = encodeHash(catalog, { config, selection: null }, language);
+		['Python', realPython, python, 'assertion-roots', generatePyproject, 'assertion-roots = []'],
+		['JS', realJavascript, javascript, 'assertionRoots', generateEslintConfig, 'assertionRoots: []'],
+	] as const)(
+		'keeps an explicit empty list of %s apart from a default, through the link, and writes it as a native empty list',
 
-		expect(hash).toBe(`${key}=%5B%5D`);
-		expect(decodeHash(catalog, `#${hash}`, language).config.options).toEqual({ [key]: '[]' });
-		expect(decodeHash(catalog, `#${key}=`, language).config.options).toEqual({});
-	});
+		(_name, catalog, language, key, generate, line) => {
+			const config = { ...emptyConfig(language.defaultSeverity), options: { [key]: '[]' } };
+			const hash = encodeHash(catalog, { config, selection: null }, language);
+
+			expect(hash).toBe(`${key}=%5B%5D`);
+
+			// The text that comes out of the link is what the visitor gets, so the written file shows whether `[]` was read as an empty list.
+			const decoded = decodeHash(catalog, `#${hash}`, language).config;
+
+			expect(decoded.options).toEqual({ [key]: '[]' });
+			expect(generate(catalog, decoded)).toContain(line);
+			expect(generate(catalog, decoded)).not.toContain('"[]"');
+			expect(generate(catalog, decoded)).not.toContain("'[]'");
+			expect(decodeHash(catalog, `#${key}=`, language).config.options).toEqual({});
+		},
+	);
 });
