@@ -23,6 +23,7 @@ Apply(legacy);
 ```
 
 - A `restore` closes the latest open `disable` of the same codes, whatever the order they are listed in; a pragma with no code names every warning.
+  A number is the `CS` code that the compiler reads it as, so `disable 618` and `restore CS0618` are one code.
 - In a `tight` block this rule judges only the outside: the lines inside it are not its gaps.
   [`stanza_suppression_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_suppression_block_padding) set to `padded` also writes a blank line below the `disable` and above the `restore`.
 - A pragma with no pair, such as a `disable` at the top of a file that nothing restores, stays as written.

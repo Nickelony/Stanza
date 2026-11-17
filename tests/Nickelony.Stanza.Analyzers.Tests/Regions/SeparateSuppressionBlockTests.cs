@@ -298,6 +298,37 @@ public sealed class SeparateSuppressionBlockTests
 		Assert.HasCount(2, result.Diagnostics);
 	}
 
+	// The compiler reads the number 618 as CS0618, so a disable and a restore that spell one warning two ways pair.
+	[TestMethod]
+	[DataRow("618", "CS0618", 2)]
+	[DataRow("CS0618", "618", 2)]
+	[DataRow("0618", "CS0618", 2)]
+	[DataRow("169, 649", "CS0649, CS0169", 2)]
+	[DataRow("618", "619", 0)]
+	[DataRow("CS0618", "CS618", 0)]
+	[DataRow("CS0618", "CS0619", 0)]
+	public async Task ANumberAndItsCsCodePairAsTheSameWarning(string disabled, string restored, int expected)
+	{
+		string source = $$"""
+			class C
+			{
+				private int _total;
+			#pragma warning disable {{disabled}}
+				private int _unused;
+			#pragma warning restore {{restored}}
+				private int _sum;
+			}
+			""";
+
+		AnalyzerRunResult result =
+			await RoslynTestHarness.ReportAsync<SeparateSuppressionBlockAnalyzer>(
+				source,
+				BlockRuleOnly
+			);
+
+		Assert.HasCount(expected, result.Diagnostics);
+	}
+
 	[TestMethod]
 	public async Task ABareDisableAndABareRestorePair()
 	{
