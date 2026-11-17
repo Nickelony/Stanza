@@ -25,5 +25,4 @@ Log("body");
 - A declaration on its own, directly above a run of yield statements, takes its blank line from this rule,
   and stays tight against the run while this rule is [off](https://github.com/Nickelony/Stanza/wiki/Terms).
 - A gap where two runs meet goes to the rule with the lower ID, as [One run of statements, several owners](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#one-run-of-statements-several-owners) says.
-  This rule has a higher ID than every other run rule except [`ZA0021`](https://github.com/Nickelony/Stanza/wiki/ZA0021-Separate-local-function-runs), so it yields to them.
 - [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) removes the blank lines inside a run of yield statements where it is on.

@@ -56,7 +56,7 @@ private int _other;
 private int _sum;
 ```
 
-Regions are padded by default, so a region keeps its inside until its key says `tight`:
+A region keeps its inside while its key says `padded`:
 
 ```csharp
 // Before
@@ -72,8 +72,8 @@ private int _count;
 #endregion
 ```
 
-- Each kind reads its own key: [`stanza_region_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_region_padding) defaults to `padded`,
-  and [`stanza_conditional_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_conditional_block_padding) and [`stanza_suppression_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_suppression_block_padding) default to `tight`.
+- Each kind reads its own key: [`stanza_region_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_region_padding),
+  [`stanza_conditional_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_conditional_block_padding) and [`stanza_suppression_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_suppression_block_padding).
 - The separating rules read the same keys, so a kind is padded by [`ZA0401`](https://github.com/Nickelony/Stanza/wiki/ZA0401-Separate-the-region-marker-from-its-neighbors),
   [`ZA0402`](https://github.com/Nickelony/Stanza/wiki/ZA0402-Separate-the-conditional-block-from-its-neighbors) or [`ZA0406`](https://github.com/Nickelony/Stanza/wiki/ZA0406-Separate-a-suppression-block), or tightened by this rule, and no rule contests a gap with another.
 - This rule reads only the keys, so it removes the blank lines of a `tight` kind whether or not the separating rule is on.

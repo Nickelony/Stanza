@@ -97,8 +97,9 @@ var handlers = new IHandler[]
   CSharpier keeps the blank lines the separating rules write.
 - **Brace padding and empty blocks**: CSharpier already writes what these rules ask for.
 - **Directive block padding** ([`ZA0407`](https://github.com/Nickelony/Stanza/wiki/ZA0407-Remove-directive-block-padding)):
-  CSharpier writes no blank line inside a region marker, a conditional block or a suppression block, and it keeps those it finds.
-  The removal stays, and it matches the lines CSharpier drops above an `#elif`, an `#else` and an `#endif` between members.
+  CSharpier writes no blank line inside a region marker, a conditional block or a suppression block,
+  and it keeps those it finds, except above an `#elif`, an `#else` or an `#endif` that a member follows.
+  The removal stays.
 - **Switch label padding** ([`ZA0207`](https://github.com/Nickelony/Stanza/wiki/ZA0207-Remove-switch-label-padding)): CSharpier keeps a blank line below a label as written, so it leaves the removal in place.
 - **The trailing comma** ([`ZA0198`](https://github.com/Nickelony/Stanza/wiki/ZA0198-Add-a-trailing-comma)):
   CSharpier writes the comma after the last element of every list it breaks across lines, apart from a property pattern, which it keeps as written,

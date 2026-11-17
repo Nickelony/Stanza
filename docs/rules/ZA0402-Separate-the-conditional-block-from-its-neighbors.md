@@ -28,7 +28,7 @@ class C
 }
 ```
 
-- By default only the outside of the block is judged: the branches, and the lines beside `#elif` and `#else`, stay as written.
+- In a `tight` block this rule judges only the outside: the branches, and the lines beside `#elif` and `#else`, are not its gaps.
   [`stanza_conditional_block_padding`](https://github.com/Nickelony/Stanza/wiki/stanza_conditional_block_padding) set to `padded` also writes a blank line below `#if`, on both sides of `#elif` and `#else`, and above `#endif`.
 - The directives must stand between members, statements or `using` directives.
   An `#if` inside an argument list, a parameter list, a collection or an initializer keeps its gap.
@@ -51,5 +51,5 @@ class C
 - This rule shares with [`ZA0401`](https://github.com/Nickelony/Stanza/wiki/ZA0401-Separate-the-region-marker-from-its-neighbors) its exceptions for a brace, a switch label, another directive and the edge of a file,
   and its rule that a comment directly above the directive moves with it.
 - The grouping rules end a run at the directive where this rule is enabled, as [the gap rules](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#a-comment-or-a-directive-in-a-gap) say.
-- [`ZA0407`](https://github.com/Nickelony/Stanza/wiki/ZA0407-Remove-directive-block-padding) removes the blank lines inside a block that is `tight`, which is the default.
+- [`ZA0407`](https://github.com/Nickelony/Stanza/wiki/ZA0407-Remove-directive-block-padding) removes the blank lines inside a `tight` block.
   Leave this rule disabled to leave the outside of a block as written.

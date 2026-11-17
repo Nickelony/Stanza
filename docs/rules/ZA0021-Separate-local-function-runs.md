@@ -25,5 +25,4 @@ static int Clamp(int v) => Math.Clamp(v, 0, 100);
 - A declaration on its own, directly above a run of local functions, takes its blank line from this rule,
   and stays tight against the run while this rule is [off](https://github.com/Nickelony/Stanza/wiki/Terms).
 - A gap where two runs meet goes to the rule with the lower ID, as [One run of statements, several owners](https://github.com/Nickelony/Stanza/wiki/Which-rule-owns-which-gap#one-run-of-statements-several-owners) says.
-  This rule has the highest ID of the run rules, so it yields to every other one.
 - [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-a-run-of-statements-together) removes the blank lines inside a run of local functions where it is on.

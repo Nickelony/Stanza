@@ -250,8 +250,8 @@ The `Repository` guards in `tests/` own the exact contracts;
 ## Adding or changing an option
 
 - A split that reads a property cutting across every kind of the base rule is a separate rule, as `ZA0003` and `ZA0014` are.
-- A split of one family by a written attribute that some codebases want and others do not is an option on the rule,
-  which defaults to the value that keeps today's behavior or to the coarser one.
+- A split of one family by a written attribute that some codebases want and others do not is an option on the rule.
+  Its default keeps the rule's behavior without the option, or is the coarser value.
 - A difference the page can justify as a different job is an always-on kind, as `const`, `using` and the member kinds are.
 
 1. Declare the key as a constant in `OptionKeys.cs` in `src/Nickelony.Stanza.Markup.Core/Options`, and add it to `OptionKeys.Known`.
