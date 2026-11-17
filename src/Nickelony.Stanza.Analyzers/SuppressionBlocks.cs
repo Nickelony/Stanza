@@ -67,14 +67,22 @@ internal static class SuppressionBlocks
 	private static SyntaxNode? FindContainer(DirectiveTriviaSyntax directive) => ConditionalBlocks.FindUnitContainer(directive.ParentTrivia.Token);
 
 	/// <summary>Reads the codes a pragma names, in a fixed order; a pragma with none names every warning.</summary>
-	private static string ReadCodes(PragmaWarningDirectiveTriviaSyntax pragma) =>
-		string.Join(",", pragma.ErrorCodes.Select(static code => NormalizeCode(code.ToString().Trim())).OrderBy(static code => code, System.StringComparer.Ordinal));
+	private static string ReadCodes(PragmaWarningDirectiveTriviaSyntax pragma)
+	{
+		IEnumerable<string> codes = pragma.ErrorCodes.Select(static code => NormalizeCode(code.ToString().Trim()));
+		return string.Join(",", codes.OrderBy(static code => code, System.StringComparer.Ordinal));
+	}
 
-	/// <summary>Reads a number as the compiler does, so <c>618</c> is <c>CS0618</c>; any other code stays as written.</summary>
-	private static string NormalizeCode(string code) =>
-		code.Length > 0 && code.All(static character => character is >= '0' and <= '9') && int.TryParse(code, NumberStyles.None, CultureInfo.InvariantCulture, out int number)
-			? "CS" + number.ToString("D4", CultureInfo.InvariantCulture)
-			: code;
+	/// <summary>Reads a number as the compiler does: <c>618</c> is <c>CS0618</c>.</summary>
+	private static string NormalizeCode(string code)
+	{
+		bool isNumber = code.Length > 0 && code.All(static character => character is >= '0' and <= '9');
+
+		if (isNumber && int.TryParse(s: code, style: NumberStyles.None, provider: CultureInfo.InvariantCulture, result: out int number))
+			return "CS" + number.ToString(format: "D4", provider: CultureInfo.InvariantCulture);
+
+		return code;
+	}
 
 	private static readonly WeakCache<SyntaxTree, Blocks> s_blocks = new();
 
