@@ -154,6 +154,8 @@ A project compiles a file in a [view](https://github.com/Nickelony/Stanza/wiki/T
    **IDE style rules** leaves out `IDE0130` too, which a build still reports at the severity a project sets.
 2. **Source layout (CSharpier, blank lines aside)**: a source matches CSharpier's layout but for its line endings
    and any gap of one blank line or none between two lines, and any other file CSharpier formats matches it exactly.
+   The sources that `csharpier check` lists are compared through one `csharpier server`,
+   which the check starts only for them and ends with the step.
    Under the whitespace layout, **Whitespace** runs `dotnet format whitespace --verify-no-changes`.
 3. **Markup files**: `stanza-markup check --strict`, when the tool manifest lists it.
    A finding of that check, a warning that `--strict` raises included, fails the check like another step, and the steps after it still run.

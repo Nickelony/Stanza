@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Format.Planning;
@@ -131,12 +132,12 @@ public sealed class FormatRunnerTests
 	}
 
 	[TestMethod]
-	public void AFormatThatFailsAfterTheCheckListedTheFileEndsTheRunWithAnError()
+	public void ASourceTheCheckListedEndsTheRunWhenNoManifestLetsTheServerStart()
 	{
 		using TempDirectory directory = new(editorConfig: false);
 		_ = directory.Write("A.cs", "class  A{}\n");
 
-		// The check lists A.cs and exits with the change code, and no tool manifest lets the format command start.
+		// The check lists A.cs and exits with the change code, and no tool manifest lets the server command start.
 		_ = directory.Write(
 			"Check.cs",
 
@@ -166,10 +167,8 @@ public sealed class FormatRunnerTests
 			)
 		);
 
-		Assert.StartsWith(
-			"Source layout could not run, as the command exited with code 1.",
-			exception.Message
-		);
+		Assert.StartsWith("The CSharpier server exited with code ", exception.Message);
+		Assert.Contains(" before it started.", exception.Message);
 	}
 
 	[TestMethod]
@@ -349,6 +348,111 @@ public sealed class FormatRunnerTests
 		Assert.Contains("CSharpier checked no file (exit code 0).", output.ToString());
 	}
 
+	[TestMethod]
+	public void ASourceLayoutCheckFormatsEverySourceThroughOneServer()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		// The server joins each pair of line breaks, so Blank.cs differs from its layout in blank lines alone.
+		_ = directory.Write("Blank.cs", "class A\n{\n\n\tint X;\n}\n");
+		_ = directory.Write("Wrong.cs", "class B { wrong }\n");
+		_ = directory.Write("Other.props", "<Project />\n");
+		_ = directory.Write("Server.cs", FakeCSharpierServer.Program);
+
+		FormatStep layout = BuildSourceLayoutStep(directory, ["Blank.cs", "Wrong.cs", "Other.props"]);
+
+		using StringWriter output = new();
+		using StringWriter error = new();
+
+		ImmutableArray<FormatStep> failed = Run(
+			root: directory.Root,
+			output,
+			error,
+			steps: [layout],
+			check: true
+		);
+
+		Assert.AreSequenceEqual([layout], failed);
+		Assert.Contains("    Wrong.cs", output.ToString());
+		Assert.Contains("    Other.props", output.ToString());
+		Assert.DoesNotContain("Blank.cs", output.ToString());
+
+		// The server starts once, whatever the number of sources.
+		Assert.AreEqual("started\n", directory.Read("started.txt").Replace("\r\n", "\n"));
+	}
+
+	[TestMethod]
+	public void ASourceLayoutCheckThatNeedsNoSourceStartsNoServer()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		_ = directory.Write("Other.props", "<Project />\n");
+		_ = directory.Write("Server.cs", FakeCSharpierServer.Program);
+
+		FormatStep layout = BuildSourceLayoutStep(directory, ["Other.props"]);
+
+		using StringWriter output = new();
+		using StringWriter error = new();
+
+		Assert.AreSequenceEqual(
+			[layout],
+			Run(root: directory.Root, output, error, steps: [layout], check: true)
+		);
+
+		Assert.IsFalse(File.Exists(Path.Combine(directory.Root, "started.txt")));
+	}
+
+	[TestMethod]
+	public void ASourceTheServerCannotFormatIsARunFailureThatSaysWhy()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		_ = directory.Write("Broken.cs", "class BROKEN {\n");
+		_ = directory.Write("Server.cs", FakeCSharpierServer.Program);
+
+		FormatStep layout = BuildSourceLayoutStep(directory, ["Broken.cs"]);
+
+		using StringWriter output = new();
+		using StringWriter error = new();
+
+		FormatRunException exception = Assert.ThrowsExactly<FormatRunException>(() =>
+			_ = Run(root: directory.Root, output, error, steps: [layout], check: true)
+		);
+
+		Assert.Contains("CSharpier could not format", exception.Message);
+		Assert.Contains("Broken.cs", exception.Message);
+		Assert.EndsWith("(Failed): Syntax error.", exception.Message);
+	}
+
+	[TestMethod]
+	public void AServerThatExitsBeforeItStartsIsARunFailureThatSaysSo()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		_ = directory.Write("Wrong.cs", "class B { wrong }\n");
+
+		_ = directory.Write(
+			"Server.cs",
+			"System.Console.WriteLine(\"No such tool.\");\nreturn 3;\n"
+		);
+
+		FormatStep layout = BuildSourceLayoutStep(directory, ["Wrong.cs"]);
+
+		using StringWriter output = new();
+		using StringWriter error = new();
+
+		FormatRunException exception = Assert.ThrowsExactly<FormatRunException>(() =>
+			_ = Run(root: directory.Root, output, error, steps: [layout], check: true)
+		);
+
+		Assert.StartsWith(
+			"The CSharpier server exited with code 3 before it started.",
+			exception.Message
+		);
+
+		Assert.Contains("No such tool.", exception.Message);
+	}
+
 	private static ImmutableArray<FormatStep> Run(
 		string root,
 		StringWriter output,
@@ -359,6 +463,41 @@ public sealed class FormatRunnerTests
 	{
 		FormatRunner runner = new(root, output, error, cancellationToken: CancellationToken.None);
 		return runner.Run(steps, check);
+	}
+
+	/// <summary>A source layout check of the files, served by <c>Server.cs</c>.</summary>
+	private static FormatStep BuildSourceLayoutStep(
+		TempDirectory directory,
+		ImmutableArray<string> unformatted
+	)
+	{
+		string lines = string.Concat(
+			unformatted.Select(static path =>
+				$"System.Console.WriteLine(@\".{Path.DirectorySeparatorChar}{path}: error: Was not formatted.\");\n"
+			)
+		);
+
+		_ = directory.Write(
+			"Check.cs",
+			lines + "System.Console.WriteLine(\"Checked 3 files in 1ms.\");\nreturn 1;\n"
+		);
+
+		return new FormatStep(
+			Title: "Source layout",
+			Kind: FormatStepKind.SourceLayout,
+
+			Commands:
+			[
+				["run", "Check.cs"],
+			],
+
+			Watched: [],
+			ChangeExitCodes: [1],
+			WorkingDirectory: "."
+		)
+		{
+			Server = ["run", "Server.cs"],
+		};
 	}
 
 	private static FormatStep BuildStep(

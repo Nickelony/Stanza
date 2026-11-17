@@ -17,4 +17,7 @@ internal sealed record FormatStep(
 {
 	/// <summary>The files a check reports, or every file when unset.</summary>
 	public ImmutableArray<string> Scope { get; init; }
+
+	/// <summary>The command that starts the CSharpier server a source layout check formats the sources with.</summary>
+	public ImmutableArray<string> Server { get; init; } = ["csharpier", "server"];
 }

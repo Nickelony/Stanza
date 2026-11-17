@@ -149,10 +149,15 @@ internal sealed class FormatRunner(string root, TextWriter output, TextWriter er
 		string workingDirectory = Path.GetFullPath(step.WorkingDirectory, root);
 
 		// A project file is compared exactly, as no rule pass writes one.
-		// A source starts a process of its own, and a formatted repository can have hundreds that differ only in blank lines.
+		// The sources share one server, as a host for each costs most of a second,
+		// and a formatted repository can have hundreds that differ only in blank lines.
+		using CSharpierServer? server = unformatted.Any(FormatPlanner.IsSource)
+			? CSharpierServer.Start(step.Server, workingDirectory, cancellationToken)
+			: null;
+
 		ImmutableArray<bool> drifts = ProcessRunner.RunEach(
 			[.. unformatted],
-			path => !FormatPlanner.IsSource(path) || DriftsFromCSharpier(step, path, workingDirectory),
+			path => !FormatPlanner.IsSource(path) || DriftsFromCSharpier(server!, Path.GetFullPath(path, workingDirectory)),
 			cancellationToken
 		);
 
@@ -170,27 +175,21 @@ internal sealed class FormatRunner(string root, TextWriter output, TextWriter er
 	}
 
 	/// <summary>Whether the source differs from CSharpier's layout in more than blank lines and line endings.</summary>
-	private bool DriftsFromCSharpier(FormatStep step, string path, string workingDirectory)
+	private static bool DriftsFromCSharpier(CSharpierServer server, string fullPath)
 	{
-		// CSharpier prints the path after `./`, and it is protected in case a version does not.
-		ImmutableArray<string> command = ["csharpier", "format", ArgumentPath.ToProtected(path), "--write-stdout"];
-		ProcessResult layout = RunCommand(step, command, echo: null, allowedExitCodes: []);
-
-		return !FormatChecks.MatchesApartFromBlankLines(layout.Output, File.ReadAllText(Path.GetFullPath(path, workingDirectory)));
+		string actual = File.ReadAllText(fullPath);
+		return !FormatChecks.MatchesApartFromBlankLines(server.Format(fullPath, actual), actual);
 	}
 
 	/// <summary>
 	/// Ends the run when the command exits with neither 0 nor one of the step's change codes, as it then failed.
 	/// </summary>
-	private ProcessResult RunStepCommand(FormatStep step, ImmutableArray<string> command, ProcessEcho? echo) =>
-		RunCommand(step, command, echo, allowedExitCodes: step.ChangeExitCodes);
-
-	private ProcessResult RunCommand(FormatStep step, ImmutableArray<string> command, ProcessEcho? echo, ImmutableArray<int> allowedExitCodes)
+	private ProcessResult RunStepCommand(FormatStep step, ImmutableArray<string> command, ProcessEcho? echo)
 	{
 		string workingDirectory = Path.GetFullPath(step.WorkingDirectory, root);
 		ProcessResult result = ProcessRunner.Run(fileName: "dotnet", arguments: command, workingDirectory, echo, cancellationToken);
 
-		if (result.ExitCode != 0 && !allowedExitCodes.Contains(result.ExitCode))
+		if (result.ExitCode != 0 && !step.ChangeExitCodes.Contains(result.ExitCode))
 			throw new FormatRunException($"{step.Title} could not run, as the command exited with code {result.ExitCode}.");
 
 		return result;
