@@ -5,6 +5,8 @@ import { parseForESLint } from '@typescript-eslint/parser';
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 
+import { range } from '../src/analysis/range.ts';
+
 import { createConfig, fix, fixWithPreset, lines, lintWithPreset, readPresetRules, readShape, stable } from './helpers.ts';
 
 describe('one owner per gap', () => {
@@ -377,5 +379,13 @@ describe('value reads', () => {
 
 		assert.ok((counts[0] ?? 0) > 0);
 		assert.equal(counts[1], counts[0]);
+	});
+});
+
+describe('range', () => {
+	it('lists the numbers from the start up to the end, and none where the end does not pass the start', () => {
+		assert.deepEqual(range(2, 5), [2, 3, 4]);
+		assert.deepEqual(range(3, 3), []);
+		assert.deepEqual(range(4, 1), []);
 	});
 });

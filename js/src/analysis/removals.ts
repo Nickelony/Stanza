@@ -1,6 +1,7 @@
 import type { Family } from './classify.ts';
 import { isJudgedJump, readJumpAsks } from './jumps.ts';
 import { memberKinds, statementKinds } from './kinds.ts';
+import { range } from './range.ts';
 import { isReceiverEdge } from './receivers.ts';
 import type { AddRuleName } from './ruleNames.ts';
 import { isSectionBoundary } from './sections.ts';
@@ -146,7 +147,7 @@ export function readLooseRuns(container: Container, context: RemovalContext, uni
 			}
 
 			if (final - first + 1 > limit) {
-				groups.push(Array.from({ length: final - first }, (_, offset) => first + offset));
+				groups.push(range(first, final));
 			}
 
 			start = end + 1;
@@ -215,7 +216,7 @@ function readEnabledRunSpans(container: Container, context: RemovalContext, unit
 /** Reads the gaps inside the runs that the enabled run rules read as one, as one group for each run, for the keep rules of one kind of unit. */
 export function readKeptRuns(container: Container, context: RemovalContext, units: RunUnits): readonly (readonly number[])[] {
 	return readEnabledRunSpans(container, context, units).flatMap((span) => {
-		const gaps = Array.from({ length: span.end - span.start }, (_, offset) => span.start + offset).filter(
+		const gaps = range(span.start, span.end).filter(
 			(index) => isLooseGap(container, index, context) && !isSectionBreak(container, span, index, context),
 		);
 
@@ -226,7 +227,7 @@ export function readKeptRuns(container: Container, context: RemovalContext, unit
 /** Reads the gaps inside the runs that the enabled run rules read as one whatever blank lines stand, so no section break splits a run yet. */
 export function readRunGaps(container: Container, context: RemovalContext, units: RunUnits): readonly number[] {
 	return readEnabledRunSpans(container, context, units).flatMap((span) =>
-		Array.from({ length: span.end - span.start }, (_, offset) => span.start + offset).filter((index) => {
+		range(span.start, span.end).filter((index) => {
 			const gap = container.gaps[index];
 			const previous = container.units[index];
 			const next = container.units[index + 1];

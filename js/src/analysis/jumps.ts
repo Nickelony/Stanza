@@ -1,5 +1,6 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 
+import { range } from './range.ts';
 import { isImport, isJump } from './syntax.ts';
 import type { Container, ContainerKind } from './types.ts';
 
@@ -58,9 +59,7 @@ export function readAskingJumps(container: Container, isSetApart: (gapIndex: num
 		const first = container.units[previousStart];
 
 		const spansTwoLines =
-			first !== undefined &&
-			(previous.lastLine > first.firstLine ||
-				Array.from({ length: gapIndex - previousStart }, (_, offset) => previousStart + offset).some((gap) => gathered.has(gap)));
+			first !== undefined && (previous.lastLine > first.firstLine || range(previousStart, gapIndex).some((gap) => gathered.has(gap)));
 
 		asks[index] = spansTwoLines && isJudgedJump(container, gapIndex);
 		starts.push(asks[index] ? index : previousStart);
