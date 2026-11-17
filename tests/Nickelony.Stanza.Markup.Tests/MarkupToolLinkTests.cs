@@ -160,7 +160,7 @@ public sealed class MarkupToolLinkTests
 		RunResult relaxed = Run(directory, "check", ".");
 
 		Assert.AreEqual(0, relaxed.ExitCode);
-		Assert.Contains("'locked' could not be scanned", relaxed.Error);
+		Assert.Contains("locked: could not be scanned", relaxed.Error);
 
 		RunResult strict = Run(directory, "check", "--strict", ".");
 
@@ -169,7 +169,7 @@ public sealed class MarkupToolLinkTests
 		// The warning names the directory as its origin, so the Error List can point at it.
 		RunResult msbuild = Run(directory, "check", "--format", "msbuild", ".");
 
-		Assert.Contains("locked : warning : 'locked' could not be scanned", msbuild.Output);
+		Assert.Contains("locked : warning : could not be scanned", msbuild.Output);
 	}
 
 	// A glob rooted at a drive meets many directories it cannot list, and one line per directory floods the run.
@@ -198,7 +198,7 @@ public sealed class MarkupToolLinkTests
 		];
 
 		Assert.HasCount(1, warnings);
-		Assert.Contains("2 directories could not be scanned, the first being '", warnings[0]);
+		Assert.Contains("2 directories could not be scanned, this one the first: ", warnings[0]);
 
 		RunResult msbuild = Run(directory, "check", "--format", "msbuild", "**/*.xml");
 
@@ -230,14 +230,14 @@ public sealed class MarkupToolLinkTests
 		Assert.AreEqual("The target is denied", deniedError);
 
 		Assert.AreEqual(
-			"'sample.xml' could not be inspected: The target is denied.",
-			MarkupLinks.Describe("sample.xml", deniedError)
+			"could not be inspected: The target is denied.",
+			MarkupLinks.Describe(deniedError)
 		);
 
 		// A system message that ends its own sentence keeps one period.
 		Assert.AreEqual(
-			"'sample.xml' could not be inspected: Access is denied.",
-			MarkupLinks.Describe("sample.xml", "Access is denied.")
+			"could not be inspected: Access is denied.",
+			MarkupLinks.Describe("Access is denied.")
 		);
 	}
 
@@ -301,7 +301,7 @@ public sealed class MarkupToolLinkTests
 		Assert.HasCount(1, notices.Items);
 
 		Assert.AreEqual(
-			"'locked' could not be inspected: Access is denied.",
+			"could not be inspected: Access is denied.",
 			notices.Items[0].Message
 		);
 

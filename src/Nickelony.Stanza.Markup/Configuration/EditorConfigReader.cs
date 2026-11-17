@@ -71,7 +71,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 			string displayPath = paths.GetDisplayPath(_problems[0].Path);
 			string count = left == 1 ? "1 more problem, which is" : $"{left} more problems, which are";
 
-			notices.AddWarning($"'{displayPath}' has {count} not reported.", displayPath);
+			notices.AddWarning($"has {count} not reported.", displayPath);
 		}
 
 		_dropped.Clear();
@@ -99,7 +99,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		if (EditorConfigChain.IsUnset(value) || MarkupKeyCheck.FindProblem(key, value, rawValue) is not { } problem)
 			return;
 
-		AddProblem(path, line, $"'{paths.GetDisplayPath(path)}' sets {ToQuoted(key)} to '{ToQuoted(value)}': {problem}.");
+		AddProblem(path, line, $"sets {ToQuoted(key)} to '{ToQuoted(value)}': {problem}.");
 	}
 
 	public EditorConfigChain GetChain(string filePath)
@@ -162,7 +162,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		}
 		catch (Exception exception) when (FileFailures.IsFileOrPathFailure(exception))
 		{
-			AddDropped(path, line: null, $"'{paths.GetDisplayPath(path)}' could not be read ({exception.Message}); its settings were ignored.");
+			AddDropped(path, line: null, $"could not be read ({exception.Message}); its settings were ignored.");
 			return null;
 		}
 		finally
@@ -179,7 +179,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 			AddProblem(
 				path,
 				line: headerLine,
-				$"'{paths.GetDisplayPath(path)}' has a section '[{ToQuoted(glob)}]' whose pattern is refused ({ToQuoted(refusal)}); it matches nothing."
+				$"has a section '[{ToQuoted(glob)}]' whose pattern is refused ({ToQuoted(refusal)}); it matches nothing."
 			);
 		}
 
@@ -191,7 +191,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 			AddProblem(
 				path,
 				line: headerLine,
-				$"'{paths.GetDisplayPath(path)}' has a section '[{ToQuoted(glob)}]' where a backslash escapes '{glob[escaped]}', so it names that character itself; write a slash to separate directories."
+				$"has a section '[{ToQuoted(glob)}]' where a backslash escapes '{glob[escaped]}', so it names that character itself; write a slash to separate directories."
 			);
 		}
 	}
@@ -252,13 +252,12 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 		if (!dropsText)
 			return text[..end];
 
-		string displayPath = paths.GetDisplayPath(path);
 		int lines = CountLines(text.AsSpan(0, end));
 
 		string message =
 			lines == 0
-				? $"'{displayPath}' has a first line longer than {MaxBytes >> 20} MiB; the whole file was ignored."
-				: $"'{displayPath}' is larger than {MaxBytes >> 20} MiB; everything after its line {lines} was ignored.";
+				? $"has a first line longer than {MaxBytes >> 20} MiB; the whole file was ignored."
+				: $"is larger than {MaxBytes >> 20} MiB; everything after its line {lines} was ignored.";
 
 		AddDropped(path, line: null, message);
 
@@ -295,7 +294,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 			AddProblem(
 				path,
 				lineNumber,
-				$"'{paths.GetDisplayPath(path)}' has the line '{ToQuoted(line)}', which is not a section header; it was ignored."
+				$"has the line '{ToQuoted(line)}', which is not a section header; it was ignored."
 			);
 
 			builder.StartSection(glob: null);
@@ -308,7 +307,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 			AddDropped(
 				path,
 				lineNumber,
-				$"'{paths.GetDisplayPath(path)}' has more than {MaxSections} sections; the lines from here on were ignored."
+				$"has more than {MaxSections} sections; the lines from here on were ignored."
 			);
 
 			return false;
@@ -335,7 +334,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 			AddProblem(
 				path,
 				lineNumber,
-				$"'{paths.GetDisplayPath(path)}' has the line '{ToQuoted(line)}', which is not a key with a value; it was ignored."
+				$"has the line '{ToQuoted(line)}', which is not a key with a value; it was ignored."
 			);
 
 			return;
@@ -356,7 +355,7 @@ internal sealed class EditorConfigReader(MarkupPaths paths, MarkupNotices notice
 				AddProblem(
 					path,
 					lineNumber,
-					$"'{paths.GetDisplayPath(path)}' sets root to '{ToQuoted(value)}': {OptionValues.Boolean.DescribeNeither()}, so the search for a parent .editorconfig continues."
+					$"sets root to '{ToQuoted(value)}': {OptionValues.Boolean.DescribeNeither()}, so the search for a parent .editorconfig continues."
 				);
 			}
 

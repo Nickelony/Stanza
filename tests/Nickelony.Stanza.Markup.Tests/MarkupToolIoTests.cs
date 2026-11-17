@@ -147,7 +147,7 @@ public sealed class MarkupToolIoTests
 		Assert.AreEqual(0, result.ExitCode, result.Error);
 
 		Assert.Contains(
-			"warning: sample.xml(1,1) could not be laid out: The document starts with a byte order mark (U+FEFF)",
+			"warning: sample.xml(1,1): could not be laid out: The document starts with a byte order mark (U+FEFF)",
 			result.Error
 		);
 	}

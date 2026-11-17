@@ -35,7 +35,7 @@ public sealed class MarkupReporterTests
 	[TestMethod]
 	[DataRow("Warning", null, null, "stanza-markup : warning : first second")]
 	[DataRow("Error", "sub/.editorconfig", null, "sub/.editorconfig : error : first second")]
-	[DataRow("Warning", "sub/.editorconfig", 4, "sub/.editorconfig(4,1): warning : first second")]
+	[DataRow("Warning", "sub/.editorconfig", 4, "sub/.editorconfig(4): warning : first second")]
 	[DataRow("Note", "sub/.editorconfig", 4, "note: first second")]
 	public void TheMsBuildShapeWritesANoticeAsADiagnostic(
 		string level,
@@ -62,7 +62,7 @@ public sealed class MarkupReporterTests
 
 	[TestMethod]
 	[DataRow(null, null, "warning: first second")]
-	[DataRow("sub", null, "warning: first second")]
+	[DataRow("sub", null, "warning: sub: first second")]
 	[DataRow("sub/.editorconfig", 4, "warning: sub/.editorconfig(4): first second")]
 	public void TheHumanShapeWritesANoticeOnOneLineToTheErrorStream(
 		string? displayPath,
@@ -84,5 +84,47 @@ public sealed class MarkupReporterTests
 
 		Assert.AreEqual(string.Empty, output.ToString());
 		Assert.AreEqual(expected + System.Environment.NewLine, error.ToString());
+	}
+
+	[TestMethod]
+	[DataRow(null, null, "a.xml")]
+	[DataRow(4, null, "a.xml(4)")]
+	[DataRow(4, 2, "a.xml(4,2)")]
+	[DataRow(null, 2, "a.xml")]
+	public void ALocationNamesTheLineAndTheColumnOnlyAfterALine(
+		int? line,
+		int? column,
+		string expected
+	)
+	{
+		Assert.AreEqual(expected, MarkupLocation.Format("a.xml", line, column));
+	}
+
+	[TestMethod]
+	public void BothShapesWriteAFailureAtTheSameLocation()
+	{
+		using StringWriter humanOutput = new();
+		using StringWriter humanError = new();
+		using StringWriter msbuildOutput = new();
+		using StringWriter msbuildError = new();
+
+		new MarkupHumanReporter(humanOutput, humanError).ReportFailure(
+			displayPath: "a.xml",
+			message: "broke",
+			line: 2,
+			column: 3,
+			isError: true
+		);
+
+		new MarkupMsBuildReporter(msbuildOutput, msbuildError).ReportFailure(
+			displayPath: "a.xml",
+			message: "broke",
+			line: 2,
+			column: 3,
+			isError: true
+		);
+
+		Assert.StartsWith("error: a.xml(2,3): broke", humanError.ToString());
+		Assert.StartsWith("a.xml(2,3): error ", msbuildOutput.ToString());
 	}
 }

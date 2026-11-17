@@ -15,7 +15,7 @@ internal static class MarkupLinks
 
 		string displayPath = context.Paths.GetDisplayPath(entry.FullName);
 
-		context.Notices.AddWarning(Describe(displayPath, inspectionError), displayPath);
+		context.Notices.AddWarning(Describe(inspectionError), displayPath);
 		return true;
 	}
 
@@ -42,10 +42,10 @@ internal static class MarkupLinks
 		}
 	}
 
-	public static string Describe(string displayPath, string? inspectionError)
+	public static string Describe(string? inspectionError)
 	{
 		return inspectionError is null
-			? $"'{displayPath}' is a link and was left alone."
-			: $"'{displayPath}' could not be inspected: {inspectionError.TrimEnd('.')}.";
+			? "is a link and was left alone."
+			: $"could not be inspected: {inspectionError.TrimEnd('.')}.";
 	}
 }

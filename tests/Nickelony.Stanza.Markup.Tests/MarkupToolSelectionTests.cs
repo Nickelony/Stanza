@@ -48,7 +48,7 @@ public sealed class MarkupToolSelectionTests
 				Formatted,
 				"[*.xml]\nstanza_markup_max_blank_lines = many\n",
 				new[] { "sample.xml" },
-				".editorconfig(4): '.editorconfig' sets stanza_markup_max_blank_lines",
+				".editorconfig(4): sets stanza_markup_max_blank_lines",
 			],
 
 			[
@@ -57,7 +57,7 @@ public sealed class MarkupToolSelectionTests
 				Source,
 				null,
 				new[] { "--exclude", "src/**", "src" },
-				"'src' holds no file this run inspects",
+				"src: holds no file this run inspects",
 			],
 
 			[
@@ -66,7 +66,7 @@ public sealed class MarkupToolSelectionTests
 				Source,
 				null,
 				new[] { "empty" },
-				"'empty' holds no file this run inspects",
+				"empty: holds no file this run inspects",
 			],
 
 			[
@@ -817,7 +817,7 @@ public sealed class MarkupToolSelectionTests
 		);
 
 		int collection = result.Error.IndexOf(
-			"warning: 'empty' holds no file",
+			"warning: empty: holds no file",
 			StringComparison.Ordinal
 		);
 
@@ -1065,7 +1065,7 @@ public sealed class MarkupToolSelectionTests
 		// The same walk with a pattern that can reach the directory meets it.
 		RunResult reaching = Run(directory, "check", "src/**/*.xml");
 
-		Assert.Contains("'src/locked' could not be scanned", reaching.Error);
+		Assert.Contains("src/locked: could not be scanned", reaching.Error);
 	}
 
 	[TestMethod]

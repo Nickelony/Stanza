@@ -227,11 +227,13 @@ public sealed class EditorConfigReaderTests
 
 		Assert.HasCount(1, notices.Items);
 
-		Assert.Contains(
+		Assert.AreEqual(
 			".editorconfig",
-			notices.Items[0].Message,
+			notices.Items[0].DisplayPath,
 			"The warning names the file that set the key."
 		);
+
+		Assert.DoesNotContain(".editorconfig", notices.Items[0].Message);
 	}
 
 	[TestMethod]
@@ -774,7 +776,8 @@ public sealed class EditorConfigReaderTests
 
 		string message = notices.Items[0].Message;
 
-		Assert.StartsWith("'nested/.editorconfig' could not be read (", message);
+		Assert.AreEqual("nested/.editorconfig", notices.Items[0].DisplayPath);
+		Assert.StartsWith("could not be read (", message);
 		Assert.EndsWith("); its settings were ignored.", message);
 	}
 }

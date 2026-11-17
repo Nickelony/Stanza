@@ -398,7 +398,7 @@ public sealed class MarkupToolFormatTests
 		RunResult result = Run(directory, arguments);
 
 		Assert.Contains(
-			".editorconfig(4,1): warning : '.editorconfig' sets stanza_markup_max_blank_lines",
+			".editorconfig(4): warning : sets stanza_markup_max_blank_lines",
 			result.Output
 		);
 
@@ -432,14 +432,14 @@ public sealed class MarkupToolFormatTests
 
 		RunResult scan = Run(directory, "check", "--format", "msbuild", "empty");
 
-		Assert.Contains("empty : warning : 'empty' holds no file this run inspects", scan.Output);
+		Assert.Contains("empty : warning : holds no file this run inspects", scan.Output);
 	}
 
 	[TestMethod]
-	[DataRow("human", "warning: 'nested/.editorconfig' could not be read (")]
+	[DataRow("human", "warning: nested/.editorconfig: could not be read (")]
 	[DataRow(
 		"msbuild",
-		"nested/.editorconfig : warning : 'nested/.editorconfig' could not be read ("
+		"nested/.editorconfig : warning : could not be read ("
 	)]
 	public void AnEditorConfigThatCannotBeReadIsReportedUnderEachShape(string format, string report)
 	{
@@ -663,12 +663,12 @@ public sealed class MarkupToolFormatTests
 		_ = Directory.CreateDirectory(Path.Combine(directory.Root, "empty"));
 
 		Assert.StartsWith(
-			"warning: 'empty' holds no file this run inspects.",
+			"warning: empty: holds no file this run inspects.",
 			Run(directory, "check", "empty").Error
 		);
 
 		Assert.StartsWith(
-			"error: 'empty' holds no file this run inspects.",
+			"error: empty: holds no file this run inspects.",
 			Run(directory, "check", "--strict", "empty").Error
 		);
 
@@ -687,7 +687,7 @@ public sealed class MarkupToolFormatTests
 
 		RunResult result = Run(directory, "check", "broken.xml");
 
-		Assert.Contains("broken.xml(3,3) could not be laid out", result.Error);
+		Assert.Contains("broken.xml(3,3): could not be laid out", result.Error);
 	}
 
 	[TestMethod]
@@ -698,7 +698,7 @@ public sealed class MarkupToolFormatTests
 
 		RunResult result = Run(directory, "check", "legacy.xml");
 
-		Assert.Contains("warning: legacy.xml could not be read:", result.Error);
+		Assert.Contains("warning: legacy.xml: could not be read:", result.Error);
 		Assert.DoesNotContain("legacy.xml(", result.Error);
 	}
 
@@ -776,10 +776,10 @@ public sealed class MarkupToolFormatTests
 
 	// Only the overlap guard of the formatter yields a defect, so the report is checked on the failure it would give.
 	[TestMethod]
-	[DataRow(true, false, "error: a.xml(2,3) produced boom, so it was left alone.", "Defect")]
-	[DataRow(true, true, "error: a.xml(2,3) produced boom, so it was left alone.", "Defect")]
-	[DataRow(false, false, "warning: a.xml(2,3) could not be laid out: boom", "Failed")]
-	[DataRow(false, true, "error: a.xml(2,3) could not be laid out: boom", "Failed")]
+	[DataRow(true, false, "error: a.xml(2,3): produced boom, so it was left alone.", "Defect")]
+	[DataRow(true, true, "error: a.xml(2,3): produced boom, so it was left alone.", "Defect")]
+	[DataRow(false, false, "warning: a.xml(2,3): could not be laid out: boom", "Failed")]
+	[DataRow(false, true, "error: a.xml(2,3): could not be laid out: boom", "Failed")]
 	public void ADefectIsAnErrorInEveryModeAndARefusalOnlyUnderStrict(
 		bool isDefect,
 		bool strict,

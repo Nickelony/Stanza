@@ -22,14 +22,14 @@ internal sealed class MarkupMsBuildReporter(TextWriter output, TextWriter error)
 		int failureColumn = column ?? MarkupFailure.FirstColumn;
 
 		Output.WriteLine(
-			$"{displayPath}({failureLine},{failureColumn}): {level} {MarkupDiagnostics.ReportUnreadableFileId}: {ToolHost.ToReportLine(message)}"
+			$"{MarkupLocation.Format(displayPath, failureLine, failureColumn)}: {level} {MarkupDiagnostics.ReportUnreadableFileId}: {ToolHost.ToReportLine(message)}"
 		);
 	}
 
 	public override void ReportChanged(string displayPath, ImmutableArray<MarkupEdit> edits, bool write)
 	{
 		foreach (MarkupEdit edit in edits)
-			Output.WriteLine($"{displayPath}({edit.Line},{edit.Column}): warning {edit.Id}: {ToolHost.ToReportLine(edit.Message)}");
+			Output.WriteLine($"{MarkupLocation.Format(displayPath, edit.Line, edit.Column)}: warning {edit.Id}: {ToolHost.ToReportLine(edit.Message)}");
 	}
 
 	/// <summary>MSBuild has no note level, so a note stays a plain line, which a build logs as a message.</summary>
@@ -43,13 +43,12 @@ internal sealed class MarkupMsBuildReporter(TextWriter output, TextWriter error)
 			return;
 		}
 
-		// A notice about a file or a directory takes it as the origin, and its line when it has one,
-		// so the Error List can point at it.
+		// A notice about a file or a directory takes it as the origin, and its line when it has one, so the Error List can point at it.
 		string origin = notice switch
 		{
 			{ DisplayPath: null } => "stanza-markup ",
 			{ Line: null } => $"{notice.DisplayPath} ",
-			_ => $"{notice.DisplayPath}({notice.Line},{MarkupFailure.FirstColumn})",
+			_ => MarkupLocation.Format(notice.DisplayPath, notice.Line),
 		};
 
 		Output.WriteLine($"{origin}: {GetLevelName(notice.Level)} : {message}");

@@ -80,7 +80,7 @@ internal static class MarkupDirectoryWalker
 			return;
 
 		string displayPath = context.Paths.GetDisplayPath(entry.FullName);
-		context.Notices.AddWarning(MarkupLinks.Describe(displayPath, inspectionError), displayPath);
+		context.Notices.AddWarning(MarkupLinks.Describe(inspectionError), displayPath);
 	}
 
 	/// <summary>Reports the directories the walk could not list as one warning, so a drive root stays short.</summary>
@@ -93,8 +93,8 @@ internal static class MarkupDirectoryWalker
 
 		string message =
 			unscanned.Count == 1
-				? $"'{displayPath}' could not be scanned: {reason}"
-				: $"{unscanned.Count} directories could not be scanned, the first being '{displayPath}': {reason}";
+				? $"could not be scanned: {reason}"
+				: $"{unscanned.Count} directories could not be scanned, this one the first: {reason}";
 
 		context.Notices.AddWarning(message, displayPath);
 	}

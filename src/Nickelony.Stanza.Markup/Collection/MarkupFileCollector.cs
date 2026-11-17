@@ -47,7 +47,7 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 		// A link named on the command line is scanned like any other directory;
 		// only a link the walk finds is never entered, which keeps a self-referencing junction from looping.
 		if (Directory.Exists(fullPath))
-			return isNew ? CollectScan(argument, directory: fullPath) : [];
+			return isNew ? CollectScan(directory: fullPath) : [];
 
 		if (File.Exists(fullPath))
 			return isNew ? CollectNamed(fullPath) : [];
@@ -158,7 +158,7 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 		return inputs;
 	}
 
-	private List<MarkupInput> CollectScan(string argument, string directory)
+	private List<MarkupInput> CollectScan(string directory)
 	{
 		List<MarkupInput> inputs = [];
 		int found = 0;
@@ -183,7 +183,7 @@ internal sealed class MarkupFileCollector(MarkupCollectionContext context)
 		}
 
 		if (found == 0)
-			context.Notices.AddWarning($"'{argument}' holds no file this run inspects.", displayPath: context.Paths.GetDisplayPath(directory));
+			context.Notices.AddWarning("holds no file this run inspects.", displayPath: context.Paths.GetDisplayPath(directory));
 
 		return inputs;
 	}

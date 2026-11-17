@@ -198,6 +198,6 @@ These problems fail the run in every mode:
   [Markup globs](https://github.com/Nickelony/Stanza/wiki/Markup-globs) lists what the dialect refuses.
 - A defect of the tool, a layout it would write broken, is an error in every mode, and the file is left as it was.
 - A file whose write fails with an I/O error fails the run in every mode.
-  The error is a plain `error: <path> could not be written: <reason>` line that carries no code,
+  The error is a plain `error: <path>: could not be written: <reason>` line that carries no code,
   because `--format msbuild` applies only to `check`, which never writes.
 
