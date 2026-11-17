@@ -33,7 +33,8 @@ it('loads the order', () => {
 - An assertion that narrows the value the statement above it bound checks that value, so the two read as one step.
 - The assertion is a single-line call of a root that the `guardRoots` or the `assertionRoots` setting lists,
   made on the root itself, as in `assert(x)` and `invariant(x)`, or through `ok`, as in `assert.ok(x)`.
-- The C# rule reads the narrowing from the flow attributes of the parameters a call passes the name to, such as `ArgumentNullException.ThrowIfNull(name)`.
+- The C# rule reads the narrowing from the flow attributes of the parameters a call passes the name to,
+  such as `ArgumentNullException.ThrowIfNull(name)`.
   JS has no flow attributes, so a listed root stands for them.
 - Its first argument narrows a bound name: the name itself, `x != null`, `x !== null`, `x != undefined`, `x !== undefined`,
   `typeof x === 'string'`, `x instanceof Order`, or an `&&` that holds one of these.

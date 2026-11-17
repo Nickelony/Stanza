@@ -24,7 +24,8 @@ The [shared analysis](https://github.com/Nickelony/Stanza/blob/main/js/src/analy
   It covers the unit below the gap, or it stands in the gap and covers its own line, as an `eslint-disable-line` comment after the unit above does.
 - A silenced keep rule protects no section at that gap, and no fix of its group removes that gap's blank line.
 - A silenced keep rule still reports the gap without a fix, blank or tight, where the directive covers it, so ESLint counts the directive as used.
-- A silenced keep rule reads a gap that holds only disable and enable directives as if they were not there, so a directive does not end the pair it silences.
+- A silenced keep rule reads a gap that holds only disable and enable directives as if they were not there,
+  so a directive does not end the pair it silences.
 - A silenced keep rule reports wherever its pair stands, even where the stanza around the pair or a section boundary keeps it from claiming the gap,
   because the gap it hands back may change both.
 - A rule that removes the blank lines of runs ends its run at a gap where a directive silences it, as a `#pragma` does in C#.

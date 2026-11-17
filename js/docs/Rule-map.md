@@ -170,7 +170,8 @@ or when `keep-statement-runs-together` holds that gap inside a run.
 The move writes no blank line below the group, as in the C# analyzers; the rules judge that gap on their own.
 Loose gathering reads the moved border afterward, so it cannot erase a boundary a separator requires.
 
-A keep rule that a disable directive silences at a gap hands the gap back, and a rule that removes the blank lines of runs ends its run there, as the [quirks](Quirks.md#one-owner-per-gap) say.
+A keep rule that a disable directive silences at a gap hands the gap back,
+and a rule that removes the blank lines of runs ends its run there, as the [quirks](Quirks.md#one-owner-per-gap) say.
 `separate-jump-statements` reads a kept gap as tight, so the stanza above a jump is the one the fixed text holds.
 The rules below never remove a blank line a keep rule has reported, so each gap has one owner.
 
