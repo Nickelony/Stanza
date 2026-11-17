@@ -131,13 +131,8 @@ class ModuleInfo:
 
     @property
     def replaced_signatures(self) -> frozenset[str]:
-        """The last names of the functions the module gives another code object."""
+        """The last names of the functions the module gives another code object, or every function."""
         return self.scan.replaced_signatures
-
-    @property
-    def rewrites_signatures(self) -> bool:
-        """Tells whether the module gives another code object to a function it names no way that can be read."""
-        return self.scan.rewrites_signatures
 
     @property
     def class_sites(self) -> tuple[ClassSite, ...]:

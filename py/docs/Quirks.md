@@ -188,8 +188,8 @@ The [rule page](rules/ZA3501-name-call-arguments.md#what-it-names) lists the cal
 | An exception class whose `__init__` does not call `super().__init__(...)` as a statement of its own | Left alone, because `BaseException` keeps the arguments it is given. |
 | `Class.method(obj, ...)` | The receiver stays positional and the names start at the next argument. |
 | A positional-only or mangled parameter | Stays positional. A call where one follows an argument that needs a name is left alone. |
-| A callee whose `__code__` a project module assigns or deletes | Left alone, matched by the last name of the callee. A write the rule cannot read, such as `handlers[name].__code__ = ...`, leaves the functions of that module alone. |
-| A rewrite through a frame (`sys._getframe(...).f_globals`), the `__globals__` of a function, `object.__setattr__` or `__import__("builtins").globals()` | Not seen. Disable `ZA3501` and `ZA3502` for a project that relies on such rewrites. |
+| A callee whose `__code__` a project module assigns or deletes | Left alone, matched by the last name of the callee when the write is to a `def` or `class` of its module. Any other write, such as `handlers[name].__code__ = ...` or one through a parameter, a loop variable or an alias, leaves every call in the project alone. |
+| A rewrite through a frame (`sys._getframe(...).f_globals`), the `__globals__` of a function, `object.__setattr__`, `sys.modules[__name__]` or an alias of `__import__("builtins")` | Not seen. Disable `ZA3501` and `ZA3502` for a project that relies on such rewrites. |
 | A callee that a test double replaces, a form a type checker reads positionally, or a dunder method | Left alone or kept positional, as the [rule page](rules/ZA3501-name-call-arguments.md#what-it-names) lists. |
 | A call with `*args` or `**kwargs`, or with more positional arguments than the callee takes | Left alone. |
 | An argument that is a generator or a `:=` expression without parentheses of its own | The call is left alone, because a name cannot stand in front of it. |

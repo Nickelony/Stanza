@@ -485,7 +485,6 @@ class ModuleScan:
     classes: tuple[ClassSite, ...]
     rewrites_namespace: bool
     replaced_signatures: frozenset[str]
-    rewrites_signatures: bool
     by_node: dict[int, ClassSite] = field(repr=False, compare=False)
 
 
@@ -591,8 +590,7 @@ def scan_module(tree: ast.Module) -> ModuleScan:
         frozenset(patched),
         classes,
         watch.finish(),
-        frozenset(signatures.names),
-        signatures.unreadable,
+        signatures.finish(tree),
         by_node,
     )
 

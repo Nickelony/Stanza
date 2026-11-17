@@ -155,7 +155,8 @@ and no `global` statement or later star import may rebind it.
 A project module that may rewrite its own namespace, as `dynamic.py` reads it, resolves no name.
 `classes.py` reads the method resolution order and the constructor of a class, `scopes.py` the names each scope binds, and `shapes.py` the parameters.
 
-A project module that replaces the `__code__` of a callee leaves that name unresolved, and one that replaces the code of a function it cannot name leaves only its own functions unresolved.
+A project module that replaces the `__code__` of a callee leaves that name unresolved.
+One that replaces the code of a function it cannot tie to a `def` or `class` of its own leaves every call in the project unresolved.
 
 ### Sources and skipped calls
 

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from nickelony_stanza import Config, lint
+from nickelony_stanza import Config, fix, lint
 from nickelony_stanza.analysis.projects import Projects
 from nickelony_stanza.analysis.scopes import scan_module
 from tests.helpers import fix_with, run_module
@@ -154,15 +154,82 @@ def test_a_harmless_signature_write_in_another_module_leaves_the_call_named(tmp_
 
 
 @pytest.mark.parametrize("write", _UNREADABLE_WRITES.values(), ids=_UNREADABLE_WRITES)
-def test_an_unreadable_signature_write_stops_only_the_functions_of_its_own_module(tmp_path: Path, write: str) -> None:
+def test_an_unreadable_signature_write_in_another_module_stops_every_call(tmp_path: Path, write: str) -> None:
     other = f"{_LIB_HEAD}{_SIGNATURE_OTHER}{write}\n"
     main = _project(tmp_path / "app", lib=_TARGET, patch=other)
 
+    assert _findings(main) == 0
+
+
+_UNTIED_WRITES = {
+    "a subscript": "functions = [target]\nfunctions[0].__code__ = other.__code__",
+    "a loop variable": "for function in (target,):\n    function.__code__ = other.__code__",
+    "a local alias": "def retarget():\n    alias = target\n    alias.__code__ = other.__code__",
+    "a parameter": "def retarget(function, new):\n    function.__code__ = new.__code__\n\n\nretarget(target, other)",
+    "an attribute of a value": "box = types.SimpleNamespace(target=target)\nbox.target.__code__ = other.__code__",
+    "an attribute of an import": "import lib\n\nlib.target.__code__ = other.__code__",
+    "a name that is a def and a parameter": (
+        "def retarget(target, new):\n    target.__code__ = new.__code__\n\n\nretarget(target, other)"
+    ),
+    "a set by name on a parameter": (
+        "def retarget(function, new):\n    setattr(function, '__code__', new.__code__)\n\n\nretarget(target, other)"
+    ),
+}
+
+_TIED_WRITES = {
+    "a def": "target.__code__ = other.__code__",
+    "a def set by name": "setattr(target, '__code__', other.__code__)",
+    "a def copied": "functools.update_wrapper(target, other, assigned=('__code__',))",
+}
+
+
+@pytest.mark.parametrize("write", _UNTIED_WRITES.values(), ids=_UNTIED_WRITES)
+def test_a_code_write_that_ties_to_no_def_of_its_module_stops_every_call_of_the_project(
+    tmp_path: Path, write: str
+) -> None:
+    main = _project(tmp_path / "app", lib=_TARGET, patch=f"import types\n\n{_SIGNATURE_OTHER}{write}\n")
+    assert _findings(main) == 0
+
+
+@pytest.mark.parametrize("write", _TIED_WRITES.values(), ids=_TIED_WRITES)
+def test_a_code_write_to_a_def_of_its_module_stops_only_the_calls_of_that_name(tmp_path: Path, write: str) -> None:
+    patch = f"import functools\n\n\ndef target(a, b):\n    return a\n\n\n{_SIGNATURE_OTHER}{write}\n"
+    main = _project(tmp_path / "app", lib="def stays(a, b, c, d):\n    return a\n", patch=patch)
+
+    assert _findings(main, "from lib import stays\nstays(1, 2, 3, 4)\n") == 1
+    assert _findings(main, "from patch import target\ntarget(1, 2)\n") == 0
+
+
+def test_a_code_write_to_a_method_of_a_class_of_its_module_stops_the_calls_of_that_method(tmp_path: Path) -> None:
+    method = "class C:\n    def m(self, a, b, c, d):\n        return a\n\n\n"
+    main = _project(tmp_path / "app", lib=_TARGET, patch=f"{method}{_SIGNATURE_OTHER}C.m.__code__ = other.__code__\n")
+
     assert _findings(main) == 1
 
-    (tmp_path / "app" / "lib.py").write_text(_TARGET + other, encoding="utf-8")
 
-    assert _findings(main) == 0
+def test_a_code_write_that_ties_to_no_def_stops_a_call_across_three_modules(tmp_path: Path) -> None:
+    root = tmp_path / "app"
+    root.mkdir()
+    (root / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    (root / "pkg").mkdir()
+    (root / "pkg" / "__init__.py").write_text("", encoding="utf-8")
+    (root / "pkg" / "a.py").write_text(_TARGET, encoding="utf-8")
+    (root / "pkg" / "other.py").write_text(_SIGNATURE_OTHER, encoding="utf-8")
+
+    (root / "pkg" / "b.py").write_text(
+        "from pkg import other\nfrom pkg.a import target\n\nfns = [target]\nfns[0].__code__ = other.other.__code__\n",
+        encoding="utf-8",
+    )
+
+    main = root / "pkg" / "main.py"
+    call = "import pkg.b\nfrom pkg.a import target\n\nresult = target(1, 2, 3, 4)\n"
+    config = Config.create("none", enable=["ZA3501"])
+
+    assert fix(call, config, path=main, projects=Projects()).text == call
+
+    (root / "pkg" / "b.py").write_text("from pkg.a import target\n\nfns = [target]\n", encoding="utf-8")
+
+    assert fix(call, config, path=main, projects=Projects()).text.endswith("target(a=1, b=2, c=3, d=4)\n")
 
 
 def test_an_unreadable_namespace_write_in_another_module_stops_only_its_own_names(tmp_path: Path) -> None:
@@ -197,7 +264,6 @@ def test_the_patterns_of_real_packages_do_not_mark_a_module(source: str) -> None
 
     assert not scan.rewrites_namespace
     assert not scan.replaced_signatures
-    assert not scan.rewrites_signatures
 
 
 def test_no_lexer_module_of_pygments_is_marked() -> None:
@@ -208,7 +274,6 @@ def test_no_lexer_module_of_pygments_is_marked() -> None:
         file.name
         for file in files
         if (scan := scan_module(ast.parse(file.read_text(encoding="utf-8")))).rewrites_namespace
-        or scan.rewrites_signatures
         or scan.replaced_signatures
     ]
 

@@ -1,20 +1,24 @@
 """
 The code of a module that can change what a name or a function means without a statement that binds it.
 
-One watch sees the functions a module gives another code object, as `f.__code__ = g.__code__`,
-and whether it does so for a function it cannot name.
+One watch sees the functions a module gives another code object, as `f.__code__ = g.__code__`.
+It names a function only where the write is to a `def` or `class` the module binds, or to a method of such a class,
+and any other write counts for every function: through a subscript, a parameter, a loop variable, an alias,
+an import or a computed `assigned`.
 Another sees every node of one walk of a module, then answers whether the module may rewrite its own namespace.
 That is the case when it can write the dictionary `globals()` returns, run code in the namespace of the module,
 or reach `exec`, `eval`, `globals`, `vars` or `locals` by a route the watch does not follow.
 A use of `globals()` that only reads, as `globals()["name"]`, `globals().get(...)`, `"name" in globals()`,
 `dict(globals())` or `for name in globals()`, is no write.
-Code that reaches the module object by name, such as `sys.modules[__name__]`, a frame, `__globals__`
-or `object.__setattr__`, is not seen here.
+Code that reaches the module object by name, such as `sys.modules[__name__]`, a frame, `__globals__`,
+`object.__setattr__` or an alias of `__import__("builtins")`, is not seen here.
 """
 
 from __future__ import annotations
 
 import ast
+
+_FUNCTION_DEFS = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 # The functions that hand out the namespace of a module or run code in it, and the builtins table they come from.
 _NAMESPACE_FUNCTIONS = frozenset({"exec", "eval", "globals", "vars", "locals"})
@@ -254,20 +258,42 @@ _COPIERS = {"update_wrapper": 2, "wraps": 1}
 _DEFAULT_COPIES = frozenset({"WRAPPER_ASSIGNMENTS", "WRAPPER_UPDATES"})
 
 
+# Stands for every function, where a write names none that the watch can tie to a `def` or `class` of its module.
+EVERY_FUNCTION = "*"
+
+
 class SignatureWatch:
-    """Collects the names of the functions a module gives another code object, and whether one has no name to read."""
+    """Collects the functions a module gives another code object, and the targets it cannot tie to a name."""
 
     def __init__(self) -> None:
-        self.names: set[str] = set()
-        self.unreadable = False
+        self._targets: list[ast.expr] = []
+        self._unreadable = False
 
     def visit(self, node: ast.AST) -> None:
         """Takes one node of the walk of a module."""
         if isinstance(node, ast.Attribute):
             if node.attr == _CODE_ATTRIBUTE and isinstance(node.ctx, ast.Store | ast.Del):
-                self._record(node.value)
+                self._targets.append(node.value)
         elif isinstance(node, ast.Call):
             self._visit_call(node)
+
+    def finish(self, tree: ast.Module) -> frozenset[str]:
+        """Settles the last names of the functions given another code object, `EVERY_FUNCTION` for one with no name."""
+        if not self._targets and not self._unreadable:
+            return frozenset()
+
+        names: set[str] = {EVERY_FUNCTION} if self._unreadable else set()
+        functions, classes = _own_definitions(tree)
+
+        for target in self._targets:
+            if isinstance(target, ast.Name) and target.id in functions:
+                names.add(target.id)
+            elif isinstance(target, ast.Attribute) and _is_name_in(target.value, classes):
+                names.add(target.attr)
+            else:
+                names.add(EVERY_FUNCTION)
+
+        return frozenset(names)
 
     def _visit_call(self, call: ast.Call) -> None:
         function = call.func
@@ -282,7 +308,7 @@ class SignatureWatch:
 
         if last in _ATTRIBUTE_SETTERS:
             if call.args and len(call.args) > 1 and _is_text(call.args[1], _CODE_ATTRIBUTE):
-                self._record(call.args[0])
+                self._targets.append(call.args[0])
         elif last in _COPIERS:
             self._visit_copier(call, _COPIERS[last])
 
@@ -291,7 +317,7 @@ class SignatureWatch:
         if any(isinstance(argument, ast.Starred) for argument in call.args) or any(
             keyword.arg is None for keyword in call.keywords
         ):
-            self.unreadable = True
+            self._unreadable = True
             return
 
         keyword = next((keyword.value for keyword in call.keywords if keyword.arg == "assigned"), None)
@@ -303,22 +329,53 @@ class SignatureWatch:
         copied = _copied_attributes(assigned)
 
         if copied is None:
-            self.unreadable = True
+            self._unreadable = True
         elif _CODE_ATTRIBUTE in copied:
             # `update_wrapper` names the function it changes first, but `wraps` hands it on to the decorated one.
             if position == 2 and call.args:
-                self._record(call.args[0])
+                self._targets.append(call.args[0])
             else:
-                self.unreadable = True
+                self._unreadable = True
 
-    def _record(self, target: ast.expr) -> None:
-        """Notes the last name of the function an attribute is set on, or that the function has no name to read."""
-        if isinstance(target, ast.Name):
-            self.names.add(target.id)
-        elif isinstance(target, ast.Attribute):
-            self.names.add(target.attr)
-        else:
-            self.unreadable = True
+
+def _is_name_in(node: ast.expr, names: frozenset[str]) -> bool:
+    return isinstance(node, ast.Name) and node.id in names
+
+
+def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], frozenset[str]]:
+    """
+    Reads the names a module binds only by `def` or `class`, and of those the ones bound by `class`.
+
+    A name that anything else also binds, such as a parameter, a loop variable, an assignment or an import,
+    may hold another function than the one defined, so it is in neither, and a star import may bind any name.
+    """
+    defined: set[str] = set()
+    classes: set[str] = set()
+    other: set[str] = set()
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef):
+            defined.add(node.name)
+            classes.add(node.name)
+        elif isinstance(node, _FUNCTION_DEFS):
+            defined.add(node.name)
+        elif isinstance(node, ast.Name):
+            if not isinstance(node.ctx, ast.Load):
+                other.add(node.id)
+        elif isinstance(node, ast.arg):
+            other.add(node.arg)
+        elif isinstance(node, ast.alias):
+            other.add(node.asname or node.name.split(".")[0])
+        elif isinstance(node, ast.ExceptHandler | ast.MatchAs | ast.MatchStar):
+            if node.name is not None:
+                other.add(node.name)
+        elif isinstance(node, ast.MatchMapping) and node.rest is not None:
+            other.add(node.rest)
+
+    if "*" in other:
+        return frozenset(), frozenset()
+
+    return frozenset(defined - other), frozenset(classes - other)
 
 
 def _is_text(node: ast.expr, text: str) -> bool:

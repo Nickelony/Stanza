@@ -85,8 +85,9 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
   because the double may take other names.
 - A callee whose `__code__` a project module assigns or deletes, as in `f.__code__ = g.__code__`,
   or copies with `functools.update_wrapper(f, g, assigned=("__code__",))`.
-  The rule matches the last name of the callee, as for a double.
-  A write it cannot read, as in `handlers[name].__code__ = ...` or a computed `assigned`, stops the functions of that module only.
+  The rule matches the last name of the callee, as for a double, when the write is to a `def` or `class` the module binds or to a method of such a class.
+- Every call in the project, when a module writes a `__code__` it cannot tie to such a `def` or `class`:
+  a subscript, a parameter, a loop variable, an alias or a computed `assigned`.
 - Every callee with the same last name as a double, because the rule matches the last name of the callee against the names any project module patches.
 - `typing.cast`, `NewType`, `TypeVar`, `ParamSpec`, `TypeVarTuple`, `TypeAliasType`, `NamedTuple` and `TypedDict`, also from `typing_extensions`,
   and `collections.namedtuple`, because a type checker reads their arguments positionally.
@@ -104,7 +105,8 @@ These stay named: `exec(code, namespace)` with a namespace of its own, a constan
 and a callee whose `__defaults__`, `__kwdefaults__` or `__signature__` a module sets, because only a code object renames a parameter.
 
 The rule does not see a rewrite through a frame (`sys._getframe(...).f_globals` or `f_locals`), through the `__globals__` of a function,
-through `object.__setattr__`, or through `__import__("builtins").globals()`.
+through `object.__setattr__`, through `sys.modules[__name__]`, as in `sys.modules[__name__].__dict__[...] = ...` or `exec(..., sys.modules[__name__].__dict__)`,
+or through an alias of `__import__("builtins")`, as in `b = __import__("builtins"); b.exec(...)`.
 A project that relies on such rewrites should disable `ZA3501` and `ZA3502` for that code.
 
 The first call this rule resolves makes a run read the whole project up front, so a run at `strong` pays that cost before it names a call.
