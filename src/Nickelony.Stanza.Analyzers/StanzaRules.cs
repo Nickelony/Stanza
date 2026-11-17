@@ -1176,6 +1176,20 @@ internal static class StanzaRules
 		]
 	);
 
+	/// <summary>Writes a block body for a multi-line body, waiting for the collapse of an empty block.</summary>
+	public static readonly StanzaRule UseBlockBodyForMultiLineMember = new(
+		Descriptor: DiagnosticDescriptors.UseBlockBodyForMultiLineMember,
+		Kinds: [SyntaxKind.ArrowExpressionClause],
+		DefersTo: [DiagnosticDescriptors.CollapseEmptyBlocks]
+	);
+
+	/// <summary>Writes a block body for a multi-line value, waiting for the collapse of an empty block.</summary>
+	public static readonly StanzaRule UseBlockBodyForMultiLineValueMember = new(
+		Descriptor: DiagnosticDescriptors.UseBlockBodyForMultiLineValueMember,
+		Kinds: [SyntaxKind.ArrowExpressionClause],
+		DefersTo: [DiagnosticDescriptors.CollapseEmptyBlocks]
+	);
+
 	public static readonly StanzaRule SeparateSlashOfSelfClosingTag = new(
 		Descriptor: DiagnosticDescriptors.SeparateSlashOfSelfClosingTag,
 		Pair: s_selfClosingSlash
@@ -1384,6 +1398,8 @@ internal static class StanzaRules
 		BreakExpressionOffSignatureLine,
 		UseExpressionBodyForSingleLineMember,
 		UseExpressionBodyForSingleLineValueMember,
+		UseBlockBodyForMultiLineMember,
+		UseBlockBodyForMultiLineValueMember,
 		SeparateSlashOfSelfClosingTag,
 		KeepSlashOfSelfClosingTagTight,
 		AddTrailingComma,

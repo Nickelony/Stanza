@@ -443,4 +443,61 @@ public sealed class UseBlockBodyForMultiLineValueMemberTests
 
 		Assert.IsEmpty(result.Diagnostics);
 	}
+
+	// The block body would outlive the line break of the empty initializer, which the collapse rule joins, so this rule waits for it.
+	[TestMethod]
+	public async Task AnEmptyBlockThatTheCollapseRuleJoinsAloneDoesNotMakeTheBodyMultiLine()
+	{
+		const string source = """
+			class Foo { }
+
+			class C
+			{
+				object P => new { A = 1, B = new Foo {
+				}, D = 2 };
+			}
+			""";
+
+		const string fixedSource = """
+			class Foo { }
+
+			class C
+			{
+				object P => new { A = 1, B = new Foo { }, D = 2 };
+			}
+			""";
+
+		var options = new RunOptions(RoslynTestHarness.AllAnalyzers)
+		{
+			DiagnosticOptions = TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.UseBlockBodyForMultiLineValueMember,
+				DiagnosticDescriptors.CollapseEmptyBlocks,
+			]),
+		};
+
+		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(fixedSource, source, options);
+	}
+
+	[TestMethod]
+	public async Task AnEmptyBlockLeftAloneByTheCollapseRuleStillMakesTheBodyMultiLine()
+	{
+		const string source = """
+			class Foo { }
+
+			class C
+			{
+				object P => new { A = 1, B = new Foo {
+				}, D = 2 };
+			}
+			""";
+
+		// With the collapse rule off, nothing joins the empty initializer, so the body stays multi-line.
+		AnalyzerRunResult result =
+			await RoslynTestHarness.RunAsync<UseBlockBodyForMultiLineValueMemberAnalyzer>(
+				source,
+				TestRuleSets.OnSuppressingAllOthers([DiagnosticDescriptors.UseBlockBodyForMultiLineValueMember])
+			);
+
+		Assert.HasCount(1, result.Diagnostics);
+	}
 }

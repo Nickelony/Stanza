@@ -28,4 +28,5 @@ public override string Name
 - A `get` or `set` accessor keeps its keyword, and a `set` block has no `return`.
 - The expression text stays as written, so its wrapped lines keep their indentation.
 - An accessor that shares its line with the property, as in `int Value { get => Build(`, is left as written.
+- An expression body that only an empty block makes multi-line waits for [`ZA0205`](https://github.com/Nickelony/Stanza/wiki/ZA0205-Collapse-empty-blocks) to join that block, where it is on, as [`ZA0301`](https://github.com/Nickelony/Stanza/wiki/ZA0301-Use-a-block-body-for-a-multi-line-member) does.
 - `ZA0304` judges only block bodies, so both can be [enabled](https://github.com/Nickelony/Stanza/wiki/Terms).

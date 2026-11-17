@@ -26,3 +26,5 @@ private static Kind Pick(bool first)
 - A comment beside the arrow or a directive in the expression keeps the arrow,
   because the fix cannot move either one.
 - `ZA0302` judges only block bodies, so both can be [enabled](https://github.com/Nickelony/Stanza/wiki/Terms).
+- An expression body that only an empty block makes multi-line waits for [`ZA0205`](https://github.com/Nickelony/Stanza/wiki/ZA0205-Collapse-empty-blocks) to join that block, where it is on,
+  because the block body this rule writes would outlive the line break that asked for it.

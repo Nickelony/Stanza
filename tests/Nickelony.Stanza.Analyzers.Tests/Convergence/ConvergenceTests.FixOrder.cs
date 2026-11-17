@@ -1365,6 +1365,122 @@ public sealed partial class ConvergenceTests
 				}
 				""",
 		],
+
+		[
+			"an accessor that holds an empty block gets the blank line above it whichever fix comes first",
+			TestRuleSets.OnSuppressingAllOthers([DiagnosticDescriptors.SeparateMultiLineAccessors]),
+
+			"""
+				class C
+				{
+					int P
+					{
+						get => f;
+						set {
+						}
+					}
+
+					int f;
+				}
+				""",
+
+			"""
+				class C
+				{
+					int P
+					{
+						get => f;
+
+						set {
+						}
+					}
+
+					int f;
+				}
+				""",
+		],
+
+		[
+			"an empty block that the collapse rule joins keeps the blank line the accessor rule wrote above it",
+
+			TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.SeparateMultiLineAccessors,
+				DiagnosticDescriptors.CollapseEmptyBlocks,
+			]),
+
+			"""
+				class C
+				{
+					int P
+					{
+						get => f;
+						set {
+						}
+					}
+
+					int f;
+				}
+				""",
+
+			"""
+				class C
+				{
+					int P
+					{
+						get => f;
+
+						set { }
+					}
+
+					int f;
+				}
+				""",
+		],
+
+		[
+			"a comment in the gap beside accessors that the expression body rules collapse keeps the gap tight",
+
+			TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.KeepMultiLineAccessorsTogether,
+				DiagnosticDescriptors.UseExpressionBodyForSingleLineMember,
+				DiagnosticDescriptors.UseExpressionBodyForSingleLineValueMember,
+			]),
+
+			"""
+				class C
+				{
+					int f;
+
+					int P
+					{
+						get
+						{
+							return f;
+						}
+
+						// Sets it.
+						set
+						{
+							f = value;
+						}
+					}
+				}
+				""",
+
+			"""
+				class C
+				{
+					int f;
+
+					int P
+					{
+						get => f;
+						// Sets it.
+						set => f = value;
+					}
+				}
+				""",
+		],
 	];
 
 	[TestMethod]

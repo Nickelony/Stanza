@@ -21,7 +21,7 @@ internal sealed class CollapseEmptyBlocksAnalyzer() : StanzaRuleAnalyzer(StanzaR
 
 		SourceText sourceText = context.Node.SyntaxTree.GetText(context.CancellationToken);
 
-		if (BraceEdits.CreateEmptyBlockCollapse(sourceText, braces.Previous, braces.Next) is null)
+		if (StanzaEmptyBlocks.CreateCollapse(sourceText, braces.Previous, braces.Next) is null)
 			return;
 
 		int separatedUnits = BraceEdits.ReadSeparatedUnits(context, Rule, units: BraceEdits.CollectJoinedUnits(sourceText, braces.Previous));

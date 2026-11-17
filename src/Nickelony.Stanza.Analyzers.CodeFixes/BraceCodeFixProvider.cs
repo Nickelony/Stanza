@@ -101,7 +101,7 @@ internal sealed class BraceCodeFixProvider : StanzaCodeFixProvider
 	{
 		if (
 			StanzaBraces.FindBracePair(root, diagnostic) is not { } braces
-			|| BraceEdits.CreateEmptyBlockCollapse(sourceText, braces.Previous, braces.Next) is not { } join
+			|| StanzaEmptyBlocks.CreateCollapse(sourceText, braces.Previous, braces.Next) is not { } join
 		)
 		{
 			return [];

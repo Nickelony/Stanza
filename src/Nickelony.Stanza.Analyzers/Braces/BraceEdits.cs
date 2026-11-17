@@ -122,36 +122,12 @@ internal static class BraceEdits
 	/// </remarks>
 	public static bool IsWaitingForCollapse(SyntaxNodeAnalysisContext context, StanzaRule rule, StanzaOptions options, SourceText sourceText)
 	{
-		if (!options.PreserveSingleLineBlocks)
-			return false;
-
 		SyntaxNode statement = context.Node;
-		ImmutableArray<TextChange>.Builder collapses = ImmutableArray.CreateBuilder<TextChange>();
-		int removed = 0;
 
-		foreach (SyntaxNode node in statement.DescendantNodes())
-		{
-			if (!StanzaKinds.EmptyBlockKinds.Contains(node.Kind()) || StanzaBraces.FindBracePair(node) is not { } braces)
-				continue;
-
-			if (CreateEmptyBlockCollapse(sourceText, braces.Previous, braces.Next) is not { } collapse)
-				continue;
-
-			DiagnosticDescriptor target = DiagnosticDescriptors.CollapseEmptyBlocks;
-
-			if (!StanzaRuleState.IsRequiredDeferralOnAt(scope: context, options, rule, target, position: braces.Next.SpanStart))
-				continue;
-
-			collapses.Add(collapse);
-			removed += collapse.Span.Length - collapse.NewText!.Length;
-		}
-
-		if (collapses.Count == 0)
+		if (StanzaEmptyBlocks.ReadCollapsedText(context, rule, options, sourceText, root: statement, nodes: statement.DescendantNodes()) is not { } text)
 			return false;
 
 		// The statement is read again as the collapses leave it, and its chain judged as this rule would judge it then.
-		SourceText collapsed = sourceText.WithChanges(collapses);
-		string text = collapsed.ToString(TextSpan.FromBounds(statement.SpanStart, statement.Span.End - removed));
 		StatementSyntax reparsed = SyntaxFactory.ParseStatement(text, options: statement.SyntaxTree.Options);
 
 		return !BraceTargets.HasMultiLineTarget(BraceTargets.GetTargets(reparsed));
@@ -299,15 +275,6 @@ internal static class BraceEdits
 		// The last line has no break of its own, so the break before it is taken instead;
 		// the first line has none before it either, so it is deleted as it is.
 		return lineIndex == 0 ? line.Span : TextSpan.FromBounds(sourceText.Lines[lineIndex - 1].End, line.End);
-	}
-
-	public static TextChange? CreateEmptyBlockCollapse(SourceText sourceText, SyntaxToken openBrace, SyntaxToken closeBrace)
-	{
-		if (!openBrace.IsKind(SyntaxKind.OpenBraceToken) || !closeBrace.IsKind(SyntaxKind.CloseBraceToken))
-			return null;
-
-		var gap = TextSpan.FromBounds(openBrace.Span.End, closeBrace.SpanStart);
-		return StanzaText.IsWhitespaceOnly(sourceText, gap) && StanzaSyntax.IsMultiLine(sourceText, gap) ? new TextChange(gap, " ") : null;
 	}
 
 	/// <summary>Collects the units a collapse can leave on one line, from the innermost out.</summary>

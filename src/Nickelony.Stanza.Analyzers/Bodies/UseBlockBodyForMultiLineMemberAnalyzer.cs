@@ -1,19 +1,18 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Nickelony.Stanza.Analyzers.Bodies;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 internal sealed class UseBlockBodyForMultiLineMemberAnalyzer()
-	: StanzaNodeAnalyzer(DiagnosticDescriptors.UseBlockBodyForMultiLineMember, [SyntaxKind.ArrowExpressionClause])
+	: StanzaRuleAnalyzer(StanzaRules.UseBlockBodyForMultiLineMember)
 {
 	protected override void Analyze(SyntaxNodeAnalysisContext context)
 	{
 		BodyConversion.ReportMultiLineBody(
 			context,
 			options: StanzaOptions.From(context.Options, context.Node.SyntaxTree),
-			descriptor: Descriptor,
+			rule: Rule,
 			valueShaped: false
 		);
 	}

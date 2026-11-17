@@ -79,12 +79,7 @@ internal static class BodyConversion
 		};
 	}
 
-	public static void ReportMultiLineBody(
-		SyntaxNodeAnalysisContext context,
-		StanzaOptions options,
-		DiagnosticDescriptor descriptor,
-		bool valueShaped
-	)
+	public static void ReportMultiLineBody(SyntaxNodeAnalysisContext context, StanzaOptions options, StanzaRule rule, bool valueShaped)
 	{
 		if (context.Node is not ArrowExpressionClauseSyntax clause)
 			return;
@@ -103,13 +98,20 @@ internal static class BodyConversion
 
 		SourceText sourceText = context.Node.SyntaxTree.GetText(context.CancellationToken);
 
+		// A body that only an empty block the collapse rule joins keeps multi-line is no multi-line body once that rule has run,
+		// so the block body this rule writes would outlive the line breaks that asked for it.
+		bool collapses = StanzaEmptyBlocks.IsSingleLineAfterCollapse(context, rule, options, sourceText, expression: target.Expression);
+
+		if (body && collapses && !MatchesMemberPart(options.MultiLineMemberPart, signature, body: false))
+			return;
+
 		// A body that cannot convert produces no change, so no diagnostic is offered without a fix.
 		if (!CanConvert(sourceText, target, options.IndentStepColumns))
 			return;
 
 		context.ReportDiagnostic(
 			Diagnostic.Create(
-				descriptor,
+				descriptor: rule.Descriptor,
 				location: target.Arrow.GetLocation(),
 				additionalLocations: GetCulpritLocations(target, options.MultiLineMemberPart, body),
 				properties: new FixOptions(IndentStepColumns: options.IndentStepColumns).ToProperties()
