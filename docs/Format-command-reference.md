@@ -124,6 +124,7 @@ The first command that fails ends the run.
 - A run calls CSharpier 1.1 or later, because 1.0 prints a check report in another shape and 0.x lacks the `format` and `check` commands.
   When the layout would be CSharpier, a run refuses an older version in the tool manifest with exit code `2`;
   update it, or pass `--layout whitespace`.
+- A check compares each source that `csharpier check` lists through one `csharpier server`, which it starts only for them and ends with the step.
 - The tool manifest is the one `dotnet` reads from the solution's directory:
   each tool comes from the nearest `.config/dotnet-tools.json` or `dotnet-tools.json` that lists it,
   searching up the parent directories to a manifest that sets `isRoot` to `true`.
@@ -154,8 +155,6 @@ A project compiles a file in a [view](https://github.com/Nickelony/Stanza/wiki/T
    **IDE style rules** leaves out `IDE0130` too, which a build still reports at the severity a project sets.
 2. **Source layout (CSharpier, blank lines aside)**: a source matches CSharpier's layout but for its line endings
    and any gap of one blank line or none between two lines, and any other file CSharpier formats matches it exactly.
-   The sources that `csharpier check` lists are compared through one `csharpier server`,
-   which the check starts only for them and ends with the step.
    Under the whitespace layout, **Whitespace** runs `dotnet format whitespace --verify-no-changes`.
 3. **Markup files**: `stanza-markup check --strict`, when the tool manifest lists it.
    A finding of that check, a warning that `--strict` raises included, fails the check like another step, and the steps after it still run.

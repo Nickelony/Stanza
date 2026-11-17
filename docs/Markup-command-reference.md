@@ -101,9 +101,9 @@ Keys:            https://github.com/Nickelony/Stanza/wiki/Markup-configuration
   so text it quotes from a file cannot send an escape sequence to the terminal.
 - Notes, warnings and errors go to standard error, as `note: <message>`, `warning: <message>` or `error: <message>` lines.
   A warning or an error about a file or a directory reads `warning: <location>: <message>`, and the same with `error`.
-  A location is `<path>`, `<path>(<line>)` or `<path>(<line>,<column>)`, and every report of the tool writes it that way:
-  a problem on a line of an `.editorconfig` reads `warning: <path>(<line>): <message>`, and a file that cannot be laid out
-  reads `warning: <path>(<line>,<column>): could not be laid out: <reason>`.
+- A location is `<path>`, `<path>(<line>)` or `<path>(<line>,<column>)`, and every report of the tool writes it that way.
+  A problem on a line of an `.editorconfig` reads `warning: <path>(<line>): <message>`,
+  and a file that cannot be laid out reads `warning: <path>(<line>,<column>): could not be laid out: <reason>`.
 - Under `--format msbuild` they go to standard output with the diagnostics, `ZA2901` included.
   A warning reads `stanza-markup : warning : <message>`,
   or `<path> : warning : <message>` when it is about a file or a directory,
