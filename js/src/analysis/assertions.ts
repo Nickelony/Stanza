@@ -4,7 +4,15 @@ import type { Unit } from './types.ts';
 
 type Node = Unit['node'];
 
-/** Reads the condition a narrowing assertion checks: the first argument of `assert(x)` or `assert.ok(x)` for a root of `assertionRoots`, as the C# rule reads it. */
+/** Tells whether a name is a root of a guard or an assertion. */
+function isRoot(name: string, environment: Environment): boolean {
+	return environment.guardRoots.has(name) || environment.assertionRoots.has(name);
+}
+
+/**
+ * Reads the condition a narrowing assertion checks: the first argument of `assert(x)` or `assert.ok(x)` for a root of a guard or an assertion.
+ * The C# rule reads the narrowing from the flow attributes of the parameters a call passes the name to, which JS has none of, so a root stands for them.
+ */
 export function readNarrowedTest(statement: Node, environment: Environment): Node | undefined {
 	if (statement.type !== 'ExpressionStatement' || statement.expression.type !== 'CallExpression') {
 		return undefined;
@@ -16,11 +24,11 @@ export function readNarrowedTest(statement: Node, environment: Environment): Nod
 	} = statement.expression;
 
 	const isDirect =
-		(callee.type === 'Identifier' && environment.assertionRoots.has(callee.name)) ||
+		(callee.type === 'Identifier' && isRoot(callee.name, environment)) ||
 		(callee.type === 'MemberExpression' &&
 			!callee.computed &&
 			callee.object.type === 'Identifier' &&
-			environment.assertionRoots.has(callee.object.name) &&
+			isRoot(callee.object.name, environment) &&
 			callee.property.type === 'Identifier' &&
 			callee.property.name === 'ok');
 

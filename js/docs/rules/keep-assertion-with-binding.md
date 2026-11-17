@@ -9,7 +9,7 @@ function ship(id) {
 	audit(id);
 	const order = orders.get(id);
 
-	assert(order !== undefined);
+	invariant(order !== undefined);
 	order.ship();
 }
 
@@ -17,7 +17,7 @@ function ship(id) {
 function ship(id) {
 	audit(id);
 	const order = orders.get(id);
-	assert(order !== undefined);
+	invariant(order !== undefined);
 	order.ship();
 }
 
@@ -31,9 +31,10 @@ it('loads the order', () => {
 ```
 
 - An assertion that narrows the value the statement above it bound checks that value, so the two read as one step.
-- The assertion is a single-line call of a root that the `assertionRoots` setting lists,
-  made on the root itself, as in `assert(x)`, or through `ok`, as in `assert.ok(x)`.
-  A helper that only `guardRoots` lists, such as the default `invariant`, is a guard, as in C#, and narrows nothing here.
+- The assertion is a single-line call of a root that the `guardRoots` or the `assertionRoots` setting lists,
+  made on the root itself, as in `assert(x)` and `invariant(x)`, or through `ok`, as in `assert.ok(x)`.
+- The C# rule reads the narrowing from the flow attributes of the parameters a call passes the name to, such as `ArgumentNullException.ThrowIfNull(name)`.
+  JS has no flow attributes, so a listed root stands for them.
 - Its first argument narrows a bound name: the name itself, `x != null`, `x !== null`, `x != undefined`, `x !== undefined`,
   `typeof x === 'string'`, `x instanceof Order`, or an `&&` that holds one of these.
   `assert.equal(x, 3)` and `expect(x).toBe(3)` compare a value and narrow nothing.

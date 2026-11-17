@@ -54,11 +54,6 @@ createRuleTester().run('keep-assertion-with-binding', rule as never, {
 			code: lines('function f(id) {', '  const order = load(id);', '', '  assert(', '    order,', '  );', '  ship(order);', '}'),
 			name: 'a multi-line assertion',
 		},
-
-		{
-			code: lines('function f(id) {', '  audit(id);', '  const order = load(id);', '', '  invariant(order);', '  ship(order);', '}'),
-			name: 'a guard root that is no assertion root, as in C#, where only an assertion root narrows',
-		},
 	],
 
 	invalid: [
@@ -110,9 +105,16 @@ createRuleTester().run('keep-assertion-with-binding', rule as never, {
 		{
 			code: lines('audit(id);', 'const order = load(id);', '', 'invariant(order);', 'ship(order);'),
 			output: lines('audit(id);', 'const order = load(id);', 'invariant(order);', 'ship(order);'),
-			settings: { stanza: { assertionRoots: ['invariant'] } },
 			errors: 1,
-			name: 'a guard root that assertionRoots lists too',
+			name: 'the default guard root invariant narrows as an assertion does',
+		},
+
+		{
+			code: lines('audit(id);', 'const order = load(id);', '', 'ensure(order);', 'ship(order);'),
+			output: lines('audit(id);', 'const order = load(id);', 'ensure(order);', 'ship(order);'),
+			settings: { stanza: { guardRoots: ['ensure'] } },
+			errors: 1,
+			name: 'a root that only guardRoots lists narrows as an assertion does',
 		},
 	],
 });
