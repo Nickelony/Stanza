@@ -19,8 +19,8 @@ Until the first release, build and pack the plugin at the root of a checkout of 
 ```text
 npm --prefix js ci
 npm --prefix js run build
-npm pack ./js --pack-destination <folder>
-npm install --save-dev eslint eslint-config-prettier typescript-eslint <folder>/eslint-plugin-stanza-<version>.tgz
+npm pack ./js --pack-destination <directory>
+npm install --save-dev eslint eslint-config-prettier typescript-eslint <directory>/eslint-plugin-stanza-<version>.tgz
 ```
 
 After the first release, install it from the registry:
