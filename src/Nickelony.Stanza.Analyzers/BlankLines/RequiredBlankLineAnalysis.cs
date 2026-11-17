@@ -44,10 +44,11 @@ internal static class RequiredBlankLineAnalysis
 
 		var container = new ContainerContext(context, options, siblings);
 
+		// The boundaries were added in ascending order, so a search of them costs a logarithm, not the length of the list.
 		ImmutableArray<int> judged = boundaries.ToImmutable();
 
 		foreach (int boundary in BlankLineKeptPairs.ReadOuterBoundaries(container, judged))
-			ReportBoundary(container, boundary, rule, messageArgs: [DescribeUnit(siblings, boundary, isMoved: !judged.Contains(boundary))]);
+			ReportBoundary(container, boundary, rule, messageArgs: [DescribeUnit(siblings, boundary, isMoved: judged.BinarySearch(boundary) < 0)]);
 	}
 
 	/// <summary>Names what the blank line goes before, for the message of the diagnostic.</summary>

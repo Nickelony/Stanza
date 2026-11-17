@@ -589,14 +589,30 @@ public sealed class KeepDependentBindingsTogetherTests
 	}
 
 	// A search of the block for each declarator allocates nothing, so the bytes of a walk cannot see it: its time can.
-	// A linear read of 30000 locals takes milliseconds, and a search of the locals for each one takes seconds.
+	// The time is no limit, which a slow machine passes badly, but the growth from one size to four times it:
+	// a linear read grows four times and a search of the locals for each one grows sixteen times.
 	[TestMethod]
 	[DoNotParallelize]
 	public void ReadingTheLocalOfEveryDeclaratorOfALongBlockIsLinear()
 	{
-		const int locals = 30_000;
-		const double limitMilliseconds = 750;
+		const int locals = 10_000;
+		const double allowedGrowth = 10;
 
+		// A read that takes less than this stands for this, so a few milliseconds of noise are not a growth.
+		const double floorMilliseconds = 5;
+
+		double small = MeasureReadingLocals(locals);
+		double large = MeasureReadingLocals(locals * 4);
+
+		Assert.IsLessThan(
+			allowedGrowth,
+			large / Math.Max(small, floorMilliseconds),
+			$"Reading {locals:N0} locals took {small:N1} ms and {locals * 4:N0} took {large:N1} ms."
+		);
+	}
+
+	private static double MeasureReadingLocals(int locals)
+	{
 		string source = "class C\n{\n\tvoid M()\n\t{\n" + string.Concat(Enumerable.Range(0, locals).Select(index => $"\t\tint v{index} = {index};\n")) + "\t}\n}\n";
 
 		SyntaxTree tree = CSharpSyntaxTree.ParseText(source);
@@ -625,7 +641,7 @@ public sealed class KeepDependentBindingsTogetherTests
 			fastest = Math.Min(fastest, clock.Elapsed.TotalMilliseconds);
 		}
 
-		Assert.IsLessThan(limitMilliseconds, fastest, $"Reading {locals:N0} locals took {fastest:N0} ms.");
+		return fastest;
 	}
 
 	private static string BuildSource(string body, bool exits = false)
