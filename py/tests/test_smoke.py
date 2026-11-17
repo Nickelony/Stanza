@@ -13,7 +13,7 @@ import pytest
 
 from nickelony_stanza import Config, fix
 from nickelony_stanza.analysis.document import read_document
-from tests.helpers import CONFIGS, same_tree
+from tests.helpers import CONFIGS, same_tree_ignoring_keyword_names
 
 DEFAULT_LIMIT = 150
 
@@ -42,7 +42,10 @@ def test_real_files_settle_and_keep_their_syntax_tree(name: str) -> None:
         result = fix(text, config)
 
         assert fix(result.text, config).passes == 0, path
-        assert same_tree(text, result.text, config), path
+
+        # The tree check ignores the keyword names a call rule inserts, so the fixed text must compile as well.
+        compile(result.text, str(path), "exec", dont_inherit=True)
+        assert same_tree_ignoring_keyword_names(text, result.text, config), path
 
     assert parsed > 0
 

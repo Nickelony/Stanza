@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from functools import cache
@@ -95,17 +96,20 @@ def _open_source(
     return SourceFile(text, tree=tree)
 
 
-def _create_gap_finding(source: SourceFile, rule: Rule, owned: OwnedGap) -> Finding:
+def _create_gap_finding(source: SourceFile, rule: Rule, owned: OwnedGap, noqa: Noqa) -> Finding:
     gap = owned.gap
     column = source.indent_width(owned.following.first_line) + 1
 
     if rule.role != "separate":
         indices = owned.group_indices or (owned.index,)
 
+        # A gap of the group that a comment silences keeps its blank lines, as it does when it stands alone.
         edits = tuple(
             Edit(line=inner.blank_lines.start, delete=len(inner.blank_lines), insert="")
             for index in indices
             for inner in (owned.container.gaps[index],)
+            if index == owned.index
+            or not noqa.silences(rule.code, inner.blank_lines.start, owned.container.units[index + 1].first_line)
         )
 
         return Finding(gap.blank_lines.start, column, rule, rule.message, edits)
@@ -192,7 +196,7 @@ def find_findings(
 
     for code, gaps in gaps_by_code.items():
         for owned in gaps:
-            finding = _create_gap_finding(source, rules[code], owned)
+            finding = _create_gap_finding(source, rules[code], owned, noqa)
 
             if not noqa.silences(code, finding.line, owned.following.first_line):
                 findings.append(finding)
@@ -226,7 +230,9 @@ def _position(edit: Edit | Insertion) -> tuple[int, int]:
 def apply_edits(source: SourceFile, findings: Sequence[Finding]) -> str:
     """Applies the edits of the findings, last place first so the line numbers and the columns stay true."""
     lines = list(source.lines)
-    edits = [edit for finding in findings for edit in finding.edits]
+
+    # Several findings of one run each carry the removal of the whole run, which is applied once.
+    edits = list(dict.fromkeys(edit for finding in findings for edit in finding.edits))
 
     deleted = {
         number for edit in edits if isinstance(edit, Edit) for number in range(edit.line, edit.line + edit.delete)
@@ -267,8 +273,28 @@ def dump_expected_tree(tree: ast.Module, namings: Sequence[ArgumentNames]) -> st
             call.args, call.keywords = args, keywords
 
 
+def _compiles(text: str) -> bool:
+    """Tells whether the compiler accepts a text, which it never runs."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+
+        try:
+            compile(text, "<fixed>", "exec", dont_inherit=True)
+        except SyntaxError:
+            return False
+        except RecursionError:
+            return True
+
+    return True
+
+
 def _check_tree(source: SourceFile, findings: Sequence[Finding], text: str) -> ast.Module:
-    """Parses the fixed text, and refuses it unless its tree is the one the findings promise."""
+    """
+    Parses the fixed text, and refuses it unless its tree is the one the findings promise.
+
+    The parser accepts what the compiler refuses, such as a keyword written twice, so a text that the compiler refuses
+    is refused too, unless the file was beyond the compiler already, as a file with a `return` outside a function is.
+    """
     try:
         tree = parse(text)
     except SyntaxError as error:
@@ -283,6 +309,9 @@ def _check_tree(source: SourceFile, findings: Sequence[Finding], text: str) -> a
 
     if not same:
         raise FixError("A fix would change the syntax tree.")
+
+    if not _compiles(text) and _compiles(source.text):
+        raise FixError("A fix would write text that does not compile.")
 
     return tree
 

@@ -20,7 +20,8 @@ from nickelony_stanza.options import Options
 # "separate": writes a blank line.
 # "keep": removes the blank line of a gap it asks for, and no separating rule may ask for that gap.
 # "keep-run": removes the blank line of a gap it asks for, unless a separating rule asks for the gap too.
-# "gather": gathers loose units after transferred separation settles.
+# "gather": gathers loose units after transferred separation settles;
+# it reports every gap of a run, and the fix of any of them removes the blank lines of the whole run.
 Role = Literal["separate", "keep", "keep-run", "gather"]
 
 
@@ -336,11 +337,16 @@ def _read_claims(
     return reader.claimed
 
 
+def _removes_components(rule: Claimant) -> bool:
+    """Tells whether a finding of the rule removes the blank lines of its whole component, not of its own gap."""
+    return rule.removes_group or rule.role == "gather"
+
+
 def _find_removal_groups(
     container: Container, keepers: Sequence[Claimant], claimed: dict[str, list[bool]]
 ) -> dict[int, tuple[int, ...]]:
     """Finds each grouped remover's contiguous owned components once, including their already-tight edges."""
-    if not any(rule.removes_group for rule in keepers):
+    if not any(_removes_components(rule) for rule in keepers):
         return {}
 
     owners = [
@@ -353,7 +359,7 @@ def _find_removal_groups(
     while start < len(owners):
         owner = owners[start]
 
-        if owner is None or not owner.removes_group:
+        if owner is None or not _removes_components(owner):
             start += 1
             continue
 
@@ -502,6 +508,9 @@ def _own_gaps(
         owner = next((rule for rule in candidates if claimed[rule.code][index]), None)
 
         if owner is not None:
-            indices = removal_groups.get(index, ()) if owner.removes_group else ()
+            indices = removal_groups.get(index, ()) if _removes_components(owner) else ()
             owned.setdefault(owner.code, []).append(OwnedGap(container, index, indices))
-            reported.update(indices)
+
+            # A grouped keeper reports its component once; a gather rule reports every gap, each fixing the whole run.
+            if owner.removes_group:
+                reported.update(indices)

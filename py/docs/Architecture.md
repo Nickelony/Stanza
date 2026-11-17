@@ -17,6 +17,8 @@ The tool uses the standard `ast` and `tokenize` modules and no third-party parse
 - After every pass the fix parses the new text and compares it with the *expected tree*:
   the tree it read, with the positional tail of each named call moved into leading keywords.
 - A blank line keeps the tree, so a pass whose tree differs in any other way is refused.
+- The parser accepts a keyword written twice, so the fix also compiles the new text and never runs it.
+  It refuses a text the compiler refuses, unless the file already failed to compile, as one with a `return` outside a function does.
 
 ## Shared analysis
 
@@ -93,9 +95,12 @@ so `ZA3054` judges the two statements as a pair and the other rules ask for noth
 - A gap finding inserts a line ending above the next unit's leading comments or deletes blank lines.
 - A finding of `ZA3061` or `ZA3064` deletes the blank lines of every gap of its group,
   so fixing one finding cannot leave a section that changes the others; a gap a `# noqa` silences is no part of the group.
+- A finding of `ZA3052` or `ZA3053` reports one gap of a loose run and deletes the blank lines of the whole run.
+  A gap a `# noqa` silences is left out, so the findings of one run carry the same edits, which the engine applies once.
 - A call finding carries one insertion for each argument it names, and an insertion writes `name=` at a column of a line.
-- The edits of one pass never overlap, because each gap and each call has one owner, so the engine applies them together,
-  last place first, so the lines and columns above stay true.
+- The edits of one pass never overlap, because each gap and each call has one owner.
+  The findings of one loose run repeat one edit, which the engine applies once.
+- The engine applies the edits last place first, so the lines and columns above stay true.
   An insertion on a line another fix deletes is an error.
 - A fix to a file whose tree is too deeply nested to compare, such as an expression of 1,200 terms, is an error, and the file is left as written.
 - The engine fixes in passes until no finding is left. Every file in the tests settles in one pass.
@@ -123,7 +128,8 @@ A call rule writes the name of a parameter before an argument, and it claims no 
 - `analysis/calls.py` lists the calls of a file in source order, each with the first line of its statement.
 - The walker skips a call inside a `# fmt: off` region or one that a trailing `# fmt: skip` comment covers,
   as the [comments table](Quirks.md#comments) says.
-- The walker skips a call inside an f-string before Python 3.12, whose tokens it cannot read.
+- The walker skips a call inside an f-string before Python 3.12, whose tokens it cannot read,
+  and a call inside a self-documenting field, which prints the text of its expression.
 - The walker tokenizes the file to find the `(` of a call and the first token of each argument.
   `ast` counts columns in UTF-8 bytes, so each position is converted to a character column.
 - A name goes after the `(` or `,` in front of its argument, so a parenthesized argument takes it outside the parentheses.

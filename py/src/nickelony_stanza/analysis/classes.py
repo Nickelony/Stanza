@@ -308,6 +308,47 @@ def class_attribute_names(node: ast.ClassDef, is_dataclass: bool, origin_of: Ori
     return frozenset(names)
 
 
+# The names that reach the namespace a class body fills, where its annotation mapping lives:
+# the mapping itself and the functions that hand out the namespace to write into.
+_NAMESPACE_NAMES = frozenset({"__annotations__", "__annotate__", "__annotate_func__", "locals", "vars", "exec", "eval"})
+
+
+def _touches_annotations(node: ast.ClassDef) -> bool:
+    """
+    Tells whether a class body could replace or change the annotation mapping its fields are read from.
+
+    It looks at every name the body itself runs, which includes decorators, bases and defaults but not a function body.
+    """
+    stack: list[ast.AST] = [*node.body]
+
+    while stack:
+        current = stack.pop()
+
+        if isinstance(current, ast.Name) and current.id in _NAMESPACE_NAMES:
+            return True
+
+        if isinstance(current, ast.Constant) and current.value in _NAMESPACE_NAMES:
+            return True
+
+        if isinstance(current, ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda):
+            stack.extend(_evaluated_at_definition(current))
+        elif isinstance(current, ast.ClassDef):
+            stack.extend([*current.bases, *(keyword.value for keyword in current.keywords), *current.decorator_list])
+        else:
+            stack.extend(ast.iter_child_nodes(current))
+
+    return False
+
+
+def _evaluated_at_definition(node: ast.FunctionDef | ast.AsyncFunctionDef | ast.Lambda) -> list[ast.AST]:
+    found: list[ast.AST] = [*node.args.defaults, *(default for default in node.args.kw_defaults if default is not None)]
+
+    if not isinstance(node, ast.Lambda):
+        found.extend(node.decorator_list)
+
+    return found
+
+
 def read_dataclass_fields(
     node: ast.ClassDef,
     params: DataclassParams,
@@ -319,7 +360,7 @@ def read_dataclass_fields(
 
     `inherits` tells whether a base leaves a class attribute of a name, or None when an unreadable base may.
     """
-    if any(
+    if _touches_annotations(node) or any(
         isinstance(inner, ast.AnnAssign)
         for statement in node.body
         if not isinstance(statement, ast.AnnAssign)
@@ -471,8 +512,13 @@ def dataclass_parameters(fields: list[_Field]) -> tuple[Parameter, ...]:
 
 
 def read_namedtuple_class_fields(node: ast.ClassDef) -> tuple[Parameter, ...] | Skipped:
-    """Reads the fields of a `typing.NamedTuple` class, which its body annotates in order."""
-    if any(
+    """
+    Reads the fields of a `typing.NamedTuple` class, which its body annotates in order.
+
+    The fields follow `__annotations__`: a name keeps its first position, however often the body annotates it,
+    and has a default when the class body assigns it a value.
+    """
+    if _touches_annotations(node) or any(
         isinstance(inner, ast.AnnAssign)
         for statement in node.body
         if not isinstance(statement, ast.AnnAssign)
@@ -480,11 +526,22 @@ def read_namedtuple_class_fields(node: ast.ClassDef) -> tuple[Parameter, ...] | 
     ):
         return Skipped(Reason.CLASS_SHAPE)
 
-    return tuple(
-        Parameter(statement.target.id, ParameterKind.POSITIONAL_OR_KEYWORD, statement.value is not None)
-        for statement in node.body
-        if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name)
-    )
+    annotated: list[str] = []
+    assigned: set[str] = set()
+
+    for statement in node.body:
+        if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+            if statement.target.id not in annotated:
+                annotated.append(statement.target.id)
+
+            if statement.value is not None:
+                assigned.add(statement.target.id)
+        elif isinstance(statement, ast.Assign):
+            assigned.update(name for target in statement.targets for name in _assigned_names(target))
+        elif isinstance(statement, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            assigned.add(statement.name)
+
+    return tuple(Parameter(name, ParameterKind.POSITIONAL_OR_KEYWORD, name in assigned) for name in annotated)
 
 
 def read_namedtuple_call_fields(call: ast.Call, origin: Origin) -> tuple[str, tuple[Parameter, ...]] | None:

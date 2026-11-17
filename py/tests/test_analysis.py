@@ -57,7 +57,7 @@ def test_a_trailing_comment_belongs_to_the_unit_above() -> None:
 
 
 def test_units_that_share_a_line_are_joined() -> None:
-    assert all(gap.is_joined for gap in _module("a = 1; b = 2; c = 3\n").gaps)
+    assert [gap.is_joined for gap in _module("a = 1; b = 2; c = 3\n").gaps] == [True, True]
     assert not _module("a = 1\nb = 2\n").gaps[0].is_joined
 
 

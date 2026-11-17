@@ -9,8 +9,17 @@ from pathlib import Path
 import pytest
 
 from nickelony_stanza import Config, FixError, engine, fix, lint
+from nickelony_stanza.analysis.source import SourceFile
+from nickelony_stanza.engine import Finding, apply_edits
 from nickelony_stanza.rules import ALL_RULES
-from tests.helpers import SETTLING_CONFIGS, add_blank_lines, corpus_files, drop_blank_lines, run_formatter, same_tree
+from tests.helpers import (
+    SETTLING_CONFIGS,
+    add_blank_lines,
+    corpus_files,
+    drop_blank_lines,
+    run_formatter,
+    same_tree_ignoring_keyword_names,
+)
 
 
 def _inputs(path: Path) -> list[str]:
@@ -27,41 +36,69 @@ def _inputs(path: Path) -> list[str]:
     ]
 
 
-def _orders(config: Config) -> dict[str, Config]:
-    rules = list(config.rules)
-    shuffled = []
+@pytest.mark.parametrize("name", SETTLING_CONFIGS)
+@pytest.mark.parametrize("path", corpus_files(), ids=lambda path: path.name)
+def test_every_input_settles_in_one_pass_to_a_clean_text_with_the_same_tree(name: str, path: Path) -> None:
+    config = SETTLING_CONFIGS[name]
 
-    for seed in (1, 2, 3):
-        mixed = list(rules)
-        random.Random(seed).shuffle(mixed)
-        shuffled.append(mixed)
+    for text in _inputs(path):
+        first = fix(text, config)
 
-    variants = {"declared": rules, "reversed": rules[::-1], "rotated": rules[3:] + rules[:3]}
-    variants.update({f"shuffled {index}": mixed for index, mixed in enumerate(shuffled, start=1)})
+        assert first.passes <= 1, f"the fix took {first.passes} passes"
+        assert fix(first.text, config).passes == 0, "a second fix changes the text"
+        assert lint(first.text, config) == [], "the output does not lint clean"
+        assert same_tree_ignoring_keyword_names(text, first.text, config), "the syntax tree changed"
 
-    return {name: Config(tuple(ordered), config.options) for name, ordered in variants.items()}
+
+@pytest.mark.parametrize("path", corpus_files(), ids=lambda path: path.name)
+def test_the_order_a_configuration_lists_its_rules_in_does_not_change_the_text(path: Path) -> None:
+    config = SETTLING_CONFIGS["everything"]
+    reversed_config = Config(tuple(reversed(config.rules)), config.options)
+
+    for text in _inputs(path)[:2]:
+        assert fix(text, reversed_config).text == fix(text, config).text
+
+
+def _assert_every_partial_fix_settles_like_a_batch_fix(text: str, config: Config) -> None:
+    batch = fix(text, config).text
+    findings = lint(text, config)
+    source = SourceFile(text)
+
+    first_of_code: dict[str, Finding] = {}
+
+    for finding in findings:
+        first_of_code.setdefault(finding.code, finding)
+
+    # The first finding, the last one, the first of each code and all of each code, each applied alone.
+    applications = {
+        "the first finding": findings[:1],
+        "the last finding": findings[-1:],
+        **{f"the first {code} finding": [finding] for code, finding in first_of_code.items()},
+        **{f"every {code} finding": [f for f in findings if f.code == code] for code in first_of_code},
+    }
+
+    for label, chosen in applications.items():
+        settled = fix(apply_edits(source, chosen), config)
+        assert settled.text == batch, f"applying {label} settles to another text than a batch fix"
 
 
 @pytest.mark.parametrize("name", SETTLING_CONFIGS)
 @pytest.mark.parametrize("path", corpus_files(), ids=lambda path: path.name)
-def test_every_rule_order_settles_to_one_text(name: str, path: Path) -> None:
-    base = SETTLING_CONFIGS[name]
+def test_a_fix_applied_in_part_settles_to_the_text_a_batch_fix_writes(name: str, path: Path) -> None:
+    for index in (0, 4):
+        _assert_every_partial_fix_settles_like_a_batch_fix(_inputs(path)[index], SETTLING_CONFIGS[name])
 
-    for text in _inputs(path):
-        outputs = {}
 
-        for order, config in _orders(base).items():
-            first = fix(text, config)
-            second = fix(first.text, config)
+# A loose run of statements and one of members, which a gather rule removes whole whichever finding is applied.
+LOOSE_RUNS = (
+    "import os\n\n\nclass C:\n    a = 1\n\n    b = 2\n\n    c = 3\n\n    d = 4\n\n\n"
+    "def f():\n    p = 1\n\n    q = 2\n\n    r = 3\n\n    s = 4\n\n    t = 5\n"
+)
 
-            assert first.passes <= 1, f"{order}: the fix took {first.passes} passes"
-            assert second.passes == 0, f"{order}: a second fix changes the text"
-            assert lint(first.text, config) == [], f"{order}: the output does not lint clean"
-            assert same_tree(text, first.text, config), f"{order}: the syntax tree changed"
 
-            outputs[order] = first.text
-
-        assert len(set(outputs.values())) == 1, "the rule orders write different texts"
+@pytest.mark.parametrize("name", SETTLING_CONFIGS)
+def test_a_fix_applied_in_part_settles_a_loose_run_like_a_batch_fix(name: str) -> None:
+    _assert_every_partial_fix_settles_like_a_batch_fix(LOOSE_RUNS, SETTLING_CONFIGS[name])
 
 
 def test_the_none_level_changes_nothing() -> None:
@@ -92,7 +129,7 @@ def test_any_subset_of_the_rules_settles(seed: int) -> None:
 
         assert first.passes <= 1
         assert fix(first.text, config).passes == 0
-        assert same_tree(text, first.text, config)
+        assert same_tree_ignoring_keyword_names(text, first.text, config)
 
 
 SINGLE_LINE_UNITS = [

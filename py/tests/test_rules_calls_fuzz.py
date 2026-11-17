@@ -1,4 +1,4 @@
-"""The call rules against the interpreter: a generated call binds its arguments the same way after the rules name them."""
+"""The call rules against the interpreter: a generated call or record binds its arguments the same way after the rules name them."""
 
 from __future__ import annotations
 
@@ -123,3 +123,71 @@ def test_a_named_call_binds_its_arguments_as_the_call_it_replaces() -> None:
 
     assert disagreements == []
     assert named > 200
+
+
+_FIELD_NAMES = ("a", "b", "c", "d", "e")
+_RECORD_HEADERS = {"dataclass": "@dataclass\nclass C:\n", "named tuple": "class C(NamedTuple):\n"}
+
+
+def _random_record(rng: random.Random, kind: str) -> tuple[str, int]:
+    """Writes a dataclass or a typed named tuple whose body may repeat an annotation or replace the annotation mapping, and counts its names."""
+    names = [rng.choice(_FIELD_NAMES) for _ in range(rng.randint(2, 5))]
+    defaulted = rng.randint(1, len(names) + 1)
+
+    lines: list[str] = []
+
+    for index, name in enumerate(names):
+        default = " = 0" if index >= defaulted else ""
+        lines.append(f"    {name}: {rng.choice(['int', 'str', 'bool'])}{default}")
+
+    replaced = rng.choice(["", "", "", "assign", "update", "delete"])
+
+    if replaced == "assign":
+        lines.append(f"    __annotations__ = {{{', '.join(f'{name!r}: int' for name in _FIELD_NAMES[:3])}}}")
+    elif replaced == "update":
+        lines.append("    __annotations__.update(z=int)")
+    elif replaced == "delete":
+        lines.append("    del __annotations__")
+
+    return _RECORD_HEADERS[kind] + "\n".join(lines) + "\n", len(set(names))
+
+
+def _run_record(text: str) -> dict[str, typing.Any] | None:
+    """Runs a generated record and reads its fields, or None when the declaration or the call is refused."""
+    namespace: dict[str, typing.Any] = {"__name__": "generated"}
+
+    try:
+        exec(compile(text, "generated.py", "exec", dont_inherit=True), namespace)
+    except (TypeError, NameError, AttributeError, KeyError):
+        return None
+
+    made = namespace["made"]
+    return dict(made._asdict() if hasattr(made, "_asdict") else vars(made))
+
+
+def test_a_named_call_of_a_generated_record_binds_its_arguments_as_the_call_it_replaces() -> None:
+    rng = random.Random(3502)
+    disagreements: list[str] = []
+    named = 0
+
+    for case in range(600):
+        kind = "dataclass" if case % 2 else "named tuple"
+        declaration, fields = _random_record(rng, kind)
+        count = fields if rng.random() < 0.7 else rng.randint(1, 5)
+        arguments = ", ".join(rng.choice(["True", "False", "1", "2", "'s'", "p0"]) for _ in range(count))
+        text = f"from dataclasses import dataclass\nfrom typing import NamedTuple\n{_GLOBALS}{declaration}made = C({arguments})\n"
+        options = Options(named_argument_min_arguments=rng.choice([1, 2, 4]), named_argument_match="allow")
+
+        fixed = fix(text, Config.create("none", enable=["ZA3501", "ZA3502"], options=options)).text
+        before = _run_record(text)
+
+        if before is None or fixed == text:
+            continue
+
+        named += 1
+
+        if _run_record(fixed) != before:
+            disagreements.append(f"{text}\n--- became ---\n{fixed}")
+
+    assert disagreements == []
+    assert named > 150

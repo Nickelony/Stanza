@@ -14,7 +14,7 @@ from nickelony_stanza import Config, FixError, Options, engine, fix, lint
 from nickelony_stanza.analysis.projects import Projects
 from nickelony_stanza.cli import run
 from nickelony_stanza.engine import Finding, Insertion
-from tests.helpers import SCRIPTS, findings_with, fix_with
+from tests.helpers import SCRIPTS, findings_with, fix_with, run_module
 
 DRAW = "def draw(width, height, smooth, path, *, scale=1.0): ...\n"
 SAVE = "def save(path, overwrite, backup=None): ...\n"
@@ -249,6 +249,43 @@ def test_a_call_inside_an_f_string_is_left_alone_before_python_3_12() -> None:
     assert fix_with(text, "ZA3501") == text
 
 
+_NEEDS_FSTRING_TOKENS = pytest.mark.skipif(
+    sys.version_info < (3, 12), reason="the tokenizer reads an f-string as one token before 3.12"
+)
+
+_PAIR = "def f(a, b):\n    return a, b\n\n\ndef g(a):\n    return a\n\n\n"
+
+
+@_NEEDS_FSTRING_TOKENS
+@pytest.mark.parametrize(
+    "field",
+    [
+        "f(True, 2)=",
+        " f(True, 2) = ",
+        "(f(True, 2))=",
+        "f(True, 2)=!s",
+        "f(True, 2)=!s:>20",
+        "g(f(True, 2))=",
+        "not f(True, 2)=",
+    ],
+)
+def test_a_call_inside_a_self_documenting_f_string_field_is_left_alone_and_blocks_no_other_fix(field: str) -> None:
+    before = _PAIR + 'x = f"{' + field + '}"\ny = f(True, 2)\n'
+    expected = before.replace("y = f(True, 2)", "y = f(a=True, b=2)")
+
+    assert fix_with(before, "ZA3502") == expected
+    assert run_module(expected)["x"] == run_module(before)["x"]
+
+
+@_NEEDS_FSTRING_TOKENS
+def test_a_call_in_an_ordinary_field_next_to_a_self_documenting_one_is_still_named() -> None:
+    before = _PAIR + 'x = f"{f(True, 2)=} {f(True, 2)} {f(True, 4)!r:>{f(True, 6)}}"\n'
+    expected = before.replace("{f(True, 2)} ", "{f(a=True, b=2)} ").replace("f(True, 4)", "f(a=True, b=4)")
+    expected = expected.replace("f(True, 6)", "f(a=True, b=6)")
+
+    assert fix_with(before, "ZA3502") == expected
+
+
 def test_a_call_inside_a_fmt_off_region_is_left_alone() -> None:
     text = DRAW + "# fmt: off\ndraw(1, 2, 3, 4)\n# fmt: on\ndraw(1, 2, 3, 4)\n"
 
@@ -481,6 +518,35 @@ def test_the_tree_check_refuses_a_name_that_breaks_the_text(monkeypatch: pytest.
         fix(DRAW + "draw(1, 2, 3, 4)\n", Config.create("none", enable=["ZA3501"]))
 
 
+def test_the_tree_check_refuses_a_text_the_parser_accepts_and_the_compiler_refuses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def repeat(finding: Finding) -> Finding:
+        # The plan and the edits agree on one name for every argument, which no program can take.
+        assert finding.naming is not None
+
+        edits = tuple(
+            Insertion(edit.line, edit.column, "width=") if isinstance(edit, Insertion) else edit
+            for edit in finding.edits
+        )
+
+        return replace(
+            finding, edits=edits, naming=replace(finding.naming, names=("width",) * len(finding.naming.names))
+        )
+
+    original = engine.find_findings
+
+    monkeypatch.setattr(engine, "find_findings", lambda *args, **kwargs: [repeat(f) for f in original(*args, **kwargs)])
+
+    with pytest.raises(FixError, match="does not compile"):
+        fix(DRAW + "draw(1, 2, 3, 4)\n", Config.create("none", enable=["ZA3501"]))
+
+
+def test_a_file_the_compiler_already_refuses_still_takes_its_fixes() -> None:
+    text = DRAW + "draw(1, 2, 3, 4)\nreturn 1\n"
+    assert fix_with(text, "ZA3501") == DRAW + "draw(width=1, height=2, smooth=3, path=4)\nreturn 1\n"
+
+
 def test_the_tree_check_still_refuses_a_blank_line_edit_that_changes_the_tree(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(engine, "apply_edits", lambda source, findings: source.text.replace("b = 2", "b = 3"))
 
@@ -516,3 +582,78 @@ def test_standard_input_resolves_against_the_project_of_its_filename(tmp_path: P
 
     assert result.returncode == 0
     assert result.stdout.decode().splitlines()[-1] == expected
+
+
+_ANNOTATED_CLASSES = [
+    "class C(NamedTuple):\n    a: int\n    a: str\n    b: int\n",
+    "class C(NamedTuple):\n    a: int\n    b: int\n    a: str\n",
+    "class C(NamedTuple):\n    a: int = 1\n    b: int = 2\n    a: str = 'x'\n",
+    "@dataclass\nclass C:\n    a: int\n    a: str\n    b: int\n",
+    "@dataclass\nclass C:\n    a: int\n    b: int\n    __annotations__ = {'c': int, 'd': int}\n",
+    "@dataclass\nclass C:\n    a: int\n    b: int\n    __annotations__.update(c=int, d=int)\n",
+    "@dataclass\nclass C:\n    a: int\n    b: int\n    __annotations__ |= {'c': int}\n",
+    "@dataclass\nclass C:\n    a: int\n    b: int\n    del __annotations__\n",
+    "class C(NamedTuple):\n    a: int\n    b: int\n    __annotations__ = {'c': int, 'd': int}\n",
+]
+
+
+@pytest.mark.parametrize("declaration", _ANNOTATED_CLASSES, ids=range(len(_ANNOTATED_CLASSES)))
+def test_a_class_whose_annotation_mapping_differs_from_its_statements_binds_as_it_runs(declaration: str) -> None:
+    before = f"from dataclasses import dataclass\nfrom typing import NamedTuple\n\n{declaration}\nx = C(True, 2)\n"
+
+    fixed = fix_with(before, "ZA3502")
+
+    # The fix either names what the class takes, or leaves the call; it never writes a name the class lacks or twice.
+    try:
+        expected = run_module(before)["x"]
+    except TypeError:
+        assert fixed == before
+    else:
+        assert repr(run_module(fixed)["x"]) == repr(expected)
+
+
+_REBINDING_HEADERS = {
+    "a default": "def install(value=(target := lambda w, x, y, z: w + x + y + z)):\n    pass\n",
+    "a keyword-only default": "def install(*, value=(target := lambda w, x, y, z: w + x + y + z)):\n    pass\n",
+    "a decorator": "@(target := lambda w, x=0, y=0, z=0: w)\ndef install():\n    pass\n",
+    "an annotation": "def install(value: (target := lambda w, x, y, z: w + x + y + z) = None):\n    pass\n",
+    "a return annotation": "def install() -> (target := lambda w, x, y, z: w + x + y + z):\n    pass\n",
+    "a lambda default": "install = lambda value=(target := lambda w, x, y, z: w + x + y + z): value\n",
+    "a class base": "class Install((target := lambda w, x, y, z: w + x + y + z) and object):\n    pass\n",
+    "a class keyword": (
+        "class Base:\n    def __init_subclass__(cls, **options):\n        pass\n\n\n"
+        "class Install(Base, value=(target := lambda w, x, y, z: w + x + y + z)):\n    pass\n"
+    ),
+    "a class decorator": "@(target := lambda w, x=0, y=0, z=0: w)\nclass Install:\n    pass\n",
+}
+
+_TARGET = "def target(a, b, c, d):\n    return a + b + c + d\n\n\n"
+
+
+@pytest.mark.parametrize("header", _REBINDING_HEADERS.values(), ids=_REBINDING_HEADERS)
+def test_a_name_a_definition_header_rebinds_is_not_resolved_to_the_earlier_definition(header: str) -> None:
+    before = f"{_TARGET}{header}\nresult = target(1, 2, 3, 4)\n"
+    expected = run_module(before)["result"]
+
+    fixed = fix_with(before, "ZA3501")
+
+    assert run_module(fixed)["result"] == expected
+    assert fixed == before
+
+
+_UNRELATED_HEADERS = [
+    "def install(value=lambda w, x, y, z: 0):\n    pass\n",
+    "class Install(object):\n    pass\n",
+    "class Install:\n    def run(self, value=(target := lambda w, x, y, z: 0)):\n        pass\n",
+    "install = lambda: lambda value=(target := lambda w, x, y, z: 0): value\n",
+    "def install():\n    value = (target := lambda w, x, y, z: 0)\n",
+]
+
+
+@pytest.mark.parametrize("header", _UNRELATED_HEADERS, ids=range(len(_UNRELATED_HEADERS)))
+def test_a_header_whose_binding_stays_in_another_scope_leaves_the_earlier_definition_resolved(header: str) -> None:
+    before = f"{_TARGET}{header}\nresult = target(1, 2, 3, 4)\n"
+    fixed = fix_with(before, "ZA3501")
+
+    assert fixed.endswith("result = target(a=1, b=2, c=3, d=4)\n")
+    assert run_module(fixed)["result"] == run_module(before)["result"]

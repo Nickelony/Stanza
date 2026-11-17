@@ -11,6 +11,7 @@ import tokenize
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Any
 
 from nickelony_stanza import Config, Options, fix, lint
 from nickelony_stanza.analysis.source import SourceFile
@@ -86,15 +87,41 @@ JUMP_KEEPERS = [
 ]
 
 
-def fix_in_steps(text: str, config: Config, mode: str) -> str:
-    """Applies the first finding, the last one or all of them, then lints again, for at most four rounds."""
-    for _ in range(4):
+def run_module(text: str) -> dict[str, Any]:
+    """Runs a text as a module and returns its namespace, so a test can compare what a fix leaves the program doing."""
+    namespace: dict[str, Any] = {"__name__": "generated"}
+    exec(compile(text, "generated.py", "exec", dont_inherit=True), namespace)
+
+    return namespace
+
+
+def apply_each_finding(text: str, config: Config) -> list[str]:
+    """Applies each finding of a text on its own, and returns the text each one writes."""
+    source = SourceFile(text)
+    return [apply_edits(source, [finding]) for finding in lint(text, config)]
+
+
+def fix_in_steps(text: str, config: Config, mode: str, rounds: int = 4) -> str:
+    """
+    Applies findings one round at a time, then lints again, for at most `rounds` rounds.
+
+    A round applies the first finding, the last one, the findings of the first code, or all of them.
+    """
+    for _ in range(rounds):
         findings = lint(text, config)
 
         if not findings:
             break
 
-        chosen = findings[:1] if mode == "first" else findings[-1:] if mode == "last" else findings
+        if mode == "first":
+            chosen = findings[:1]
+        elif mode == "last":
+            chosen = findings[-1:]
+        elif mode == "code":
+            chosen = [finding for finding in findings if finding.code == findings[0].code]
+        else:
+            chosen = findings
+
         text = apply_edits(SourceFile(text), chosen)
 
     return text
@@ -139,12 +166,13 @@ def _same_node(before: object, after: object) -> bool:
     return all(_same_node(getattr(before, name, None), getattr(after, name, None)) for name in before._fields)
 
 
-def same_tree(first: str, second: str, config: Config | None = None) -> bool:
+def same_tree_ignoring_keyword_names(first: str, second: str, config: Config | None = None) -> bool:
     """
-    Tells whether two texts parse to the same syntax tree.
+    Tells whether two texts parse to the same syntax tree, letting a call rule's inserted keyword names differ.
 
     Under a configuration that enables a call rule, a call of the second text may pass a tail of its positional
-    arguments by name instead, which is the one change those rules make.
+    arguments by name instead, which is the one change those rules make, and the check never asks which names it wrote.
+    A test that needs the names right compiles and runs the fixed text, or compares the text it expects.
     """
     before, after = ast.parse(first), ast.parse(second)
 

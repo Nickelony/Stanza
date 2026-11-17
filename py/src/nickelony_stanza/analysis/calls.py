@@ -10,6 +10,8 @@ after a keyword, and `binding.py` settles which parameter each argument fills.
 - A call is left alone inside a `# fmt: off` region, or on a line a `# fmt: skip` comment trails,
   because the formatter is told to keep that text as written,
   and inside an f-string before Python 3.12, whose tokenizer reads the whole f-string as one token.
+- A call inside a self-documenting field of an f-string, as in `f"{call(1)=}"`, is left alone,
+  because the field prints the text of its expression and a name would change what the program prints.
 - An argument that is a generator or a `:=` expression without parentheses of its own cannot take a name,
   so its call is left alone.
 - `named-argument-ignore` takes a call away from both rules before either judges it.
@@ -19,6 +21,7 @@ after a keyword, and `binding.py` settles which parameter each argument fills.
 from __future__ import annotations
 
 import ast
+import re
 import sys
 import tokenize
 from bisect import bisect_left
@@ -44,6 +47,9 @@ _SKIPPED_TOKENS = frozenset({tokenize.NL, tokenize.NEWLINE, tokenize.COMMENT, to
 
 # An f-string holds tokens of its own from Python 3.12 on.
 _READS_FSTRING_TOKENS = sys.version_info >= (3, 12)
+
+# A template string, from Python 3.14 on.
+_TEMPLATE_STRING: type[ast.AST] | None = getattr(ast, "TemplateStr", None)
 
 Position = tuple[int, int]
 
@@ -173,6 +179,21 @@ class _Tokens:
         return token.start
 
 
+def _is_self_documenting(field: ast.FormattedValue, text: str) -> bool:
+    """Tells whether an f-string field ends its expression with `=`, which prints the expression's own text."""
+    whole = ast.get_source_segment(text, field)
+    expression = ast.get_source_segment(text, field.value)
+
+    if whole is None or expression is None:
+        return True
+
+    # What follows the expression is closing parentheses, blanks and comments, then `=` or the end of the field.
+    start = whole.find(expression)
+    rest = whole[start + len(expression) :] if start >= 0 else "="
+
+    return re.match(r"(?:[\s)]|#[^\n]*)*=", rest) is not None
+
+
 _COMPOUND_STATEMENTS = (
     ast.If,
     ast.For,
@@ -205,6 +226,14 @@ def collect_call_sites(source: SourceFile) -> list[tuple[ast.Call, int]]:
             kept = kept or (not isinstance(node, _COMPOUND_STATEMENTS) and node.end_lineno in skipped)
 
         if isinstance(node, ast.JoinedStr) and not _READS_FSTRING_TOKENS:
+            continue
+
+        # A template string keeps the text of each interpolation, which a name would change.
+        if _TEMPLATE_STRING is not None and isinstance(node, _TEMPLATE_STRING):
+            continue
+
+        if isinstance(node, ast.FormattedValue) and _is_self_documenting(node, source.text):
+            stack.extend((child, line, kept) for child in [node.format_spec] if child is not None)
             continue
 
         if isinstance(node, ast.Call):

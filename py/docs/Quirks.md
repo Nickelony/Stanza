@@ -148,9 +148,10 @@ A gap is joined, and the rules leave it as written, when a blank line would spli
 - The fix inserts a line break at the start of the line of the next unit, so it never lands inside a string.
 - A name goes before the first token of an argument, so it never lands inside a string either.
   A call inside an f-string gets names on Python 3.12 and later, and is skipped before, because the tokenizer reads the whole f-string as one token.
+- A call inside a self-documenting field such as `{call(1)=}` is skipped on every version, because the field prints the text of its expression.
 - A line break uses the line ending the file already uses, so a CRLF file stays CRLF, and the encoding and the byte order mark stay as read.
 - After a fix, the tool compares the syntax tree with the expected one, as the [architecture](Architecture.md#engine) says,
-  and refuses to write a file whose tree differs.
+  and refuses to write a file whose tree differs or whose text the compiler refuses.
 - A file whose tree is too deeply nested to compare, such as an expression of 1,200 terms, is an error after a fix, so the file is left as written.
   `check` still reports its findings.
 
@@ -177,11 +178,11 @@ The [rule page](rules/ZA3501-name-call-arguments.md#what-it-names) lists the cal
 | --- | --- |
 | A builtin or a function of a compiled module, such as `print` or `math.floor` | Left alone, because it has no source. |
 | A call through a value: a local name or parameter that hides the callee, a method of a local variable or an attribute, a call result or a subscript, or a name assigned a value such as a lambda | Left alone, because the class of the value is unknown. |
-| A name bound more than once, inside an `if`, `try`, `with`, loop or `match`, declared `global` elsewhere, or bound by no statement the rule reads | Left alone, because the binding that runs is unknown. |
+| A name bound more than once, inside an `if`, `try`, `with`, loop or `match`, rebound by a `:=` even in a header, declared `global` elsewhere, or bound by no statement the rule reads | Left alone, because the binding that runs is unknown. |
 | A decorator that may change the signature, such as `functools.lru_cache` or a decorator of the project | Left alone. A few that keep the signature, such as `staticmethod`, `classmethod` and `abc.abstractmethod`, are read through. |
 | A module that is missing, compiled, sourceless, unparsable or shadowed, or beside which a `.pyi` stub stands | Left alone, because the rule cannot read the one signature that applies. |
 | A callee from a source that `named-argument-sources` leaves out, or a method that `named-argument-methods` excludes | Left alone, as the [options](rules/ZA3501-name-call-arguments.md#options) say. |
-| A class shape the rule does not model, such as a custom `__new__`, a metaclass or a base it cannot read | Left alone. A dataclass and a named tuple take their fields in declaration order. |
+| A class shape the rule does not model, such as a custom `__new__`, a metaclass, a base it cannot read or a body that touches `__annotations__` | Left alone. A dataclass and a named tuple take their fields in declaration order, a repeated annotation keeping its first place. |
 | An exception class whose `__init__` does not call `super().__init__(...)` as a statement of its own | Left alone, because `BaseException` keeps the arguments it is given. |
 | `Class.method(obj, ...)` | The receiver stays positional and the names start at the next argument. |
 | A positional-only or mangled parameter | Stays positional. A call where one follows an argument that needs a name is left alone. |
@@ -189,7 +190,7 @@ The [rule page](rules/ZA3501-name-call-arguments.md#what-it-names) lists the cal
 | A call with `*args` or `**kwargs`, or with more positional arguments than the callee takes | Left alone. |
 | An argument that is a generator or a `:=` expression without parentheses of its own | The call is left alone, because a name cannot stand in front of it. |
 | A region between `# fmt: off` and `# fmt: on`, or a call that a trailing `# fmt: skip` comment covers | Left alone, as the [comments table](#comments) says. |
-| A call inside an f-string before Python 3.12 | Left alone, as the [content section](#content-a-rule-never-touches) says. |
+| A call inside an f-string before Python 3.12, or inside a self-documenting field such as `{call(1)=}` | Left alone, as the [content section](#content-a-rule-never-touches) says. |
 | A call through `self`, `cls` or `super()` | Named only when no project class that inherits the method reaches another definition. |
 | Any call, when the project passes the size caps of its scan | Left alone, because the checks for test doubles and subclasses read every module, as the [architecture](Architecture.md#the-project-index) says. |
 

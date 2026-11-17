@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.helpers import CONFIGS, same_tree
+from tests.helpers import CONFIGS, same_tree_ignoring_keyword_names
 
 NAMING = CONFIGS["strong"]
 NO_NAMING = CONFIGS["minimal"]
@@ -22,7 +22,7 @@ NO_NAMING = CONFIGS["minimal"]
     ],
 )
 def test_a_call_may_pass_a_tail_of_its_positional_arguments_by_name(before: str, after: str) -> None:
-    assert same_tree(before, after, NAMING)
+    assert same_tree_ignoring_keyword_names(before, after, NAMING)
 
 
 @pytest.mark.parametrize(
@@ -40,9 +40,9 @@ def test_a_call_may_pass_a_tail_of_its_positional_arguments_by_name(before: str,
     ],
 )
 def test_no_other_change_to_the_tree_is_accepted(before: str, after: str) -> None:
-    assert not same_tree(before, after, NAMING)
+    assert not same_tree_ignoring_keyword_names(before, after, NAMING)
 
 
 def test_a_name_is_a_change_unless_a_call_rule_is_enabled() -> None:
-    assert not same_tree("f(a, b)\n", "f(x=a, y=b)\n")
-    assert not same_tree("f(a, b)\n", "f(x=a, y=b)\n", NO_NAMING)
+    assert not same_tree_ignoring_keyword_names("f(a, b)\n", "f(x=a, y=b)\n")
+    assert not same_tree_ignoring_keyword_names("f(a, b)\n", "f(x=a, y=b)\n", NO_NAMING)

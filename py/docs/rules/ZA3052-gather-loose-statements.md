@@ -21,7 +21,8 @@ limit = 3
 ```
 
 - A loose run is a chain of single-line statements with nothing but blank lines between neighbors.
-  The rule reports every blank line of a run past the limit, and the fix removes the blank lines of the whole run.
+  The rule reports every blank line of a run past the limit, and the fix of any one of them removes the blank lines of the whole run.
+- One finding or all of them write the same text, and a gap that a `# noqa` comment silences keeps its blank lines.
 - A multi-line statement, a comment, a trailing comment or a gap with no blank line ends a run.
 - A statement that sits tight against its other neighbor is not part of the run, so the blank line that sets that group apart stays.
   A statement tight against a neighbor that a rule asks to set apart, as [`ZA3001`](ZA3001-separate-multi-line-constructs.md) does beside a multi-line statement, still joins.

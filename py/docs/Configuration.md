@@ -126,7 +126,8 @@ stanza-py format [paths] [--config FILE] [--level L] [--enable RULES] [--disable
 stanza-py rules
 ```
 
-- A path is a file or a directory, and `-` reads standard input and writes the fixed text to standard output.
+- A path is a file or a directory, and `-` reads standard input.
+  `fix -` and `format -` without `--check` write the fixed text to standard output, and `check -` prints its findings.
 - `--stdin-filename` names the file that standard input holds, so the call rules resolve its calls against its project.
   Without it, the text resolves against itself, the standard library and the installed packages.
   The name does not change which configuration is read, and `format` gives it to the formatter.
@@ -134,8 +135,8 @@ stanza-py rules
 - A directory scan skips `.git`, `.hg`, `.svn`, `.venv`, `venv`, `__pycache__`, `node_modules`, `.tox`, `.nox`, `.mypy_cache`, `.ruff_cache`,
   `.pytest_cache`, `build`, `dist`, `.eggs` and every `*.egg-info` directory, and it skips every `.pyi` stub.
 - `check` exits with 0 when the files are clean and 1 when it found a blank line to add or remove or an argument to name.
-- Every command exits with 2 on a file that does not parse, a missing path or a configuration they cannot read,
-  after they have handled the other files.
+- Every command exits with 2 on a missing path or a configuration it cannot read, before it handles any file,
+  and on a file that does not parse, after it has handled the other files.
 - `--enable` and `--disable` take rule codes or names, separated by commas, and may repeat.
 - `format` formats each file with the `formatter`, fixes the result, and runs the formatter again to check that it keeps the fix,
   with one more fix and formatter run when it did not, as the [formatter page](Working-with-formatters.md#the-format-command) says.

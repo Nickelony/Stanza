@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from nickelony_stanza import Config, Options, fix
-from tests.helpers import Case, case, check_case, findings_with, fix_with
+from nickelony_stanza import Config, Options, fix, lint
+from tests.helpers import Case, apply_each_finding, case, check_case, findings_with, fix_in_steps, fix_with
 
 CASES = [
     # ZA3003 separate-same-type-declaration-runs
@@ -521,3 +521,58 @@ def test_a_gather_rule_leaves_a_yield_run_apart_from_its_neighbors() -> None:
     expected = "def g():\n    first()\n    second()\n\n    yield a\n    yield b\n\n    third()\n    fourth()\n"
 
     assert fix_with(source, "ZA3007", "ZA3052") == expected
+
+
+_GATHER_SOURCES = {
+    "statements": ("ZA3052", "a = 1\n\nb = 2\n\nc = 3\n\nd = 4\n", "a = 1\nb = 2\nc = 3\nd = 4\n"),
+    "members": (
+        "ZA3053",
+        "class C:\n    a = 1\n\n    b = 2\n\n    c = 3\n\n    d = 4\n",
+        "class C:\n    a = 1\n    b = 2\n    c = 3\n    d = 4\n",
+    ),
+    "two runs": (
+        "ZA3052",
+        "a = 1\n\nb = 2\n\nc = 3\n\nd = 4\n\nx = f()  # note\n\ne = 5\n\nf = 6\n\ng = 7\n\nh = 8\n",
+        "a = 1\nb = 2\nc = 3\nd = 4\nx = f()  # note\n\ne = 5\nf = 6\ng = 7\nh = 8\n",
+    ),
+    "a silenced gap": (
+        "ZA3052",
+        "a = 1\n\nb = 2\n\nc = 3\n\nd = 4  # noqa: ZA3052\n\ne = 5\n\nf = 6\n",
+        "a = 1\nb = 2\nc = 3\n\nd = 4  # noqa: ZA3052\n\ne = 5\n\nf = 6\n",
+    ),
+}
+
+
+@pytest.mark.parametrize("name", [name for name in _GATHER_SOURCES if name != "two runs"])
+def test_each_finding_of_a_loose_run_removes_the_blank_lines_of_the_whole_run(name: str) -> None:
+    code, before, after = _GATHER_SOURCES[name]
+    config = Config.create("none", enable=[code])
+    findings = lint(before, config)
+
+    assert len(findings) >= 2
+    assert apply_each_finding(before, config) == [after] * len(findings)
+    assert fix(before, config).text == after
+    assert lint(after, config) == []
+
+
+@pytest.mark.parametrize("mode", ["first", "last", "code", "batch"])
+@pytest.mark.parametrize("name", _GATHER_SOURCES)
+def test_a_loose_run_settles_to_one_text_in_any_application_order(name: str, mode: str) -> None:
+    code, before, after = _GATHER_SOURCES[name]
+    config = Config.create("none", enable=[code])
+    current = fix_in_steps(before, config, mode)
+
+    assert current == after
+    assert lint(current, config) == []
+
+
+def test_a_finding_removes_the_blank_lines_of_its_own_run_and_no_other() -> None:
+    _, before, after = _GATHER_SOURCES["two runs"]
+    head, _, tail = before.partition("x = f()  # note\n\n")
+    gathered_head, _, gathered_tail = after.partition("x = f()  # note\n\n")
+    config = Config.create("none", enable=["ZA3052"])
+
+    first_run_only = gathered_head + "x = f()  # note\n\n" + tail
+    second_run_only = head + "x = f()  # note\n\n" + gathered_tail
+
+    assert apply_each_finding(before, config) == [first_run_only] * 4 + [second_run_only] * 3

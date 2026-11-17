@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import pytest
 
 from nickelony_stanza import Config, Options, fix, lint
-from tests.helpers import same_tree
+from tests.helpers import same_tree_ignoring_keyword_names
 
 
 @dataclass(frozen=True)
@@ -254,5 +254,5 @@ def test_quirk(quirk: Quirk) -> None:
 
     assert result == expected
     assert fix(result, config).text == result
-    assert same_tree(quirk.before, result, config)
+    assert same_tree_ignoring_keyword_names(quirk.before, result, config)
     assert lint(result, config) == []

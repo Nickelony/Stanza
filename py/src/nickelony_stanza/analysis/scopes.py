@@ -142,8 +142,7 @@ class _NamespaceCollector:
             self.order += 1
             self._collect_statement(statement, conditional)
 
-            if not isinstance(statement, _FunctionDef | ast.ClassDef):
-                self._collect_walrus(statement)
+            self._collect_walrus(statement)
 
     def _add(
         self,
@@ -263,6 +262,7 @@ class _NamespaceCollector:
             self._add(name, "other", statement, conditional)
 
     def _collect_walrus(self, statement: ast.stmt) -> None:
+        """Records the names a `:=` binds in this scope: those of the statement, and those of a header that runs now."""
         stack: list[ast.AST] = [statement]
 
         while stack:
@@ -271,11 +271,32 @@ class _NamespaceCollector:
             if isinstance(node, ast.NamedExpr) and isinstance(node.target, ast.Name):
                 self._add(node.target.id, "other", node, True)
 
-            stack.extend(
-                child
-                for child in ast.iter_child_nodes(node)
-                if not isinstance(child, _FunctionDef | ast.ClassDef | ast.Lambda)
-            )
+            if isinstance(node, _FunctionDef | ast.ClassDef | ast.Lambda):
+                stack.extend(_evaluated_at_definition(node))
+            else:
+                stack.extend(ast.iter_child_nodes(node))
+
+
+def _evaluated_at_definition(node: ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda) -> list[ast.AST]:
+    """
+    Lists the parts of a definition that run where it stands, not the body that runs when it is called or built.
+
+    That is its decorators, the defaults and annotations of its parameters and its result,
+    and for a class its bases and keywords. An annotation counts even where the interpreter may defer it,
+    because a binding read too eagerly only makes the resolver decline.
+    """
+    if isinstance(node, ast.ClassDef):
+        return [*node.decorator_list, *node.bases, *(keyword.value for keyword in node.keywords)]
+
+    parts: list[ast.AST] = list(_signature_parts(node.args))
+
+    if not isinstance(node, ast.Lambda):
+        parts.extend(node.decorator_list)
+
+        if node.returns is not None:
+            parts.append(node.returns)
+
+    return parts
 
 
 @dataclass(eq=False)
