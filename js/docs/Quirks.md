@@ -95,6 +95,7 @@ A gap is joined, and the rules leave it as written, when a blank line would spli
 | TypeScript overload signatures, `declare function` overloads and constructor overloads | Joined. A signature without a body and the signature or function after it with the same name stay together. |
 | Interface and type literal overloads, call signatures and construct signatures | Joined when two neighbors are the same kind of signature with the same name. |
 | A getter and its setter | Joined. A `get x` next to a `set x` of the same name and the same `static` modifier stay together. |
+| A computed key, as in `[Symbol.iterator]` | The same name where both keys are the same expression, for a getter and its setter and for overloads. Two other computed keys are two names. |
 | An empty `case` that falls through to the next one | Joined, so a list of labels stays one stanza. |
 | Text, or a `{' '}` space between inline elements, among the children of a JSX element | Content. Every gap of the element is joined, because Prettier removes the blank lines of such an element. |
 

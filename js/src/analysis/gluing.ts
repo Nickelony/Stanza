@@ -27,28 +27,60 @@ function isClassMethod(node: Node): node is ClassMethod {
 	return node.type === 'MethodDefinition' || node.type === 'TSAbstractMethodDefinition';
 }
 
-/** Tells whether two members share a key whose name can be read, because two unreadable keys are not known to match. */
-function haveSameKnownKey(previous: ClassMethod, next: ClassMethod): boolean {
+/** Tells whether two values are the same syntax, wherever each stands: equal in every property but the parent link and the position. */
+function isSameSyntax(first: unknown, second: unknown): boolean {
+	if (Array.isArray(first) || Array.isArray(second)) {
+		return (
+			Array.isArray(first) &&
+			Array.isArray(second) &&
+			first.length === second.length &&
+			first.every((item, index) => isSameSyntax(item, second[index]))
+		);
+	}
+
+	if (typeof first !== 'object' || first === null || typeof second !== 'object' || second === null) {
+		return first === second;
+	}
+
+	const names = (value: object): string[] => Object.keys(value).filter((name) => name !== 'parent' && name !== 'loc' && name !== 'range');
+	const firstNames = names(first);
+	const read = (value: object, name: string): unknown => (value as Record<string, unknown>)[name];
+
+	return (
+		firstNames.length === names(second).length && firstNames.every((name) => name in second && isSameSyntax(read(first, name), read(second, name)))
+	);
+}
+
+/** Tells whether two members share a key: one whose name can be read, or a computed key that is the same expression, such as `[Symbol.iterator]`. */
+function haveSameKey(
+	previous: { readonly key: Node; readonly computed: boolean },
+	next: { readonly key: Node; readonly computed: boolean },
+): boolean {
 	const name = readKeyName(previous.key, previous.computed);
-	return name !== undefined && name === readKeyName(next.key, next.computed);
+	const nextName = readKeyName(next.key, next.computed);
+
+	if (name !== undefined || nextName !== undefined) {
+		return name === nextName;
+	}
+
+	return previous.computed && next.computed && isSameSyntax(previous.key, next.key);
 }
 
 /** Tells whether two class members are overloads of one method: the first has no body and both share a name. */
 function isMethodOverload(previous: ClassMethod, next: ClassMethod): boolean {
-	return previous.value.type === 'TSEmptyBodyFunctionExpression' && previous.static === next.static && haveSameKnownKey(previous, next);
+	return previous.value.type === 'TSEmptyBodyFunctionExpression' && previous.static === next.static && haveSameKey(previous, next);
 }
 
 /** Tells whether two class members are the getter and the setter of one property. */
 function isAccessorPair(previous: ClassMethod, next: ClassMethod): boolean {
 	const kinds = new Set([previous.kind, next.kind]);
-	return kinds.has('get') && kinds.has('set') && previous.static === next.static && haveSameKnownKey(previous, next);
+	return kinds.has('get') && kinds.has('set') && previous.static === next.static && haveSameKey(previous, next);
 }
 
 /** Tells whether two interface members are signatures of one overloaded method, call or constructor. */
 function isSignatureOverload(previous: Node, next: Node): boolean {
 	if (previous.type === 'TSMethodSignature' && next.type === 'TSMethodSignature') {
-		const name = readKeyName(previous.key, previous.computed);
-		return name !== undefined && name === readKeyName(next.key, next.computed);
+		return haveSameKey(previous, next);
 	}
 
 	return (

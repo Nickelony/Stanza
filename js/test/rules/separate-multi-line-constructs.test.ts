@@ -48,6 +48,37 @@ createRuleTester().run('separate-multi-line-constructs', rule as never, {
 		},
 
 		{ code: lines('interface A {', '  call(a: string): void;', '  call(', '    a: number,', '  ): void;', '}') },
+
+		{
+			code: lines('class A {', '  get [kValue]() {', '    return 1;', '  }', '  set [kValue](next: number) {', '    log(next);', '  }', '}'),
+			name: 'a getter and a setter of one computed key are a pair',
+		},
+
+		{
+			code: lines(
+				'class A {',
+				'  get [Symbol.iterator]() {',
+				'    return 1;',
+				'  }',
+				'  set [Symbol.iterator](next: number) {',
+				'    log(next);',
+				'  }',
+				'}',
+			),
+
+			name: 'a getter and a setter of one computed member key are a pair',
+		},
+
+		{
+			code: lines('class A {', '  [Symbol.iterator](a: string): void;', '  [Symbol.iterator](a: unknown) {', '    g(a);', '  }', '}'),
+			name: 'a method signature and its implementation under one computed key are overloads',
+		},
+
+		{
+			code: lines('interface A {', '  [Symbol.iterator](a: string): void;', '  [Symbol.iterator](', '    a: number,', '  ): void;', '}'),
+			name: 'two signatures under one computed key are overloads',
+		},
+
 		{ code: lines('const a = (', '  <div>', '    <A />', '    <B>', '      x', '    </B>', '  </div>', ');') },
 	],
 
@@ -129,10 +160,17 @@ createRuleTester().run('separate-multi-line-constructs', rule as never, {
 		},
 
 		{
-			code: lines('class A {', '  [Symbol.iterator](a: string): void;', '  [Symbol.iterator](a: unknown) {', '    g(a);', '  }', '}'),
-			output: lines('class A {', '  [Symbol.iterator](a: string): void;', '', '  [Symbol.iterator](a: unknown) {', '    g(a);', '  }', '}'),
+			code: lines('class A {', '  [Symbol.iterator](a: string): void;', '  [Symbol.asyncIterator](a: unknown) {', '    g(a);', '  }', '}'),
+			output: lines('class A {', '  [Symbol.iterator](a: string): void;', '', '  [Symbol.asyncIterator](a: unknown) {', '    g(a);', '  }', '}'),
 			errors: 1,
-			name: 'two methods with keys that cannot be read are not overloads',
+			name: 'two methods with different computed keys are not overloads',
+		},
+
+		{
+			code: lines('interface A {', '  [Symbol.iterator](', '    a: string,', '  ): void;', '  [Symbol.asyncIterator](a: number): void;', '}'),
+			output: lines('interface A {', '  [Symbol.iterator](', '    a: string,', '  ): void;', '', '  [Symbol.asyncIterator](a: number): void;', '}'),
+			errors: 1,
+			name: 'two signatures with different computed keys are not overloads',
 		},
 
 		{
