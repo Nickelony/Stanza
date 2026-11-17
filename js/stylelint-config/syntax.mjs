@@ -6,7 +6,8 @@ import { createBindings, isEmotionKeyframes } from './emotion-tag.mjs';
 
 /**
  * The property of a standalone interpolation, which the empty-line rules read as a declaration.
- * The braces keep it out of the standard properties, so a rule that judges a property, a duplicate or a value skips it.
+ * The braces keep it out of the standard properties, so a rule that judges a known property, a duplicate or a value skips it.
+ * A rule that matches every property or counts declarations still sees it, and the stringifier writes the source, whatever such a rule fixes.
  * A leading `$` would make Stylelint read a Sass variable, and the empty-line rules would lay it out as one.
  */
 const interpolationProperty = 'stanza-{interpolation}';

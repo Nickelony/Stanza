@@ -39,6 +39,24 @@ const declarationFixers = {
 	'value-no-vendor-prefix': true,
 };
 
+/** The autofixable core rules that read no declaration, with an option set that turns each one on; the config sets the other empty-line rules itself. */
+const otherFixers = {
+	'at-rule-no-deprecated': true,
+	'at-rule-no-vendor-prefix': true,
+	'comment-empty-line-before': 'always',
+	'import-notation': 'url',
+	'keyframe-selector-notation': 'percentage',
+	'media-feature-name-no-vendor-prefix': true,
+	'media-feature-range-notation': 'context',
+	'relative-selector-nesting-notation': 'implicit',
+	'selector-attribute-quotes': 'always',
+	'selector-no-deprecated': true,
+	'selector-no-vendor-prefix': true,
+	'selector-not-notation': 'complex',
+	'selector-pseudo-element-colon-notation': 'double',
+	'selector-type-case': 'lower',
+};
+
 /** Every semantic rule that judges a property, besides the autofixable ones. */
 const declarationChecks = { 'property-no-unknown': true, 'declaration-block-no-shorthand-property-overrides': true };
 
@@ -65,12 +83,26 @@ async function lintWithAllRules(code, fix) {
 	return stylelint.lint({
 		code,
 		codeFilename: 'src/example.tsx',
-		config: { ...configuration, rules: { ...configuration.rules, ...declarationFixers, ...declarationChecks } },
+		config: { ...configuration, rules: { ...configuration.rules, ...declarationFixers, ...otherFixers, ...declarationChecks } },
 		fix,
 	});
 }
 
 describe('the syntax beside the other rules of Stylelint', () => {
+	it('lists every autofixable core rule, so a rule a new Stylelint adds is judged here too', async () => {
+		const fixable = [];
+
+		for (const [name, rule] of Object.entries(stylelint.rules)) {
+			if ((await rule).meta?.fixable) {
+				fixable.push(name);
+			}
+		}
+
+		const listed = [...Object.keys(declarationFixers), ...Object.keys(otherFixers), ...Object.keys(configuration.rules)];
+
+		assert.deepEqual(fixable.toSorted(), [...new Set(listed)].toSorted());
+	});
+
 	it('keeps every interpolation through the fixes of every declaration rule', async () => {
 		const result = await lintWithAllRules(source, true);
 
@@ -118,12 +150,5 @@ describe('the syntax beside the other rules of Stylelint', () => {
 
 		assert.equal(strict.code, code);
 		assert.deepEqual(strict.results[0].warnings, []);
-	});
-
-	it('writes an interpolation from its source, whatever a fixer made of its value', async () => {
-		const code = `${react}const x = css\`\n\${ "#FFFFFF" }\ncolor: #ffffff;\n\`;\n`;
-		const result = await lintWithAllRules(code, true);
-
-		assert.ok(result.code.includes('${ "#FFFFFF" }'), result.code);
 	});
 });

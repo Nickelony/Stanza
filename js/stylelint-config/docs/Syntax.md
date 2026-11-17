@@ -57,8 +57,10 @@ const error = css`
 
 - The node is a declaration with the property `stanza-{interpolation}`, so the empty-line rules treat it as a sibling.
   A rule or an at-rule below it gets a blank line, and the first node of a block has none above it.
-- The braces make the property nonstandard,
-  so a rule that judges a property name, a duplicate or a value skips the node, and no fix edits the JavaScript.
+- The braces make the property nonstandard, so a rule that judges a known property, a duplicate or a value against a property skips the node.
+- A rule that matches every property still sees the node, as `declaration-property-value-allowed-list` and `-disallowed-list` do with a catch-all pattern.
+  So does one that counts declarations, as `declaration-block-single-line-max-declarations` does.
+- No fix edits the JavaScript, because the syntax writes each interpolation from its source.
 - A `${...}` at the end of a block is a declaration too, so a rule or an at-rule above it gets a blank line, and one alone in a block has none.
 - The blank lines inside a multi-line `${...}` are JavaScript, so no rule counts them as CSS spacing.
 - A `${...}` inside a selector, a property or a value stays part of it.
