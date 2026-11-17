@@ -180,7 +180,7 @@ The [rule page](rules/ZA3501-name-call-arguments.md#what-it-names) lists the cal
 | A builtin or a function of a compiled module, such as `print` or `math.floor` | Left alone, because it has no source. |
 | A call through a value: a local name or parameter that hides the callee, a method of a local variable or an attribute, a call result or a subscript, or a name assigned a value such as a lambda | Left alone, because the class of the value is unknown. |
 | A name bound more than once, inside an `if`, `try`, `with`, loop or `match`, rebound by a `:=` even in a header, declared `global` elsewhere, or bound by no statement the rule reads | Left alone, because the binding that runs is unknown. |
-| Any name of a project module that writes `globals()`, runs `exec` or a module-level `eval` in its own namespace, or reaches those functions by an alias | Left alone, because a name may be rebound with no statement that binds it. Reading `globals()` is no write. |
+| Any name of a project module that writes `globals()`, runs `exec` in its own namespace, runs a module-level `eval` of a text that is not a constant or holds `:=`, or reaches those functions by an alias | Left alone, because a name may be rebound with no statement that binds it. Reading `globals()`, `exec(code, namespace)` and a constant `eval` are no write. |
 | A decorator that may change the signature, such as `functools.lru_cache` or a decorator of the project | Left alone. A few that keep the signature, such as `staticmethod`, `classmethod` and `abc.abstractmethod`, are read through. |
 | A module that is missing, compiled, sourceless, unparsable or shadowed, or beside which a `.pyi` stub stands | Left alone, because the rule cannot read the one signature that applies. |
 | A callee from a source that `named-argument-sources` leaves out, or a method that `named-argument-methods` excludes | Left alone, as the [options](rules/ZA3501-name-call-arguments.md#options) say. |
@@ -188,7 +188,8 @@ The [rule page](rules/ZA3501-name-call-arguments.md#what-it-names) lists the cal
 | An exception class whose `__init__` does not call `super().__init__(...)` as a statement of its own | Left alone, because `BaseException` keeps the arguments it is given. |
 | `Class.method(obj, ...)` | The receiver stays positional and the names start at the next argument. |
 | A positional-only or mangled parameter | Stays positional. A call where one follows an argument that needs a name is left alone. |
-| A callee whose `__code__`, `__defaults__`, `__kwdefaults__` or `__signature__` a project module assigns or deletes | Left alone, matched by the last name of the callee. |
+| A callee whose `__code__` a project module assigns or deletes | Left alone, matched by the last name of the callee. A write the rule cannot read, such as `handlers[name].__code__ = ...`, leaves the functions of that module alone. |
+| A rewrite through a frame (`sys._getframe(...).f_globals`), the `__globals__` of a function, `object.__setattr__` or `__import__("builtins").globals()` | Not seen. Disable `ZA3501` and `ZA3502` for a project that relies on such rewrites. |
 | A callee that a test double replaces, a form a type checker reads positionally, or a dunder method | Left alone or kept positional, as the [rule page](rules/ZA3501-name-call-arguments.md#what-it-names) lists. |
 | A call with `*args` or `**kwargs`, or with more positional arguments than the callee takes | Left alone. |
 | An argument that is a generator or a `:=` expression without parentheses of its own | The call is left alone, because a name cannot stand in front of it. |

@@ -155,6 +155,8 @@ and no `global` statement or later star import may rebind it.
 A project module that may rewrite its own namespace, as `dynamic.py` reads it, resolves no name.
 `classes.py` reads the method resolution order and the constructor of a class, `scopes.py` the names each scope binds, and `shapes.py` the parameters.
 
+A project module that replaces the `__code__` of a callee leaves that name unresolved, and one that replaces the code of a function it cannot name leaves only its own functions unresolved.
+
 ### Sources and skipped calls
 
 `module_index.py` follows an import or a re-export through the directories of the project roots, then those of `sys.path`, and never imports a module.
@@ -166,7 +168,7 @@ A gap in what the resolver sees leaves the call unresolved, so a skip reason nam
 - The callee is a value, a name that is rebound, bound conditionally or rewritten through `globals()`, or a builtin or compiled definition.
 - The module is missing, compiled, sourceless or shadowed, a `.pyi` stub stands beside it, or the options leave out its source.
 - A decorator, a class shape or a call shape that the resolver does not model stands in the way.
-- The callee is a form a type checker reads positionally, or a project module replaces it with a test double or gives it another signature.
+- The callee is a form a type checker reads positionally, or a project module replaces it with a test double or gives it another code object.
 - The method is not allowed by `named-argument-methods`, or the dispatch condition below fails.
 - The method is a dunder other than the few that construct or call an object, whose parameters are read as positional-only.
 - The project passes the caps of the scan, so no check that reads every module can clear the call, as [the project index](#the-project-index) says.

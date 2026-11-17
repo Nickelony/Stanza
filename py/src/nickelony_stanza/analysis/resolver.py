@@ -64,7 +64,6 @@ from nickelony_stanza.analysis.classes import (
     read_namedtuple_class_fields,
     runtime_builtin,
 )
-from nickelony_stanza.analysis.dynamic import EVERY_FUNCTION
 from nickelony_stanza.analysis.module_index import ModuleInfo, SourceIndex
 from nickelony_stanza.analysis.scopes import NameBinding, Scope, ScopeTable, mangle
 from nickelony_stanza.analysis.shapes import (
@@ -1266,9 +1265,14 @@ class Resolver:
         return cached
 
     def _replaces_signature(self, *names: str) -> bool:
-        """Tells whether any project module gives a function of one of these last names, or any, another signature."""
+        """Tells whether any project module gives a function of one of these last names another code object."""
         replaced = self._project_replaced()
-        return EVERY_FUNCTION in replaced or any(name in replaced for name in names)
+        return any(name in replaced for name in names)
+
+    @staticmethod
+    def _rewrites_own_signatures(module: ModuleInfo) -> bool:
+        """Tells whether a project module gives a function a code object it cannot tell which, so its own are unsafe."""
+        return module.source == "project" and module.rewrites_signatures
 
     def _resolve_callee(self, call: ast.Call, scope: Scope) -> Callee | Skipped:
         function = call.func
@@ -1411,7 +1415,7 @@ class Resolver:
             return self.callee_of(self.class_info(member.owner.module, node))
 
         if node is None:
-            if self._replaces_signature("__init__", "__new__"):
+            if self._replaces_signature("__init__", "__new__") or self._rewrites_own_signatures(member.owner.module):
                 return Skipped(Reason.NAME_REBOUND)
 
             parameters = self.dataclass_init(member.owner)
@@ -1449,6 +1453,9 @@ class Resolver:
 
         if isinstance(parameters, Skipped):
             return parameters
+
+        if self._rewrites_own_signatures(module):
+            return Skipped(Reason.NAME_REBOUND)
 
         receiver = isinstance(target, FunctionTarget) and self._passes_receiver(target)
 

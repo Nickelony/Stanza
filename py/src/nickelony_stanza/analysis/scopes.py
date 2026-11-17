@@ -485,6 +485,7 @@ class ModuleScan:
     classes: tuple[ClassSite, ...]
     rewrites_namespace: bool
     replaced_signatures: frozenset[str]
+    rewrites_signatures: bool
     by_node: dict[int, ClassSite] = field(repr=False, compare=False)
 
 
@@ -586,7 +587,13 @@ def scan_module(tree: ast.Module) -> ModuleScan:
     by_node = {id(site.node): site for site in classes}
 
     return ModuleScan(
-        frozenset(stored), frozenset(patched), classes, watch.finish(), frozenset(signatures.names), by_node
+        frozenset(stored),
+        frozenset(patched),
+        classes,
+        watch.finish(),
+        frozenset(signatures.names),
+        signatures.unreadable,
+        by_node,
     )
 
 

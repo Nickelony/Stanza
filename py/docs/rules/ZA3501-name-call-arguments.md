@@ -65,10 +65,13 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
 - A name bound more than once, bound inside an `if`, `try`, `with`, loop or `match`, declared `global` elsewhere,
   or bound by no statement the rule reads.
 - A name rebound by a `:=`, even one in a default, a decorator, an annotation or a class base.
-- A name of a project module that writes `globals()`, as in `globals()["f"] = g` or `globals().update(...)`, or passes it to a call.
-  A read such as `globals()["f"]`, `globals().get("f")` or `"f" in globals()` is no write.
-- A name of a project module that runs `exec`, or a module-level `eval`, in its own namespace,
-  or reaches `exec`, `eval`, `locals`, `vars` or `globals` by an alias, `getattr` or `builtins`.
+- A name of a project module that writes `globals()`, as in `globals()["f"] = g` or `globals().update(...)`, or hands it to code the rule cannot follow.
+  A read is no write: `globals()["f"]`, `globals().get("f")`, `"f" in globals()`, a loop over it,
+  or passing it to `__import__`, `dir`, `sorted`, `list`, `dict`, `set`, `len` or `iter`.
+- A name of a project module that runs `exec` in its own namespace,
+  or a module-level `eval` of a text that is not a constant or holds `:=`.
+- A name of a project module that reaches `exec`, `eval`, `locals`, `vars` or `globals` by an alias,
+  by `getattr` on `builtins` or `__builtins__`, or by a `builtins` that an `import` binds.
   The standard library and installed packages are not checked, because `typing` and `dataclasses` write their own namespaces.
 - A callee wrapped by a decorator the rule does not see through, such as `functools.lru_cache` or a decorator of the project,
   because the wrapper may take other arguments.
@@ -80,9 +83,10 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
 - A callee that a project module replaces with a test double, as in `lib.f = other`, `setattr(lib, "f", fake)`,
   `monkeypatch.setattr(lib, "f", fake)`, `monkeypatch.setattr("lib.f", fake)`, `mock.patch("lib.f")` or `mock.patch.object(C, "m")`,
   because the double may take other names.
-- A callee whose `__code__`, `__defaults__`, `__kwdefaults__` or `__signature__` a project module assigns or deletes,
-  as in `f.__code__ = g.__code__`, or copies with `functools.update_wrapper(f, g, assigned=...)`.
-  The rule matches the last name of the callee, as for a double, and an assignment to anything but a name or an attribute stops every call.
+- A callee whose `__code__` a project module assigns or deletes, as in `f.__code__ = g.__code__`,
+  or copies with `functools.update_wrapper(f, g, assigned=("__code__",))`.
+  The rule matches the last name of the callee, as for a double.
+  A write it cannot read, as in `handlers[name].__code__ = ...` or a computed `assigned`, stops the functions of that module only.
 - Every callee with the same last name as a double, because the rule matches the last name of the callee against the names any project module patches.
 - `typing.cast`, `NewType`, `TypeVar`, `ParamSpec`, `TypeVarTuple`, `TypeAliasType`, `NamedTuple` and `TypedDict`, also from `typing_extensions`,
   and `collections.namedtuple`, because a type checker reads their arguments positionally.
@@ -95,6 +99,13 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
 - A call inside a template string (`t"..."`, Python 3.14 and later).
 - A call with an argument that is a generator or a `:=` expression without parentheses of its own.
 - Any call, when the project holds more than 20,000 files or 64 MB of source, because the checks for test doubles and subclasses need every module.
+
+These stay named: `exec(code, namespace)` with a namespace of its own, a constant `eval("1 + 1")`, a variable named `builtins`,
+and a callee whose `__defaults__`, `__kwdefaults__` or `__signature__` a module sets, because only a code object renames a parameter.
+
+The rule does not see a rewrite through a frame (`sys._getframe(...).f_globals` or `f_locals`), through the `__globals__` of a function,
+through `object.__setattr__`, or through `__import__("builtins").globals()`.
+A project that relies on such rewrites should disable `ZA3501` and `ZA3502` for that code.
 
 The first call this rule resolves makes a run read the whole project up front, so a run at `strong` pays that cost before it names a call.
 

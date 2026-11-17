@@ -157,10 +157,6 @@ _OTHER = "def other(w, x, y, z):\n    return w\n\n\n"
 
 _SIGNATURE_MUTATIONS = {
     "a code object": "target.__code__ = other.__code__",
-    "defaults": "target.__defaults__ = (1,)",
-    "keyword defaults": "target.__kwdefaults__ = {}",
-    "a signature": "target.__signature__ = inspect.signature(other)",
-    "a deleted default": "del target.__defaults__",
     "a code object set by name": "setattr(target, '__code__', other.__code__)",
     "a code object of a member": "this = types.SimpleNamespace(target=target)\nthis.target.__code__ = other.__code__",
     "a code object of an element": "functions = [target]\nfunctions[0].__code__ = other.__code__",
