@@ -38,6 +38,20 @@ createRuleTester().run('keep-two-units-together', rule as never, {
 		},
 
 		{
+			code: lines('function f(x) {', '  const next = decode(x);', '    ', '  return next.y;', '}'),
+			output: lines('function f(x) {', '  const next = decode(x);', '  return next.y;', '}'),
+			errors: 1,
+			name: 'a blank line that holds spaces',
+		},
+
+		{
+			code: lines('function f(x) {', '  const next = decode(x);  ', '', '  return next.y;', '}'),
+			output: lines('function f(x) {', '  const next = decode(x);  ', '  return next.y;', '}'),
+			errors: 1,
+			name: 'the fix removes the blank line and leaves the space that trails the statement above, as the removal rules do',
+		},
+
+		{
 			code: lines('class A {', '  a = 1;', '', '  b = 2;', '}'),
 			output: lines('class A {', '  a = 1;', '  b = 2;', '}'),
 			errors: 1,
