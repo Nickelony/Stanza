@@ -89,6 +89,20 @@ internal static class StanzaRuleState
 	public static bool IsDeferralOnAt(RuleScope scope, StanzaOptions options, StanzaRule rule, DiagnosticDescriptor target, int position) =>
 		rule.Defers(target) && !IsOffAt(scope, options, rule: StanzaRules.Get(target), position);
 
+	/// <summary>
+	/// The entry of a target the rule reads, or <see langword="null"/> when the target judges no such container.
+	/// </summary>
+	public static StanzaRule? FindJudgingReadRule(StanzaRule rule, DiagnosticDescriptor target, SyntaxKind containerKind) =>
+		rule.ReadsStateOf(target) && StanzaRules.Get(target) is { } read && read.Kinds.Contains(containerKind) ? read : null;
+
+	/// <summary>Whether the rule reads the target's state and the target is on.</summary>
+	public static bool IsReadRuleOn(RuleScope scope, StanzaOptions options, StanzaRule rule, DiagnosticDescriptor target) =>
+		rule.ReadsStateOf(target) && !IsRuleDisabled(scope, options, rule: StanzaRules.Get(target));
+
+	/// <summary>Whether the rule reads the target's state and the target is on at the position.</summary>
+	public static bool IsReadRuleOnAt(RuleScope scope, StanzaOptions options, StanzaRule rule, DiagnosticDescriptor target, int position) =>
+		rule.ReadsStateOf(target) && !IsOffAt(scope, options, rule: StanzaRules.Get(target), position);
+
 	/// <summary>Whether the target is on at the position, or throws when the rule's entry omits it.</summary>
 	public static bool IsRequiredDeferralOnAt(RuleScope scope, StanzaOptions options, StanzaRule rule, DiagnosticDescriptor target, int position) =>
 		!IsOffAt(scope, options, rule: rule.GetDeferral(target), position);

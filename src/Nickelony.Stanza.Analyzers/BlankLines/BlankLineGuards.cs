@@ -31,12 +31,12 @@ internal static class BlankLineGuards
 
 	/// <summary>Finds the boundary the guard rule asks for, or -1 when it is off or judges no such container.</summary>
 	/// <remarks>
-	/// A rule that defers to the guard rule reads its gap here, as the gap ends a stanza and stays blank.
+	/// A rule that reads the guard rule finds its gap here, as the gap ends a stanza and stays blank.
 	/// </remarks>
 	public static int FindAskedGuardBoundary(ContainerContext container, StanzaRule askingRule)
 	{
 		if (
-			StanzaRuleState.FindJudgingDeferral(askingRule, DiagnosticDescriptors.SeparateGuardClauses, containerKind: container.Kind)
+			StanzaRuleState.FindJudgingReadRule(askingRule, DiagnosticDescriptors.SeparateGuardClauses, containerKind: container.Kind)
 			is not { } guardRule
 		)
 		{

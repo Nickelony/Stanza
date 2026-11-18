@@ -85,7 +85,10 @@ internal static class BlankLineOwnership
 		if (multiLine is not null && !StanzaRuleState.IsRuleDisabled(container, container.Options, multiLine))
 			owned.UnionWith(ReadOwnerBoundaries(container, ReadMultiLineBoundaries(container, multiLine), multiLine));
 
-		if (!s_runRules.Any(pair => rule.Defers(pair.Rule)) && !rule.Defers(DiagnosticDescriptors.SeparateSameTypeDeclarationRuns))
+		// A run rule only reads the run rules after its own, so the earlier ones are the owners it can defer to.
+		bool defersToRuns = s_runRules.TakeWhile(pair => pair.Rule != rule.Descriptor).Any(pair => rule.Defers(pair.Rule));
+
+		if (!defersToRuns && !rule.Defers(DiagnosticDescriptors.SeparateSameTypeDeclarationRuns))
 			return owned.ToImmutable();
 
 		foreach ((BlankLineGrouping.RunFamily family, DiagnosticDescriptor descriptor) in s_runRules)
@@ -448,7 +451,7 @@ internal static class BlankLineOwnership
 	/// </remarks>
 	private static bool IsKindRuleOn(ContainerContext container, StanzaRule rule, DiagnosticDescriptor kindRule)
 	{
-		StanzaRule owner = rule.Descriptor == kindRule ? rule : rule.GetDeferral(kindRule);
+		StanzaRule owner = rule.Descriptor == kindRule ? rule : rule.GetReadRule(kindRule);
 		return !StanzaRuleState.IsRuleDisabled(container, container.Options, owner);
 	}
 
@@ -479,7 +482,7 @@ internal static class BlankLineOwnership
 		StanzaRule[] active =
 		[
 			.. consumers
-				.Select(target => target == rule.Descriptor ? rule : StanzaRuleState.FindJudgingDeferral(rule, target, container.Kind))
+				.Select(target => target == rule.Descriptor ? rule : StanzaRuleState.FindJudgingReadRule(rule, target, container.Kind))
 				.Where(owner => owner is not null && !StanzaRuleState.IsRuleDisabled(container, container.Options, owner))
 				.Cast<StanzaRule>(),
 		];
@@ -669,12 +672,12 @@ internal static class BlankLineOwnership
 
 		/// <summary>Reads the boundaries the subscription rule owns while on, where assignments end a run.</summary>
 		/// <remarks>
-		/// A rule that does not defer to the subscription rule reads no such boundary.
+		/// A rule that does not read the subscription rule finds no such boundary.
 		/// </remarks>
 		private ImmutableHashSet<int> ReadSubscriptionBoundaries()
 		{
 			if (
-				!StanzaRuleState.IsDeferralOn(
+				!StanzaRuleState.IsReadRuleOn(
 					scope: container,
 					options: container.Options,
 					rule,
@@ -711,7 +714,7 @@ internal static class BlankLineOwnership
 		// The reader runs the walk of the families once, and only for a rule that has an owner to ask.
 		foreach ((BlankLineGrouping.RunFamily family, DiagnosticDescriptor descriptor) in s_runRules)
 		{
-			// A run rule lists a later one only to read its state, so no rule from its own entry on takes a gap from it.
+			// A run rule only reads the state of a later one, so no rule from its own entry on takes a gap from it.
 			if (descriptor == rule.Descriptor)
 				break;
 

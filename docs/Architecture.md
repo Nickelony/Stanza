@@ -82,7 +82,7 @@ and the trailing-comma pair of "Delimited lists" is in `Commas/`.
   and the provider runs the `FixRow` of its ID in its `FixTable` on a `FixDocument`.
   A Fix All merges the change sets with `FixMerge`, which drops each set that conflicts with an earlier one.
 - `StanzaRules` holds each rule whose facts shared code reads: its `RulePair`, the half that owns a shared [gap](https://github.com/Nickelony/Stanza/wiki/Terms) or construct, its fix,
-  its node kinds and the rules it defers to.
+  its node kinds and the rules it defers to or reads.
   A rule deferred to has an entry too, and `StanzaOptions.RulesDisabledUnlessEnabled` answers for each entry.
 - `StanzaRuleState` decides which half of a pair owns a gap or construct, and whether a rule is off at a position, including by a pragma.
 - `StanzaOptions` reads the `.editorconfig` keys for a file once.

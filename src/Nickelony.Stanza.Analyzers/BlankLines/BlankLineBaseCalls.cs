@@ -56,13 +56,13 @@ internal static class BlankLineBaseCalls
 			) && FindBaseCallBoundaries(container).Contains(boundary);
 	}
 
-	/// <summary>Reads the boundaries the base call rule asks for, for a rule that defers to it.</summary>
+	/// <summary>Reads the boundaries the base call rule asks for, for a rule that reads it.</summary>
 	/// <remarks>
 	/// It reads none while the rule is off, and none that a pragma silences, so a run crosses such a gap.
 	/// </remarks>
 	public static ImmutableHashSet<int> ReadAskedBaseCallBoundaries(ContainerContext container, StanzaRule askingRule)
 	{
-		StanzaRule? baseCallRule = StanzaRuleState.FindJudgingDeferral(
+		StanzaRule? baseCallRule = StanzaRuleState.FindJudgingReadRule(
 			askingRule,
 			DiagnosticDescriptors.SeparateBaseCall,
 			containerKind: container.Kind

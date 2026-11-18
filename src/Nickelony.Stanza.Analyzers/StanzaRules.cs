@@ -5,7 +5,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace Nickelony.Stanza.Analyzers;
 
-/// <summary>Registers each rule that names node kinds, a gap fix, a pair or a deferral, or is deferred to.</summary>
+/// <summary>Registers each rule that names node kinds, a gap fix, a pair, a deferral or a read, or is named.</summary>
 internal static class StanzaRules
 {
 	private static readonly RulePair s_accessors = new(
@@ -99,7 +99,7 @@ internal static class StanzaRules
 		defaultHalf: DiagnosticDescriptors.UsePatternForNullCheck
 	);
 
-	/// <summary>Reads the rules of the later run kinds only to know which statements are runs.</summary>
+	/// <summary>Reads the later run kinds to know which statements are runs, and the gaps that end a run.</summary>
 	public static readonly StanzaRule SeparateDeclarationRuns = new(
 		Descriptor: DiagnosticDescriptors.SeparateDeclarationRuns,
 		Fix: GapFix.SiblingInsertion,
@@ -108,16 +108,20 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
 			DiagnosticDescriptors.SeparateSuppressionBlock,
+			DiagnosticDescriptors.SeparateCommentedSibling,
+			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateAwaitRuns,
 			DiagnosticDescriptors.SeparateYieldRuns,
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
-			DiagnosticDescriptors.SeparateCommentedSibling,
-			DiagnosticDescriptors.SeparateBaseCall,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 			DiagnosticDescriptors.SeparateInvocationRuns,
@@ -133,17 +137,21 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
 			DiagnosticDescriptors.SeparateSuppressionBlock,
 			DiagnosticDescriptors.SeparateDeclarationRuns,
+			DiagnosticDescriptors.SeparateCommentedSibling,
+			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateAwaitRuns,
 			DiagnosticDescriptors.SeparateYieldRuns,
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
-			DiagnosticDescriptors.SeparateCommentedSibling,
-			DiagnosticDescriptors.SeparateBaseCall,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -158,18 +166,22 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
 			DiagnosticDescriptors.SeparateSuppressionBlock,
 			DiagnosticDescriptors.SeparateDeclarationRuns,
 			DiagnosticDescriptors.SeparateInvocationRuns,
+			DiagnosticDescriptors.SeparateCommentedSibling,
+			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateAwaitRuns,
 			DiagnosticDescriptors.SeparateYieldRuns,
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
-			DiagnosticDescriptors.SeparateCommentedSibling,
-			DiagnosticDescriptors.SeparateBaseCall,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -184,7 +196,6 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
@@ -192,10 +203,15 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateDeclarationRuns,
 			DiagnosticDescriptors.SeparateInvocationRuns,
 			DiagnosticDescriptors.SeparateAssertionRuns,
-			DiagnosticDescriptors.SeparateYieldRuns,
-			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
+			DiagnosticDescriptors.SeparateYieldRuns,
+			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -210,7 +226,6 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
@@ -220,9 +235,14 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateAssertionRuns,
 			DiagnosticDescriptors.SeparateAwaitRuns,
 			DiagnosticDescriptors.SeparateYieldRuns,
-			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
+			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -237,7 +257,6 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
@@ -248,9 +267,14 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateAwaitRuns,
 			DiagnosticDescriptors.SeparateYieldRuns,
 			DiagnosticDescriptors.SeparateEventSubscriptionRuns,
-			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
+			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -265,7 +289,6 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
@@ -274,9 +297,14 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateInvocationRuns,
 			DiagnosticDescriptors.SeparateAssertionRuns,
 			DiagnosticDescriptors.SeparateAwaitRuns,
-			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
+			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -291,7 +319,6 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
@@ -305,6 +332,11 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateAssignmentRuns,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -373,7 +405,6 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
@@ -390,6 +421,11 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateModifierGroups,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -425,7 +461,6 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
@@ -439,6 +474,11 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 			DiagnosticDescriptors.KeepDependentBindingsTogether,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
 		]
 	);
 
@@ -481,7 +521,8 @@ internal static class StanzaRules
 		Descriptor: DiagnosticDescriptors.KeepRunOfStatementsTogether,
 		Fix: GapFix.RunRemoval,
 		Kinds: GatherRunOfLooseStatements.Kinds,
-		DefersTo: GatherRunOfLooseStatements.DefersTo.Remove(DiagnosticDescriptors.KeepRunOfStatementsTogether)
+		DefersTo: GatherRunOfLooseStatements.DefersTo.Remove(DiagnosticDescriptors.KeepRunOfStatementsTogether),
+		Reads: GatherRunOfLooseStatements.Reads
 	);
 
 	/// <summary>Judges the member gather rule's containers, which that rule leaves to it.</summary>
@@ -531,13 +572,17 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateImportSection,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
 			DiagnosticDescriptors.SeparateSuppressionBlock,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateBaseCall,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateGuardClauses,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
@@ -553,7 +598,6 @@ internal static class StanzaRules
 		DefersTo:
 		[
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
 		]
@@ -577,7 +621,6 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateRegionMarker,
 			DiagnosticDescriptors.SeparateConditionalBlock,
 			DiagnosticDescriptors.SeparateSuppressionBlock,
@@ -585,6 +628,11 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateBaseCall,
 			DiagnosticDescriptors.SeparateJumpStatement,
 			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -618,6 +666,10 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateGuardClauses,
 			DiagnosticDescriptors.GatherRunOfLooseStatements,
 			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+		],
+
+		Reads:
+		[
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
@@ -767,6 +819,10 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateGuardClauses,
 			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
+		],
+
+		Reads:
+		[
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 		]
 	);
@@ -796,8 +852,12 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateBaseCall,
 			DiagnosticDescriptors.SeparateJumpStatement,
 			DiagnosticDescriptors.SeparateGuardClauses,
-			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 		]
 	);
@@ -1062,21 +1122,21 @@ internal static class StanzaRules
 		Pair: s_markupElements
 	);
 
-	/// <summary>Lists the single-line sibling only to read its state, as the two own disjoint gaps.</summary>
+	/// <summary>Reads the single-line sibling, as the two own disjoint gaps.</summary>
 	public static readonly StanzaRule KeepMultiLineMarkupElementsTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepMultiLineMarkupElementsTogether,
 		Fix: GapFix.MarkupCapRemoval,
 		Kinds: StanzaKinds.MarkupLiteralKinds,
 		Pair: s_markupElements,
-		DefersTo: [DiagnosticDescriptors.KeepSingleLineMarkupElementsTogether]
+		Reads: [DiagnosticDescriptors.KeepSingleLineMarkupElementsTogether]
 	);
 
-	/// <summary>Lists its sibling only to read its state, as the two own disjoint gaps.</summary>
+	/// <summary>Reads its multi-line sibling, as the two own disjoint gaps.</summary>
 	public static readonly StanzaRule KeepSingleLineMarkupElementsTogether = new(
 		Descriptor: DiagnosticDescriptors.KeepSingleLineMarkupElementsTogether,
 		Fix: GapFix.MarkupCapRemoval,
 		Kinds: StanzaKinds.MarkupLiteralKinds,
-		DefersTo: [DiagnosticDescriptors.KeepMultiLineMarkupElementsTogether]
+		Reads: [DiagnosticDescriptors.KeepMultiLineMarkupElementsTogether]
 	);
 
 	public static readonly StanzaRule CollapseExtraBlankLinesBetweenMarkupElements = new(

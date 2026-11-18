@@ -374,7 +374,7 @@ public sealed class ConfigurationMatrixTests
 	public static IEnumerable<object[]> Seeds { get; } =
 	[.. Enumerable.Range(1, RandomMapCount).Select(seed => new object[] { seed })];
 
-	// The rules that share a gap, pair or deferral, which a disabled rule can change the settled text through.
+	// The rules that share a gap, pair, deferral or read, which a disabled rule can change the settled text through.
 	private static readonly HashSet<string> s_sharingRules = FindSharingRules();
 
 	private static HashSet<string> FindSharingRules()
@@ -383,12 +383,12 @@ public sealed class ConfigurationMatrixTests
 
 		foreach (StanzaRule rule in StanzaRules.All)
 		{
-			if (rule.Pair is null && rule.DefersTo.IsDefaultOrEmpty)
+			if (rule.Pair is null && rule.DefersTo.IsDefaultOrEmpty && rule.Reads.IsDefaultOrEmpty)
 				continue;
 
 			_ = ids.Add(rule.Descriptor.Id);
 
-			foreach (DiagnosticDescriptor target in rule.DefersTo.IsDefault ? [] : rule.DefersTo)
+			foreach (DiagnosticDescriptor target in (rule.DefersTo.IsDefault ? [] : rule.DefersTo).Concat(rule.Reads.IsDefault ? [] : rule.Reads))
 				_ = ids.Add(target.Id);
 
 			if (rule.Pair is { } pair)
@@ -401,7 +401,7 @@ public sealed class ConfigurationMatrixTests
 		return ids;
 	}
 
-	// A rule that never reports on the corpus and takes no part in a pair or a deferral leaves the settled text as it was
+	// A rule that never reports on the corpus and takes no part in a pair, a deferral or a read leaves the settled text as it was
 	// when it is disabled, so its row settles nothing and checks that the other rules report as they did.
 	// The rows are the declared rules, and the corpus decides at run time which of them report, so discovery runs no analysis.
 	[TestMethod]

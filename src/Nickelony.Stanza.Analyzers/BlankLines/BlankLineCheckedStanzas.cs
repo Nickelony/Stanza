@@ -225,7 +225,7 @@ internal static class BlankLineCheckedStanzas
 	public static ImmutableHashSet<int> ReadAskedBoundaries(ContainerContext container, StanzaRule askingRule)
 	{
 		if (
-			StanzaRuleState.FindJudgingDeferral(askingRule, DiagnosticDescriptors.SeparateCheckedStanza, container.Kind) is not { } owner
+			StanzaRuleState.FindJudgingReadRule(askingRule, DiagnosticDescriptors.SeparateCheckedStanza, container.Kind) is not { } owner
 			|| StanzaRuleState.IsRuleDisabled(container, container.Options, owner)
 		)
 		{

@@ -313,7 +313,7 @@ internal static class BlankLineKeptRuns
 		/// <summary>The target reader, none for a member or unless ZA0009 is on and reads `split`.</summary>
 		private readonly Func<SyntaxNode, BlankLineGrouping.AssignmentTarget>? _readTarget =
 			!judgesMembers
-			&& StanzaRuleState.IsDeferralOn(scope: container, options: container.Options, rule, target: DiagnosticDescriptors.SeparateAssignmentRuns)
+			&& StanzaRuleState.IsReadRuleOn(scope: container, options: container.Options, rule, target: DiagnosticDescriptors.SeparateAssignmentRuns)
 				? BlankLineAssignmentTargets.FindReader(container)
 				: null;
 
@@ -411,6 +411,6 @@ internal static class BlankLineKeptRuns
 			family is { } runFamily && IsOn(BlankLineOwnership.GetRunRule(runFamily), position);
 
 		private bool IsOn(DiagnosticDescriptor target, int position) =>
-			StanzaRuleState.IsDeferralOnAt(scope: container, options: container.Options, rule, target, position);
+			StanzaRuleState.IsReadRuleOnAt(scope: container, options: container.Options, rule, target, position);
 	}
 }

@@ -23,70 +23,6 @@ namespace Nickelony.Stanza.Analyzers.Tests;
 [TestClass]
 public sealed partial class RuleRegistryTests
 {
-	// Each pair reads the other's state, until one map of gap owners replaces the deferrals:
-	// a run rule reads a later run rule, ZA0064's receivers and the ZA0010 and ZA0012 gaps,
-	// which yield to its runs; ZA0011 and ZA0013 end each other's stanza; ZA0052 and ZA0055
-	// hold the ZA0012 gaps that ZA0012 skips; ZA2002 and ZA2003 are the halves of a pair.
-	private static readonly string[] s_twoSidedReads =
-	[
-		"ZA0002 ZA0004",
-		"ZA0002 ZA0006",
-		"ZA0002 ZA0007",
-		"ZA0002 ZA0010",
-		"ZA0002 ZA0012",
-		"ZA0002 ZA0015",
-		"ZA0002 ZA0064",
-		"ZA0003 ZA0010",
-		"ZA0003 ZA0012",
-		"ZA0003 ZA0064",
-		"ZA0004 ZA0006",
-		"ZA0004 ZA0007",
-		"ZA0004 ZA0010",
-		"ZA0004 ZA0012",
-		"ZA0004 ZA0015",
-		"ZA0004 ZA0064",
-		"ZA0005 ZA0006",
-		"ZA0005 ZA0007",
-		"ZA0005 ZA0010",
-		"ZA0005 ZA0012",
-		"ZA0005 ZA0015",
-		"ZA0005 ZA0064",
-		"ZA0006 ZA0007",
-		"ZA0006 ZA0010",
-		"ZA0006 ZA0012",
-		"ZA0006 ZA0015",
-		"ZA0006 ZA0064",
-		"ZA0007 ZA0010",
-		"ZA0007 ZA0012",
-		"ZA0007 ZA0015",
-		"ZA0007 ZA0064",
-		"ZA0008 ZA0010",
-		"ZA0008 ZA0012",
-		"ZA0008 ZA0015",
-		"ZA0008 ZA0064",
-		"ZA0009 ZA0010",
-		"ZA0009 ZA0012",
-		"ZA0009 ZA0015",
-		"ZA0009 ZA0064",
-		"ZA0010 ZA0011",
-		"ZA0010 ZA0012",
-		"ZA0010 ZA0013",
-		"ZA0010 ZA0015",
-		"ZA0010 ZA0064",
-		"ZA0011 ZA0012",
-		"ZA0011 ZA0013",
-		"ZA0011 ZA0064",
-		"ZA0012 ZA0013",
-		"ZA0012 ZA0014",
-		"ZA0012 ZA0015",
-		"ZA0012 ZA0052",
-		"ZA0012 ZA0055",
-		"ZA0012 ZA0064",
-		"ZA0013 ZA0064",
-		"ZA0015 ZA0064",
-		"ZA2002 ZA2003",
-	];
-
 	// The codes only the tool reports, so no descriptor of the analyzer backs them.
 	private static readonly string[] s_toolOnlyIds = ["ZA2901", "ZA2902"];
 
@@ -638,8 +574,9 @@ public sealed partial class RuleRegistryTests
 	}
 
 	[TestMethod]
-	public void NoTwoRulesDeferToEachOtherBeyondTheKnownTwoSidedReads()
+	public void NoTwoRulesDeferToEachOther()
 	{
+		// Two rules may read each other's state, but a gap that each yields to the other has no owner.
 		string[] mutual =
 		[
 			.. StanzaRules
@@ -653,13 +590,27 @@ public sealed partial class RuleRegistryTests
 				.Order(StringComparer.Ordinal),
 		];
 
-		Assert.AreSequenceEqual(
-			s_twoSidedReads,
+		GuardAssert.None(
 			mutual,
-
-			"A new pair of rules defers each to the other, so neither owns the gap; "
-				+ "let one rule yield, or record why both read the other's state."
+			"These pairs of rules defer each to the other, so neither owns the gap; let one only read the other"
 		);
+	}
+
+	[TestMethod]
+	public void NoRuleListsARuleBothAsADeferralAndAsARead()
+	{
+		string[] doubled =
+		[
+			.. StanzaRules
+				.All.Where(static rule => !rule.Reads.IsDefault)
+				.SelectMany(static rule =>
+					rule
+						.Reads.Where(target => target == rule.Descriptor || (!rule.DefersTo.IsDefault && rule.DefersTo.Contains(target)))
+						.Select(target => $"{rule.Descriptor.Id} {target.Id}")
+				),
+		];
+
+		GuardAssert.None(doubled, "A rule reads itself, or reads a rule it also defers to");
 	}
 
 	// The import rules themselves, and a rule the import section rule defers to, are no claimants.
@@ -679,8 +630,11 @@ public sealed partial class RuleRegistryTests
 			&& !imports.Defers(rule.Descriptor);
 	}
 
-	private static bool IsMutual(StanzaRule rule, DiagnosticDescriptor target) =>
-		target != rule.Descriptor && StanzaRules.Get(target).Defers(rule.Descriptor);
+	private static bool IsMutual(StanzaRule rule, DiagnosticDescriptor target)
+	{
+		ImmutableArray<DiagnosticDescriptor> deferrals = StanzaRules.Get(target).DefersTo;
+		return target != rule.Descriptor && !deferrals.IsDefault && deferrals.Contains(rule.Descriptor);
+	}
 
 	private static string JoinPair(string first, string second) =>
 		string.CompareOrdinal(first, second) < 0 ? $"{first} {second}" : $"{second} {first}";

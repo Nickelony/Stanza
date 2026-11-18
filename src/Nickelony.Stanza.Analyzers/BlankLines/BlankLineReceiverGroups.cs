@@ -25,7 +25,7 @@ internal static class BlankLineReceiverGroups
 		StanzaRule? owner =
 			askingRule.Descriptor == DiagnosticDescriptors.SeparateReceiverGroups
 				? askingRule
-				: StanzaRuleState.FindJudgingDeferral(askingRule, DiagnosticDescriptors.SeparateReceiverGroups, container.Kind);
+				: StanzaRuleState.FindJudgingReadRule(askingRule, DiagnosticDescriptors.SeparateReceiverGroups, container.Kind);
 
 		if (owner is null || StanzaRuleState.IsRuleDisabled(container, container.Options, owner))
 			return [];

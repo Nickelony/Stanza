@@ -17,8 +17,7 @@ public sealed class SeverityKeyTests
 	private static readonly string[] s_boundaryOwners =
 	[
 		.. StanzaRules
-			.All.Where(static rule => !rule.DefersTo.IsDefault)
-			.SelectMany(static rule => rule.DefersTo)
+			.All.SelectMany(static rule => (rule.DefersTo.IsDefault ? [] : rule.DefersTo).Concat(rule.Reads.IsDefault ? [] : rule.Reads))
 			.Select(static owner => owner.Id)
 			.Distinct(),
 	];
@@ -353,7 +352,7 @@ public sealed class SeverityKeyTests
 		);
 	}
 
-	// An analyzer gets the rule it defers to through its entry, which throws for a deferral the entry does not record.
+	// An analyzer gets the rule it defers to or reads through its entry, which throws for one the entry does not record.
 	[TestMethod]
 	public void EachDeferralNamesARecordedRuleWithAnEntry()
 	{
@@ -366,6 +365,11 @@ public sealed class SeverityKeyTests
 			StanzaRules.SeparateMultiLineConstructs.GetDeferral(
 				DiagnosticDescriptors.SeparateMemberGroups
 			)
+		);
+
+		// A rule that only reads another yields it nothing, so a deferral read of it is a mistake.
+		Assert.ThrowsExactly<InvalidOperationException>(() =>
+			StanzaRules.SeparateDeclarationRuns.Defers(DiagnosticDescriptors.SeparateInvocationRuns)
 		);
 	}
 

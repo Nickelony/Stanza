@@ -73,8 +73,8 @@ internal static class MarkupLiteralAnalysis
 		if (ReadLiteral(context) is not (MarkupLiteral literal, StanzaOptions options))
 			return;
 
-		// A rule that defers a gap to a tight rule is told which of them stand, so the layout leaves that rule the gap.
-		MarkupOptions markup = rule.DefersTo.IsDefault
+		// A rule that reads a tight rule is told which of them stand, so the layout leaves that rule the gap.
+		MarkupOptions markup = rule.DefersTo.IsDefault && rule.Reads.IsDefault
 			? options.Markup
 			: options.Markup with
 			{
@@ -304,13 +304,13 @@ internal static class MarkupLiteralAnalysis
 	/// </summary>
 	private static MarkupRuleSet GetEnabledRemovalOwners(SyntaxNodeAnalysisContext context, StanzaOptions options, StanzaRule rule, int position)
 	{
-		// Each rule reads the others through its own entry, and skips one it does not defer to:
+		// Each rule reads the others through its own entry, and skips one it does not read:
 		// the multi-line tight rule owns no gap that the commented rule shares. The cap reads every one through its own.
 		StanzaRule[] owners =
 		[
 			.. s_removalOwners
-				.Where(owner => owner == rule.Descriptor || rule.Defers(owner))
-				.Select(owner => owner == rule.Descriptor ? rule : rule.GetDeferral(owner)),
+				.Where(owner => owner == rule.Descriptor || rule.ReadsStateOf(owner))
+				.Select(owner => owner == rule.Descriptor ? rule : rule.GetReadRule(owner)),
 		];
 
 		return MarkupRuleSet.From(
