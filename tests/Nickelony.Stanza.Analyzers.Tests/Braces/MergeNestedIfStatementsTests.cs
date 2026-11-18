@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -675,6 +676,30 @@ public sealed class MergeNestedIfStatementsTests
 
 		foreach (Diagnostic diagnostic in result.Diagnostics)
 			Assert.AreEqual(Method(body).IndexOf("if (c1)", StringComparison.Ordinal), diagnostic.Location.SourceSpan.Start);
+	}
+
+	// A merge conflict puts the text of its other side in the trivia of the token after the stack as disabled text,
+	// beside a conflict marker and with no directive, so the check for disabled text cannot lean on a directive reader.
+	[TestMethod]
+	public async Task TheOtherSideOfAMergeConflictBesideTheIfsLeavesThemAlone()
+	{
+		const string body = "<<<<<<< ours\nFoo();\nif (c0)\n{\n\tif (c1)\n\t\tDoThing();\n}\n=======\nBar();\n>>>>>>> theirs";
+
+		// A conflict does not compile, but an editor shows the rule while the conflict is open.
+		ImmutableArray<Diagnostic> diagnostics = await RoslynTestHarness.RunWithoutCompilingAsync(
+			Method(body),
+			TestRuleSets.OnSuppressingAllOthers([DiagnosticDescriptors.MergeNestedIfStatements])
+		);
+
+		Assert.IsEmpty(diagnostics.Where(static diagnostic => diagnostic.Id == DiagnosticDescriptors.MergeNestedIfStatements.Id));
+
+		// Without the other side the same stack is reported.
+		ImmutableArray<Diagnostic> control = await RoslynTestHarness.RunWithoutCompilingAsync(
+			Method(body[..body.IndexOf("=======", StringComparison.Ordinal)]),
+			TestRuleSets.OnSuppressingAllOthers([DiagnosticDescriptors.MergeNestedIfStatements])
+		);
+
+		Assert.IsTrue(control.Any(static diagnostic => diagnostic.Id == DiagnosticDescriptors.MergeNestedIfStatements.Id));
 	}
 
 	[TestMethod]
@@ -1380,6 +1405,16 @@ public sealed class MergeNestedIfStatementsTests
 		source.Split(["if ("], StringSplitOptions.None).Length - 1;
 
 	// The members every fixture shares, so each if names itself and no snippet needs a symbol of its own.
+	// A directive and a conflict marker only mean something at the start of a line.
+	private static bool StartsAtTheMargin(string line)
+	{
+		return line.Length == 0
+			|| line[0] == '#'
+			|| line.StartsWith("<<<<<<<", StringComparison.Ordinal)
+			|| line.StartsWith("=======", StringComparison.Ordinal)
+			|| line.StartsWith(">>>>>>>", StringComparison.Ordinal);
+	}
+
 	private static string Method(string statements)
 	{
 		string body = string.Join(
@@ -1387,7 +1422,7 @@ public sealed class MergeNestedIfStatementsTests
 
 			statements
 				.Split('\n')
-				.Select(static line => line.Length == 0 || line[0] == '#' ? line : "\t\t" + line)
+				.Select(static line => StartsAtTheMargin(line) ? line : "\t\t" + line)
 		);
 
 		return $"class C\n{{\n\tbool c0, c1, c2, c3;\n\tbool? maybe;\n\tint x, y;\n\n\tstatic bool Flag(bool first, bool second) => first;\n\n\tstatic bool Run(Func<bool> test) => test();\n\n\tvoid M(object other)\n\t{{\n{body}\n\t}}\n}}\n";
