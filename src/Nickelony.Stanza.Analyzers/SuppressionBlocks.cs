@@ -69,9 +69,13 @@ internal static class SuppressionBlocks
 	/// <summary>Reads the codes a pragma names, in a fixed order; a pragma with none names every warning.</summary>
 	private static string ReadCodes(PragmaWarningDirectiveTriviaSyntax pragma)
 	{
-		IEnumerable<string> codes = pragma.ErrorCodes.Select(static code => NormalizeCode(code.ToString().Trim()));
+		IEnumerable<string> codes = pragma.ErrorCodes.Select(static code => NormalizeCode(ReadCode(code)));
 		return string.Join(",", codes.OrderBy(static code => code, System.StringComparer.Ordinal));
 	}
+
+	/// <summary>Reads a code as <c>StanzaPragmas</c> does, so a Unicode escape in it reads as the character.</summary>
+	private static string ReadCode(ExpressionSyntax code) =>
+		code is IdentifierNameSyntax identifier ? identifier.Identifier.ValueText : code.ToString().Trim();
 
 	/// <summary>Reads a number as the compiler does: <c>618</c> is <c>CS0618</c>.</summary>
 	private static string NormalizeCode(string code)
