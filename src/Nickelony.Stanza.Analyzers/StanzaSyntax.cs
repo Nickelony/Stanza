@@ -61,15 +61,10 @@ internal static class StanzaSyntax
 	public static bool HasConditionalDirective(SyntaxTriviaList triviaList) => triviaList.Any(IsConditionalDirective);
 
 	/// <summary>Whether the trivia list holds a directive.</summary>
+	/// <remarks>
+	/// Disabled text always shares a list with its directive, so a list that holds it holds a directive.
+	/// </remarks>
 	public static bool HasDirective(SyntaxTriviaList triviaList) => triviaList.Any(static trivia => trivia.IsDirective);
-
-	/// <summary>Whether the trivia list holds a conditional directive, or the text a directive disables.</summary>
-	public static bool HasConditionalDirectiveOrDisabledText(SyntaxTriviaList triviaList) =>
-		triviaList.Any(static trivia => IsConditionalDirective(trivia) || trivia.IsKind(SyntaxKind.DisabledTextTrivia));
-
-	/// <summary>Whether the trivia list holds a directive, or the text a directive disables.</summary>
-	public static bool HasDirectiveOrDisabledText(SyntaxTriviaList triviaList) =>
-		triviaList.Any(static trivia => trivia.IsDirective || trivia.IsKind(SyntaxKind.DisabledTextTrivia));
 
 	/// <summary>Whether a directive stands in the node, in its first token's trivia, or in the next token's.</summary>
 	/// <remarks>
@@ -83,7 +78,7 @@ internal static class StanzaSyntax
 		// The token is found by its position, because the next token of a list's unit is found by a pass over the list.
 		SyntaxToken next = node.SyntaxTree.GetRoot().FindToken(node.FullSpan.End);
 
-		return HasDirectiveOrDisabledText(next.LeadingTrivia);
+		return HasDirective(next.LeadingTrivia);
 	}
 
 	public static bool IsMultiLine(SyntaxNodeOrToken unit) => unit.SyntaxTree is { } syntaxTree && IsMultiLine(syntaxTree, unit.Span);

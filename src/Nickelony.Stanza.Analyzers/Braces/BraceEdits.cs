@@ -170,10 +170,10 @@ internal static class BraceEdits
 		// A Fix All removes any set of the reported blocks, each judged on the text as it stands.
 		// An enclosing block of a loop or an if whose one statement cannot take an else may lose its braces too,
 		// and then the else after it follows this block, so the walk passes its closing brace.
-		while (!StanzaSyntax.HasDirectiveOrDisabledText(next.LeadingTrivia) && ClosesABlockThatMayLoseItsBraces(next))
+		while (!StanzaSyntax.HasDirective(next.LeadingTrivia) && ClosesABlockThatMayLoseItsBraces(next))
 			next = next.GetNextToken();
 
-		return next.IsKind(SyntaxKind.ElseKeyword) || StanzaSyntax.HasDirectiveOrDisabledText(next.LeadingTrivia);
+		return next.IsKind(SyntaxKind.ElseKeyword) || StanzaSyntax.HasDirective(next.LeadingTrivia);
 	}
 
 	/// <summary>Whether the token closes a judged block whose one statement takes no else.</summary>
@@ -242,7 +242,7 @@ internal static class BraceEdits
 			next.IsKind(SyntaxKind.ElseKeyword)
 			|| (next.IsKind(SyntaxKind.WhileKeyword) && next.Parent is DoStatementSyntax doStatement && doStatement.Statement == block);
 
-		if (!continuesStatement || StanzaSyntax.HasDirectiveOrDisabledText(next.LeadingTrivia))
+		if (!continuesStatement || StanzaSyntax.HasDirective(next.LeadingTrivia))
 			return span;
 
 		// A comment in the gap stays where it is, and the blank lines above it go, as the clause rule that removes them does.
