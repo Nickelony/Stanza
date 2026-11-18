@@ -196,8 +196,7 @@ def test_a_method_or_constructor_whose_code_the_module_replaces_is_not_resolved(
         assert fixed == before
 
 
-_TARGET = "def target(a, b, c, d):\n    return a + b + c + d\n\n\n"
-_OTHER = "def other(w, x, y, z):\n    return w\n\n\n"
+_METHOD = "class K:\n    def f(self):\n        pass\n\n\n"
 _RECODE = "\n\nK.f.__code__ = other.__code__\nresult = target(1, 2, 3, 4)\n"
 
 # The class bodies and the statements around them that leave `K.f` holding a function other than a method `f` of `K`,
@@ -212,6 +211,18 @@ _NOT_THE_METHOD = {
     "an attribute set after the class": "class K:\n    def f(self):\n        pass\n\n\nK.f = target\n",
     "an attribute set by name": "class K:\n    def f(self):\n        pass\n\n\nsetattr(K, 'f', target)\n",
     "an attribute set by a computed name": "class K:\n    def f(self):\n        pass\n\n\nsetattr(K, 'F'.lower(), target)\n",
+    "an attribute set through the cls of a classmethod": (
+        "class K:\n    def f(self):\n        pass\n\n    @classmethod\n    def install(cls):\n        cls.f = target\n\n\nK.install()\n"
+    ),
+    "an attribute set through an alias of the class": _METHOD + "C = K\nC.f = target\n",
+    "an attribute set through a loop variable": _METHOD + "for cls in [K]:\n    cls.f = target\n",
+    "an attribute set through the type of an instance": _METHOD + "type(K()).f = target\n",
+    "an attribute set by a helper": _METHOD + "def install(cls):\n    setattr(cls, 'f', target)\n\n\ninstall(K)\n",
+    "an attribute set by a computed name in a loop": _METHOD + "for name in ['f']:\n    setattr(K, name, target)\n",
+    "an attribute set by a call with a star": _METHOD + "setattr(*(K, 'f', target))\n",
+    "a staticmethod that the module defines": (
+        "def staticmethod(fn):\n    return target\n\n\nclass K:\n    @staticmethod\n    def f(self):\n        pass\n"
+    ),
     "a class that a decorator changes": (
         "def swap(cls):\n    cls.f = target\n    return cls\n\n\n@swap\nclass K:\n    def f(self):\n        pass\n"
     ),
@@ -236,12 +247,10 @@ def test_a_code_write_to_a_class_attribute_that_may_hold_another_function_is_not
     assert fixed == before
 
 
-def test_a_code_write_to_a_def_that_a_decorator_replaces_is_not_resolved() -> None:
-    before = (
-        _TARGET
-        + _OTHER
-        + "def deco(fn):\n    return target\n\n\n@deco\ndef f():\n    pass\n\n\nf.__code__ = other.__code__\nresult = target(1, 2, 3, 4)\n"
-    )
+@pytest.mark.parametrize("decorator", ["deco", "staticmethod", "classmethod"])
+def test_a_code_write_to_a_def_that_a_decorator_replaces_is_not_resolved(decorator: str) -> None:
+    replacing = f"def {decorator}(fn):\n    return target\n\n\n@{decorator}\ndef f():\n    pass\n\n\n"
+    before = _TARGET + _OTHER + replacing + "f.__code__ = other.__code__\nresult = target(1, 2, 3, 4)\n"
 
     expected = run_module(before)["result"]
     fixed = fix_with(before, "ZA3501")

@@ -90,7 +90,10 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
   when the write is to a `def` or `class` the module binds or to a method of such a class.
 - Every call in the project, when a module writes a `__code__` it cannot tie to such a `def` or `class`:
   a subscript, a parameter, a loop variable, an alias or a computed `assigned`.
-- Every call in the project, when the write is to a `def` that a decorator wraps or to a name that another statement rebinds, as `K.f = target` does.
+- Every call in the project, when the write is to a `def` that a decorator other than `staticmethod` or `classmethod` wraps,
+  or to a name that another statement rebinds, as `K.f = target` does.
+- Every call in the project, when the write is to a method whose name the module sets or deletes on any object, as `cls.f = target` does,
+  or when the module calls `setattr` with a computed name.
 - Every callee with the same last name as a double, because the rule matches the last name of the callee against the names any project module patches.
 - `typing.cast`, `NewType`, `TypeVar`, `ParamSpec`, `TypeVarTuple`, `TypeAliasType`, `NamedTuple` and `TypedDict`, also from `typing_extensions`,
   and `collections.namedtuple`, because a type checker reads their arguments positionally.

@@ -337,9 +337,18 @@ class SignatureWatch:
 _PLAIN_DECORATORS = frozenset({"staticmethod", "classmethod"})
 
 
-def _is_plain(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-    """Tells whether a `def` binds its own function, as only `staticmethod` and `classmethod` return no other."""
-    return all(isinstance(item, ast.Name) and item.id in _PLAIN_DECORATORS for item in node.decorator_list)
+def _plain_decorators(tree: ast.Module) -> frozenset[str]:
+    """Lists the plain decorators that the module does not bind itself, as `def staticmethod(fn)` would."""
+    bound = {
+        node.name if isinstance(node, (ast.ClassDef, *_FUNCTION_DEFS)) else _binds(node) for node in ast.walk(tree)
+    }
+
+    return _PLAIN_DECORATORS - bound
+
+
+def _is_plain(node: ast.FunctionDef | ast.AsyncFunctionDef, plain: frozenset[str]) -> bool:
+    """Tells whether a `def` binds its own function, as only the plain decorators return no other."""
+    return all(isinstance(item, ast.Name) and item.id in plain for item in node.decorator_list)
 
 
 def _binds(node: ast.AST) -> str | None:
@@ -368,15 +377,19 @@ def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], dict[str, frozen
     may hold another function than the one defined, so it is in neither, and a star import may bind any name.
     So may a `def` or `class` that a decorator wraps, and a name that two `class` statements bind.
     A class attribute that anything else also binds, as in `class K: f = target`, may hold any function,
-    and so may one the module sets on the class, as in `K.f = target` or `setattr(K, "f", target)`,
-    so it is not among the names of its class, and a `setattr` with a computed name leaves the class no names.
+    and so may one the module sets through any reference to a class,
+    as in `cls.f = target` or `setattr(cls, "f", target)`,
+    so it is not among the names of any class, and a `setattr` with a computed name leaves every class no names.
     """
     defined: set[str] = set()
     other: set[str] = set()
+    repeated: set[str] = set()
+    rebound: set[str] = set()
 
     classes: dict[str, set[str]] = {}
-    repeated: set[str] = set()
-    rebound: dict[str, set[str]] = {}
+
+    plain = _plain_decorators(tree)
+    computed = False
 
     for node in ast.walk(tree):
         name = _binds(node)
@@ -387,21 +400,26 @@ def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], dict[str, frozen
             if node.name in classes:
                 repeated.add(node.name)
 
-            classes.setdefault(node.name, set()).update(_methods_of(node))
+            classes.setdefault(node.name, set()).update(_methods_of(node, plain))
             (other if node.decorator_list else defined).add(node.name)
         elif isinstance(node, _FUNCTION_DEFS):
-            (defined if _is_plain(node) else other).add(node.name)
+            (defined if _is_plain(node, plain) else other).add(node.name)
         elif isinstance(node, ast.Attribute):
-            if isinstance(node.ctx, ast.Store | ast.Del) and isinstance(node.value, ast.Name):
-                rebound.setdefault(node.value.id, set()).add(node.attr)
-        elif isinstance(node, ast.Call):
-            _note_setter(node, rebound, other)
+            if isinstance(node.ctx, ast.Store | ast.Del):
+                rebound.add(node.attr)
+        elif isinstance(node, ast.Call) and _last_name(node.func) in _ATTRIBUTE_SETTERS:
+            attribute = _constant_attribute(node)
+
+            if attribute is None:
+                computed = True
+            else:
+                rebound.add(attribute)
 
     if "*" in other:
         return frozenset(), {}
 
     methods = {
-        name: frozenset(found - rebound.get(name, set()))
+        name: frozenset() if computed else frozenset(found - rebound)
         for name, found in classes.items()
         if name not in other and name not in repeated
     }
@@ -409,18 +427,14 @@ def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], dict[str, frozen
     return frozenset(defined - other), methods
 
 
-def _note_setter(call: ast.Call, rebound: dict[str, set[str]], other: set[str]) -> None:
-    """Notes the attribute a `setattr` or `delattr` of a name sets, or the name itself when it is computed."""
-    if _last_name(call.func) not in _ATTRIBUTE_SETTERS or not call.args or not isinstance(call.args[0], ast.Name):
-        return
+def _constant_attribute(call: ast.Call) -> str | None:
+    """Reads the attribute a `setattr` or `delattr` names, or `None` when the name is computed or hidden by a `*`."""
+    if any(isinstance(argument, ast.Starred) for argument in call.args) or len(call.args) < 2:
+        return None
 
-    owner = call.args[0].id
-    attribute = call.args[1] if len(call.args) > 1 else None
+    attribute = call.args[1]
 
-    if isinstance(attribute, ast.Constant) and isinstance(attribute.value, str):
-        rebound.setdefault(owner, set()).add(attribute.value)
-    else:
-        other.add(owner)
+    return attribute.value if isinstance(attribute, ast.Constant) and isinstance(attribute.value, str) else None
 
 
 def _last_name(function: ast.expr) -> str:
@@ -431,13 +445,13 @@ def _last_name(function: ast.expr) -> str:
     return function.attr if isinstance(function, ast.Attribute) else ""
 
 
-def _methods_of(definition: ast.ClassDef) -> set[str]:
+def _methods_of(definition: ast.ClassDef, plain: frozenset[str]) -> set[str]:
     """Reads the names a class body binds only by `def`, in its own body and not in a function of it."""
-    methods = {node.name for node in definition.body if isinstance(node, _FUNCTION_DEFS) and _is_plain(node)}
+    methods = {node.name for node in definition.body if isinstance(node, _FUNCTION_DEFS) and _is_plain(node, plain)}
     others: set[str] = set()
 
     for statement in definition.body:
-        if not (isinstance(statement, _FUNCTION_DEFS) and _is_plain(statement)):
+        if not (isinstance(statement, _FUNCTION_DEFS) and _is_plain(statement, plain)):
             others.update(_bound_names(statement))
 
     return methods - others
