@@ -1,0 +1,38 @@
+# ZA1101 - Use a known Stanza key
+
+**Suggestion, on by default.**
+Reports a `stanza_` key of the analyzer configuration that no Stanza rule or tool reads,
+and names the known key it most likely means.
+It is a [report-only rule](https://github.com/Nickelony/Stanza/wiki/Terms), so it has no code fix.
+
+```ini
+// Before - the key is misspelled, so the default width stays in force
+[*.cs]
+stanza_max_line_lenght = 120
+
+// After - rewritten by hand, with the key the rules read
+[*.cs]
+stanza_max_line_length = 120
+```
+
+- The message names the key and, when a known key lies within three edits of it, adds `did you mean` and that key.
+  An edit is an insertion, a deletion, a substitution or a swap of two neighbors, and a tie goes to the key that sorts first.
+- A known key is one that has an option page, such as
+  [`stanza_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_max_line_length),
+  so the markup keys that only `stanza-markup` reads are known too.
+- The rule judges the name of a key and never its value,
+  so a value that a reader rejects falls back to its default without a report.
+- A key is read as Roslyn reads it, in lower case,
+  so `Stanza_Max_Line_Length` is known, and a misspelling in capitals is reported in lower case.
+- A key that does not start with `stanza_` is never reported,
+  whether it is a standard key such as `max_line_length` or a spelling such as `stanza-max-line-length`.
+- The rule reads the keys that reach a C# file of the compilation, from the global configuration
+  and from each section that matches the file.
+  A section that matches no C# file, such as `[*.md]`, is never read,
+  so a misspelled key there is left to the warning of `stanza-markup`.
+- An analyzer cannot see the path or the line of a configuration file,
+  so the rule reports each key once for the compilation, at the first token of the first file by path that the key reaches.
+- A generated file is skipped, so search the configuration for the key the message names.
+- The report sits in a source file because a diagnostic with no location ignores the severity lines of an `.editorconfig`.
+- The [`minimal` level](https://github.com/Nickelony/Stanza/wiki/Presets) enables the rule, so every level but `none` does.
+  A build reports it only once `StanzaSeverity` or its own `dotnet_diagnostic.ZA1101.severity` line raises it to `warning`.

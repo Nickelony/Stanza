@@ -100,6 +100,7 @@ internal static class TestRuleSets
 				DiagnosticDescriptors.ShortenLongParameterList.Id,
 				DiagnosticDescriptors.ShortenLongLine.Id,
 				DiagnosticDescriptors.BreakUpLongElseIfChain.Id,
+				DiagnosticDescriptors.UseKnownStanzaKey.Id,
 			],
 
 			StringComparer.Ordinal

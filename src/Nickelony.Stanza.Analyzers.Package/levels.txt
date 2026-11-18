@@ -119,3 +119,4 @@ ZA1004 strong
 ZA1005 strong
 ZA1006 strong
 ZA1007 strong
+ZA1101 minimal

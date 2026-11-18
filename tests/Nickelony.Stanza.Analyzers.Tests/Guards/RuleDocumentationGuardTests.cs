@@ -33,6 +33,7 @@ public sealed partial class RuleDocumentationGuardTests
 			["Documentation comments"] = ("ZA0901", "ZA0950"),
 			["Plain comments"] = ("ZA0951", "ZA0999"),
 			["Limits"] = ("ZA1001", "ZA1099"),
+			["Configuration checks"] = ("ZA1101", "ZA1199"),
 			["Markup rules"] = ("ZA2001", "ZA2899"),
 		};
 

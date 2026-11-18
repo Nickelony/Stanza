@@ -117,3 +117,4 @@ dotnet_diagnostic.ZA1004.severity = error
 dotnet_diagnostic.ZA1005.severity = error
 dotnet_diagnostic.ZA1006.severity = error
 dotnet_diagnostic.ZA1007.severity = error
+dotnet_diagnostic.ZA1101.severity = error

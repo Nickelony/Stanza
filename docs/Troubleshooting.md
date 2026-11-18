@@ -95,6 +95,13 @@ A misspelled `stanza_` key, such as `stanza_doc_expnd` or `stanza_max_line_lengh
 and the key has no effect.
 Correct the spelling. Each key has an option page named after it, such as [`stanza_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_max_line_length).
 
+## A build reports ZA1101 for a `stanza_` key
+
+[`ZA1101`](https://github.com/Nickelony/Stanza/wiki/ZA1101-Use-a-known-Stanza-key) says that no rule reads the key its message names,
+so the key has no effect, and it names the known key the spelling most likely means.
+The report sits at the first token of a source file, because an analyzer cannot point at the configuration file,
+so search the `.editorconfig` and the `.globalconfig` files for the key.
+
 ## `stanza-markup` exits with 2
 
 The run failed, or the command line could not be read. The [exit codes](https://github.com/Nickelony/Stanza/wiki/Markup-command-reference#exit-codes) say which.

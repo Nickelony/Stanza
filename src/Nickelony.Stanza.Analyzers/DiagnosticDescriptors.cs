@@ -1032,6 +1032,15 @@ internal static class DiagnosticDescriptors
 		isEnabledByDefault: false
 	);
 
+	public static readonly DiagnosticDescriptor UseKnownStanzaKey = Describe(
+		id: "ZA1101",
+		title: "Use a known Stanza key",
+		messageFormat: "Correct or remove the key '{0}', which Stanza does not read{1}",
+		description: "Requires each `stanza_` key set in the analyzer configuration to be one that a Stanza rule or tool reads.",
+		severity: DiagnosticSeverity.Info,
+		isEnabledByDefault: true
+	);
+
 	public static readonly DiagnosticDescriptor SeparateMultiLineMarkupElements = Describe(
 		id: MarkupDiagnostics.SeparateMultiLineMarkupElementsId,
 		title: "Separate multi-line markup elements",

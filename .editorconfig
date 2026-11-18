@@ -153,6 +153,9 @@ dotnet_diagnostic.ZA1005.severity = warning
 dotnet_diagnostic.ZA1006.severity = warning
 dotnet_diagnostic.ZA1007.severity = warning
 
+# Configuration.
+dotnet_diagnostic.ZA1101.severity = warning
+
 # Markup in raw strings.
 dotnet_diagnostic.ZA2001.severity = warning
 dotnet_diagnostic.ZA2002.severity = none

@@ -524,6 +524,11 @@ describe('a page that does not parse', () => {
 		);
 	});
 
+	it('leaves a key that a fence shows out of the options of the rule', () => {
+		const fence = '```ini\n// Unchanged\nstanza_assertion_rootz = 1\n```\n';
+		expect(() => extractFromSources(withText(realSources(), rulePath, (text) => `${text.trimEnd()}\n\n${fence}`))).not.toThrow();
+	});
+
 	it('fails the build when a Read by line names a rule that has no page', () => {
 		failsOn(optionPath, (text) => text.replace('`ZA0901`', '`ZA0999`'), /names ZA0999, which has no page/);
 	});

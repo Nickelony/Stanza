@@ -59,6 +59,9 @@ public sealed class RulePageExampleGuardTests
 			+ "\tvoid OnSaved() { }\n\tvoid OnClosed() { }\n\n",
 	};
 
+	// A rule whose page shows configuration, not source, so no example of it runs through the harness: its tests drive the same keys.
+	private static readonly string[] s_configurationPages = ["ZA1101"];
+
 	// The option pages whose examples are run, with the rule each page's examples show.
 	private static readonly Dictionary<string, string> s_optionPages = new(StringComparer.Ordinal)
 	{
@@ -520,6 +523,10 @@ public sealed class RulePageExampleGuardTests
 		)
 		{
 			string page = Path.GetFileName(path)[..6];
+
+			if (s_configurationPages.Contains(page))
+				continue;
+
 			examples.AddRange(ReadPage(path, page, rule: page));
 		}
 

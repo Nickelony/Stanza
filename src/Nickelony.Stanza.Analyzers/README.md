@@ -237,6 +237,12 @@ The **Level** column names the first [level](#presets) that enables the rule, an
 | `ZA1006` | [Reports an `if` chain that holds more branches than `stanza_max_else_if_branches`](https://github.com/Nickelony/Stanza/wiki/ZA1006-Break-up-a-long-else-if-chain) | Suggestion, off by default | Strong |
 | `ZA1007` | [Reports a ternary chain that holds more `?` operators than `stanza_max_ternary_operators`](https://github.com/Nickelony/Stanza/wiki/ZA1007-Break-up-a-long-ternary-chain) | Suggestion, off by default | Strong |
 
+### Configuration checks
+
+| Rule | Gap | Ships as | Level |
+| ---- | --- | -------- | ----- |
+| `ZA1101` | [Reports a `stanza_` key that no Stanza rule or tool reads](https://github.com/Nickelony/Stanza/wiki/ZA1101-Use-a-known-Stanza-key) | Suggestion | Minimal |
+
 ### Markup rules
 
 | Rule | Gap | Ships as | Level |

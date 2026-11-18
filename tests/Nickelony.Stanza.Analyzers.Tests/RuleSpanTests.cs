@@ -45,6 +45,11 @@ public sealed class RuleSpanTests
 		{
 			["stanza_min_lines_to_name_endif"] = "0",
 		},
+
+		[DiagnosticDescriptors.UseKnownStanzaKey.Id] = new Dictionary<string, string>
+		{
+			["stanza_max_line_lenght"] = "100",
+		},
 	};
 
 	// A rule that ships on and owns the gap of a row, keyed by rule ID; the row runs with it off.
@@ -1605,6 +1610,17 @@ public sealed class RuleSpanTests
 				""",
 
 			"if@5:3",
+		],
+
+		[
+			DiagnosticDescriptors.UseKnownStanzaKey.Id,
+
+			"""
+				// The key sits in the configuration, so the report lands on the first token of the file.
+				class C { }
+				""",
+
+			"class@2:1",
 		],
 
 		[

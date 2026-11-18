@@ -242,8 +242,14 @@ public sealed partial class RuleRegistryTests
 		{
 			Type type = analyzer.GetType();
 
-			if (!bases.Any(baseType => baseType.IsAssignableFrom(type)))
+			// A rule that judges the whole compilation derives from StanzaAnalyzer itself.
+			if (
+				!bases.Any(baseType => baseType.IsAssignableFrom(type))
+				&& type.BaseType != typeof(StanzaAnalyzer)
+			)
+			{
 				offenders.Add($"{type.Name} derives from none of the analyzer bases");
+			}
 
 			string id = analyzer.SupportedDiagnostics[0].Id;
 

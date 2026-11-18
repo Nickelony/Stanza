@@ -63,6 +63,7 @@ This page maps which code does what, for a contributor who changes a rule or a t
 | `ZA0905` | `Documentation/` | `BlankLineCodeFixProvider` |
 | `ZA0951`-`ZA0953` | `Comments/` | `CommentCodeFixProvider` |
 | `ZA1001`-`ZA1007` | `Limits/` | None, because the rules only report |
+| `ZA1101` | `Configuration/` | None, because the rule only reports |
 | `ZA2001`-`ZA2006` | `MarkupLiterals/` | `BlankLineCodeFixProvider` |
 | `ZA2007`-`ZA2010` | `MarkupLiterals/` | `MarkupLiteralCodeFixProvider` |
 

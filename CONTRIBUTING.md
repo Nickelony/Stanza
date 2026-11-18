@@ -206,7 +206,7 @@ so a new rule takes the next free number of its own in the range of its group:
 | --- | --- |
 | `ZA0xxx` | The C# rules with a fix, a hundred to a group, with comments last in `ZA09xx`; `ZA07xx` stays free and `ZA08xx` stays unused, because `ZA38xx` holds the Python-only rules |
 | `ZA01xx` | The delimited lists, each list in its own tens |
-| `ZA1xxx` | The extension of the C# range, where `ZA10xx` holds the limits, which have no fix |
+| `ZA1xxx` | The extension of the C# range, where `ZA10xx` holds the limits and `ZA11xx` the checks of the configuration, which have no fix |
 | `ZA2xxx` | The markup rules, which `stanza-markup` shares, and in `ZA29xx` the codes of that tool alone |
 | `ZA3xxx` | The Python rules of `py/`, which that tool owns and the steps below leave out: a mirrored rule takes the code of its `ZA0xxx` counterpart plus 3000, and `ZA38xx` holds those with no C# counterpart |
 
@@ -216,7 +216,7 @@ so a new rule takes the next free number of its own in the range of its group:
 - Within a list's tens in `ZA01xx`, the last digit means the same:
   1 separates a multi-line element, 2 keeps multi-line elements together and 3 keeps single-line elements together.
   `ZA0198` and `ZA0199` add and remove the trailing comma of every list.
-- Past `ZA10xx`, the digit of the hundreds holds, so `ZA11xx` continues `ZA01xx`.
+- Past `ZA11xx`, the digit of the hundreds holds, so `ZA12xx` continues `ZA02xx`.
 
 1. Add the `DiagnosticDescriptor` to `DiagnosticDescriptors` and the analyzer to its rule family's directory;
    the ID must not already be in use.

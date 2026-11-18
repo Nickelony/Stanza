@@ -12,6 +12,8 @@ internal sealed class FixedConfigOptions(IReadOnlyDictionary<string, string> val
 	/// <summary>Options with no key set, so every setting reads its default.</summary>
 	internal static FixedConfigOptions Empty { get; } = new(new Dictionary<string, string>());
 
+	public override IEnumerable<string> Keys => values.Keys;
+
 	public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value) =>
 		values.TryGetValue(key, out value);
 }

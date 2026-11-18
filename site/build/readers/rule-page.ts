@@ -141,7 +141,8 @@ export function parseRulePage(
 		descriptionHtml: renderInline(lead.description, pageLinkAttributes),
 		examples,
 		parts,
-		optionKeys: [...new Set(text.match(/\bstanza_[a-z0-9]+(?:_[a-z0-9]+)*/g) ?? [])],
+		// A fence holds an example, so a key it shows, such as the misspelled one of ZA1101, names no option of the rule.
+		optionKeys: [...new Set(text.replace(/^```[\s\S]*?^```$/gm, '').match(/\bstanza_[a-z0-9]+(?:_[a-z0-9]+)*/g) ?? [])],
 		pageUrl: `${wikiUrl}/${name}`,
 	};
 }
