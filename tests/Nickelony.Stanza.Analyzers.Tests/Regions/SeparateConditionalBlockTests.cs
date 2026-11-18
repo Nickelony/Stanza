@@ -1556,6 +1556,47 @@ public sealed class SeparateConditionalBlockTests
 		);
 	}
 
+	// A run of touching blocks passes every sibling before each block when its tokens are gathered from the root, which allocates nothing but takes quadratic time.
+	[TestMethod]
+	[DoNotParallelize]
+	public void AHugeRunOfTouchingBlocksIsReadInUnderFiveSeconds()
+	{
+		LinearCost.AssertWalkEndsWithin(
+			milliseconds: 5_000,
+			TouchingBlocks(20_000),
+			static root => ReadEveryDirective(root)
+		);
+	}
+
+	// The directives of a block share one answer, so a block of many branches is read once and not once for each directive.
+	[TestMethod]
+	public void ABlockOfManyBranchesIsReadInStepsLinearInItsSize()
+	{
+		const int branchCount = 400;
+
+		StringBuilder builder = new("#define A\nclass C\n{\n\tint first;\n#if A\n\tint _active;\n");
+
+		for (int index = 0; index < branchCount; index++)
+			builder.Append("#elif B").Append(index).Append("\n\tint _field").Append(index).Append(";\n");
+
+		builder.Append("#endif\n\tint last;\n}\n");
+
+		SyntaxNode root = CSharpSyntaxTree.ParseText(builder.ToString()).GetRoot();
+		ConditionalBlocks.StepsTaken = 0;
+
+		foreach (
+			DirectiveTriviaSyntax directive in root.DescendantNodes(descendIntoTrivia: true)
+				.OfType<DirectiveTriviaSyntax>()
+		)
+		{
+			if (directive is IfDirectiveTriviaSyntax or ElifDirectiveTriviaSyntax or EndIfDirectiveTriviaSyntax)
+				Assert.IsTrue(ConditionalBlocks.IsBetweenUnits(directive));
+		}
+
+		Assert.IsGreaterThan(branchCount, ConditionalBlocks.StepsTaken, "the read counted no work.");
+		Assert.IsLessThan((long)branchCount * 20, ConditionalBlocks.StepsTaken, "the read took too many steps.");
+	}
+
 	private static string TouchingBlocks(int blockCount)
 	{
 		StringBuilder builder = new("#define A\nclass C\n{\n\tint first;\n");

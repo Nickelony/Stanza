@@ -1,11 +1,11 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
 namespace Nickelony.Stanza.Analyzers;
 
@@ -30,8 +30,31 @@ internal static class ConditionalBlocks
 			return false;
 		}
 
-		List<DirectiveTriviaSyntax> related = directive.GetRelatedDirectives();
+		ConcurrentDictionary<int, bool> judged = s_blocksBetweenUnits.GetOrCompute(directive.SyntaxTree, static _ => new());
 
+		if (judged.TryGetValue(directive.SpanStart, out bool isBetween))
+			return isBetween;
+
+		List<DirectiveTriviaSyntax> related = directive.GetRelatedDirectives();
+		isBetween = IsBlockBetweenUnits(related);
+
+		// The directives of a block share one answer, so the branches of a long chain are not each read again for it.
+		// Code that does not parse can pair a directive differently from the ones beside it, so each of its directives is read for itself.
+		if (directive.SyntaxTree.GetRoot().ContainsDiagnostics)
+		{
+			judged[directive.SpanStart] = isBetween;
+		}
+		else
+		{
+			foreach (DirectiveTriviaSyntax member in related)
+				judged[member.SpanStart] = isBetween;
+		}
+
+		return isBetween;
+	}
+
+	private static bool IsBlockBetweenUnits(List<DirectiveTriviaSyntax> related)
+	{
 		if (related.Count < 2 || related[0] is not IfDirectiveTriviaSyntax || related[related.Count - 1] is not EndIfDirectiveTriviaSyntax)
 			return false;
 
@@ -162,27 +185,30 @@ internal static class ConditionalBlocks
 		HashSet<int> edges = [.. related.Select(directive => directive.SpanStart)];
 		List<SyntaxToken> branch = [];
 
-		bool reachedFirst = false;
+		SyntaxNode root = related[0].SyntaxTree.GetRoot();
 
-		// One pass over the span's tokens, as finding the next token of each from a long list again would square the cost of a block around a whole file.
-		foreach (SyntaxToken token in related[0].SyntaxTree.GetRoot().DescendantTokens(TextSpan.FromBounds(first.FullSpan.Start, after.FullSpan.End)))
+		// The next token is found by its position. A walk of the root's descendants passes every sibling before the block,
+		// which squares the cost of a long run of blocks, and the next token of each from its list again would square
+		// the cost of a block around a whole file.
+		for (SyntaxToken token = first; ; )
 		{
-			// The span touches the token before the block, which the pass skips.
-			reachedFirst |= token == first;
-
-			if (!reachedFirst)
-				continue;
-
 			StepsTaken++;
 
 			if (!TryTakeLeadingTrivia(token, start, end, edges, endsEnum, branch))
 				return false;
 
-			if (token == after)
+			if (token == after || token.IsKind(SyntaxKind.EndOfFileToken))
 				break;
 
-			if (!token.IsMissing && !token.IsKind(SyntaxKind.EndOfFileToken))
+			if (!token.IsMissing)
 				branch.Add(token);
+
+			SyntaxToken next = root.FindToken(token.FullSpan.End);
+
+			if (next.FullSpan.Start != token.FullSpan.End)
+				break;
+
+			token = next;
 		}
 
 		return true;
@@ -345,4 +371,7 @@ internal static class ConditionalBlocks
 
 	/// <summary>Reads each run of touching blocks once per tree, so a run costs time in step with its length.</summary>
 	private static readonly WeakCache<SyntaxTree, HashSet<int>> s_openersBelowUnitBlocks = new();
+
+	/// <summary>Judges a block once for all its directives, so a long chain is not read again per branch.</summary>
+	private static readonly WeakCache<SyntaxTree, ConcurrentDictionary<int, bool>> s_blocksBetweenUnits = new();
 }
