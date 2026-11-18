@@ -89,7 +89,7 @@ internal static class CommaEdits
 		// A conditional directive after the last element makes the last element, and the comma after it, differ by view.
 		SyntaxTriviaList?[] around = [lastToken.TrailingTrivia, comma?.LeadingTrivia, comma?.TrailingTrivia, close.LeadingTrivia];
 
-		if (around.Any(static list => list is { } present && StanzaSyntax.HasConditionalDirective(present)))
+		if (around.Any(static list => list is { } present && StanzaSyntax.HasConditionalDirectiveOrDisabledText(present)))
 			return null;
 
 		return new ListEnd(lastToken, comma);
