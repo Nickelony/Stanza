@@ -1,9 +1,11 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -641,6 +643,39 @@ public sealed partial class RuleRegistryTests
 			s_runRulesLeftOut,
 			missing,
 			"An entry that names a run rule leaves out another one; name it in the entry, or list it as left out with the reason."
+		);
+	}
+
+	// The deferral loops of BlankLineOwnership walk the run rules up to the asking rule,
+	// so a read of an earlier run rule, or a read of one from outside the run order, would be missed there.
+	[TestMethod]
+	public void OnlyARunRuleReadsARunRuleAndOnlyOneThatComesAfterIt()
+	{
+		// The order is the private list the loops walk, read by reflection so that no accessor exists for the test alone.
+		FieldInfo order = typeof(Nickelony.Stanza.Analyzers.BlankLines.BlankLineOwnership).GetField(
+			"s_runRules",
+			BindingFlags.NonPublic | BindingFlags.Static
+		)!;
+
+		ImmutableArray<DiagnosticDescriptor> runRules =
+		[
+			.. ((IEnumerable)order.GetValue(null)!).Cast<ITuple>().Select(static pair => (DiagnosticDescriptor)pair[1]!),
+		];
+
+		string[] misplaced =
+		[
+			.. from rule in StanzaRules.All
+			from target in rule.Reads.IsDefault ? [] : rule.Reads
+			let place = runRules.IndexOf(rule.Descriptor)
+			let targetPlace = runRules.IndexOf(target)
+			where targetPlace >= 0 && (place < 0 || targetPlace <= place)
+			orderby rule.Descriptor.Id, target.Id
+			select $"{rule.Descriptor.Id} reads {target.Id}",
+		];
+
+		GuardAssert.None(
+			misplaced,
+			"These entries read a run rule that is not a later one of the run order; defer to an earlier run rule instead"
 		);
 	}
 
