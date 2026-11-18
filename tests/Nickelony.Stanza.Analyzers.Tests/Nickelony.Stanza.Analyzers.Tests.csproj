@@ -47,4 +47,17 @@
 		<Compile Include="..\Shared\SoakRun.cs" Link="SoakRun.cs" />
 		<Compile Include="..\Shared\TempDirectory.cs" Link="TempDirectory.cs" />
 	</ItemGroup>
+
+	<!--
+		The harness compiles its fixtures against the reference assemblies of the target framework, as a consumer's build does,
+		because an implementation assembly can bind a parameter name or an overload otherwise.
+		The SDK already restores that pack for the target, so no package is added; the list is written beside the test assembly.
+	-->
+	<Target Name="WriteFrameworkReferenceList" AfterTargets="FindReferenceAssembliesForReferences">
+		<ItemGroup>
+			<_FrameworkReference Include="@(ReferencePathWithRefAssemblies)" Condition="'%(ReferencePathWithRefAssemblies.FrameworkReferenceName)' == 'Microsoft.NETCore.App'" />
+		</ItemGroup>
+
+		<WriteLinesToFile File="$(OutDir)framework-references.txt" Lines="@(_FrameworkReference->'%(FullPath)')" Overwrite="true" />
+	</Target>
 </Project>

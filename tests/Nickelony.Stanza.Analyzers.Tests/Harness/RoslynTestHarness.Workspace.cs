@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -374,15 +373,24 @@ internal static partial class RoslynTestHarness
 	}
 
 	// The references are read once, so each project shares the metadata the first one loaded.
+	// The framework comes as the reference assemblies a consumer's build compiles against, which the project file lists.
 	private static readonly ImmutableArray<MetadataReference> s_metadataReferences =
 	[
-		MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-		MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
-		MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location),
-		MetadataReference.CreateFromFile(typeof(Expression).Assembly.Location),
-		MetadataReference.CreateFromFile(typeof(Queryable).Assembly.Location),
+		.. ReadFrameworkReferences(),
 		MetadataReference.CreateFromFile(typeof(CSharpCompilation).Assembly.Location),
 	];
+
+	private static IEnumerable<MetadataReference> ReadFrameworkReferences()
+	{
+		string list = Path.Combine(AppContext.BaseDirectory, "framework-references.txt");
+
+		return
+		[
+			.. File.ReadLines(list)
+				.Where(path => path.Length > 0)
+				.Select(path => MetadataReference.CreateFromFile(path)),
+		];
+	}
 
 	private static Solution AddConfig(
 		Solution solution,
