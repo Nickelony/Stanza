@@ -652,15 +652,20 @@ public sealed partial class RuleRegistryTests
 	public void OnlyARunRuleReadsARunRuleAndOnlyOneThatComesAfterIt()
 	{
 		// The order is the private list the loops walk, read by reflection so that no accessor exists for the test alone.
-		FieldInfo order = typeof(Nickelony.Stanza.Analyzers.BlankLines.BlankLineOwnership).GetField(
+		FieldInfo? order = typeof(Nickelony.Stanza.Analyzers.BlankLines.BlankLineOwnership).GetField(
 			"s_runRules",
 			BindingFlags.NonPublic | BindingFlags.Static
-		)!;
+		);
+
+		Assert.IsNotNull(order, "BlankLineOwnership.s_runRules was renamed; point this guard at the run order.");
 
 		ImmutableArray<DiagnosticDescriptor> runRules =
 		[
 			.. ((IEnumerable)order.GetValue(null)!).Cast<ITuple>().Select(static pair => (DiagnosticDescriptor)pair[1]!),
 		];
+
+		// A read that yields no rules would let every entry pass, so the order must hold a rule of each run family.
+		Assert.HasCount(Enum.GetValues<Nickelony.Stanza.Analyzers.BlankLines.BlankLineGrouping.RunFamily>().Length, runRules);
 
 		string[] misplaced =
 		[
