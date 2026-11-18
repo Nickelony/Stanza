@@ -55,9 +55,12 @@ const error = css`
 `;
 ```
 
-- The node is a declaration with the property `stanza-{interpolation}`, so the empty-line rules treat it as a sibling.
+- The node is a declaration with the property `stanza-@{interpolation}`, so the empty-line rules treat it as a sibling.
   A rule or an at-rule below it gets a blank line, and the first node of a block has none above it.
-- The braces make the property nonstandard, so a rule that judges a known property, a duplicate or a value against a property skips the node.
+- The `@{` makes the property a Less interpolation, so a rule that judges a known property, a duplicate or a value skips the node.
+- `stylelint-order` sorts the properties between two interpolations and never moves one, so each interpolation stays between its neighbors.
+  The syntax writes a marker into the whitespace before the node, which the sorter reads as the `${` of the upstream parser, and drops it on output.
+- A property that stands out of order across an interpolation is reported and left, since moving it would change what the template says.
 - A rule that matches every property still sees the node,
   as `declaration-property-value-allowed-list` and `-disallowed-list` do with a catch-all pattern.
   So does one that counts declarations, as `declaration-block-single-line-max-declarations` does.

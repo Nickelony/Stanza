@@ -47,16 +47,16 @@ describe('the syntax', () => {
 		const [template] = syntax.parse(source, { from: 'src/example.tsx' }).nodes;
 
 		assert.deepEqual(readDeclarations(template), [
-			['stanza-{interpolation}', '${border}'],
+			['stanza-@{interpolation}', '${border}'],
 			['color', 'red'],
-			['stanza-{interpolation}', '${tail}'],
+			['stanza-@{interpolation}', '${tail}'],
 		]);
 
 		const rule = template.first;
 
-		assert.equal(rule.first.prop, 'stanza-{interpolation}');
+		assert.equal(rule.first.prop, 'stanza-@{interpolation}');
 		assert.equal(rule.first.source.start.line, 4);
-		assert.equal(rule.last.prop, 'stanza-{interpolation}');
+		assert.equal(rule.last.prop, 'stanza-@{interpolation}');
 	});
 
 	it('leaves an interpolation inside a value or a selector as part of it', () => {
@@ -92,7 +92,7 @@ describe('the syntax', () => {
 		const document = syntax.parse(source, { from: 'src/example.tsx' });
 
 		document.walkDecls((declaration) => {
-			if (declaration.prop === 'stanza-{interpolation}') {
+			if (declaration.prop === 'stanza-@{interpolation}') {
 				declaration.value = '${changed}';
 			}
 		});

@@ -6,15 +6,30 @@ import { createBindings, isEmotionKeyframes } from './emotion-tag.mjs';
 
 /**
  * The property of a standalone interpolation, which the empty-line rules read as a declaration.
- * The braces keep it out of the standard properties, so a rule that judges a known property, a duplicate or a value skips it.
+ * The `@{` makes it a Less interpolation, so a rule that judges a known property, a duplicate or a value skips it, and so does a sorter of properties.
  * A rule that matches every property or counts declarations still sees it, and the stringifier writes the source, whatever such a rule fixes.
  * A leading `$` would make Stylelint read a Sass variable, and the empty-line rules would lay it out as one.
  */
-const interpolationProperty = 'stanza-{interpolation}';
+const interpolationProperty = 'stanza-@{interpolation}';
+
+/**
+ * Picks the text that marks a standalone interpolation for a sorter of properties, or nothing when the source holds every private-use character.
+ * The sorter of `stylelint-order` sorts a block as one run unless some node holds a `${` in the whitespace before it, as the upstream parser leaves one.
+ * With the marker on each interpolation the sorter ends its run there, so the interpolation stays between its neighbors, and the stringifier drops the marker.
+ */
+function pickBarrier(source) {
+	for (let character = 0xe000; character <= 0xf8ff; character++) {
+		if (!source.includes(String.fromCharCode(character))) {
+			return '${' + String.fromCharCode(character) + '}';
+		}
+	}
+}
 
 /** Exposes each standalone `${...}` of a template as a node of its own, so a rule sees it as the sibling it is. */
 function exposeStandaloneInterpolations(document) {
+	const barrier = pickBarrier(document.source.input.css);
 	const nodes = [];
+
 	document.walk((node) => nodes.push(node));
 
 	function extract(raw, endOffset) {
@@ -42,7 +57,7 @@ function exposeStandaloneInterpolations(document) {
 			node: new Declaration({
 				prop: interpolationProperty,
 				value: raw.slice(first, last),
-				raws: { before: raw.slice(0, first), stanzaInterpolationRange: [start, end] },
+				raws: { before: raw.slice(0, first) + (barrier ?? ''), stanzaInterpolationRange: [start, end] },
 				source: { input, start: position(start), end: position(end - 1) },
 			}),
 
@@ -66,6 +81,8 @@ function exposeStandaloneInterpolations(document) {
 			node.raws.after = after.after;
 		}
 	}
+
+	document.raws.stanzaBarrier = barrier;
 
 	return document;
 }
@@ -154,6 +171,7 @@ function parse(input, options) {
 function stringify(node, builder) {
 	const document = node.root();
 	const markers = document.raws.stanzaKeyframesMarkers;
+	const barrier = document.raws.stanzaBarrier;
 	const text = document.source.input.css;
 	const interpolations = document.nodes?.filter((item) => !item.raws.styledSyntaxIsComponent) ?? [];
 
@@ -206,7 +224,7 @@ function stringify(node, builder) {
 				}
 			}
 
-			output += part;
+			output += barrier === undefined ? part : part.replaceAll(barrier, '');
 		});
 
 		return output;

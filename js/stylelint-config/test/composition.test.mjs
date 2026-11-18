@@ -151,4 +151,54 @@ describe('the syntax beside the other rules of Stylelint', () => {
 		assert.equal(strict.code, code);
 		assert.deepEqual(strict.results[0].warnings, []);
 	});
+
+	it('keeps every interpolation where it stands through the property sorting of stylelint-order', async () => {
+		const code = [
+			`${react}const x = css\``,
+			'${baseStyles}',
+			'margin: 0;',
+			'display: block;',
+			'${moreStyles}',
+			'position: absolute;',
+			'color: red;',
+			'&:hover {',
+			' ${hover}',
+			' padding: 1px;',
+			' display: flex;',
+			' ${tail}',
+			'}',
+			'`;',
+			'',
+		].join('\n');
+
+		for (const unspecified of ['ignore', 'top', 'bottom', 'bottomAlphabetical']) {
+			const result = await stylelint.lint({
+				code,
+				codeFilename: 'src/example.tsx',
+
+				config: {
+					...configuration,
+					plugins: ['stylelint-order'],
+					rules: { ...configuration.rules, 'order/properties-order': [['display', 'position', 'margin', 'padding', 'color'], { unspecified }] },
+				},
+
+				fix: true,
+			});
+
+			const rows = result.code.split('\n');
+			const at = (text) => rows.indexOf(text);
+
+			assert.ok(at('${baseStyles}') < at('display: block;'), unspecified);
+			assert.ok(at('display: block;') < at('margin: 0;') && at('margin: 0;') < at('${moreStyles}'), unspecified);
+			assert.ok(at('${moreStyles}') < at('position: absolute;') && at('position: absolute;') < at('color: red;'), unspecified);
+
+			assert.ok(
+				at(' ${hover}') < at(' display: flex;') && at(' display: flex;') < at(' padding: 1px;') && at(' padding: 1px;') < at(' ${tail}'),
+				unspecified,
+			);
+
+			assert.equal(result.code.split('${').length, code.split('${').length, unspecified);
+			assert.ok(![...result.code].some((character) => character.charCodeAt(0) >= 0xe000 && character.charCodeAt(0) <= 0xf8ff), unspecified);
+		}
+	});
 });

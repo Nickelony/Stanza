@@ -51,6 +51,7 @@
 		"eslint": "^9.39.0",
 		"postcss": "^8.5.28",
 		"prettier": "^3.9.10",
-		"stylelint": "^17.16.0"
+		"stylelint": "^17.16.0",
+		"stylelint-order": "^8.1.3"
 	}
 }
