@@ -9,7 +9,7 @@ namespace Nickelony.Stanza.Format.Running;
 
 /// <summary>Ends the children of the tool, and what they started, when the tool is killed, on Windows.</summary>
 /// <remarks>
-/// Linux and macOS give a child no such tie, so a tool killed there leaves its children running.
+/// Linux and macOS have no such tie that .NET exposes, so a tool killed there leaves its children running.
 /// </remarks>
 internal static class ChildJob
 {

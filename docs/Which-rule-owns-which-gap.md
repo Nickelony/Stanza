@@ -7,8 +7,10 @@ A [report-only rule](https://github.com/Nickelony/Stanza/wiki/Terms) judges the 
 
 ## Finding the owner of a gap
 
-1. Read the ID of the diagnostic at the gap, because the rule that reports a gap is its owner.
-   A gap with no diagnostic stands as its owner wants it, or its owner is [off](https://github.com/Nickelony/Stanza/wiki/Terms) there.
+1. Read the ID of the diagnostic at the gap: the rule that reports it owns it,
+   except that [ZA0051](https://github.com/Nickelony/Stanza/wiki/ZA0051-Collapse-extra-blank-lines) only decides how many blank lines stand there.
+   A gap with no diagnostic is as its owner wants it, is a [waiting gap](#one-run-of-statements-several-owners),
+   or has an [off](https://github.com/Nickelony/Stanza/wiki/Terms) owner.
 2. Without a diagnostic, find what stands on each side of the gap in [Gaps and owners](#gaps-and-owners).
    Where a row lists several rules, take the one for that kind of unit.
    Where two runs meet, the lower ID owns the gap while it is on.

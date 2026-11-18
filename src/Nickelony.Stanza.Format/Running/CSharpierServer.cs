@@ -96,7 +96,7 @@ internal sealed partial class CSharpierServer : IDisposable
 			{
 				// The wait lets the streams end, so the lines the server printed before it exited are in the message.
 				// A process the server left running can hold the streams open, so the wait is bounded.
-				_ = Task.Run(() => process.WaitForExit()).Wait(ProcessRunner.DrainTimeout);
+				_ = ProcessRunner.StartThread(process.WaitForExit).Wait(ProcessRunner.DrainTimeout);
 
 				string first;
 

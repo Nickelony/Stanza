@@ -68,8 +68,10 @@ internal static class ProcessRunner
 			StringBuilder outputText = new();
 			StringBuilder errorText = new();
 
-			Task output = StartThread(() => Copy(process.StandardOutput, echo?.Output, outputText));
-			Task error = StartThread(() => Copy(process.StandardError, echo?.Error, errorText));
+			using CancellationTokenSource echoEnd = new();
+
+			Task output = StartThread(() => Copy(reader: process.StandardOutput, echo: echo?.Output, text: outputText, cancellationToken: echoEnd.Token));
+			Task error = StartThread(() => Copy(reader: process.StandardError, echo: echo?.Error, text: errorText, cancellationToken: echoEnd.Token));
 
 			// A drain that fails, as an echo to a closed console does, ends the run at once:
 			// the child would block on the pipe that the failed drain leaves unread, and never exit.
@@ -79,9 +81,17 @@ internal static class ProcessRunner
 			process.WaitForExit();
 
 			// A stream ends only when every process that holds it has exited, so one the child left running ends the wait here.
-			// What the child wrote is kept, and the drains that stay open end with the pipes.
-			if (!WaitForEach(open, stop: Task.Delay(drainTimeout ?? DrainTimeout)))
+			// What the child wrote is kept, and the drains that stay open end with the pipes, so a late write cannot print under a later step.
+			foreach (Task ended in open.Where(static drain => drain.IsCompleted).ToArray())
 			{
+				ended.GetAwaiter().GetResult();
+				_ = open.Remove(ended);
+			}
+
+			if (open.Count > 0 && !WaitForEach(open, stop: Task.Delay(drainTimeout ?? DrainTimeout)))
+			{
+				echoEnd.Cancel();
+
 				foreach (Task drain in open)
 					_ = drain.ContinueWith(static task => _ = task.Exception, TaskScheduler.Default);
 			}
@@ -199,7 +209,7 @@ internal static class ProcessRunner
 	}
 
 	/// <summary>Runs the blocking work on a thread of its own, so a busy thread pool cannot delay it.</summary>
-	private static Task StartThread(Action work)
+	internal static Task StartThread(Action work)
 	{
 		return Task.Factory.StartNew(
 			action: work,
@@ -219,7 +229,7 @@ internal static class ProcessRunner
 	/// <remarks>
 	/// A child echoes the names of files it reads, and a name may hold an escape sequence that a terminal obeys.
 	/// </remarks>
-	private static void Copy(StreamReader reader, TextWriter? echo, StringBuilder text)
+	private static void Copy(StreamReader reader, TextWriter? echo, StringBuilder text, CancellationToken cancellationToken)
 	{
 		char[] buffer = new char[4096];
 		string held = string.Empty;
@@ -230,7 +240,7 @@ internal static class ProcessRunner
 			lock (text)
 				_ = text.Append(buffer, 0, read);
 
-			if (echo is null)
+			if (echo is null || cancellationToken.IsCancellationRequested)
 				continue;
 
 			// A pair of surrogates split between two reads is echoed whole with the next one, not as two codes.
@@ -240,7 +250,7 @@ internal static class ProcessRunner
 			held = new string(buffer, whole, read - whole);
 		}
 
-		if (echo is not null && held.Length > 0)
+		if (echo is not null && held.Length > 0 && !cancellationToken.IsCancellationRequested)
 			WriteEscaped(echo, held);
 	}
 
