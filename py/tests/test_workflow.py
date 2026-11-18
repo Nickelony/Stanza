@@ -28,7 +28,16 @@ def test_the_workflow_runs_the_checks_of_the_readme() -> None:
     commands = {line.strip().removeprefix("run: ") for line in WORKFLOW if line.strip().startswith("run: ")}
     development = (ROOT / "README.md").read_text(encoding="utf-8").split("## Development")[1]
 
-    for command in ("pytest", "ruff check .", "ruff format --check .", "mypy", "stanza-py check src tests"):
+    checks = (
+        "pytest",
+        "ruff check .",
+        "ruff format --check .",
+        "mypy",
+        "stanza-py check src",
+        "stanza-py check --disable ZA3055 tests",
+    )
+
+    for command in checks:
         assert command in development
         assert command in commands
 

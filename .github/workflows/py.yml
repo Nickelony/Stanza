@@ -75,7 +75,8 @@ jobs:
 
       # The tool lints its own source and tests with its strong preset.
       # Its tests keep their statement runs apart, so ZA3055 runs on the source alone.
-      - name: Check the blank lines
-        run: |
-          stanza-py check src
-          stanza-py check --disable ZA3055 tests
+      - name: Check the blank lines of the source
+        run: stanza-py check src
+
+      - name: Check the blank lines of the tests
+        run: stanza-py check --disable ZA3055 tests
