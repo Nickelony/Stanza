@@ -160,7 +160,7 @@ public sealed partial class PresetGuardTests
 
 		Dictionary<string, HashSet<string>> levels = new(StringComparer.Ordinal)
 		{
-			["strong with csharpier"] = ReadStrongWithCSharpier(table),
+			["strong with csharpier"] = [.. table.ReadEnabled("strong", PresetFiles.CSharpier)],
 		};
 
 		foreach (string level in PresetFiles.Levels)
@@ -331,7 +331,7 @@ public sealed partial class PresetGuardTests
 	public void TheRulesThatNeverSettleBesideCSharpierStayOptInAtEveryLevel()
 	{
 		PresetFiles.LevelTable table = PresetFiles.ReadTable();
-		HashSet<string> strongWithCSharpier = ReadStrongWithCSharpier(table);
+		HashSet<string> strongWithCSharpier = [.. table.ReadEnabled("strong", PresetFiles.CSharpier)];
 
 		DiagnosticDescriptor[] descriptors =
 		[
@@ -439,16 +439,6 @@ public sealed partial class PresetGuardTests
 				)
 				.Order(StringComparer.Ordinal),
 		];
-	}
-
-	private static HashSet<string> ReadStrongWithCSharpier(PresetFiles.LevelTable table)
-	{
-		HashSet<string> enabled = [.. table.ReadEnabled("strong")];
-
-		enabled.ExceptWith(table.ReadChanged(PresetFiles.CSharpierOff));
-		enabled.UnionWith(table.ReadChanged(PresetFiles.CSharpierOn));
-
-		return enabled;
 	}
 
 	// The rule pins of the [*.cs] section of the repository's .editorconfig, not those for tests.

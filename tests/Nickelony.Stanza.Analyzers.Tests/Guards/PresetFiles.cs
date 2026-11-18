@@ -256,16 +256,21 @@ internal static partial class PresetFiles
 	internal sealed record LevelTable(List<LevelRow> Rows, List<string> Problems)
 	{
 		/// <summary>The rules of the level and of each level before it.</summary>
-		internal string[] ReadEnabled(string level)
+		/// <remarks>
+		/// At strong the csharpier formatter swaps in the overlay.
+		/// </remarks>
+		internal string[] ReadEnabled(string level, string? formatter = null)
 		{
 			string[] held = [.. Levels.Take(Array.IndexOf(Levels, level) + 1)];
+			HashSet<string> enabled = [.. Rows.Where(row => held.Contains(row.Level)).Select(row => row.Id)];
 
-			return
-			[
-				.. Rows.Where(row => held.Contains(row.Level))
-					.Select(row => row.Id)
-					.Order(StringComparer.Ordinal),
-			];
+			if (level == Levels[^1] && formatter == CSharpier)
+			{
+				enabled.ExceptWith(ReadChanged(CSharpierOff));
+				enabled.UnionWith(ReadChanged(CSharpierOn));
+			}
+
+			return [.. enabled.Order(StringComparer.Ordinal)];
 		}
 
 		internal string[] ReadChanged(string change)

@@ -154,11 +154,14 @@ public sealed partial class PresetPackageGuardTests
 
 			string? applied = severity?.Trim().ToLowerInvariant();
 
-			HashSet<string> enabled = ReadEnabled(
-				table,
-				level?.Trim().ToLowerInvariant() ?? "moderate",
-				formatter?.Trim().ToLowerInvariant()
-			);
+			// The level table states the rules a build turns on, the csharpier overlay at strong included, and none at the level none.
+			HashSet<string> enabled =
+			[
+				.. table.ReadEnabled(
+					level?.Trim().ToLowerInvariant() ?? "moderate",
+					formatter?.Trim().ToLowerInvariant()
+				),
+			];
 
 			BuildResult result = await consumer.BuildAsync(Properties(level, severity, formatter));
 
@@ -345,27 +348,6 @@ public sealed partial class PresetPackageGuardTests
 			properties["StanzaFormatter"] = formatter;
 
 		return properties;
-	}
-
-	// The rules a build turns on, as the level table states them, the csharpier overlay at strong included.
-	private static HashSet<string> ReadEnabled(
-		PresetFiles.LevelTable table,
-		string level,
-		string? formatter
-	)
-	{
-		if (level == PresetFiles.NoRules)
-			return [];
-
-		HashSet<string> enabled = [.. table.ReadEnabled(level)];
-
-		if (level == "strong" && formatter == PresetFiles.CSharpier)
-		{
-			enabled.ExceptWith(table.ReadChanged(PresetFiles.CSharpierOff));
-			enabled.UnionWith(table.ReadChanged(PresetFiles.CSharpierOn));
-		}
-
-		return enabled;
 	}
 
 	private static void SkipWhereThePackageIsNotBuilt()
