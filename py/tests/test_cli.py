@@ -12,21 +12,14 @@ from nickelony_stanza import Config, ConfigError, Options, fix, lint
 from nickelony_stanza.analysis import module_index
 from nickelony_stanza.cli import run
 from nickelony_stanza.config import config_from_table, load_config
-from tests.helpers import SCRIPTS
+from tests.helpers import SCRIPTS, write_file
 
 BEFORE = "a = 1\nb = 2\nrun()\n"
 AFTER = "a = 1\nb = 2\n\nrun()\n"
 
 
-def _write(directory: Path, name: str, text: str | bytes) -> Path:
-    path = directory / name
-    path.write_bytes(text if isinstance(text, bytes) else text.encode())
-
-    return path
-
-
 def test_check_exits_with_one_when_a_file_has_findings(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    path = _write(tmp_path, "a.py", BEFORE)
+    path = write_file(tmp_path, "a.py", BEFORE)
 
     assert run(["check", "--level", "moderate", str(path)]) == 1
     assert "ZA3002" in capsys.readouterr().out
@@ -34,12 +27,12 @@ def test_check_exits_with_one_when_a_file_has_findings(tmp_path: Path, capsys: p
 
 
 def test_check_exits_with_zero_when_the_files_are_clean(tmp_path: Path) -> None:
-    path = _write(tmp_path, "a.py", AFTER)
+    path = write_file(tmp_path, "a.py", AFTER)
     assert run(["check", str(path)]) == 0
 
 
 def test_check_shows_a_diff(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    path = _write(tmp_path, "a.py", BEFORE)
+    path = write_file(tmp_path, "a.py", BEFORE)
 
     run(["check", "--diff", str(path)])
 
@@ -47,7 +40,7 @@ def test_check_shows_a_diff(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
 
 
 def test_fix_writes_the_file_and_a_second_run_changes_nothing(tmp_path: Path) -> None:
-    path = _write(tmp_path, "a.py", BEFORE)
+    path = write_file(tmp_path, "a.py", BEFORE)
 
     assert run(["fix", str(path)]) == 0
     assert path.read_text() == AFTER
@@ -59,14 +52,14 @@ def test_fix_writes_the_file_and_a_second_run_changes_nothing(tmp_path: Path) ->
 
 
 def test_fix_keeps_the_encoding_the_bom_and_the_line_endings(tmp_path: Path) -> None:
-    latin = _write(
+    latin = write_file(
         tmp_path,
         "latin.py",
         "# -*- coding: latin-1 -*-\nname = 'caf\xe9'\nother = 2\nrun()\n".encode("latin-1"),
     )
 
-    bom = _write(tmp_path, "bom.py", b"\xef\xbb\xbf" + BEFORE.encode())
-    crlf = _write(tmp_path, "crlf.py", BEFORE.replace("\n", "\r\n"))
+    bom = write_file(tmp_path, "bom.py", b"\xef\xbb\xbf" + BEFORE.encode())
+    crlf = write_file(tmp_path, "crlf.py", BEFORE.replace("\n", "\r\n"))
 
     assert run(["fix", str(tmp_path)]) == 0
 
@@ -78,8 +71,8 @@ def test_fix_keeps_the_encoding_the_bom_and_the_line_endings(tmp_path: Path) -> 
 def test_a_syntax_error_exits_with_two_and_the_other_files_are_still_fixed(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    _write(tmp_path, "bad.py", "def (:\n")
-    good = _write(tmp_path, "good.py", BEFORE)
+    write_file(tmp_path, "bad.py", "def (:\n")
+    good = write_file(tmp_path, "good.py", BEFORE)
 
     assert run(["fix", str(tmp_path)]) == 2
     assert "bad.py" in capsys.readouterr().err
@@ -91,11 +84,11 @@ def test_a_missing_path_exits_with_two(tmp_path: Path) -> None:
 
 
 def test_a_directory_scan_skips_stubs_and_the_usual_directories(tmp_path: Path) -> None:
-    _write(tmp_path, "stub.pyi", BEFORE)
+    write_file(tmp_path, "stub.pyi", BEFORE)
     (tmp_path / ".venv").mkdir()
 
-    skipped = _write(tmp_path / ".venv", "lib.py", BEFORE)
-    kept = _write(tmp_path, "kept.py", BEFORE)
+    skipped = write_file(tmp_path / ".venv", "lib.py", BEFORE)
+    kept = write_file(tmp_path, "kept.py", BEFORE)
 
     assert run(["fix", str(tmp_path)]) == 0
     assert (tmp_path / "stub.pyi").read_text() == BEFORE
@@ -106,8 +99,8 @@ def test_a_directory_scan_skips_stubs_and_the_usual_directories(tmp_path: Path) 
 def test_exclude_skips_the_paths_a_glob_names(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     (tmp_path / "gen").mkdir()
 
-    generated = _write(tmp_path / "gen", "a.py", BEFORE)
-    handwritten = _write(tmp_path, "b.py", BEFORE)
+    generated = write_file(tmp_path / "gen", "a.py", BEFORE)
+    handwritten = write_file(tmp_path, "b.py", BEFORE)
 
     monkeypatch.chdir(tmp_path)
 
@@ -137,7 +130,7 @@ def test_the_rules_command_names_the_opt_in_level(capsys: pytest.CaptureFixture[
 
 
 def test_an_opt_in_rule_is_enabled_by_name_only(tmp_path: Path) -> None:
-    path = _write(tmp_path, "a.py", "match v:\n    case 1:\n        a()\n\n    case 2:\n        b()\n")
+    path = write_file(tmp_path, "a.py", "match v:\n    case 1:\n        a()\n\n    case 2:\n        b()\n")
 
     assert run(["check", "--level", "strong", str(path)]) == 0
     assert run(["check", "--level", "strong", "--enable", "keep-multi-line-cases-together", str(path)]) == 1
@@ -146,12 +139,12 @@ def test_an_opt_in_rule_is_enabled_by_name_only(tmp_path: Path) -> None:
 
 
 def test_the_module_runs_as_a_script(tmp_path: Path) -> None:
-    path = _write(tmp_path, "a.py", AFTER)
+    path = write_file(tmp_path, "a.py", AFTER)
     assert subprocess.run([sys.executable, "-m", "nickelony_stanza", "check", str(path)], check=False).returncode == 0
 
 
 def test_the_level_enable_and_disable_choose_the_rules(tmp_path: Path) -> None:
-    path = _write(tmp_path, "a.py", BEFORE)
+    path = write_file(tmp_path, "a.py", BEFORE)
 
     assert run(["check", "--level", "minimal", str(path)]) == 0
     assert run(["check", "--level", "minimal", "--enable", "separate-declaration-runs", str(path)]) == 1
@@ -159,8 +152,8 @@ def test_the_level_enable_and_disable_choose_the_rules(tmp_path: Path) -> None:
 
 
 def test_the_configuration_comes_from_pyproject(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _write(tmp_path, "pyproject.toml", '[tool.stanza]\nlevel = "minimal"\nenable = ["ZA3002"]\n')
-    path = _write(tmp_path, "a.py", BEFORE)
+    write_file(tmp_path, "pyproject.toml", '[tool.stanza]\nlevel = "minimal"\nenable = ["ZA3002"]\n')
+    path = write_file(tmp_path, "a.py", BEFORE)
     monkeypatch.chdir(tmp_path)
 
     assert run(["check", str(path)]) == 1
@@ -169,8 +162,8 @@ def test_the_configuration_comes_from_pyproject(tmp_path: Path, monkeypatch: pyt
 def test_the_command_line_adds_to_the_rules_of_the_configuration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _write(tmp_path, "pyproject.toml", '[tool.stanza]\nlevel = "minimal"\n')
-    path = _write(tmp_path, "a.py", "x = 1\nrun()\n# note\nlog(x)\n")
+    write_file(tmp_path, "pyproject.toml", '[tool.stanza]\nlevel = "minimal"\n')
+    path = write_file(tmp_path, "a.py", "x = 1\nrun()\n# note\nlog(x)\n")
     monkeypatch.chdir(tmp_path)
 
     assert run(["check", str(path)]) == 0
@@ -179,8 +172,8 @@ def test_the_command_line_adds_to_the_rules_of_the_configuration(
 
 
 def test_a_rule_the_configuration_disables_stays_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _write(tmp_path, "pyproject.toml", '[tool.stanza]\nlevel = "strong"\ndisable = ["ZA3016"]\n')
-    path = _write(tmp_path, "a.py", "x = 1\nrun()\n# note\nlog(x)\n")
+    write_file(tmp_path, "pyproject.toml", '[tool.stanza]\nlevel = "strong"\ndisable = ["ZA3016"]\n')
+    path = write_file(tmp_path, "a.py", "x = 1\nrun()\n# note\nlog(x)\n")
     monkeypatch.chdir(tmp_path)
 
     assert run(["check", str(path)]) == 0
@@ -188,8 +181,8 @@ def test_a_rule_the_configuration_disables_stays_off(tmp_path: Path, monkeypatch
 
 
 def test_a_bad_configuration_exits_with_two(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _write(tmp_path, "pyproject.toml", '[tool.stanza]\nlevle = "strong"\n')
-    path = _write(tmp_path, "a.py", BEFORE)
+    write_file(tmp_path, "pyproject.toml", '[tool.stanza]\nlevle = "strong"\n')
+    path = write_file(tmp_path, "a.py", BEFORE)
     monkeypatch.chdir(tmp_path)
 
     assert run(["check", str(path)]) == 2
@@ -321,7 +314,7 @@ def test_a_silenced_gap_is_not_handed_to_another_rule() -> None:
 
 
 def test_the_flake8_plugin_reports_the_findings(tmp_path: Path) -> None:
-    path = _write(tmp_path, "a.py", BEFORE)
+    path = write_file(tmp_path, "a.py", BEFORE)
 
     result = subprocess.run(
         [str(SCRIPTS / "flake8"), "--select", "ZA3", "--stanza-level", "moderate", "--isolated", str(path)],
@@ -342,13 +335,13 @@ def test_the_source_roots_are_read_from_the_directory_of_the_configuration_file(
     (elsewhere / "lib").mkdir(parents=True)
     monkeypatch.chdir(elsewhere)
 
-    pyproject = _write(project, "pyproject.toml", '[tool.stanza]\nsource-roots = ["src", "."]\n')
+    pyproject = write_file(project, "pyproject.toml", '[tool.stanza]\nsource-roots = ["src", "."]\n')
     config, _ = load_config(pyproject, Path.cwd())
 
     assert config.options.source_roots == (str((project / "src").resolve()), str(project.resolve()))
 
     # A root is judged from the directory of the configuration file, even where the working directory holds one.
-    _write(project, "pyproject.toml", '[tool.stanza]\nsource-roots = ["lib"]\n')
+    write_file(project, "pyproject.toml", '[tool.stanza]\nsource-roots = ["lib"]\n')
 
     with pytest.raises(ConfigError, match="which is not a directory"):
         load_config(pyproject, Path.cwd())
@@ -357,14 +350,14 @@ def test_the_source_roots_are_read_from_the_directory_of_the_configuration_file(
 def test_a_run_whose_project_passes_the_scan_caps_notes_it_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    config = _write(
+    config = write_file(
         tmp_path, "pyproject.toml", "[tool.stanza]\nlevel = 'none'\nenable = ['ZA3501']\nformatter = 'none'\n"
     )
 
-    first = _write(tmp_path, "a.py", "def draw(a, b, c, d): ...\ndraw(1, 2, 3, 4)\n")
-    second = _write(tmp_path, "b.py", "from a import draw\ndraw(1, 2, 3, 4)\n")
+    first = write_file(tmp_path, "a.py", "def draw(a, b, c, d): ...\ndraw(1, 2, 3, 4)\n")
+    second = write_file(tmp_path, "b.py", "from a import draw\ndraw(1, 2, 3, 4)\n")
 
-    _write(tmp_path, "c.py", "")
+    write_file(tmp_path, "c.py", "")
 
     arguments = ["check", "--config", str(config), str(first), str(second)]
 
@@ -383,10 +376,10 @@ def test_a_run_whose_project_passes_the_scan_caps_notes_it_once(
 
 
 def test_the_flake8_plugin_resolves_a_call_against_the_project_of_its_file(tmp_path: Path) -> None:
-    _write(tmp_path, "pyproject.toml", "[project]\nname = 'demo'\n")
-    _write(tmp_path, "shapes.py", "def draw(width, height, smooth, path): ...\n")
+    write_file(tmp_path, "pyproject.toml", "[project]\nname = 'demo'\n")
+    write_file(tmp_path, "shapes.py", "def draw(width, height, smooth, path): ...\n")
 
-    path = _write(tmp_path, "main.py", "from shapes import draw\n\ndraw(1, 2, 3, 4)\n")
+    path = write_file(tmp_path, "main.py", "from shapes import draw\n\ndraw(1, 2, 3, 4)\n")
     command = [str(SCRIPTS / "flake8"), "--select", "ZA35", "--stanza-level", "strong", "--isolated"]
 
     from_file = subprocess.run([*command, str(path)], capture_output=True, check=False, cwd=tmp_path)

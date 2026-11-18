@@ -127,10 +127,10 @@ def fix_in_steps(text: str, config: Config, mode: str, rounds: int = 4) -> str:
     return text
 
 
-def write_file(directory: Path, name: str, text: str) -> Path:
-    """Writes a text to a file of a directory byte for byte, so no newline translation changes it."""
+def write_file(directory: Path, name: str, text: str | bytes) -> Path:
+    """Writes a text or bytes to a file of a directory byte for byte, so no newline translation changes it."""
     path = directory / name
-    path.write_bytes(text.encode())
+    path.write_bytes(text if isinstance(text, bytes) else text.encode())
 
     return path
 
