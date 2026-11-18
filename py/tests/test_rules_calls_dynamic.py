@@ -196,11 +196,51 @@ def test_a_method_or_constructor_whose_code_the_module_replaces_is_not_resolved(
         assert fixed == before
 
 
-def test_a_code_write_through_a_class_attribute_that_holds_a_function_is_not_resolved() -> None:
+_TARGET = "def target(a, b, c, d):\n    return a + b + c + d\n\n\n"
+_OTHER = "def other(w, x, y, z):\n    return w\n\n\n"
+_RECODE = "\n\nK.f.__code__ = other.__code__\nresult = target(1, 2, 3, 4)\n"
+
+# The class bodies and the statements around them that leave `K.f` holding a function other than a method `f` of `K`,
+# so the write to `K.f.__code__` changes `target` and no call of the module may be named.
+_NOT_THE_METHOD = {
+    "an attribute that holds a function": "class K:\n    f = target\n",
+    "an attribute set after a def": "class K:\n    def f(self):\n        pass\n\n    f = target\n",
+    "an attribute set in an if": "class K:\n    if True:\n        f = target\n    else:\n        def f(self):\n            pass\n",
+    "a name captured by a match": (
+        "class K:\n    def f(self):\n        pass\n\n    match target:\n        case f:\n            pass\n"
+    ),
+    "an attribute set after the class": "class K:\n    def f(self):\n        pass\n\n\nK.f = target\n",
+    "an attribute set by name": "class K:\n    def f(self):\n        pass\n\n\nsetattr(K, 'f', target)\n",
+    "an attribute set by a computed name": "class K:\n    def f(self):\n        pass\n\n\nsetattr(K, 'F'.lower(), target)\n",
+    "a class that a decorator changes": (
+        "def swap(cls):\n    cls.f = target\n    return cls\n\n\n@swap\nclass K:\n    def f(self):\n        pass\n"
+    ),
+    "a method that a decorator replaces": (
+        "def deco(fn):\n    return target\n\n\nclass K:\n    @deco\n    def f(self):\n        pass\n"
+    ),
+    "a class bound twice": "class K:\n    def f(self):\n        pass\n\n\nclass K:\n    f = target\n",
+    "a class bound again in a function": (
+        "class K:\n    def f(self):\n        pass\n\n\ndef make():\n    class K:\n        f = target\n\n    return K\n"
+    ),
+    "a class bound by a loop": "class K:\n    def f(self):\n        pass\n\n\nclass J:\n    f = target\n\n\nfor K in [J]:\n    pass\n",
+}
+
+
+@pytest.mark.parametrize("shape", _NOT_THE_METHOD.values(), ids=_NOT_THE_METHOD)
+def test_a_code_write_to_a_class_attribute_that_may_hold_another_function_is_not_resolved(shape: str) -> None:
+    before = _TARGET + _OTHER + shape + _RECODE
+    expected = run_module(before)["result"]
+    fixed = fix_with(before, "ZA3501")
+
+    assert run_module(fixed)["result"] == expected
+    assert fixed == before
+
+
+def test_a_code_write_to_a_def_that_a_decorator_replaces_is_not_resolved() -> None:
     before = (
-        "def target(a, b, c, d):\n    return a + b + c + d\n\n\n"
-        "def other(w, x, y, z):\n    return w\n\n\n"
-        "class K:\n    f = target\n\n\nK.f.__code__ = other.__code__\nresult = target(1, 2, 3, 4)\n"
+        _TARGET
+        + _OTHER
+        + "def deco(fn):\n    return target\n\n\n@deco\ndef f():\n    pass\n\n\nf.__code__ = other.__code__\nresult = target(1, 2, 3, 4)\n"
     )
 
     expected = run_module(before)["result"]

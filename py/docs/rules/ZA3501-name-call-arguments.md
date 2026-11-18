@@ -87,7 +87,8 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
 - A callee whose `__code__` a project module assigns or deletes, as in `f.__code__ = g.__code__`,
   or copies with `functools.update_wrapper(f, g, assigned=("__code__",))`.
   The rule matches the last name of the callee, as for a double,
-  when the write is to a `def` or `class` the module binds or to a method of such a class.
+  when the write is to a `def` or `class` the module binds or to a method of such a class,
+  as long as no decorator wraps that `def` and no other statement of the module rebinds the name, as `K.f = target` does.
 - Every call in the project, when a module writes a `__code__` it cannot tie to such a `def` or `class`:
   a subscript, a parameter, a loop variable, an alias or a computed `assigned`.
 - Every callee with the same last name as a double, because the rule matches the last name of the callee against the names any project module patches.

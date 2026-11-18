@@ -299,15 +299,7 @@ class SignatureWatch:
         return frozenset(names)
 
     def _visit_call(self, call: ast.Call) -> None:
-        function = call.func
-
-        last = (
-            function.id
-            if isinstance(function, ast.Name)
-            else function.attr
-            if isinstance(function, ast.Attribute)
-            else ""
-        )
+        last = _last_name(call.func)
 
         if last in _ATTRIBUTE_SETTERS:
             if call.args and len(call.args) > 1 and _is_text(call.args[1], _CODE_ATTRIBUTE):
@@ -341,6 +333,32 @@ class SignatureWatch:
                 self._unreadable = True
 
 
+# The decorators that keep a `def` the function it writes, since they wrap it in no other function.
+_PLAIN_DECORATORS = frozenset({"staticmethod", "classmethod"})
+
+
+def _is_plain(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Tells whether a `def` binds its own function, as only `staticmethod` and `classmethod` return no other."""
+    return all(isinstance(item, ast.Name) and item.id in _PLAIN_DECORATORS for item in node.decorator_list)
+
+
+def _binds(node: ast.AST) -> str | None:
+    """Reads the name a node binds other than by a `def` or `class`, as a store, a parameter, an import or a capture."""
+    if isinstance(node, ast.Name):
+        return None if isinstance(node.ctx, ast.Load) else node.id
+
+    if isinstance(node, ast.arg):
+        return node.arg
+
+    if isinstance(node, ast.alias):
+        return node.asname or node.name.split(".")[0]
+
+    if isinstance(node, ast.ExceptHandler | ast.MatchAs | ast.MatchStar):
+        return node.name
+
+    return node.rest if isinstance(node, ast.MatchMapping) else None
+
+
 def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], dict[str, frozenset[str]]]:
     """
     Reads the names a module binds only by `def` or `class`, and for each such class the names its body binds only by
@@ -348,47 +366,77 @@ def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], dict[str, frozen
 
     A name that anything else also binds, such as a parameter, a loop variable, an assignment or an import,
     may hold another function than the one defined, so it is in neither, and a star import may bind any name.
+    So may a `def` or `class` that a decorator wraps, and a name that two `class` statements bind.
     A class attribute that anything else also binds, as in `class K: f = target`, may hold any function,
-    so it is not among the names of its class.
+    and so may one the module sets on the class, as in `K.f = target` or `setattr(K, "f", target)`,
+    so it is not among the names of its class, and a `setattr` with a computed name leaves the class no names.
     """
     defined: set[str] = set()
     classes: dict[str, set[str]] = {}
+    repeated: set[str] = set()
     other: set[str] = set()
+    rebound: dict[str, set[str]] = {}
 
     for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            defined.add(node.name)
+        name = _binds(node)
+
+        if name is not None:
+            other.add(name)
+        elif isinstance(node, ast.ClassDef):
+            if node.name in classes:
+                repeated.add(node.name)
+
             classes.setdefault(node.name, set()).update(_methods_of(node))
+            (other if node.decorator_list else defined).add(node.name)
         elif isinstance(node, _FUNCTION_DEFS):
-            defined.add(node.name)
-        elif isinstance(node, ast.Name):
-            if not isinstance(node.ctx, ast.Load):
-                other.add(node.id)
-        elif isinstance(node, ast.arg):
-            other.add(node.arg)
-        elif isinstance(node, ast.alias):
-            other.add(node.asname or node.name.split(".")[0])
-        elif isinstance(node, ast.ExceptHandler | ast.MatchAs | ast.MatchStar):
-            if node.name is not None:
-                other.add(node.name)
-        elif isinstance(node, ast.MatchMapping) and node.rest is not None:
-            other.add(node.rest)
+            (defined if _is_plain(node) else other).add(node.name)
+        elif isinstance(node, ast.Attribute):
+            if isinstance(node.ctx, ast.Store | ast.Del) and isinstance(node.value, ast.Name):
+                rebound.setdefault(node.value.id, set()).add(node.attr)
+        elif isinstance(node, ast.Call):
+            _note_setter(node, rebound, other)
 
     if "*" in other:
         return frozenset(), {}
 
-    methods = {name: frozenset(found) for name, found in classes.items() if name not in other}
+    methods = {
+        name: frozenset(found - rebound.get(name, set()))
+        for name, found in classes.items()
+        if name not in other and name not in repeated
+    }
 
     return frozenset(defined - other), methods
 
 
+def _note_setter(call: ast.Call, rebound: dict[str, set[str]], other: set[str]) -> None:
+    """Notes the attribute a `setattr` or `delattr` of a name sets, or the name itself when it is computed."""
+    if _last_name(call.func) not in _ATTRIBUTE_SETTERS or not call.args or not isinstance(call.args[0], ast.Name):
+        return
+
+    owner = call.args[0].id
+    attribute = call.args[1] if len(call.args) > 1 else None
+
+    if isinstance(attribute, ast.Constant) and isinstance(attribute.value, str):
+        rebound.setdefault(owner, set()).add(attribute.value)
+    else:
+        other.add(owner)
+
+
+def _last_name(function: ast.expr) -> str:
+    """Reads the last name of a callee, or an empty text for one that is neither a name nor an attribute."""
+    if isinstance(function, ast.Name):
+        return function.id
+
+    return function.attr if isinstance(function, ast.Attribute) else ""
+
+
 def _methods_of(definition: ast.ClassDef) -> set[str]:
     """Reads the names a class body binds only by `def`, in its own body and not in a function of it."""
-    methods = {node.name for node in definition.body if isinstance(node, _FUNCTION_DEFS)}
+    methods = {node.name for node in definition.body if isinstance(node, _FUNCTION_DEFS) and _is_plain(node)}
     others: set[str] = set()
 
     for statement in definition.body:
-        if not isinstance(statement, _FUNCTION_DEFS):
+        if not (isinstance(statement, _FUNCTION_DEFS) and _is_plain(statement)):
             others.update(_bound_names(statement))
 
     return methods - others
@@ -399,12 +447,12 @@ def _bound_names(statement: ast.stmt) -> set[str]:
     names: set[str] = set()
 
     for node in ast.walk(statement):
-        if isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
-            names.add(node.id)
+        name = _binds(node)
+
+        if name is not None:
+            names.add(name)
         elif isinstance(node, (ast.ClassDef, *_FUNCTION_DEFS)):
             names.add(node.name)
-        elif isinstance(node, ast.alias):
-            names.add(node.asname or node.name.split(".")[0])
 
     return names
 
