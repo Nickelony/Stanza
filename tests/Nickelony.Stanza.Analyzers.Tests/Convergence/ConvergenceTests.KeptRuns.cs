@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Tests.Shared;
 
@@ -548,9 +550,37 @@ public sealed partial class ConvergenceTests
 		);
 	}
 
+	// The matrices judge a fix by the reports it leaves, so a report of another rule at a token that already had one is a new report.
+	[TestMethod]
+	public void AReportThatChangesItsRuleAtTheSameTokenIsLeftForASecondPass()
+	{
+		SyntaxTree tree = CSharpSyntaxTree.ParseText("class C\n{\n}\n");
+		var place = Location.Create(tree, new TextSpan(8, 1));
+
+		AnalyzerRunResult Report(DiagnosticDescriptor rule) =>
+			new([Diagnostic.Create(rule, place)], fixedText: string.Empty);
+
+		DiagnosticDescriptor[] ignored = [DiagnosticDescriptors.KeepRunOfMembersTogether];
+		AnalyzerRunResult standing = Report(DiagnosticDescriptors.SeparateMemberGroups);
+
+		AssertNothingNewIsLeft(before: standing, left: standing, ignored, label: "same rule");
+
+		AssertFailedException failure = Assert.ThrowsExactly<AssertFailedException>(() =>
+			AssertNothingNewIsLeft(
+				before: standing,
+				left: Report(DiagnosticDescriptors.RemoveBracePadding),
+				ignored,
+				label: "another rule"
+			)
+		);
+
+		Assert.Contains(DiagnosticDescriptors.RemoveBracePadding.Id, failure.Message);
+		Assert.Contains("another rule", failure.Message);
+	}
+
 	// The gather rules and the cap are left out, because they answer any blank line a rule writes, whichever rule it is.
-	// A report is placed by its token among the tokens of the file, which a blank line does not move,
-	// and a gap that another rule takes over after the join is the same place, so only a gap that was not asked for fails.
+	// A report is placed by its rule and its token among the tokens of the file, which a blank line does not move,
+	// so only a report that was not asked for fails, and a gap that another rule takes over after the join is one.
 	private static void AssertNothingNewIsLeft(
 		AnalyzerRunResult before,
 		AnalyzerRunResult left,
@@ -558,18 +588,18 @@ public sealed partial class ConvergenceTests
 		string label
 	)
 	{
-		HashSet<int> standing = [.. ReadReportedPlaces(before, ignored)];
+		HashSet<(string Id, int Token)> standing = [.. ReadReports(before, ignored)];
 
-		foreach (int place in ReadReportedPlaces(left, ignored))
+		foreach ((string id, int token) in ReadReports(left, ignored))
 		{
 			Assert.IsTrue(
-				standing.Contains(place),
-				$"{label}: the fix of {ignored[0].Id} left a report at token {place} for a second pass."
+				standing.Contains((id, token)),
+				$"{label}: the fix of {ignored[0].Id} left a report of {id} at token {token} for a second pass."
 			);
 		}
 	}
 
-	private static IEnumerable<int> ReadReportedPlaces(
+	private static IEnumerable<(string Id, int Token)> ReadReports(
 		AnalyzerRunResult result,
 		DiagnosticDescriptor[] ignored
 	)
@@ -585,7 +615,10 @@ public sealed partial class ConvergenceTests
 
 			int start = diagnostic.Location.SourceSpan.Start;
 
-			yield return tree.GetRoot().DescendantTokens().Count(token => token.SpanStart < start);
+			yield return (
+				diagnostic.Id,
+				tree.GetRoot().DescendantTokens().Count(token => token.SpanStart < start)
+			);
 		}
 	}
 }
