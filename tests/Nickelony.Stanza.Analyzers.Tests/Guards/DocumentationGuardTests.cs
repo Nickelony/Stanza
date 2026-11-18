@@ -48,26 +48,44 @@ public sealed partial class DocumentationGuardTests
 			.. from file in MarkdownScan.Files(root, s_unwrappedFiles)
 			from line in MarkdownScan.ProseLines(File.ReadLines(file))
 			where !line.Text.StartsWith('|')
-			select (
-				$"{MarkdownScan.Relative(root, file)}:{line.Number}",
-				LinkTarget().Replace(line.Text, "]").Length
-			),
+			select ($"{MarkdownScan.Relative(root, file)}:{line.Number}", MeasureLine(line.Text)),
 		];
 
 		Assert.IsNotEmpty(lines, "No Markdown line was read, so no ceiling was checked.");
 
-		string[] violations =
-		[
-			.. from line in lines
-			where line.Width > ceiling
-			select $"{line.Place}: {line.Width} columns, limit {ceiling}",
-		];
+		string[] violations = FindWideLines(lines, ceiling);
 
 		GuardAssert.None(
 			violations,
 			"Markdown lines pass the wrap ceiling of STYLEGUIDE.md",
 			closing: "Break each line at a comma or a conjunction."
 		);
+	}
+
+	[TestMethod]
+	public void AProseLineWiderThanTheCeilingIsFoundAndItsLinkTargetsAreNotCounted()
+	{
+		string linked = new string('a', 30) + " [text](" + new string('b', 200) + ")";
+
+		string[] violations = FindWideLines(
+			[("page.md:1", MeasureLine(linked)), ("page.md:2", MeasureLine(new string('a', 120)))],
+			ceiling: 100
+		);
+
+		Assert.ContainsSingle(violations);
+		Assert.StartsWith("page.md:2: 120 columns", violations[0]);
+	}
+
+	private static int MeasureLine(string text) => LinkTarget().Replace(text, "]").Length;
+
+	private static string[] FindWideLines(IEnumerable<(string Place, int Width)> lines, int ceiling)
+	{
+		return
+		[
+			.. from line in lines
+			where line.Width > ceiling
+			select $"{line.Place}: {line.Width} columns, limit {ceiling}",
+		];
 	}
 
 	[TestMethod]
@@ -147,6 +165,24 @@ public sealed partial class DocumentationGuardTests
 	}
 
 	[TestMethod]
+	public void ACodeFenceTheSiteWouldNotSplitIsFound()
+	{
+		Assert.IsEmpty(FindFenceProblems(["```csharp", "code", "```"]));
+
+		string[] problems =
+		[
+			.. FindFenceProblems(
+				["```csharp", "code", "```", "  ```", "text", "``` csharp", "```csharp", "unclosed"]
+			),
+		];
+
+		Assert.HasCount(3, problems);
+		Assert.StartsWith("4:", problems[0]);
+		Assert.StartsWith("6:", problems[1]);
+		Assert.Contains("never closed", problems[2]);
+	}
+
+	[TestMethod]
 	public void SourceDocCommentsStayWithinShape()
 	{
 		int ceiling = ReadCeiling(XmlDocBlockCeiling(), name: "XML doc block");
@@ -179,6 +215,43 @@ public sealed partial class DocumentationGuardTests
 
 		Assert.IsNotEmpty(runs, $"No {marker} run was read, so no ceiling was checked.");
 
+		return SelectLongRuns(runs, marker, ceiling);
+	}
+
+	[TestMethod]
+	public void ACommentRunPastTheCeilingIsFoundInASourceFile()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		string file = directory.Write(
+			"Sample.cs",
+			"/// a\n/// b\n/// c\n/// d\nclass A;\n// e\n// f\nclass B;\n"
+		);
+
+		string[] doc = FindRunsPast(file, SyntaxKind.SingleLineDocumentationCommentTrivia, "///");
+		string[] inline = FindRunsPast(file, SyntaxKind.SingleLineCommentTrivia, "//");
+
+		Assert.ContainsSingle(doc);
+		Assert.Contains("4-line /// run at 1", doc[0]);
+		Assert.IsEmpty(inline);
+	}
+
+	private static string[] FindRunsPast(string file, SyntaxKind kind, string marker)
+	{
+		(string File, (int First, int Length) Run)[] runs =
+		[
+			.. from run in LineRuns(CommentLines(file, kind)) select (file, run),
+		];
+
+		return SelectLongRuns(runs, marker, ceiling: 3);
+	}
+
+	private static string[] SelectLongRuns(
+		IEnumerable<(string File, (int First, int Length) Run)> runs,
+		string marker,
+		int ceiling
+	)
+	{
 		return
 		[
 			.. from entry in runs

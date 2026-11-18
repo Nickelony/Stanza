@@ -79,6 +79,38 @@ public sealed partial class DocumentationLinkGuardTests
 		GuardAssert.None(violations, "Package readme links that are relative");
 	}
 
+	[TestMethod]
+	public void ALinkToAMissingFileOrHeadingIsFound()
+	{
+		using TempDirectory directory = new(editorConfig: false);
+
+		const string content = """
+			# Page
+
+			[missing file](missing.md)
+			[missing heading](other.md#nope)
+			[heading](other.md#real-heading)
+			[own heading](#page)
+			[outside](https://example.com/)
+			""";
+
+		string page = directory.Write("page.md", content);
+
+		_ = directory.Write("other.md", "# Real heading\n");
+
+		(int count, List<string> violations) = FindUnresolvedLinks(
+			root: directory.Root,
+			file: page,
+			pages: [],
+			anchors: new(StringComparer.Ordinal)
+		);
+
+		Assert.AreEqual(5, count);
+		Assert.HasCount(2, violations);
+		Assert.Contains("missing.md", violations[0]);
+		Assert.Contains("other.md#nope", violations[1]);
+	}
+
 	private static IEnumerable<(int Number, string Target)> ReadTargets(string file)
 	{
 		foreach ((int number, string line) in MarkdownScan.ProseLines(File.ReadLines(file)))

@@ -20,15 +20,34 @@ public sealed class ReadmeExampleGuardTests
 	public async Task TheWhatItDoesExampleFixesToItsAfterBlock()
 	{
 		string readme = File.ReadAllText(Path.Combine(RepositoryPaths.Root(), ReadmePath));
+
+		string? mismatch = await FindExampleMismatchAsync(readme);
+
+		Assert.IsNull(
+			mismatch,
+			$"The fixed example does not match the After block of the readme: {mismatch}"
+		);
+	}
+
+	[TestMethod]
+	public async Task AnAfterBlockThatTheFixesDoNotWriteIsFound()
+	{
+		string readme = File.ReadAllText(Path.Combine(RepositoryPaths.Root(), ReadmePath));
+		(string before, _) = ReadExample(readme);
+
+		string unchanged =
+			$"## What it does\n{Fence}{BeforeMarker}{before}{AfterMarker}{before.TrimEnd('\n')}\n```\n";
+
+		Assert.IsNotNull(await FindExampleMismatchAsync(unchanged));
+	}
+
+	private static async Task<string?> FindExampleMismatchAsync(string readme)
+	{
 		(string before, string after) = ReadExample(readme);
 
 		AnalyzerRunResult result = await RoslynTestHarness.RunAllAsync(Wrap(before));
 
-		Assert.AreEqual(
-			Wrap(after),
-			result.FixedText,
-			"The fixed example does not match the After block of the readme."
-		);
+		return result.FixedText == Wrap(after) ? null : result.FixedText;
 	}
 
 	[TestMethod]

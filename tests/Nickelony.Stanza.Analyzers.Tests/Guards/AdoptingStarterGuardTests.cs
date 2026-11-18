@@ -35,10 +35,69 @@ public sealed class AdoptingStarterGuardTests
 			),
 		];
 
+		(List<string> problems, int checkedLines) = FindProblems(
+			ReadStarter(),
+			descriptors,
+			key => File.Exists(RepositoryPaths.Below("docs", "options", $"{key}.md"))
+		);
+
+		Assert.IsGreaterThan(0, checkedLines, "The starter holds no setting to check.");
+
+		GuardAssert.None(
+			problems,
+			"The starter .editorconfig of the adoption guide names something that does not exist"
+		);
+	}
+
+	[TestMethod]
+	public void AStarterLineThatNamesNothingRealIsFound()
+	{
+		DiagnosticDescriptor[] descriptors = [DiagnosticDescriptors.SeparateMemberGroups];
+
+		string id = DiagnosticDescriptors.SeparateMemberGroups.Id;
+		string category = DiagnosticDescriptors.SeparateMemberGroups.Category;
+
+		string[] sound =
+		[
+			$"dotnet_diagnostic.{id}.severity = warning",
+			$"# dotnet_analyzer_diagnostic.category-{category}.severity = suggestion",
+			"stanza_real_option = true",
+			"root = true",
+		];
+
+		(List<string> problems, int checkedLines) = FindProblems(
+			sound,
+			descriptors,
+			key => key == "stanza_real_option"
+		);
+
+		Assert.IsEmpty(problems);
+		Assert.AreEqual(3, checkedLines);
+
+		string[] broken =
+		[
+			"dotnet_diagnostic.ZA9999.severity = warning",
+			$"dotnet_diagnostic.{id}.severity = loud",
+			$"dotnet_diagnostic.{id}.level = warning",
+			"dotnet_analyzer_diagnostic.category-Nothing.severity = warning",
+			"stanza_misspelled_option = true",
+		];
+
+		(List<string> found, _) = FindProblems(broken, descriptors, key => false);
+
+		Assert.HasCount(6, found);
+	}
+
+	private static (List<string> Problems, int CheckedLines) FindProblems(
+		IEnumerable<string> lines,
+		DiagnosticDescriptor[] descriptors,
+		Func<string, bool> hasOptionPage
+	)
+	{
 		List<string> problems = [];
 		int checkedLines = 0;
 
-		foreach (string line in ReadStarter())
+		foreach (string line in lines)
 		{
 			// A commented line is a line the reader may enable, so it must be as real as an active one.
 			string setting = line.TrimStart().TrimStart('#').Trim();
@@ -83,17 +142,12 @@ public sealed class AdoptingStarterGuardTests
 			{
 				checkedLines++;
 
-				if (!File.Exists(RepositoryPaths.Below("docs", "options", $"{key}.md")))
+				if (!hasOptionPage(key))
 					problems.Add($"{key} has no option page.");
 			}
 		}
 
-		Assert.IsGreaterThan(0, checkedLines, "The starter holds no setting to check.");
-
-		GuardAssert.None(
-			problems,
-			"The starter .editorconfig of the adoption guide names something that does not exist"
-		);
+		return (problems, checkedLines);
 	}
 
 	private static List<string> ReadStarter()

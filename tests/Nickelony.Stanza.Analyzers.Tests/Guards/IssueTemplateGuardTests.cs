@@ -32,24 +32,64 @@ public sealed class IssueTemplateGuardTests
 
 			Assert.IsNotEmpty(options, $"{form} has no product dropdown with options.");
 
-			foreach (string id in ids)
+			GuardAssert.None(FindProblems(form, options, ids), $"{form} offers the wrong products");
+		}
+	}
+
+	[TestMethod]
+	public void AMissingDoubledOrUnknownProductOptionIsFound()
+	{
+		string[] ids = ["Nickelony.Stanza.Analyzers", "Nickelony.Stanza.Markup"];
+
+		string[] sound =
+		[
+			"Nickelony.Stanza.Analyzers",
+			"Nickelony.Stanza.Markup (stanza-markup)",
+			"Documentation",
+		];
+
+		Assert.IsEmpty(FindProblems("form.yml", sound, ids));
+
+		List<string> problems = FindProblems(
+			"form.yml",
+			["Nickelony.Stanza.Analyzers", "Nickelony.Stanza.Analyzers", "Unknown"],
+			ids
+		);
+
+		Assert.HasCount(3, problems);
+		Assert.Contains("does not offer Nickelony.Stanza.Analyzers", problems[0]);
+		Assert.Contains("does not offer Nickelony.Stanza.Markup", problems[1]);
+		Assert.Contains("offers 'Unknown'", problems[2]);
+	}
+
+	private static List<string> FindProblems(string form, string[] options, string[] ids)
+	{
+		List<string> problems = [];
+
+		foreach (string id in ids)
+		{
+			if (options.Count(option => IsOptionOf(option, id)) != 1)
 			{
-				Assert.ContainsSingle(
-					options.Where(option => IsOptionOf(option, id)),
+				problems.Add(
 					$"{form} does not offer {id} exactly once. Add one product option for each id of package-ids.txt."
 				);
 			}
+		}
 
-			foreach (string option in options)
+		foreach (string option in options)
+		{
+			if (
+				!s_otherProducts.Contains(option, StringComparer.Ordinal)
+				&& !ids.Any(id => IsOptionOf(option, id))
+			)
 			{
-				Assert.IsTrue(
-					s_otherProducts.Contains(option, StringComparer.Ordinal)
-						|| ids.Any(id => IsOptionOf(option, id)),
-
+				problems.Add(
 					$"{form} offers '{option}', which is neither a package of package-ids.txt nor one of the other products."
 				);
 			}
 		}
+
+		return problems;
 	}
 
 	// A tool's option names the command after the ID, as in `Nickelony.Stanza.Markup (stanza-markup)`.

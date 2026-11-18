@@ -41,34 +41,77 @@ public sealed partial class DocumentationRepetitionGuardTests
 	public void NoLongSentenceAppearsOnTwoPages()
 	{
 		string root = RepositoryPaths.Root();
-		Dictionary<string, SortedSet<string>> pagesBySentence = new(StringComparer.Ordinal);
 
-		foreach (string file in ProsePages(root))
-		{
-			string relative = MarkdownScan.Relative(root, file);
-
-			foreach (string sentence in Sentences(File.ReadLines(file)))
-			{
-				if (!pagesBySentence.TryGetValue(sentence, out SortedSet<string>? pages))
-					pagesBySentence[sentence] = pages = new(StringComparer.Ordinal);
-
-				pages.Add(relative);
-			}
-		}
+		Dictionary<string, SortedSet<string>> pagesBySentence = IndexSentences(
+			ProsePages(root)
+				.Select(file => (MarkdownScan.Relative(root, file), File.ReadLines(file)))
+		);
 
 		Assert.IsNotEmpty(pagesBySentence, "No long sentence was read, so no page was compared.");
 
-		var violations = pagesBySentence
-			.Where(pair => pair.Value.Count > 1)
-			.Select(pair => $"{string.Join(", ", pair.Value)}: {pair.Key}")
-			.ToList();
-
 		GuardAssert.None(
-			violations,
+			FindRepeated(pagesBySentence),
 
 			$"A sentence of at least {LongSentenceWords} words appears on more than one page. "
 				+ "Keep it on the page that owns the fact and link that page from the others"
 		);
+	}
+
+	[TestMethod]
+	public void ALongSentenceOnTwoPagesIsFoundAndAShortOneIsNot()
+	{
+		string[] shared =
+		[
+			"The guards read each page and report any claim that two pages state alike.",
+			"Short is fine.",
+		];
+
+		string[] wrapped =
+		[
+			"The guards read each page and",
+			"report any claim that two pages state alike.",
+		];
+
+		Dictionary<string, SortedSet<string>> pagesBySentence = IndexSentences([
+			("docs/First.md", shared),
+			("docs/Second.md", wrapped),
+			("docs/Third.md", ["Short is fine."]),
+		]);
+
+		string[] violations = [.. FindRepeated(pagesBySentence)];
+
+		Assert.ContainsSingle(violations);
+		Assert.StartsWith("docs/First.md, docs/Second.md:", violations[0]);
+	}
+
+	private static Dictionary<string, SortedSet<string>> IndexSentences(
+		IEnumerable<(string Page, IEnumerable<string> Lines)> pages
+	)
+	{
+		Dictionary<string, SortedSet<string>> pagesBySentence = new(StringComparer.Ordinal);
+
+		foreach ((string page, IEnumerable<string> lines) in pages)
+		{
+			foreach (string sentence in Sentences(lines))
+			{
+				if (!pagesBySentence.TryGetValue(sentence, out SortedSet<string>? known))
+					pagesBySentence[sentence] = known = new(StringComparer.Ordinal);
+
+				known.Add(page);
+			}
+		}
+
+		return pagesBySentence;
+	}
+
+	private static List<string> FindRepeated(Dictionary<string, SortedSet<string>> pagesBySentence)
+	{
+		return
+		[
+			.. pagesBySentence
+				.Where(pair => pair.Value.Count > 1)
+				.Select(pair => $"{string.Join(", ", pair.Value)}: {pair.Key}"),
+		];
 	}
 
 	// The guide pages: the root pages and the pages directly under docs/.
