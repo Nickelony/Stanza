@@ -1558,13 +1558,13 @@ public sealed class SeparateConditionalBlockTests
 
 	// Roslyn finds the related directives of each directive by a search that takes the time of the siblings before it,
 	// and a walk from the root for each block does the same, so a run read that way costs the square of its length.
-	// That allocates nothing, so the limit stands far above a linear read: 40,000 blocks take about a second, and a quadratic read minutes.
+	// That allocates nothing, so the limit is time: 40,000 blocks take under a second, Roslyn's search alone about 13 seconds.
 	[TestMethod]
 	[DoNotParallelize]
-	public void AHugeRunOfTouchingBlocksIsReadInUnderThirtySeconds()
+	public void AHugeRunOfTouchingBlocksIsReadInUnderTenSeconds()
 	{
 		LinearCost.AssertWalkEndsWithin(
-			milliseconds: 30_000,
+			milliseconds: 10_000,
 			TouchingBlocks(40_000),
 			static root => ReadEveryDirective(root)
 		);
