@@ -14,7 +14,7 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 /// </remarks>
 internal readonly record struct ContainerContext(SyntaxNodeAnalysisContext Context, StanzaOptions Options, ImmutableArray<SyntaxNode> Siblings)
 {
-	private readonly Readings _readings = Readings.Share(Context.Node, Context.Compilation, Options);
+	private readonly Readings _readings = Readings.Get(Context.Node, Context.Compilation, Options);
 
 	public bool ReadsRuns { get; init; }
 	public bool ReadsAnchors { get; init; }
@@ -64,7 +64,7 @@ internal readonly record struct ContainerContext(SyntaxNodeAnalysisContext Conte
 		public BlankLineCheckedStanzas.Reading CheckedStanzas { get; }
 
 		/// <summary>Gets the readings of the node, which another compilation or other options do not share.</summary>
-		public static Readings Share(SyntaxNode node, Compilation compilation, StanzaOptions options)
+		public static Readings Get(SyntaxNode node, Compilation compilation, StanzaOptions options)
 		{
 			lock (s_shared)
 			{
