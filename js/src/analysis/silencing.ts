@@ -90,7 +90,7 @@ function isSilencedBy(switches: readonly Switch[], position: TSESTree.Position):
 }
 
 /** Keeps the switches that name the rule or every rule, in their order. */
-function namingRule(switches: readonly Switch[], ruleId: string): readonly Switch[] {
+function filterRuleSwitches(switches: readonly Switch[], ruleId: string): readonly Switch[] {
 	return switches.filter((entry) => entry.ruleIds.length === 0 || entry.ruleIds.includes(ruleId));
 }
 
@@ -112,11 +112,11 @@ export function readSilencing(sourceCode: SourceCode): Silencing {
 	const starts = new Set(directives.map((directive) => directive.node.range[0]));
 	const byRule = new Map<string, { block: readonly Switch[]; line: readonly Switch[] }>();
 
-	const cachedFor = (ruleId: string): { block: readonly Switch[]; line: readonly Switch[] } => {
+	const readRuleSwitches = (ruleId: string): { block: readonly Switch[]; line: readonly Switch[] } => {
 		let entry = byRule.get(ruleId);
 
 		if (entry === undefined) {
-			entry = { block: namingRule(block, ruleId), line: namingRule(line, ruleId) };
+			entry = { block: filterRuleSwitches(block, ruleId), line: filterRuleSwitches(line, ruleId) };
 			byRule.set(ruleId, entry);
 		}
 
@@ -125,7 +125,7 @@ export function readSilencing(sourceCode: SourceCode): Silencing {
 
 	return {
 		silences: (ruleId, position) => {
-			const entry = cachedFor(ruleId);
+			const entry = readRuleSwitches(ruleId);
 			return isSilencedBy(entry.block, position) || isSilencedBy(entry.line, position);
 		},
 
