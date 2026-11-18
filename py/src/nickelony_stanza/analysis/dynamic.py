@@ -372,9 +372,10 @@ def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], dict[str, frozen
     so it is not among the names of its class, and a `setattr` with a computed name leaves the class no names.
     """
     defined: set[str] = set()
+    other: set[str] = set()
+
     classes: dict[str, set[str]] = {}
     repeated: set[str] = set()
-    other: set[str] = set()
     rebound: dict[str, set[str]] = {}
 
     for node in ast.walk(tree):
