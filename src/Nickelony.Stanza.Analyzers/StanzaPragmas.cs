@@ -64,13 +64,17 @@ internal static class StanzaPragmas
 			ImmutableArray<string>.Builder names = ImmutableArray.CreateBuilder<string>(directive.ErrorCodes.Count);
 
 			foreach (ExpressionSyntax code in directive.ErrorCodes)
-				names.Add(code is IdentifierNameSyntax identifier ? identifier.Identifier.ValueText : code.ToString());
+				names.Add(ReadCode(code));
 
 			codes = names.ToImmutable();
 		}
 
 		return new PragmaDirective(directive.Span, directive.DisableOrRestoreKeyword.IsKind(SyntaxKind.DisableKeyword), codes);
 	}
+
+	/// <summary>Reads a code of a pragma, so a Unicode escape in an identifier reads as the character.</summary>
+	public static string ReadCode(ExpressionSyntax code) =>
+		code is IdentifierNameSyntax identifier ? identifier.Identifier.ValueText : code.ToString();
 
 	private static bool PragmaNamesRule(in PragmaDirective directive, string ruleId)
 	{
