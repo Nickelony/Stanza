@@ -507,6 +507,125 @@ public sealed class MarkupLiteralMarkingTests
 
 	[TestMethod]
 	[CrossCutting]
+	public async Task StringSyntaxXmlOnAFieldMarksItsAssignmentsAndNotThoseOfAnotherField()
+	{
+		const string template = """"
+			using System.Diagnostics.CodeAnalysis;
+
+			class C
+			{
+				[StringSyntax("xml")]
+				string _marked = "";
+
+				string _plain = "";
+
+				void M()
+				{
+					FIELD = """
+						<root>
+						  <a>1</a>
+
+
+
+						  <b>2</b>
+						</root>
+						""";
+				}
+			}
+			"""";
+
+		Assert.HasCount(1, (await ReportCapAsync(template.Replace("FIELD", "_marked", StringComparison.Ordinal), "marked")).Diagnostics);
+		Assert.IsEmpty((await ReportCapAsync(template.Replace("FIELD", "_plain", StringComparison.Ordinal), "marked")).Diagnostics);
+	}
+
+	[TestMethod]
+	[CrossCutting]
+	public async Task StringSyntaxXmlOnAnObjectParameterMarksTheStringLiteralConvertedToIt()
+	{
+		const string source = """"
+			using System.Diagnostics.CodeAnalysis;
+
+			class C
+			{
+				void M()
+				{
+					Load("""
+						<root>
+						  <a>1</a>
+
+
+
+						  <b>2</b>
+						</root>
+						""");
+				}
+
+				static void Load([StringSyntax("Xml")] object markup)
+				{
+					return;
+				}
+			}
+			"""";
+
+		Assert.HasCount(1, (await ReportCapAsync(source, "marked")).Diagnostics);
+	}
+
+	[TestMethod]
+	[CrossCutting]
+	public async Task AMarkedUtf8LiteralIsReadAsMarkup()
+	{
+		const string source = """"
+			using System;
+			using System.Diagnostics.CodeAnalysis;
+
+			class C
+			{
+				void M()
+				{
+					// language=xml
+					ReadOnlySpan<byte> commented = """
+						<root>
+						  <a>1</a>
+
+
+
+						  <b>2</b>
+						</root>
+						"""u8;
+
+					Load("""
+						<root>
+						  <a>1</a>
+
+
+
+						  <b>2</b>
+						</root>
+						"""u8);
+
+					ReadOnlySpan<byte> plain = """
+						<root>
+						  <a>1</a>
+
+
+
+						  <b>2</b>
+						</root>
+						"""u8;
+				}
+
+				static void Load([StringSyntax("Xml")] ReadOnlySpan<byte> markup)
+				{
+					return;
+				}
+			}
+			"""";
+
+		Assert.HasCount(2, (await ReportCapAsync(source, "marked")).Diagnostics);
+	}
+
+	[TestMethod]
+	[CrossCutting]
 	public async Task StringSyntaxXmlOnARecordParameterOrItsPropertyMarksBoth()
 	{
 		const string source = """"

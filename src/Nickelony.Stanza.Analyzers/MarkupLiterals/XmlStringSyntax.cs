@@ -16,7 +16,6 @@ internal static class XmlStringSyntax
 {
 	private const string AttributeName = "StringSyntaxAttribute";
 	private const string AttributeNamespace = "System.Diagnostics.CodeAnalysis";
-	private const string Xml = "xml";
 
 	public static bool Covers(LiteralExpressionSyntax literal, SemanticModel semanticModel, CancellationToken cancellationToken)
 	{
@@ -103,6 +102,6 @@ internal static class XmlStringSyntax
 			&& type.ContainingNamespace.ToDisplayString() == AttributeNamespace
 			&& attribute.ConstructorArguments.Length > 0
 			&& attribute.ConstructorArguments[0].Value is string syntax
-			&& string.Equals(syntax, Xml, StringComparison.OrdinalIgnoreCase);
+			&& string.Equals(syntax, MarkupLiteral.XmlLanguage, StringComparison.OrdinalIgnoreCase);
 	}
 }

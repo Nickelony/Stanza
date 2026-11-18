@@ -8,8 +8,6 @@ namespace Nickelony.Stanza.Analyzers.MarkupLiterals;
 /// <summary>Reads the <c>// language=xml</c> comment that marks a literal as XML, as Rider does.</summary>
 internal static class XmlLanguageComment
 {
-	private const string Xml = "xml";
-
 	/// <summary>The names the comment takes, the longer first, since <c>lang</c> starts <c>language</c>.</summary>
 	private static readonly string[] s_names = ["language", "lang"];
 
@@ -69,11 +67,11 @@ internal static class XmlLanguageComment
 
 		offset = SkipSpaces(body, offset + 1);
 
-		if (!HoldsWordAt(body, offset, Xml))
+		if (!HoldsWordAt(body, offset, MarkupLiteral.XmlLanguage))
 			return false;
 
 		// Rider reads further options after the language, such as a prefix, so a space may follow it.
-		offset += Xml.Length;
+		offset += MarkupLiteral.XmlLanguage.Length;
 		return offset == body.Length || char.IsWhiteSpace(body[offset]);
 	}
 

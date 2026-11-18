@@ -9,6 +9,9 @@ namespace Nickelony.Stanza.Analyzers.MarkupLiterals;
 /// <summary>A raw-string markup literal and the file lines its value spans.</summary>
 internal readonly record struct MarkupLiteral(SyntaxToken Token, int FirstValueLine, int LastValueLine)
 {
+	/// <summary>The XML language, matched in any case by the <c>language</c> comment and <c>StringSyntax</c>.</summary>
+	public const string XmlLanguage = "xml";
+
 	public string Value => Token.ValueText;
 
 	/// <summary>Reads a markup literal the reading picks, or <see langword="null"/> for any other literal.</summary>
