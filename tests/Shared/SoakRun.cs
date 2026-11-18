@@ -12,6 +12,7 @@ internal static class SoakRun
 {
 	internal const string Variable = "STANZA_SOAK_SEEDS";
 	internal const string OffsetVariable = "STANZA_SOAK_SEED_OFFSET";
+	internal const string FirstSeedVariable = "STANZA_SOAK_FIRST_SEED";
 
 	/// <summary>The timeout of a soak test, which MSTest reads as none.</summary>
 	internal const int NoRunnerTimeout = int.MaxValue;
@@ -37,31 +38,41 @@ internal static class SoakRun
 		return count;
 	}
 
-	/// <summary>Reads the first seed: the test's base moved by the offset.</summary>
-	internal static int ReadFirstSeed(int baseSeed) =>
-		ResolveFirstSeed(baseSeed, Environment.GetEnvironmentVariable(OffsetVariable));
-
-	/// <summary>Moves the base seed by the offset, and fails when it is no number.</summary>
-	internal static int ResolveFirstSeed(int baseSeed, string? offset)
+	/// <summary>Reads the first seed: the variable's, else the base moved by the offset.</summary>
+	internal static int ReadFirstSeed(int baseSeed)
 	{
+		return ResolveFirstSeed(
+			baseSeed,
+			Environment.GetEnvironmentVariable(OffsetVariable),
+			Environment.GetEnvironmentVariable(FirstSeedVariable)
+		);
+	}
+
+	/// <summary>Takes the first seed if one is given, else moves the base by the offset.</summary>
+	internal static int ResolveFirstSeed(int baseSeed, string? offset, string? firstSeed)
+	{
+		if (!string.IsNullOrEmpty(firstSeed))
+			return ParseWholeNumber(firstSeed, FirstSeedVariable);
+
 		if (string.IsNullOrEmpty(offset))
 			return baseSeed;
 
-		bool isOffset = int.TryParse(
-			s: offset,
+		return checked(baseSeed + ParseWholeNumber(offset, OffsetVariable));
+	}
+
+	private static int ParseWholeNumber(string text, string variable)
+	{
+		bool isNumber = int.TryParse(
+			s: text,
 			style: NumberStyles.None,
 			provider: CultureInfo.InvariantCulture,
-			result: out int moved
+			result: out int number
 		);
 
-		if (!isOffset)
-		{
-			throw new AssertFailedException(
-				$"{OffsetVariable} must be a whole number of seeds to skip, not '{offset}'."
-			);
-		}
+		if (!isNumber)
+			throw new AssertFailedException($"{variable} must be a whole number, not '{text}'.");
 
-		return checked(baseSeed + moved);
+		return number;
 	}
 
 	/// <summary>Names the seed of a run that threw other than a failed assertion.</summary>

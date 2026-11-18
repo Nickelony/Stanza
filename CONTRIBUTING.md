@@ -97,8 +97,8 @@ vale --glob='!**/{bin,obj,artifacts}/**' .
 - A soak test starts at a base seed of its own, and `STANZA_SOAK_SEED_OFFSET` moves the first seed that far.
   The weekly run sets it to its run number times the count, so each week meets seeds no earlier week did;
   a local run leaves it unset and stays deterministic.
-- A failed seed is printed as `seed <n>`, so to repeat it set the count to 1 and the offset to `n` minus the base of that test,
-  which is 1000 for the convergence soaks and 5000 for the fix-loop fuzz.
+- A failed seed is printed as `seed <n>`, so to repeat it set the count to 1 and `STANZA_SOAK_FIRST_SEED` to `n`,
+  which starts at that seed whatever the base of the test and beats the offset.
 - The fix-loop fuzz runs only in the soak.
   A soak test has no runner timeout, and `SoakRun` fails it after five minutes plus one for each seed.
 

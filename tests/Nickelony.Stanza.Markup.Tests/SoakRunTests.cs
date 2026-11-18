@@ -50,7 +50,7 @@ public sealed class SoakRunTests
 	public void TheFirstSeedMovesByTheOffsetAndStaysTheBaseWithoutOne(
 		string? offset,
 		int expected
-	) => Assert.AreEqual(expected, SoakRun.ResolveFirstSeed(1000, offset));
+	) => Assert.AreEqual(expected, SoakRun.ResolveFirstSeed(1000, offset, firstSeed: null));
 
 	[TestMethod]
 	[DataRow("-1")]
@@ -58,10 +58,35 @@ public sealed class SoakRunTests
 	public void AnOffsetThatIsNoWholeNumberFailsTheRunInsteadOfKeepingTheBase(string offset)
 	{
 		AssertFailedException failure = Assert.ThrowsExactly<AssertFailedException>(() =>
-			SoakRun.ResolveFirstSeed(1000, offset)
+			SoakRun.ResolveFirstSeed(1000, offset, firstSeed: null)
 		);
 
 		Assert.Contains(SoakRun.OffsetVariable, failure.Message);
+	}
+
+	// A printed seed repeats as it is, whatever the test's base, so the owner subtracts nothing.
+	[TestMethod]
+	[DataRow(null, "1234", 1234)]
+	[DataRow("400", "1234", 1234)]
+	[DataRow("", "5012", 5012)]
+	[DataRow(null, "0", 0)]
+	[DataRow("400", "", 1400)]
+	public void AnAbsoluteFirstSeedBeatsTheBaseAndTheOffset(
+		string? offset,
+		string firstSeed,
+		int expected
+	) => Assert.AreEqual(expected, SoakRun.ResolveFirstSeed(1000, offset, firstSeed));
+
+	[TestMethod]
+	[DataRow("-1")]
+	[DataRow("soon")]
+	public void AFirstSeedThatIsNoWholeNumberFailsTheRunInsteadOfKeepingTheBase(string firstSeed)
+	{
+		AssertFailedException failure = Assert.ThrowsExactly<AssertFailedException>(() =>
+			SoakRun.ResolveFirstSeed(1000, offset: null, firstSeed)
+		);
+
+		Assert.Contains(SoakRun.FirstSeedVariable, failure.Message);
 	}
 
 	[TestMethod]

@@ -42,7 +42,7 @@ jobs:
       - uses: ./.github/actions/setup-dotnet
 
       # A scheduled run starts its seeds one window of STANZA_SOAK_SEEDS past the last, so each week meets seeds no earlier week did.
-      # A manual run keeps the base seeds, and a failure names its seed, so an offset of seed minus the base reproduces it with one seed.
+      # A manual run keeps the base seeds, and a failure names its seed, so a first seed of that seed reproduces it with a count of one.
       - name: Move the seeds on
         if: github.event_name == 'schedule'
         shell: pwsh
