@@ -668,7 +668,8 @@ public sealed class MergeNestedIfStatementsTests
 	[DataRow("#pragma warning disable ZA0602\nif (c0)\n{\n\t#pragma warning restore ZA0602\n	if (c1)\n	{\n		if (c2)\n			DoThing();\n	}\n}", 0)]
 	public async Task APragmaBetweenTheIfsStopsEachIfItIsInsideOrBeside(string body, int expected)
 	{
-		AnalyzerRunResult result = await RunAsync(Method(body));
+		AnalyzerRunResult result =
+			await RoslynTestHarness.ReportAsync<MergeNestedIfStatementsAnalyzer>(Method(body), Rule);
 
 		Assert.HasCount(expected, result.Diagnostics);
 
