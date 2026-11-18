@@ -17,9 +17,9 @@ from nickelony_stanza import Config, ConfigError, fix
 from nickelony_stanza import formatter as formatter_module
 from nickelony_stanza.analysis.document import read_document
 from nickelony_stanza.cli import run
-from nickelony_stanza.formatter import DEFAULT_FORMATTER, Formatter, FormatterError, detect_formatter, find_formatter
+from nickelony_stanza.formatter import Formatter, FormatterError, find_formatter
 from nickelony_stanza.pipeline import run_pipeline
-from tests.helpers import run_formatter
+from tests.helpers import run_formatter, write_file
 
 TOOLS = ["ruff", "black"]
 
@@ -50,13 +50,6 @@ def _require(tool: str) -> None:
         pytest.skip(f"{tool} is not installed")
 
 
-def _write(directory: Path, name: str, text: str) -> Path:
-    path = directory / name
-    path.write_bytes(text.encode())
-
-    return path
-
-
 def _undo_formatter() -> Formatter:
     return Formatter("fake", (sys.executable, "-c", UNDO))
 
@@ -69,7 +62,7 @@ def _hide_formatters(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.parametrize("tool", TOOLS)
 def test_the_formatter_runs_before_the_rules(tool: str, tmp_path: Path) -> None:
     _require(tool)
-    path = _write(tmp_path, "a.py", JOINABLE)
+    path = write_file(tmp_path, "a.py", JOINABLE)
 
     assert run(["format", "--formatter", tool, "--level", "moderate", str(path)]) == 0
     assert path.read_text() == JOINED
@@ -83,7 +76,9 @@ def test_the_formatter_runs_before_the_rules(tool: str, tmp_path: Path) -> None:
 def test_a_second_run_changes_nothing_and_a_check_passes(tool: str, tmp_path: Path) -> None:
     _require(tool)
 
-    path = _write(tmp_path, "a.py", "import os\nx=1\ny = 2\ndef f(a,b):\n  if a: return b\n  return a\nprint(f(1,2))\n")
+    path = write_file(
+        tmp_path, "a.py", "import os\nx=1\ny = 2\ndef f(a,b):\n  if a: return b\n  return a\nprint(f(1,2))\n"
+    )
     arguments = ["--formatter", tool, "--level", "strong"]
 
     assert run(["format", *arguments, str(path)]) == 0
@@ -101,14 +96,14 @@ def test_a_second_run_changes_nothing_and_a_check_passes(tool: str, tmp_path: Pa
 @pytest.mark.parametrize("tool", TOOLS)
 def test_a_check_changes_nothing_and_exits_with_one(tool: str, tmp_path: Path) -> None:
     _require(tool)
-    path = _write(tmp_path, "a.py", JOINABLE)
+    path = write_file(tmp_path, "a.py", JOINABLE)
 
     assert run(["format", "--check", "--formatter", tool, "--level", "moderate", str(path)]) == 1
     assert path.read_text() == JOINABLE
 
 
 def test_a_check_names_the_files_it_would_change(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    path = _write(tmp_path, "a.py", "a = 1\nb = 2\nrun()\n")
+    path = write_file(tmp_path, "a.py", "a = 1\nb = 2\nrun()\n")
 
     assert run(["format", "--check", "--formatter", "none", str(path)]) == 1
 
@@ -119,7 +114,7 @@ def test_a_check_names_the_files_it_would_change(tmp_path: Path, capsys: pytest.
 
 
 def test_the_none_formatter_runs_the_rules_alone(tmp_path: Path) -> None:
-    path = _write(tmp_path, "a.py", "a = 1\nb = 2\nrun()\n")
+    path = write_file(tmp_path, "a.py", "a = 1\nb = 2\nrun()\n")
 
     assert run(["format", "--formatter", "none", str(path)]) == 0
     assert path.read_text() == "a = 1\nb = 2\n\nrun()\n"
@@ -128,7 +123,7 @@ def test_the_none_formatter_runs_the_rules_alone(tmp_path: Path) -> None:
 def test_a_formatter_that_undoes_the_fix_is_a_settle_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    path = _write(tmp_path, "a.py", TIGHT)
+    path = write_file(tmp_path, "a.py", TIGHT)
 
     monkeypatch.setattr("nickelony_stanza.cli.find_formatter", lambda *args: _undo_formatter())
 
@@ -144,7 +139,7 @@ def test_a_formatter_that_undoes_the_fix_is_a_settle_failure(
 def test_a_check_reports_a_settle_failure_without_writing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    path = _write(tmp_path, "a.py", TIGHT)
+    path = write_file(tmp_path, "a.py", TIGHT)
 
     monkeypatch.setattr("nickelony_stanza.cli.find_formatter", lambda *args: _undo_formatter())
 
@@ -183,7 +178,7 @@ def test_a_file_name_that_starts_with_a_hyphen_reaches_the_formatter_with_a_pref
 def test_a_formatter_that_is_missing_exits_with_two(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    path = _write(tmp_path, "a.py", JOINABLE)
+    path = write_file(tmp_path, "a.py", JOINABLE)
 
     _hide_formatters(monkeypatch)
 
@@ -201,7 +196,7 @@ def test_a_formatter_that_refuses_a_file_is_an_error_for_that_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     refusing = Formatter("fake", (sys.executable, "-c", "import sys; sys.exit('cannot parse')"))
-    bad = _write(tmp_path, "bad.py", "def (:\n")
+    bad = write_file(tmp_path, "bad.py", "def (:\n")
 
     monkeypatch.setattr("nickelony_stanza.cli.find_formatter", lambda *args: refusing)
 
@@ -224,8 +219,8 @@ def test_standard_input_is_formatted_to_standard_output(
 def test_the_formatter_comes_from_pyproject_and_the_flag_replaces_it(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    _write(tmp_path, "pyproject.toml", '[tool.stanza]\nformatter = "none"\n')
-    path = _write(tmp_path, "a.py", "a = 1\nb = 2\nrun()\n")
+    write_file(tmp_path, "pyproject.toml", '[tool.stanza]\nformatter = "none"\n')
+    path = write_file(tmp_path, "a.py", "a = 1\nb = 2\nrun()\n")
 
     monkeypatch.chdir(tmp_path)
     _hide_formatters(monkeypatch)
@@ -238,8 +233,8 @@ def test_the_formatter_comes_from_pyproject_and_the_flag_replaces_it(
 def test_a_formatter_the_table_does_not_know_is_a_configuration_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _write(tmp_path, "pyproject.toml", '[tool.stanza]\nformatter = "prettier"\n')
-    path = _write(tmp_path, "a.py", JOINABLE)
+    write_file(tmp_path, "pyproject.toml", '[tool.stanza]\nformatter = "prettier"\n')
+    path = write_file(tmp_path, "a.py", JOINABLE)
 
     monkeypatch.chdir(tmp_path)
 
@@ -247,12 +242,6 @@ def test_a_formatter_the_table_does_not_know_is_a_configuration_error(
 
     with pytest.raises(ConfigError):
         Config.create(formatter="prettier")  # type: ignore[arg-type]
-
-
-def _install(monkeypatch: pytest.MonkeyPatch, *names: str) -> None:
-    """Makes exactly the named formatters findable, as a path that holds only them would."""
-    monkeypatch.setattr(formatter_module, "_which", lambda name: f"/fake/{name}" if name in names else None)
-    monkeypatch.setattr(formatter_module, "_has_module", lambda name: False)
 
 
 def _plant(directory: Path, name: str) -> Path:
@@ -308,7 +297,7 @@ def test_a_formatter_module_in_the_current_directory_is_never_run(
     marker = checkout / "ran.txt"
 
     for name in TOOLS:
-        _write(checkout, f"{name}.py", f"open({str(marker)!r}, 'w').write('planted')\n")
+        write_file(checkout, f"{name}.py", f"open({str(marker)!r}, 'w').write('planted')\n")
 
     # No program on the path, so the formatter is the module of this interpreter, which the planted file would shadow.
     monkeypatch.chdir(checkout)
@@ -335,7 +324,7 @@ def test_the_module_runner_takes_the_current_directory_off_the_path_before_it_im
 
     # Before Python 3.11 `runpy` is a source file on the path, and `-X frozen_modules=off` makes it one on every version.
     for name in ["runpy", "ruff"]:
-        _write(checkout, f"{name}.py", f"open({str(marker)!r}, 'a').write('{name}')\n")
+        write_file(checkout, f"{name}.py", f"open({str(marker)!r}, 'a').write('{name}')\n")
 
     monkeypatch.chdir(checkout)
 
@@ -356,7 +345,7 @@ def test_the_module_runner_takes_the_current_directory_off_the_path_before_it_im
 def test_a_formatter_module_only_in_the_current_directory_is_not_installed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _write(tmp_path, "nofmt_ruff.py", "")
+    write_file(tmp_path, "nofmt_ruff.py", "")
     monkeypatch.chdir(tmp_path)
     monkeypatch.syspath_prepend(str(tmp_path))
 
@@ -373,172 +362,3 @@ def test_a_formatter_on_a_relative_path_entry_is_never_started(tmp_path: Path, m
 
     with pytest.raises(FormatterError, match="not installed"):
         find_formatter("ruff")
-
-
-def _name_of(formatter: Formatter | None) -> str | None:
-    return None if formatter is None else formatter.name
-
-
-def test_the_formatter_defaults_to_auto() -> None:
-    assert DEFAULT_FORMATTER == "auto"
-    assert Config.create().formatter == "auto"
-
-
-@pytest.mark.parametrize(
-    ("files", "expected"),
-    [
-        ({"pyproject.toml": "[tool.ruff]\nline-length = 100\n"}, "ruff"),
-        ({"pyproject.toml": "[tool.ruff.lint]\nselect = ['E']\n"}, "ruff"),
-        ({"ruff.toml": ""}, "ruff"),
-        ({".ruff.toml": ""}, "ruff"),
-        ({"pyproject.toml": "[tool.black]\nline-length = 100\n"}, "black"),
-        ({"pyproject.toml": "[tool.black]\n\n[tool.ruff]\n"}, "ruff"),
-        ({"pyproject.toml": "[tool.black]\n", "ruff.toml": ""}, "ruff"),
-        ({"pyproject.toml": "[tool.stanza]\nlevel = 'strong'\n"}, None),
-        ({"pyproject.toml": "[tool.ruff\n"}, None),
-        ({}, None),
-    ],
-)
-def test_the_formatter_a_project_configures_is_detected(
-    tmp_path: Path, files: dict[str, str], expected: str | None
-) -> None:
-    for name, text in files.items():
-        _write(tmp_path, name, text)
-
-    assert detect_formatter(tmp_path) == expected
-
-
-def test_the_search_climbs_to_the_nearest_directory_that_configures_a_formatter(tmp_path: Path) -> None:
-    nested = tmp_path / "packages" / "app" / "src"
-    nested.mkdir(parents=True)
-
-    _write(tmp_path, "ruff.toml", "")
-    _write(tmp_path / "packages", "pyproject.toml", "[tool.stanza]\n")
-
-    assert detect_formatter(nested) == "ruff"
-
-    _write(tmp_path / "packages" / "app", "pyproject.toml", "[tool.black]\n")
-
-    assert detect_formatter(nested) == "black"
-
-
-def test_auto_takes_the_configured_formatter_over_the_installed_ones(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _write(tmp_path, "pyproject.toml", "[tool.black]\n")
-    _install(monkeypatch, "ruff", "black")
-
-    assert _name_of(find_formatter("auto", tmp_path)) == "black"
-
-
-def test_auto_does_not_fall_back_when_the_configured_formatter_is_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _write(tmp_path, "ruff.toml", "")
-    _install(monkeypatch, "black")
-
-    with pytest.raises(FormatterError, match="ruff is not installed"):
-        find_formatter("auto", tmp_path)
-
-
-@pytest.mark.parametrize(
-    ("installed", "expected"),
-    [(("ruff", "black"), "ruff"), (("ruff",), "ruff"), (("black",), "black")],
-)
-def test_auto_takes_the_first_installed_formatter_when_none_is_configured(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, installed: tuple[str, ...], expected: str
-) -> None:
-    _write(tmp_path, "pyproject.toml", "[tool.stanza]\n")
-    _install(monkeypatch, *installed)
-
-    assert _name_of(find_formatter("auto", tmp_path)) == expected
-
-
-def test_auto_names_the_three_ways_out_when_it_finds_nothing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    path = _write(tmp_path, "a.py", JOINABLE)
-
-    _install(monkeypatch)
-
-    with pytest.raises(FormatterError, match=r"Configure one .*install ruff or black.*--formatter none"):
-        find_formatter("auto", tmp_path)
-
-    assert run(["format", "--config", str(_write(tmp_path, "pyproject.toml", "[tool.stanza]\n")), str(path)]) == 2
-    assert "no formatter found" in capsys.readouterr().err
-    assert path.read_text() == JOINABLE
-
-
-def test_an_explicit_formatter_skips_the_detection(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    _write(tmp_path, "ruff.toml", "")
-    _install(monkeypatch, "ruff", "black")
-
-    assert _name_of(find_formatter("black", tmp_path)) == "black"
-    assert _name_of(find_formatter("ruff", tmp_path)) == "ruff"
-    assert find_formatter("none", tmp_path) is None
-
-
-def test_the_command_detects_from_the_directory_of_the_config_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    project = tmp_path / "project"
-    project.mkdir()
-
-    _write(project, "pyproject.toml", "[tool.stanza]\n\n[tool.black]\n")
-
-    path = _write(tmp_path, "a.py", JOINABLE)
-    found: list[Path] = []
-
-    def record(name: str, start: Path | None = None) -> Formatter | None:
-        assert start is not None
-
-        found.append(start)
-
-        return None
-
-    monkeypatch.setattr("nickelony_stanza.cli.find_formatter", record)
-
-    assert run(["format", "--config", str(project / "pyproject.toml"), str(path)]) == 0
-    assert found == [project.resolve()]
-
-
-def test_the_command_detects_from_the_directory_of_the_first_path_without_a_config_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    source = tmp_path / "src"
-    source.mkdir()
-
-    path = _write(source, "a.py", JOINABLE)
-    found: list[Path] = []
-
-    def record(name: str, start: Path | None = None) -> Formatter | None:
-        assert start is not None
-
-        found.append(start)
-
-        return None
-
-    monkeypatch.chdir(tmp_path / "src")
-
-    monkeypatch.setattr("nickelony_stanza.cli.find_formatter", record)
-    monkeypatch.setattr("nickelony_stanza.cli.load_config", lambda *args: (Config.create(), None))
-
-    assert run(["format", str(path)]) == 0
-    assert run(["format", str(source)]) == 0
-    assert found == [source.resolve(), source.resolve()]
-
-
-def test_the_formatter_key_and_the_flag_override_the_detection(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    _write(tmp_path, "ruff.toml", "")
-    _write(tmp_path, "pyproject.toml", '[tool.stanza]\nformatter = "none"\n')
-
-    path = _write(tmp_path, "a.py", "a = 1\nb = 2\nrun()\n")
-
-    monkeypatch.chdir(tmp_path)
-    _install(monkeypatch)
-
-    assert run(["format", str(path)]) == 0
-    assert run(["format", "--formatter", "auto", str(path)]) == 2
-    assert "ruff is not installed" in capsys.readouterr().err

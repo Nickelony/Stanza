@@ -127,6 +127,14 @@ def fix_in_steps(text: str, config: Config, mode: str, rounds: int = 4) -> str:
     return text
 
 
+def write_file(directory: Path, name: str, text: str) -> Path:
+    """Writes a text to a file of a directory byte for byte, so no newline translation changes it."""
+    path = directory / name
+    path.write_bytes(text.encode())
+
+    return path
+
+
 def run_formatter(tool: str, text: str) -> str | None:
     """Formats a text with Black or Ruff, or returns None when the tool refuses it."""
     if tool == "black":
