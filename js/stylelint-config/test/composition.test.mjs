@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import stylelint from 'stylelint';
 
 import configuration from '../index.mjs';
+import syntax from '../syntax.mjs';
 
 import { check } from './helpers.mjs';
 
@@ -200,5 +201,21 @@ describe('the syntax beside the other rules of Stylelint', () => {
 			assert.equal(result.code.split('${').length, code.split('${').length, unspecified);
 			assert.ok(![...result.code].some((character) => character.charCodeAt(0) >= 0xe000 && character.charCodeAt(0) <= 0xf8ff), unspecified);
 		}
+	});
+
+	it('picks a sorting marker from the first private-use character the source does not hold', () => {
+		const marker = (character) => '${' + String.fromCharCode(character) + '}';
+		const source = (text) => `${react}const x = css\`\n\${base}\ncolor: red;\n\`;\n${text}`;
+
+		assert.equal(syntax.parse(source(''), { from: 'src/example.tsx' }).raws.stanzaBarrier, marker(0xe000));
+
+		assert.equal(
+			syntax.parse(source(`const a = "${String.fromCharCode(0xe000)}";\n`), { from: 'src/example.tsx' }).raws.stanzaBarrier,
+			marker(0xe001),
+		);
+
+		const both = `const a = "${String.fromCharCode(0xe000, 0xe001)}";\n`;
+
+		assert.equal(syntax.parse(source(both), { from: 'src/example.tsx' }).raws.stanzaBarrier, marker(0xe002));
 	});
 });

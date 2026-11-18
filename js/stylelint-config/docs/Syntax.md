@@ -61,6 +61,7 @@ const error = css`
 - `stylelint-order` sorts the properties between two interpolations and never moves one, so each interpolation stays between its neighbors.
   The syntax writes a marker into the whitespace before the node, which the sorter reads as the `${` of the upstream parser, and drops it on output.
 - A property that stands out of order across an interpolation is reported and left, since moving it would change what the template says.
+- `order/order` and `custom-properties-alphabetical-order` only report in a block that holds a standalone interpolation, as they do with the upstream parser.
 - A rule that matches every property still sees the node,
   as `declaration-property-value-allowed-list` and `-disallowed-list` do with a catch-all pattern.
   So does one that counts declarations, as `declaration-block-single-line-max-declarations` does.
