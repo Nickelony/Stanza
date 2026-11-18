@@ -79,7 +79,7 @@ internal static class MarkupKeyCheck
 	private static string DescribeUnknownKey(string key)
 	{
 		const string problem = "not a key this tool reads, so it was ignored";
-		return OptionKeySuggestions.FindNearest(key) is { } nearest ? $"{problem}; did you mean '{nearest}'" : problem;
+		return OptionKeySuggestions.FindNearest(key) is { } nearest ? $"{problem}; the nearest known key is '{nearest}'" : problem;
 	}
 
 	private static string? CheckKeywords(string value)

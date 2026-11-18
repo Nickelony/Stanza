@@ -31,7 +31,7 @@ A value that names nothing fails the build with `STANZA001`, which lists the val
 - A new rule may join the `moderate` or `strong` level in a minor release, so a team that raises `StanzaSeverity` under `TreatWarningsAsErrors`
   pins the package version, as the [1.x policy](https://github.com/Nickelony/Stanza/blob/main/CONTRIBUTING.md#what-a-1x-release-may-change) says.
 - A configuration check, such as [`ZA1101`](https://github.com/Nickelony/Stanza/wiki/ZA1101-Use-a-known-Stanza-key), is outside the levels:
-  it reports at warning whatever the level, including `none`, and the severity, and only its own line turns it off.
+  it reports at warning whatever the level, including `none`, and the severity, until a line of `.editorconfig` changes it.
 - No level enables both halves of a [pair](https://github.com/Nickelony/Stanza/wiki/Terms).
 
 ## Which level
@@ -41,7 +41,7 @@ A value that names nothing fails the build with `STANZA001`, which lists the val
 | `minimal` | Spacing hygiene that rarely fires, such as the blank-line cap, the import and namespace gaps and brace padding | You want the fewest changes. |
 | `moderate` | Adds the blank lines around multi-line constructs and runs, switch sections, consistent braces, `is null` and comment-marker spacing | You want the Stanza look without rewriting code. |
 | `strong` | Adds taste and restructuring rules, documentation layout, argument names, limits and report-only rules | The team agrees on one full layout. |
-| `none` | No rule | You enable rules one by one in `.editorconfig`. |
+| `none` | No rule of the levels | You enable rules one by one in `.editorconfig`. |
 
 Start at `moderate`, and raise the level once its suggestions are fixed.
 The higher the level, the more a codebase that was not written for it reports, so apply the fixes before the severity becomes `warning`.
@@ -75,7 +75,10 @@ They are in no level under either value, so they report only where a line of you
 - A global file of your own at `-100` or `-99` ties with a preset file: Roslyn unsets each key the two share
   and reports the warning `MultipleGlobalAnalyzerKeys`, which names both files.
 - A bulk key, such as `dotnet_analyzer_diagnostic.category-Formatting.severity`, reaches the rules that ship on while no level file is added.
-  A level file states each rule, so with one a bulk key reaches no rule.
+  A level file states each rule, so with one a bulk key reaches no rule of a level.
+- A configuration check is in the `Configuration` category, and no level file names it.
+  So `dotnet_analyzer_diagnostic.category-Configuration.severity` and the bulk key that names no category reach it,
+  and a formatting key does not.
 
 To drop or tune one rule of a level, set its own line:
 

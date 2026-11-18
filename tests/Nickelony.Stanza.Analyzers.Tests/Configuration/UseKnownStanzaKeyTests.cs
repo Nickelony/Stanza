@@ -28,7 +28,7 @@ public sealed class UseKnownStanzaKeyTests
 		Assert.HasCount(1, result.Diagnostics);
 
 		Assert.AreEqual(
-			"Correct or remove the key 'stanza_max_line_lenght', which Stanza does not read; did you mean 'stanza_max_line_length'?",
+			"Correct or remove the key 'stanza_max_line_lenght', which Stanza does not read; the nearest known key is 'stanza_max_line_length'",
 			Message(result.Diagnostics[0])
 		);
 	}
@@ -130,7 +130,7 @@ public sealed class UseKnownStanzaKeyTests
 				stanza_cs_typo = 1
 				""",
 
-			paths: ["/Sample.cs"]
+			paths: [("/Sample.cs", Source)]
 		);
 
 		Assert.HasCount(2, diagnostics);
@@ -154,7 +154,7 @@ public sealed class UseKnownStanzaKeyTests
 				stanza_only_in_c = 1
 				""",
 
-			paths: ["/C.cs", "/A.g.cs", "/B.cs"]
+			paths: [("/C.cs", Source), ("/A.g.cs", Source), ("/B.cs", Source)]
 		);
 
 		Assert.HasCount(2, diagnostics);
@@ -225,6 +225,103 @@ public sealed class UseKnownStanzaKeyTests
 		Assert.IsEmpty(result.Diagnostics);
 	}
 
+	[TestMethod]
+	public async Task AFileWhoseTopPragmaHidesTheReportIsPassedOverForOneThatKeepsIt()
+	{
+		ImmutableArray<Diagnostic> diagnostics = await ReportConfiguredAsync(
+			globalConfig: "is_global = true",
+			editorConfig: "root = true\n\n[*.cs]\nstanza_typo = 1\n",
+
+			paths:
+			[
+				("/A.cs", "#pragma warning disable\n" + Source),
+				("/B.cs", "#pragma warning disable ZA1101\n" + Source),
+				("/C.cs", "#pragma warning disable CS1591\n" + Source),
+				("/D.cs", Source),
+			]
+		);
+
+		Assert.HasCount(1, diagnostics);
+		Assert.AreEqual("/C.cs", diagnostics[0].Location.GetLineSpan().Path);
+	}
+
+	[TestMethod]
+	public async Task APragmaThatIsRestoredBeforeTheFirstTokenDoesNotHideTheReport()
+	{
+		ImmutableArray<Diagnostic> diagnostics = await ReportConfiguredAsync(
+			globalConfig: "is_global = true",
+			editorConfig: "root = true\n\n[*.cs]\nstanza_typo = 1\n",
+
+			paths:
+			[
+				("/A.cs", "#pragma warning disable\n#pragma warning restore ZA1101\n" + Source),
+				("/B.cs", "#pragma warning disable\n" + Source),
+			]
+		);
+
+		Assert.HasCount(1, diagnostics);
+		Assert.AreEqual("/A.cs", diagnostics[0].Location.GetLineSpan().Path);
+	}
+
+	[TestMethod]
+	public async Task AKeyEveryFileHidesWithAPragmaIsLeftHidden()
+	{
+		ImmutableArray<Diagnostic> diagnostics = await ReportConfiguredAsync(
+			globalConfig: "is_global = true",
+			editorConfig: "root = true\n\n[*.cs]\nstanza_typo = 1\n",
+
+			paths:
+			[
+				("/A.cs", "#pragma warning disable\n" + Source),
+				("/B.cs", "#pragma warning disable ZA1101\n" + Source),
+			]
+		);
+
+		Assert.IsEmpty(diagnostics);
+	}
+
+	[TestMethod]
+	public async Task ABulkFormattingSeverityLeavesTheCheckAloneAndItsOwnCategoryKeyReachesIt()
+	{
+		AnalyzerRunResult formatting = await ReportWithSeverityAsync(
+			"dotnet_analyzer_diagnostic.category-Formatting.severity"
+		);
+
+		AnalyzerRunResult configuration = await ReportWithSeverityAsync(
+			"dotnet_analyzer_diagnostic.category-Configuration.severity"
+		);
+
+		Assert.HasCount(1, formatting.Diagnostics);
+		Assert.IsEmpty(configuration.Diagnostics);
+		Assert.AreEqual("Configuration", DiagnosticDescriptors.UseKnownStanzaKey.Category);
+	}
+
+	[TestMethod]
+	public void TheDescriptorTellsTheHostItReportsAtTheEndOfTheCompilation()
+	{
+		Assert.Contains(
+			WellKnownDiagnosticTags.CompilationEnd,
+			DiagnosticDescriptors.UseKnownStanzaKey.CustomTags
+		);
+	}
+
+	private static Task<AnalyzerRunResult> ReportWithSeverityAsync(string bulkKey)
+	{
+		return RoslynTestHarness.ReportAsync(
+			Source,
+
+			new RunOptions([new UseKnownStanzaKeyAnalyzer()])
+			{
+				AnalyzerConfigOptions = new Dictionary<string, string> { ["stanza_typo"] = "1" },
+
+				TreeOptions = new Dictionary<string, ReportDiagnostic>
+				{
+					[bulkKey] = ReportDiagnostic.Suppress,
+				},
+			}
+		);
+	}
+
 	private static string Message(Diagnostic diagnostic) =>
 		diagnostic.GetMessage(CultureInfo.InvariantCulture);
 
@@ -240,7 +337,7 @@ public sealed class UseKnownStanzaKeyTests
 	private static async Task<ImmutableArray<Diagnostic>> ReportConfiguredAsync(
 		string globalConfig,
 		string editorConfig,
-		string[] paths
+		(string Path, string Source)[] paths
 	)
 	{
 		var set = AnalyzerConfigSet.Create(ImmutableArray.Create(
@@ -250,7 +347,7 @@ public sealed class UseKnownStanzaKeyTests
 
 		var compilation = CSharpCompilation.Create(
 			"Probe",
-			paths.Select(path => CSharpSyntaxTree.ParseText(Source, path: path)),
+			paths.Select(file => CSharpSyntaxTree.ParseText(file.Source, path: file.Path)),
 			[MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]
 		);
 

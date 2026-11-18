@@ -1,4 +1,4 @@
-# The none level of Nickelony.Stanza.Analyzers, which turns every rule off.
+# The none level of Nickelony.Stanza.Analyzers, which turns every rule of the levels off.
 # Written from levels.txt. A .editorconfig line wins over this file, and so does a .globalconfig of the project.
 
 is_global = true

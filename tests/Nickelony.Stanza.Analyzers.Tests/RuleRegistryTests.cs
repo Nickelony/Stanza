@@ -11,6 +11,7 @@ using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.CodeFixes;
+using Nickelony.Stanza.Analyzers.Configuration;
 using Nickelony.Stanza.Markup.Core;
 using Nickelony.Stanza.Markup.Core.DocComments;
 using Nickelony.Stanza.Markup.Core.Options;
@@ -242,10 +243,12 @@ public sealed partial class RuleRegistryTests
 		{
 			Type type = analyzer.GetType();
 
-			// A rule that judges the whole compilation derives from StanzaAnalyzer itself.
+			// A configuration check judges the whole compilation, so it derives from StanzaAnalyzer itself.
+			bool isConfigurationCheck = type.Namespace == typeof(UseKnownStanzaKeyAnalyzer).Namespace;
+
 			if (
 				!bases.Any(baseType => baseType.IsAssignableFrom(type))
-				&& type.BaseType != typeof(StanzaAnalyzer)
+				&& !(isConfigurationCheck && type.BaseType == typeof(StanzaAnalyzer))
 			)
 			{
 				offenders.Add($"{type.Name} derives from none of the analyzer bases");
@@ -280,10 +283,13 @@ public sealed partial class RuleRegistryTests
 
 			string message = descriptor.MessageFormat.ToString(CultureInfo.InvariantCulture);
 
+			bool isConfigurationCheck =
+				analyzer.GetType().Namespace == typeof(UseKnownStanzaKeyAnalyzer).Namespace;
+
 			Assert.AreEqual(
-				"Formatting",
+				isConfigurationCheck ? "Configuration" : "Formatting",
 				descriptor.Category,
-				$"{descriptor.Id} is not a Formatting rule."
+				$"{descriptor.Id} is not in the category of its kind of rule."
 			);
 
 			Assert.IsTrue(

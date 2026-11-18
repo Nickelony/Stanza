@@ -59,8 +59,9 @@ public sealed class RulePageExampleGuardTests
 			+ "\tvoid OnSaved() { }\n\tvoid OnClosed() { }\n\n",
 	};
 
-	// A rule whose page shows configuration, not source, so no example of it runs through the harness: its tests drive the same keys.
-	private static readonly string[] s_configurationPages = ["ZA1101"];
+	// A configuration check shows configuration, not source, so no example of it runs through the harness: its tests drive the same keys.
+	private static readonly IReadOnlySet<string> s_configurationPages =
+		PresetFiles.ConfigurationChecks;
 
 	// The option pages whose examples are run, with the rule each page's examples show.
 	private static readonly Dictionary<string, string> s_optionPages = new(StringComparer.Ordinal)

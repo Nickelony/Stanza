@@ -101,6 +101,7 @@ Stanza rewrites whitespace only, so a rule whose fix changes tokens, or reports 
 | `ZA0951`, `ZA0952` Comment markers | ESLint `spaced-comment` or `@stylistic/spaced-comment`. By default it rewrites `///Text` as `// /Text`, changes banners such as `//-----` and writes no space before `*/`; the `markers`, `exceptions` and `balanced` options fix those. |
 | `ZA0953` Trailing comment | Prettier. |
 | `ZA1001` to `ZA1004` Size and depth | ESLint `max-len` (ZA1001), `max-statements` (ZA1002), `max-params` (ZA1003) and `max-depth` (ZA1004). `max-len` also reports a long string unless `ignoreStrings` is set, and `max-statements` counts statements as ZA1002 does, where `max-lines-per-function` counts lines. |
+| `ZA1101` Use a known Stanza key | ESLint, which validates the options of each rule against its schema, so a misspelled option is an error. |
 | `ZA2005`, `ZA2006`, `ZA2008`, `ZA2009` Markup | Prettier, which removes the padding and the extra blank lines of JSX and writes the spaced slash, so the tight form is not kept. |
 
 ## Pairs and their tight halves

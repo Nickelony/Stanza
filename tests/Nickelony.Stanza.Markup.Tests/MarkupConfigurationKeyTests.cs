@@ -553,7 +553,7 @@ public sealed class MarkupConfigurationKeyTests
 		Assert.HasCount(1, notices.Items);
 
 		Assert.Contains(
-			"sets stanza_max_line_lenght to '120': not a key this tool reads, so it was ignored; did you mean 'stanza_max_line_length'.",
+			"sets stanza_max_line_lenght to '120': not a key this tool reads, so it was ignored; the nearest known key is 'stanza_max_line_length'.",
 			notices.Items[0].Message
 		);
 

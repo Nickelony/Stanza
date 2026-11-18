@@ -250,16 +250,16 @@ so a new rule takes the next free number of its own in the range of its group:
 8. Pin the rule to `warning` in `.editorconfig`.
    A rule the repository must not run is pinned to `none` and listed in the `s_disabled` array of `FormatterSettingsGuardTests`.
 9. Give the rule its [level](docs/Presets.md) in `src/Nickelony.Stanza.Analyzers.Package/levels.txt`, and the same level in its readme row.
-   - A rule of the `minimal` or `moderate` level ships on as a suggestion, and any other rule ships off.
+   - A rule of the `minimal` or `moderate` level ships on as a suggestion, and any other rule ships off, apart from a configuration check.
      Set the descriptor's `isEnabledByDefault` and the severity of its `AnalyzerReleases.Unshipped.md` row to match:
      `true` and `Info`, or `false` and `Disabled`.
    - A rule the repository pins to `warning` is `strong`, and one it pins to `none` is `opt-in`, unless `PresetGuardTests` names it,
      as it does for the opt-in rules that Stanza's own code runs.
    - A markup rule of `ZA2xxx` takes no level, because `stanza-markup` has none: a severity line enables it, in the analyzer and in the tool alike.
      Its readme row says `No level` in the Level column, and the level table has no line for it.
-   - A configuration check of `ZA11xx` takes no level either, because it is outside the levels and ships on as a warning.
-   - Its descriptor says `Warning` and `true`, and its `AnalyzerReleases.Unshipped.md` row says `Warning`.
-   - Its readme row says `Every level` in the Level column, and the level table has no line for it.
+   - A configuration check of `ZA11xx` takes no level either, because it ships on as a warning outside the levels.
+     Its descriptor and its `AnalyzerReleases.Unshipped.md` row say `Warning`, and its descriptor says `true`.
+     Its readme row says `Every level`, and the level table has no line for it.
    - Run `PresetGuardTests` with `STANZA_WRITE_PRESETS=1` to write the files under `build/presets` from the table;
      the guards fail a rule the table skips and a file that differs from what the table writes.
 10. Run the [verification](#verification),

@@ -118,7 +118,7 @@ ZA1004  | Formatting | Disabled | Flatten deeply nested code.
 ZA1005  | Formatting | Disabled | Shorten a long condition.
 ZA1006  | Formatting | Disabled | Break up a long else-if chain.
 ZA1007  | Formatting | Disabled | Break up a long ternary chain.
-ZA1101  | Formatting | Warning  | Use a known Stanza key.
+ZA1101  | Configuration | Warning  | Use a known Stanza key.
 ZA2001  | Formatting | Disabled | Separate multi-line markup elements.
 ZA2002  | Formatting | Disabled | Keep multi-line markup elements together.
 ZA2003  | Formatting | Disabled | Keep single-line markup elements together.

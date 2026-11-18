@@ -403,6 +403,30 @@ public sealed partial class PresetGuardTests
 		GuardAssert.None(problems, "A configuration check is not outside the levels at warning");
 	}
 
+	[TestMethod]
+	public void TheConfigurationChecksAreTheRulesOfZA11xxAndTheSiteReadsThatRange()
+	{
+		string[] named =
+		[
+			.. RoslynTestHarness
+				.AllAnalyzers.Select(analyzer => analyzer.SupportedDiagnostics.Single().Id)
+				.Where(id => id.StartsWith("ZA11", StringComparison.Ordinal))
+				.Order(StringComparer.Ordinal),
+		];
+
+		Assert.AreSequenceEqual(
+			named,
+			PresetFiles.ConfigurationChecks.Order(StringComparer.Ordinal),
+			"The analyzers of the Configuration directory must be the rules of ZA11xx, and the reverse."
+		);
+
+		Assert.Contains(
+			"/^ZA11",
+			File.ReadAllText(RepositoryPaths.Below("site", "build", "readers", "levels.ts")),
+			"The site reads configuration checks as the rules of ZA11xx, which this guard keeps in step."
+		);
+	}
+
 	private static string[] ReadRuleIds()
 	{
 		return

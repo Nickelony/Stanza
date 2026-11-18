@@ -15,7 +15,7 @@ stanza_max_line_lenght = 120
 stanza_max_line_length = 120
 ```
 
-- The message names the key and, when a known key lies within three edits of it, adds `did you mean` and that key.
+- The message names the key and, when a known key lies within three edits of it, adds that key as the nearest known key.
   An edit is an insertion, a deletion, a substitution or a swap of two neighbors, and a tie goes to the key that sorts first.
 - A known key is one that has an option page, such as
   [`stanza_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_max_line_length),
@@ -31,9 +31,13 @@ stanza_max_line_length = 120
   A section that matches no C# file, such as `[*.md]`, is never read,
   so a misspelled key there is left to the warning of `stanza-markup`.
 - An analyzer cannot see the path or the line of a configuration file,
-  so the rule reports each key once for the compilation, at the first token of the first file by path that the key reaches.
-- A generated file is skipped, so search the configuration for the key the message names.
-- The report sits in a source file because a diagnostic with no location ignores the severity lines of an `.editorconfig`.
+  and a diagnostic with no location ignores the severity lines of an `.editorconfig`.
+  So the rule reports each key once for the compilation, at the first token of a source file the key reaches.
+- A report says nothing of the file that holds the key, so search the configuration for the key the message names.
+- The rule skips generated files, and picks the first file by path whose top holds no `#pragma warning disable` that names `ZA1101` or no ID.
+  A pragma could still hide the report, but only when every file the key reaches holds one.
 - The rule is a configuration check, which sits outside the [levels](https://github.com/Nickelony/Stanza/wiki/Presets),
   so every level, `none` included, and every `StanzaSeverity` leave it on at warning.
 - A project turns it off with `dotnet_diagnostic.ZA1101.severity = none` in a `[*.cs]` section or in a `.globalconfig`.
+- The rule is in the `Configuration` category, so `dotnet_analyzer_diagnostic.category-Formatting.severity` leaves it alone,
+  and `category-Configuration` or the analyzer-wide `dotnet_analyzer_diagnostic.severity` key reaches it, because no level file names it.

@@ -117,6 +117,7 @@ These rules stay out because a formatter undoes their fix, their trigger has no 
 | `ZA0953` Trailing comment | pycodestyle `E261`, and the formatters. |
 | `ZA1001` to `ZA1003` Size | Ruff `E501` for the line length, `PLR0915` for the statements of a member and `PLR0913` for the parameters. |
 | `ZA1004` Flatten deeply nested code | Ruff `PLR1702`, a preview rule that needs `--preview`, and pylint. |
+| `ZA1101` Use a known Stanza key | Python Stanza itself: `config_from_table` refuses an unknown key of `[tool.stanza]`. |
 | `ZA2001` to `ZA2010` Markup | No markup in Python code. |
 
 ## One owner per gap

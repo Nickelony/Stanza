@@ -165,7 +165,7 @@ internal static partial class PresetFiles
 		Dictionary<string, string> files = new(StringComparer.Ordinal)
 		{
 			[NoRules] = BuildFile(
-				$"# The {NoRules} level of Nickelony.Stanza.Analyzers, which turns every rule off.",
+				$"# The {NoRules} level of Nickelony.Stanza.Analyzers, which turns every rule of the levels off.",
 				LevelRank,
 				table.Rows.Select(row => (row.Id, NoRules))
 			),

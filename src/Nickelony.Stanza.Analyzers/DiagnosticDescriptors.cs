@@ -11,6 +11,9 @@ internal static class DiagnosticDescriptors
 {
 	private const string HelpRoot = "https://github.com/Nickelony/Stanza/wiki";
 
+	/// <summary>The category of a configuration check, so a bulk formatting severity does not move it.</summary>
+	private const string ConfigurationCategory = "Configuration";
+
 	public static readonly DiagnosticDescriptor SeparateMultiLineConstructs = Describe(
 		id: "ZA0001",
 		title: "Separate multi-line constructs",
@@ -1032,13 +1035,11 @@ internal static class DiagnosticDescriptors
 		isEnabledByDefault: false
 	);
 
-	public static readonly DiagnosticDescriptor UseKnownStanzaKey = Describe(
+	public static readonly DiagnosticDescriptor UseKnownStanzaKey = DescribeConfigurationCheck(
 		id: "ZA1101",
 		title: "Use a known Stanza key",
 		messageFormat: "Correct or remove the key '{0}', which Stanza does not read{1}",
-		description: "Requires each `stanza_` key set in the analyzer configuration to be one that a Stanza rule or tool reads.",
-		severity: DiagnosticSeverity.Warning,
-		isEnabledByDefault: true
+		description: "Requires each `stanza_` key set in the analyzer configuration to be one that a Stanza rule or tool reads."
 	);
 
 	public static readonly DiagnosticDescriptor SeparateMultiLineMarkupElements = Describe(
@@ -1150,8 +1151,32 @@ internal static class DiagnosticDescriptors
 			defaultSeverity: severity,
 			isEnabledByDefault,
 			description,
-			helpLinkUri: $"{HelpRoot}/{id}-{title.Replace(' ', '-')}",
+			helpLinkUri: GetHelpLink(id, title),
 			customTags
 		);
 	}
+
+	/// <summary>Describes a configuration check, on as a warning, reported when a compilation ends.</summary>
+	private static DiagnosticDescriptor DescribeConfigurationCheck(
+		string id,
+		string title,
+		string messageFormat,
+		string description
+	)
+	{
+		return new DiagnosticDescriptor(
+			id,
+			title,
+			messageFormat,
+			category: ConfigurationCategory,
+			defaultSeverity: DiagnosticSeverity.Warning,
+			isEnabledByDefault: true,
+			description,
+			helpLinkUri: GetHelpLink(id, title),
+			WellKnownDiagnosticTags.CompilationEnd
+		);
+	}
+
+	private static string GetHelpLink(string id, string title) =>
+		$"{HelpRoot}/{id}-{title.Replace(' ', '-')}";
 }
