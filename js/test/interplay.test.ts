@@ -3,7 +3,18 @@ import { describe, it } from 'node:test';
 
 import { Linter } from 'eslint';
 
-import { createConfig, fix, fixOneByOne, fixWithPreset, lines, lintWithPreset, readPresetRules, readSuppressedMessages, settled } from './helpers.ts';
+import {
+	createConfig,
+	fix,
+	fixOneByOne,
+	fixRule,
+	fixWithPreset,
+	lines,
+	lintWithPreset,
+	readPresetRules,
+	readSuppressedMessages,
+	settled,
+} from './helpers.ts';
 
 /** Lists the rules that report a source, one entry for each message. */
 function reporters(
@@ -1195,6 +1206,40 @@ describe('the keep rules under a directive', () => {
 			assert.equal(settleUnderDefaults(source, { ...readPresetRules('strong'), [rule]: 'error' }, settings), expected);
 		});
 	}
+
+	it('keep-statement-runs-together silenced beside gather-loose-statements keeps the blank line and the directive in every fix order', () => {
+		const rules = { 'keep-statement-runs-together': 'error', 'gather-loose-statements': 'error', 'separate-declaration-runs': 'error' } as const;
+
+		const source = lines(
+			'function f() {',
+			'  const a = 1;',
+			'',
+			'  const b = 2;',
+			'',
+			'  // eslint-disable-next-line stanza/keep-statement-runs-together',
+			'  const c = 3;',
+			'',
+			'  const d = 4;',
+			'',
+			'  const e = 5;',
+			'}',
+		);
+
+		const expected = lines(
+			'function f() {',
+			'  const a = 1;',
+			'  const b = 2;',
+			'',
+			'  // eslint-disable-next-line stanza/keep-statement-runs-together',
+			'  const c = 3;',
+			'  const d = 4;',
+			'  const e = 5;',
+			'}',
+		);
+
+		assert.equal(settleUnderDefaults(source, rules, {}), expected);
+		assert.equal(fixRule(source, rules, 'gather-loose-statements'), source);
+	});
 });
 
 describe('the yield runs', () => {

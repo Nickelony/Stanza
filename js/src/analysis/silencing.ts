@@ -66,21 +66,32 @@ function readSwitches(directive: DisableDirective): { block: Switch[]; line: Swi
 	}
 }
 
-/** Tells whether the last switch at or before the position that names the rule, or every rule, turns it off. */
-function isSilencedBy(switches: readonly Switch[], ruleId: string, position: TSESTree.Position): boolean {
-	let silenced = false;
+/** Tells whether a switch stands after the position, which ESLint compares with a 1-based column. */
+function isAfter(entry: Switch, position: TSESTree.Position): boolean {
+	return entry.line > position.line || (entry.line === position.line && entry.column > position.column + 1);
+}
 
-	for (const entry of switches) {
-		if (entry.line > position.line || (entry.line === position.line && entry.column > position.column + 1)) {
-			break;
-		}
+/** Tells whether the last switch at or before the position turns the rule off, finding it by bisection in the switches that name the rule or every rule. */
+function isSilencedBy(switches: readonly Switch[], position: TSESTree.Position): boolean {
+	let low = 0;
+	let high = switches.length;
 
-		if (entry.ruleIds.length === 0 || entry.ruleIds.includes(ruleId)) {
-			silenced = entry.disables;
+	while (low < high) {
+		const middle = (low + high) >>> 1;
+
+		if (isAfter(switches[middle] as Switch, position)) {
+			high = middle;
+		} else {
+			low = middle + 1;
 		}
 	}
 
-	return silenced;
+	return low > 0 && (switches[low - 1] as Switch).disables;
+}
+
+/** Keeps the switches that name the rule or every rule, in their order. */
+function switchesOf(switches: readonly Switch[], ruleId: string): readonly Switch[] {
+	return switches.filter((entry) => entry.ruleIds.length === 0 || entry.ruleIds.includes(ruleId));
 }
 
 /**
@@ -99,9 +110,25 @@ export function readSilencing(sourceCode: SourceCode): Silencing {
 	const block = switches.flatMap((entry) => entry.block).toSorted(compareSwitches);
 	const line = switches.flatMap((entry) => entry.line).toSorted(compareSwitches);
 	const starts = new Set(directives.map((directive) => directive.node.range[0]));
+	const byRule = new Map<string, { block: readonly Switch[]; line: readonly Switch[] }>();
+
+	const switchesFor = (ruleId: string): { block: readonly Switch[]; line: readonly Switch[] } => {
+		let entry = byRule.get(ruleId);
+
+		if (entry === undefined) {
+			entry = { block: switchesOf(block, ruleId), line: switchesOf(line, ruleId) };
+			byRule.set(ruleId, entry);
+		}
+
+		return entry;
+	};
 
 	return {
-		silences: (ruleId, position) => isSilencedBy(block, ruleId, position) || isSilencedBy(line, ruleId, position),
+		silences: (ruleId, position) => {
+			const entry = switchesFor(ruleId);
+			return isSilencedBy(entry.block, position) || isSilencedBy(entry.line, position);
+		},
+
 		isEslintDirective: (comment) => starts.has(comment.range[0]),
 	};
 }

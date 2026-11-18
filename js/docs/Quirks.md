@@ -31,8 +31,17 @@ The [shared analysis](https://github.com/Nickelony/Stanza/blob/main/js/src/analy
 - A rule that removes the blank lines of runs ends its run at a gap where a directive silences it, as a `#pragma` does in C#.
   No fix of its group removes that gap's blank line.
 - That rule still reports the gap without a fix wherever a run could take it, so ESLint counts the directive as used.
+- A rule that removes the blank lines of runs leaves a gap as written where a directive silences an earlier rule of that kind,
+  such as `keep-statement-runs-together` before `gather-loose-statements`.
+- A fix that took such a gap would leave the directive silencing nothing, so ESLint would delete it,
+  and the fix of one rule would write another text than the fixes of all of them.
 - A directive that silences only other rules ends no run, so a run does not depend on whether ESLint deletes it.
 - With inline configuration turned off, a silenced report shows, says that a comment silences the rule there, and fixes nothing.
+- A rule cannot see that inline configuration is off, so that report stands at every gap a run could take,
+  one where no run is long enough to gather included.
+- A silenced rule reports the gaps its directive covers, which keeps the directive used.
+  So ESLint never reports as unused a directive whose region holds such a gap, a bare `/* eslint-disable */` included,
+  and a stale directive of that kind goes by hand.
 - `separate-jump-statements` ends its stanza at each gap another enabled rule asks for.
 - A container of exactly two single-line units belongs to `keep-two-units-together`, as the [next section](#two-single-line-units) says.
 - A gap is satisfied when a blank line stands anywhere between the previous unit and the first line of the next unit's leading comments.

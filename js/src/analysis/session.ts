@@ -693,6 +693,7 @@ class Session {
 	 * Gives each blank line a rule removes to the first rule of the remove order that asks for it, with the gaps its fix removes together.
 	 * A gap where a directive silences the rule ends a run and loses its blank line to no fix, so the directive keeps what it covers.
 	 * The rule still reports that gap, silenced and without a fix, wherever a run could take it, so ESLint counts the directive as used.
+	 * A later rule leaves such a gap as written, so that no fix of its own removes the blank line the directive stands above and leaves the directive unused.
 	 */
 	private readRemovals(
 		container: Container,
@@ -701,6 +702,8 @@ class Session {
 		reported: Set<Gap>,
 		owned: Map<RuleName, OwnedGap[]>,
 	): void {
+		const held = new Set<Gap>();
+
 		for (const name of removers) {
 			const claimant = this.claimants.get(name);
 			const removal = claimant?.removal;
@@ -719,19 +722,22 @@ class Session {
 				const silencedAt = silenced.has(index) ? this.silencedAt(name, container, index) : undefined;
 
 				if (gap !== undefined && next !== undefined && silencedAt !== undefined) {
+					held.add(gap);
 					addOwnedGap(owned, name, { container, gap, next, silencedAt });
 				}
 			}
 
+			const isLeftAlone = (index: number): boolean => silenced.has(index) || held.has(container.gaps[index] as Gap);
+
 			for (const group of groups) {
-				const gaps = group.flatMap((index) => (silenced.has(index) ? [] : (container.gaps[index] ?? [])));
+				const gaps = group.flatMap((index) => (isLeftAlone(index) ? [] : (container.gaps[index] ?? [])));
 				let hasFix = false;
 
 				for (const index of group) {
 					const gap = container.gaps[index];
 					const next = container.units[index + 1];
 
-					if (gap !== undefined && next !== undefined && !silenced.has(index) && !reported.has(gap)) {
+					if (gap !== undefined && next !== undefined && !isLeftAlone(index) && !reported.has(gap)) {
 						const fixesGroup = !hasFix;
 
 						hasFix = true;
