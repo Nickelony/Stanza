@@ -62,8 +62,7 @@ internal static class ConditionalBlocks
 
 	/// <summary>Pairs the directives of a tree that parses by position, in one pass in text order.</summary>
 	/// <remarks>
-	/// Roslyn's <c>GetRelatedDirectives</c> finds each neighbor by a search of the parent's children from their start,
-	/// which takes the time of the siblings before it, so the cost of a long run of blocks grows with its square.
+	/// Roslyn's <c>GetRelatedDirectives</c> searches the parent's children from their start, which squares a long run.
 	/// </remarks>
 	private static Dictionary<int, List<DirectiveTriviaSyntax>> ReadRelatedLists(SyntaxTree syntaxTree)
 	{

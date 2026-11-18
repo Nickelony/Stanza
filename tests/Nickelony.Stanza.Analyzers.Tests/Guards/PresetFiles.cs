@@ -257,8 +257,7 @@ internal static partial class PresetFiles
 	{
 		/// <summary>The rules of the level and of each level before it.</summary>
 		/// <remarks>
-		/// At strong the csharpier formatter swaps in the overlay, and the level <c>none</c> or an
-		/// unknown one yields no rules.
+		/// At strong csharpier swaps in its overlay; <c>none</c> or an unknown level has no rules.
 		/// </remarks>
 		internal string[] ReadEnabled(string level, string? formatter = null)
 		{
