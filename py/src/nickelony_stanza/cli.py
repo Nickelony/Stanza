@@ -223,7 +223,6 @@ def run(argv: Sequence[str] | None = None) -> int:
 
     # One set of indexes serves every file of the run, so each module a file imports is parsed once.
     projects = Projects(config.options.source_roots)
-
     failed = False
     findings = 0
     changed = 0

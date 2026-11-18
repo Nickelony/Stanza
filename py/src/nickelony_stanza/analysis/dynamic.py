@@ -54,7 +54,6 @@ class NamespaceWatch:
 
     def __init__(self) -> None:
         self.rewrites = False
-
         self._binds_builtins = False
         self._getattr_of_builtins = False
         self._callees: set[int] = set()

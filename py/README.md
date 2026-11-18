@@ -157,9 +157,10 @@ python -m pytest
 python -m ruff check .
 python -m ruff format --check .
 python -m mypy
-stanza-py check src tests
+stanza-py check src
+stanza-py check --disable ZA3055 tests
 ```
 
-The last command lints the package's own source with the `strong` preset and `ZA3056`,
-minus the call rules, because the code passes its arguments by position.
+The last two commands lint the package's own code with the `strong` preset, `ZA3055` and `ZA3056`,
+minus the call rules, because the code passes its arguments by position; the tests also leave `ZA3055` off.
 The suites in `tests` fix a corpus in several rule orders, round-trip it through Black and Ruff, and run every example of the rule pages.

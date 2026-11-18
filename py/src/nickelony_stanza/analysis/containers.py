@@ -11,7 +11,6 @@ from nickelony_stanza.analysis.source import SourceFile
 from nickelony_stanza.analysis.syntax import ends_with_definition, is_definition, is_docstring_statement
 
 _BLOCK_FIELDS = ("body", "orelse", "finalbody")
-
 _TRY = (ast.Try, getattr(ast, "TryStar", ast.Try))
 _CLAUSE_OWNERS = (ast.If, ast.For, ast.AsyncFor, ast.While)
 

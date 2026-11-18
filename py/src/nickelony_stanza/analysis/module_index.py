@@ -53,7 +53,6 @@ from nickelony_stanza.analysis.shapes import Reason, Skipped, Source
 from nickelony_stanza.paths import is_broad_directory, is_skipped_directory
 
 LocatedStatus = Literal["source", "namespace", "unreadable", "missing", "shadowed"]
-
 _EXTENSION_SUFFIXES = tuple(importlib.machinery.EXTENSION_SUFFIXES)
 _SOURCE_SUFFIXES = tuple(importlib.machinery.SOURCE_SUFFIXES)
 _BYTECODE_SUFFIXES = tuple(importlib.machinery.BYTECODE_SUFFIXES)

@@ -233,7 +233,6 @@ def _find_loose_gaps(container: Container, context: ClaimContext, limit: int) ->
     def is_loose(gap_index: int) -> bool:
         gap = container.gaps[gap_index]
         removable = len(gap.blank_lines) > 0 and gap.restriction is None and not gap.has_comment
-
         protected = gap_index in context.protected_sections_of(container)
 
         return (

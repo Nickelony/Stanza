@@ -149,7 +149,7 @@ and commit the table with the CSharpier version in the message.
   Its pack smoke job installs both tarballs beside the newest ESLint and Stylelint and lints a `.ts` and a `.scss` file.
 - A change under [`py/`](py/), or to the rule pages of `docs/rules` and `js/docs/rules` that its tests read,
   also runs the gates of the [Python workflow](.github/workflows/py.yml), in `py/`, after `pip install -e ".[dev]"`:
-  `pytest`, `ruff check .`, `ruff format --check .`, `mypy` and `stanza-py check src tests`.
+  `pytest`, `ruff check .`, `ruff format --check .`, `mypy`, `stanza-py check src` and `stanza-py check --disable ZA3055 tests`.
   The workflow runs them on Python 3.10 to 3.14.
 - The `dev` extra of [`py/pyproject.toml`](py/pyproject.toml) pins each tool, so a new release cannot fail a CI leg; the comment there says why flake8 has two pins.
   To bump a pin, change it, run `pip install -e ".[dev]"` in a new virtual environment, run the gates above, and fix what the new version reports.

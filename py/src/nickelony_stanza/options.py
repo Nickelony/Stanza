@@ -25,6 +25,7 @@ MAX_LOOSE_RUN_SIZE_LIMIT = 1000
 DEFAULT_NAMED_ARGUMENT_MIN_ARGUMENTS = 4
 NAMED_ARGUMENT_MIN_ARGUMENTS_LIMIT = 1000
 
+# What the receiver rules compare to tell two receivers apart: the root name alone, or the whole path.
 ReceiverComparison = Literal["root", "path"]
 
 DEFAULT_RECEIVER_COMPARISON: ReceiverComparison = "root"

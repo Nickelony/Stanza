@@ -179,7 +179,6 @@ class _ClaimReader:
         # The gaps the independent separators ask for, and the ones every separator asks for.
         self.union = [False] * size
         self.everything = [False] * size
-
         self.asked_by_rule: dict[str, list[bool]] = {}
 
         separating = [rule for rule in enabled if rule.role == "separate"]
@@ -453,7 +452,6 @@ def analyze(
                 borders = receivers_of(container).borders if environment.receiver_separation else frozenset()
 
                 borders |= protected_sections_of(container)
-
                 runs_by_container[key] = find_runs(container, environment, typed=typed, borders=borders)
 
             return runs_by_container[key]
@@ -500,7 +498,6 @@ def _own_gaps(
     """Gives each gap of a container to the first rule that asks for it, adding it to `owned` by the rule's code."""
     separators = [rule for rule in judging if rule.role == "separate"]
     keepers = [rule for rule in judging if rule.role != "separate"]
-
     removal_groups = _find_removal_groups(container, keepers, claimed)
 
     reported: set[int] = set()
