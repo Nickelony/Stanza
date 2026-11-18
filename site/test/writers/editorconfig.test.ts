@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { highlightCatalog } from '../../build/render/highlight.ts';
 import { findConflicts } from '../../src/editorconfig/conflicts.ts';
 import { importEditorConfig } from '../../src/editorconfig/import.ts';
-import { changedCount, emptyConfig, isRuleChanged } from '../../src/state/config.ts';
+import { changedCount, emptyConfig, isRuleChanged, withRule } from '../../src/state/config.ts';
 import { optionDefaultLabel } from '../../src/state/labels.ts';
 import { enabledAt, levels } from '../../src/state/levels.ts';
 import { lineText } from '../../src/util/line-text.ts';
@@ -475,12 +475,15 @@ describe('the .editorconfig of the Markup page', () => {
 		expect(findConflicts(realMarkup, picks)).toEqual([]);
 	});
 
-	it('writes the half the tool applies by default as before when the other half is chosen then removed', () => {
+	it('writes the half the tool applies by default again once the visitor sets the other half back to the default', () => {
 		const chosen = markupConfig({ rules: { ZA2002: 'warning' } });
-		const text = generateEditorConfig(realMarkup, { ...chosen, rules: {} });
+		const back = withRule(chosen, 'ZA2002', 'default');
+		const text = generateEditorConfig(realMarkup, back);
 
+		expect(analyzerPart(generateEditorConfig(realMarkup, chosen))).not.toContain('ZA2001');
 		expect(analyzerPart(text)).toContain('dotnet_diagnostic.ZA2001.severity = suggestion');
-		expect(findConflicts(realMarkup, { ...chosen, rules: {} })).toEqual([]);
+		expect(markupPart(text)).toBe('');
+		expect(findConflicts(realMarkup, back)).toEqual([]);
 	});
 
 	it('still warns when both halves of the pair are set', () => {
@@ -575,6 +578,19 @@ describe('the .editorconfig of the Markup page', () => {
 				expect(back.config.options).toEqual({});
 				expect(realMarkup.rules.filter((rule) => isRuleChanged(rule, back.config))).toEqual([]);
 			}
+		}
+	});
+
+	it('gives back the chosen half of a pair alone, whose export disables the other half only for the tool', () => {
+		for (const everySetting of [false, true]) {
+			const picks = markupConfig({ everySetting, rules: { ZA2002: 'warning' } });
+			const exported = generateEditorConfig(realMarkup, picks);
+			const back = importEditorConfig(realMarkup, exported, markupConfig({}));
+
+			expect(back.skipped).toEqual([]);
+			expect(back.config.rules).toEqual({ ZA2002: 'warning' });
+			expect(realMarkup.rules.filter((rule) => isRuleChanged(rule, back.config)).map((rule) => rule.id)).toEqual(['ZA2002']);
+			expect(generateEditorConfig(realMarkup, { ...back.config, everySetting })).toBe(exported);
 		}
 	});
 

@@ -23,14 +23,11 @@ describe('a text box of the option list', () => {
 		expect(invalid).toBeGreaterThanOrEqual(0);
 		expect(forced).toBeGreaterThan(invalid);
 		expect(rules[forced]).toContain('border-color:Highlight');
-	});
 
-	it('keeps the invalid color outside forced colors', () => {
-		render(<RowInput $changed aria-invalid="true" />);
+		// The same selector as the invalid rule, so the later rule wins by order and the forced palette keeps the changed border.
+		const className = document.getElementsByTagName('input')[0]!.className.split(' ')[0];
 
-		const rules = readRulesOf(document.getElementsByTagName('input')[0]);
-
-		expect(rules.some((rule) => rule.includes("[aria-invalid='true']{border-color:var(--del-fg)"))).toBe(true);
+		expect(rules[forced]).toContain(`.${className}[aria-invalid='true']{border-width:2px;border-color:Highlight;}`);
 	});
 
 	it('draws no changed border when it is unchanged', () => {

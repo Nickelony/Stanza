@@ -2,6 +2,7 @@ import {
 	checkOption,
 	differsFromDefaultIn,
 	hasExplicitPairSetting,
+	isReporting,
 	isRuleChanged,
 	isRuleChangedIn,
 	readsOption,
@@ -9,7 +10,7 @@ import {
 	type Config,
 	type Context,
 } from '../state/config.ts';
-import type { Catalog, Option, Severity } from '../state/model.ts';
+import type { Catalog, Option, Rule, Severity } from '../state/model.ts';
 import { counted } from '../util/counted.ts';
 
 /** The longest file the page reads, in characters; an `.editorconfig` that matters is far shorter. */
@@ -531,8 +532,27 @@ function resolveReading<S>(catalog: Catalog<S>, reading: Reading, current: Confi
 	const options: Record<string, string> = {};
 	const resolved = new Map(catalog.rules.map((rule) => [rule.id, resolve(collected.rules, rule.id, skipped)]));
 
+	// The page writes a `none` in the markup section for the half the tool applies by default once the other half is enabled, which says nothing the pair does not.
+	const isReplaced = (rule: Rule<S>): boolean => {
+		const value = resolved.get(rule.id);
+		const opposite = rule.opposite === undefined ? undefined : resolved.get(rule.opposite)?.value;
+
+		return (
+			value?.from === 'markup' &&
+			value.value === 'none' &&
+			rule.level === 'no-level' &&
+			rule.csharp?.markupOnByDefault === true &&
+			opposite !== undefined &&
+			opposite !== 'default' &&
+			isReporting(opposite as Severity)
+		);
+	};
+
 	const explicit = Object.fromEntries(
-		[...resolved].flatMap(([id, value]) => (value === undefined || value.value === 'default' ? [] : [[id, value.value as Severity]])),
+		catalog.rules.flatMap((rule) => {
+			const value = resolved.get(rule.id);
+			return value === undefined || value.value === 'default' || isReplaced(rule) ? [] : [[rule.id, value.value as Severity]];
+		}),
 	);
 
 	const trial: Config = { ...current, rules: explicit };
@@ -540,7 +560,7 @@ function resolveReading<S>(catalog: Catalog<S>, reading: Reading, current: Confi
 	for (const rule of catalog.rules) {
 		const value = resolved.get(rule.id);
 
-		if (value === undefined || value.value === 'default') {
+		if (value === undefined || value.value === 'default' || isReplaced(rule)) {
 			continue;
 		}
 
