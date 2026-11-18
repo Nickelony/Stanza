@@ -24,41 +24,253 @@ public sealed partial class ProjectGuardTests
 		"Nickelony.Stanza.Analyzers.Package",
 	};
 
-	private static readonly string[] s_attachedProjects =
+	private const string AttachedCondition = "'$(StanzaRunAnalyzers)' != 'false'";
+
+	// What Directory.Build.props attaches, in its order, to each project that does not opt out.
+	private static readonly string[] s_attachedProperties =
 	[
-		"Nickelony.Stanza.Analyzers",
-		"Nickelony.Stanza.Analyzers.CodeFixes",
+		"$(StanzaAnalyzerProject)",
+		"$(StanzaFixProject)",
 	];
 
-	// A run of the whole suite evaluates a dozen projects at once beside the rest of the tests, so a slow machine needs minutes, and the runner's own timeout is five.
+	// A run of the whole suite evaluates projects beside the rest of the tests, so a slow machine needs minutes, and the runner's own timeout is five.
 	private static readonly TimeSpan s_evaluationLimit = TimeSpan.FromMinutes(4);
 
 	[GeneratedRegex("<Project Path=\"(?<path>[^\"]+)\"", RegexOptions.CultureInvariant)]
 	private static partial Regex SolutionProject();
 
+	// The props file is the one place that attaches the pair, so reading it and each project file stands for evaluating every project.
 	[TestMethod]
-	public async Task EveryProjectButTheAnalyzersOwnRunsTheAnalyzerAndItsFixes()
+	public void EveryProjectButTheAnalyzersOwnRunsTheAnalyzerAndItsFixes()
 	{
-		string[] projects =
+		var projects = SolutionProject()
+			.Matches(File.ReadAllText(RepositoryPaths.Below("Nickelony.Stanza.slnx")))
+			.Select(match => match.Groups["path"].Value)
+			.ToDictionary(
+				path => Path.GetFileNameWithoutExtension(path),
+				path => XDocument.Load(RepositoryPaths.Below(path.Split('/'))),
+				StringComparer.Ordinal
+			);
+
+		// MSBuild reads only the nearest Directory.Build.props, so a nested one has to import the one above it.
+		var nested = RepositoryFiles
+			.Under(RepositoryPaths.Root(), "Directory.Build.props")
+			.Where(file => Path.GetDirectoryName(file) != RepositoryPaths.Root())
+			.ToDictionary(
+				file => Path.GetRelativePath(RepositoryPaths.Root(), file).Replace('\\', '/'),
+				XDocument.Load,
+				StringComparer.Ordinal
+			);
+
+		var props = XDocument.Load(RepositoryPaths.Below("Directory.Build.props"));
+
+		GuardAssert.None(
+			FindAttachmentProblems(props, nested, projects),
+			"The analyzer and its fixes are not attached as Directory.Build.props states"
+		);
+	}
+
+	[TestMethod]
+	public void AProjectThatOptsOutOrInAgainstItsPlaceIsFound()
+	{
+		Assert.IsEmpty(FindAttachmentProblems(SoundProps(), SoundNested(), SoundProjects()));
+
+		var flipped = new Dictionary<string, XDocument>
+		{
+			["Nickelony.Stanza.Analyzers"] = XDocument.Parse("<Project />"),
+			["Nickelony.Stanza.Markup"] = XDocument.Parse(OptOut),
+		};
+
+		Assert.HasCount(2, FindAttachmentProblems(SoundProps(), SoundNested(), flipped));
+	}
+
+	[TestMethod]
+	public void AnAttachmentThatSendsAReferenceNowhereOrOutOfOrderIsFound()
+	{
+		var noOutput = XDocument.Parse(
+			"""
+			<Project>
+				<ItemGroup Condition="'$(StanzaRunAnalyzers)' != 'false'">
+					<ProjectReference Include="$(StanzaAnalyzerProject)" OutputItemType="Analyzer" />
+					<ProjectReference Include="$(StanzaFixProject)" />
+				</ItemGroup>
+			</Project>
+			"""
+		);
+
+		var unconditional = XDocument.Parse(
+			"""
+			<Project>
+				<ItemGroup>
+					<ProjectReference Include="$(StanzaAnalyzerProject)" OutputItemType="Analyzer" />
+					<ProjectReference Include="$(StanzaFixProject)" OutputItemType="Analyzer" />
+				</ItemGroup>
+			</Project>
+			"""
+		);
+
+		Assert.ContainsSingle(FindAttachmentProblems(noOutput, SoundNested(), SoundProjects()));
+
+		Assert.ContainsSingle(
+			FindAttachmentProblems(unconditional, SoundNested(), SoundProjects())
+		);
+	}
+
+	[TestMethod]
+	public void ANestedPropsFileThatDoesNotImportTheOneAboveIsFound()
+	{
+		var nested = new Dictionary<string, XDocument>
+		{
+			["tests/Directory.Build.props"] = XDocument.Parse("<Project />"),
+		};
+
+		Assert.ContainsSingle(FindAttachmentProblems(SoundProps(), nested, SoundProjects()));
+	}
+
+	[TestMethod]
+	public void AProjectThatRemovesOrRedirectsAReferenceOfThePairIsFound()
+	{
+		var removing = XDocument.Parse(
+			"""<Project><ItemGroup><ProjectReference Remove="$(StanzaFixProject)" /></ItemGroup></Project>"""
+		);
+
+		var redirecting = XDocument.Parse(
+			"""<Project><ItemGroup><ProjectReference Update="$(StanzaFixProject)" OutputItemType="None" /></ItemGroup></Project>"""
+		);
+
+		var projects = new Dictionary<string, XDocument>
+		{
+			["Nickelony.Stanza.Markup"] = removing,
+			["Nickelony.Stanza.Format"] = redirecting,
+		};
+
+		Assert.HasCount(2, FindAttachmentProblems(SoundProps(), SoundNested(), projects));
+	}
+
+	private const string OptOut =
+		"<Project><PropertyGroup><StanzaRunAnalyzers>false</StanzaRunAnalyzers></PropertyGroup></Project>";
+
+	private static XDocument SoundProps()
+	{
+		return XDocument.Parse(
+			"""
+			<Project>
+				<ItemGroup Condition="'$(StanzaRunAnalyzers)' != 'false'">
+					<ProjectReference Include="$(StanzaAnalyzerProject)" OutputItemType="Analyzer" />
+					<ProjectReference Include="$(StanzaFixProject)" OutputItemType="Analyzer" />
+				</ItemGroup>
+			</Project>
+			"""
+		);
+	}
+
+	private static Dictionary<string, XDocument> SoundNested()
+	{
+		return new()
+		{
+			["tests/Directory.Build.props"] = XDocument.Parse(
+				"""<Project><Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '../'))" /></Project>"""
+			),
+		};
+	}
+
+	private static Dictionary<string, XDocument> SoundProjects()
+	{
+		return new()
+		{
+			["Nickelony.Stanza.Analyzers"] = XDocument.Parse(OptOut),
+			["Nickelony.Stanza.Markup"] = XDocument.Parse("<Project />"),
+		};
+	}
+
+	// Each project gets the pair from the props file unless it sets StanzaRunAnalyzers to false,
+	// and no project file takes a reference of the pair away or changes where it goes.
+	private static List<string> FindAttachmentProblems(
+		XDocument props,
+		IReadOnlyDictionary<string, XDocument> nestedProps,
+		IReadOnlyDictionary<string, XDocument> projects
+	)
+	{
+		List<string> problems = [];
+
+		XElement[] attached =
 		[
-			.. SolutionProject()
-				.Matches(File.ReadAllText(RepositoryPaths.Below("Nickelony.Stanza.slnx")))
-				.Select(match => match.Groups["path"].Value),
+			.. props
+				.Descendants("ItemGroup")
+				.Where(group => (string?)group.Attribute("Condition") == AttachedCondition)
+				.Elements("ProjectReference"),
 		];
 
-		string[][] attached = await Task.WhenAll(projects.Select(ReadAttachedAnalyzersAsync));
-
-		for (int index = 0; index < projects.Length; index++)
+		if (!attached.Select(GetTarget).SequenceEqual(s_attachedProperties))
 		{
-			string name = Path.GetFileNameWithoutExtension(projects[index]);
-			string[] expected = s_unanalyzedProjects.Contains(name) ? [] : s_attachedProjects;
-
-			Assert.AreSequenceEqual(
-				expected,
-				attached[index],
-				$"{name} does not attach the analyzer and its fixes as Directory.Build.props does."
+			problems.Add(
+				$"Directory.Build.props does not attach {string.Join(" then ", s_attachedProperties)} where StanzaRunAnalyzers is not false."
 			);
 		}
+
+		foreach (XElement reference in attached.Where(reference => !IsAnalyzer(reference)))
+			problems.Add($"Directory.Build.props attaches {GetTarget(reference)} as no analyzer.");
+
+		foreach ((string path, XDocument document) in nestedProps)
+		{
+			if (!document.Descendants("Import").Any(ImportsTheFileAbove))
+				problems.Add($"{path} does not import the Directory.Build.props above it.");
+		}
+
+		foreach ((string name, XDocument document) in projects)
+		{
+			bool optsOut = document
+				.Descendants("StanzaRunAnalyzers")
+				.Any(property => property.Value.Trim() == "false");
+
+			if (optsOut != s_unanalyzedProjects.Contains(name))
+			{
+				problems.Add(
+					$"{name} opts {(optsOut ? "out of" : "into")} the analyzer and its fixes against its place."
+				);
+			}
+
+			foreach (XElement reference in document.Descendants("ProjectReference"))
+			{
+				if (reference.Attribute("Remove") is not null)
+				{
+					problems.Add(
+						$"{name} removes a project reference, which could take the pair away."
+					);
+				}
+
+				if (
+					s_attachedProperties.Contains(GetTarget(reference))
+					&& reference.Attribute("OutputItemType") is not null
+				)
+				{
+					problems.Add(
+						$"{name} changes where the reference {GetTarget(reference)} goes."
+					);
+				}
+			}
+		}
+
+		return problems;
+	}
+
+	private static bool IsAnalyzer(XElement reference) =>
+		(string?)reference.Attribute("OutputItemType") == "Analyzer";
+
+	private static string? GetTarget(XElement reference)
+	{
+		XAttribute? target = reference.Attribute("Include") ?? reference.Attribute("Update");
+		return target?.Value;
+	}
+
+	private static bool ImportsTheFileAbove(XElement import)
+	{
+		string project = (string?)import.Attribute("Project") ?? string.Empty;
+
+		return project.Contains(
+			"GetPathOfFileAbove('Directory.Build.props'",
+			StringComparison.Ordinal
+		);
 	}
 
 	// The self-check runs the analyzers over their own sources, so a source it leaves out is one they never judge.
@@ -311,31 +523,5 @@ public sealed partial class ProjectGuardTests
 		Assert.AreEqual(0, result.ExitCode, result.Error + result.Output);
 
 		return JsonDocument.Parse(result.Output);
-	}
-
-	// The evaluated items, because Directory.Build.props attaches the pair and a project can only update it.
-	private static async Task<string[]> ReadAttachedAnalyzersAsync(string project)
-	{
-		using JsonDocument document = await EvaluateAsync(project, "-getItem:ProjectReference");
-
-		if (
-			!document
-				.RootElement.GetProperty("Items")
-				.TryGetProperty("ProjectReference", out JsonElement references)
-		)
-		{
-			return [];
-		}
-
-		return
-		[
-			.. references
-				.EnumerateArray()
-				.Where(reference =>
-					reference.GetProperty("OutputItemType").GetString() == "Analyzer"
-				)
-				.Select(reference => reference.GetProperty("Filename").GetString() ?? string.Empty)
-				.Order(StringComparer.Ordinal),
-		];
 	}
 }
