@@ -2,7 +2,7 @@ using System;
 
 namespace Nickelony.Stanza.Markup.Core;
 
-// Ported from CharacterSizeCalculator.CalculateWidth of CSharpier (https://github.com/belav/csharpier, MIT licence), as the pinned 1.3.0 counts.
+// Ported from CharacterSizeCalculator.CalculateWidth of CSharpier (https://github.com/belav/csharpier, MIT license), as the pinned 1.3.0 counts.
 /// <summary>Counts columns as CSharpier does, so no rule disagrees with the formatter on where a line ends.</summary>
 /// <remarks>
 /// A code unit takes one column, or two when <see cref="TextWidthTable"/> lists it, and a surrogate pair takes two.

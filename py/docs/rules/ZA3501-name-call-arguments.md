@@ -65,7 +65,8 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
 - A name bound more than once, bound inside an `if`, `try`, `with`, loop or `match`, declared `global` elsewhere,
   or bound by no statement the rule reads.
 - A name rebound by a `:=`, even one in a default, a decorator, an annotation or a class base.
-- A name of a project module that writes `globals()`, as in `globals()["f"] = g` or `globals().update(...)`, or hands it to code the rule cannot follow.
+- A name of a project module that writes `globals()`, as in `globals()["f"] = g` or `globals().update(...)`,
+  or hands it to code the rule cannot follow.
   A read is no write: `globals()["f"]`, `globals().get("f")`, `"f" in globals()`, a loop over it,
   or passing it to `__import__`, `dir`, `sorted`, `list`, `dict`, `set`, `len` or `iter`.
 - A name of a project module that runs `exec` in its own namespace,
@@ -85,7 +86,8 @@ The rule leaves these calls alone, because it cannot tell which parameter each a
   because the double may take other names.
 - A callee whose `__code__` a project module assigns or deletes, as in `f.__code__ = g.__code__`,
   or copies with `functools.update_wrapper(f, g, assigned=("__code__",))`.
-  The rule matches the last name of the callee, as for a double, when the write is to a `def` or `class` the module binds or to a method of such a class.
+  The rule matches the last name of the callee, as for a double,
+  when the write is to a `def` or `class` the module binds or to a method of such a class.
 - Every call in the project, when a module writes a `__code__` it cannot tie to such a `def` or `class`:
   a subscript, a parameter, a loop variable, an alias or a computed `assigned`.
 - Every callee with the same last name as a double, because the rule matches the last name of the callee against the names any project module patches.
@@ -105,7 +107,8 @@ These stay named: `exec(code, namespace)` with a namespace of its own, a constan
 and a callee whose `__defaults__`, `__kwdefaults__` or `__signature__` a module sets, because only a code object renames a parameter.
 
 The rule does not see a rewrite through a frame (`sys._getframe(...).f_globals` or `f_locals`), through the `__globals__` of a function,
-through `object.__setattr__`, through `sys.modules[__name__]`, as in `sys.modules[__name__].__dict__[...] = ...` or `exec(..., sys.modules[__name__].__dict__)`,
+through `object.__setattr__`, through `sys.modules[__name__]`,
+as in `sys.modules[__name__].__dict__[...] = ...` or `exec(..., sys.modules[__name__].__dict__)`,
 or through an alias of `__import__("builtins")`, as in `b = __import__("builtins"); b.exec(...)`.
 A project that relies on such rewrites should disable `ZA3501` and `ZA3502` for that code.
 
