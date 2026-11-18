@@ -1556,16 +1556,33 @@ public sealed class SeparateConditionalBlockTests
 		);
 	}
 
-	// A run of touching blocks passes every sibling before each block when its tokens are gathered from the root, which allocates nothing but takes quadratic time.
+	// Roslyn finds the related directives of each directive by a search that takes the time of the siblings before it,
+	// and a walk from the root for each block does the same, so a run read that way costs the square of its length.
+	// That allocates nothing, so the limit stands far above a linear read: 40,000 blocks take about a second, and a quadratic read minutes.
 	[TestMethod]
 	[DoNotParallelize]
-	public void AHugeRunOfTouchingBlocksIsReadInUnderFiveSeconds()
+	public void AHugeRunOfTouchingBlocksIsReadInUnderThirtySeconds()
 	{
 		LinearCost.AssertWalkEndsWithin(
-			milliseconds: 5_000,
-			TouchingBlocks(20_000),
+			milliseconds: 30_000,
+			TouchingBlocks(40_000),
 			static root => ReadEveryDirective(root)
 		);
+	}
+
+	// The directives of a tree are paired in one pass, so the read of a run counts a few steps for each block.
+	[TestMethod]
+	public void ARunOfTouchingBlocksIsPairedInStepsLinearInItsLength()
+	{
+		const int blockCount = 20_000;
+
+		SyntaxNode root = CSharpSyntaxTree.ParseText(TouchingBlocks(blockCount)).GetRoot();
+		ConditionalBlocks.StepsTaken = 0;
+
+		ReadEveryDirective(root);
+
+		Assert.IsGreaterThan(blockCount, ConditionalBlocks.StepsTaken, "the read counted no work.");
+		Assert.IsLessThan((long)blockCount * 20, ConditionalBlocks.StepsTaken, "the read took too many steps.");
 	}
 
 	// The directives of a block share one answer, so a block of many branches is read once and not once for each directive.

@@ -30,27 +30,79 @@ internal static class ConditionalBlocks
 			return false;
 		}
 
-		ConcurrentDictionary<int, bool> judged = s_blocksBetweenUnits.GetOrCompute(directive.SyntaxTree, static _ => new());
+		ConcurrentDictionary<int, bool> judged = s_judgedDirectives.GetOrCompute(directive.SyntaxTree, static _ => new());
 
 		if (judged.TryGetValue(directive.SpanStart, out bool isBetween))
 			return isBetween;
 
-		List<DirectiveTriviaSyntax> related = directive.GetRelatedDirectives();
-		isBetween = IsBlockBetweenUnits(related);
-
-		// The directives of a block share one answer, so the branches of a long chain are not each read again for it.
-		// Code that does not parse can pair a directive differently from the ones beside it, so each of its directives is read for itself.
+		// Code that does not parse can pair a directive differently from the ones beside it,
+		// so each of its directives asks Roslyn for its own related list and is judged for itself.
 		if (directive.SyntaxTree.GetRoot().ContainsDiagnostics)
 		{
+			isBetween = IsBlockBetweenUnits(directive.GetRelatedDirectives());
 			judged[directive.SpanStart] = isBetween;
-		}
-		else
-		{
-			foreach (DirectiveTriviaSyntax member in related)
-				judged[member.SpanStart] = isBetween;
+
+			return isBetween;
 		}
 
+		// The directives of a block share one list and one answer, so the branches of a long chain are not each read again for it.
+		if (!GetRelatedLists(directive.SyntaxTree).TryGetValue(directive.SpanStart, out List<DirectiveTriviaSyntax>? related))
+			return false;
+
+		isBetween = IsBlockBetweenUnits(related);
+
+		foreach (DirectiveTriviaSyntax member in related)
+			judged[member.SpanStart] = isBetween;
+
 		return isBetween;
+	}
+
+	private static Dictionary<int, List<DirectiveTriviaSyntax>> GetRelatedLists(SyntaxTree syntaxTree) =>
+		s_relatedLists.GetOrCompute(syntaxTree, static tree => ReadRelatedLists(tree));
+
+	/// <summary>Pairs the directives of a tree that parses by position, in one pass in text order.</summary>
+	/// <remarks>
+	/// Roslyn's <c>GetRelatedDirectives</c> finds each neighbor by a search of the parent's children from their start,
+	/// which takes the time of the siblings before it, so the cost of a long run of blocks grows with its square.
+	/// </remarks>
+	private static Dictionary<int, List<DirectiveTriviaSyntax>> ReadRelatedLists(SyntaxTree syntaxTree)
+	{
+		Dictionary<int, List<DirectiveTriviaSyntax>> lists = [];
+		Stack<List<DirectiveTriviaSyntax>> open = new();
+
+		// The callers pass no token, and the analyzers have read the same cached markers with theirs first.
+		foreach (SyntaxTrivia trivia in StanzaCommentCache.GetConditionalDirectiveMarkers(syntaxTree, CancellationToken.None))
+		{
+			StepsTaken++;
+
+			if (trivia.GetStructure() is DirectiveTriviaSyntax directive)
+				Pair(directive, open, lists);
+		}
+
+		return lists;
+	}
+
+	/// <summary>Adds a directive to its block, and lists the block at its <c>#endif</c>.</summary>
+	private static void Pair(DirectiveTriviaSyntax directive, Stack<List<DirectiveTriviaSyntax>> open, Dictionary<int, List<DirectiveTriviaSyntax>> lists)
+	{
+		if (directive is IfDirectiveTriviaSyntax)
+		{
+			open.Push([directive]);
+			return;
+		}
+
+		if (open.Count == 0)
+			return;
+
+		open.Peek().Add(directive);
+
+		if (directive is not EndIfDirectiveTriviaSyntax)
+			return;
+
+		List<DirectiveTriviaSyntax> block = open.Pop();
+
+		foreach (DirectiveTriviaSyntax member in block)
+			lists[member.SpanStart] = block;
 	}
 
 	private static bool IsBlockBetweenUnits(List<DirectiveTriviaSyntax> related)
@@ -373,5 +425,8 @@ internal static class ConditionalBlocks
 	private static readonly WeakCache<SyntaxTree, HashSet<int>> s_openersBelowUnitBlocks = new();
 
 	/// <summary>Judges a block once for all its directives, so a long chain is not read again per branch.</summary>
-	private static readonly WeakCache<SyntaxTree, ConcurrentDictionary<int, bool>> s_blocksBetweenUnits = new();
+	private static readonly WeakCache<SyntaxTree, ConcurrentDictionary<int, bool>> s_judgedDirectives = new();
+
+	/// <summary>Pairs the directives of a tree once, so Roslyn does not search for the related ones of each.</summary>
+	private static readonly WeakCache<SyntaxTree, Dictionary<int, List<DirectiveTriviaSyntax>>> s_relatedLists = new();
 }
