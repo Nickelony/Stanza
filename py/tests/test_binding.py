@@ -561,6 +561,34 @@ def test_a_call_through_super_is_unsafe_when_a_subclass_puts_a_class_between(tmp
     assert reason(resolve_text(tmp_path, text, "super()._step")) == Reason.DISPATCH_UNSAFE
 
 
+_HIDDEN_DATACLASS = """\
+import dataclasses
+
+if dataclasses:
+    Hidden = object
+else:
+    Hidden = int
+
+
+class B:
+    def __init__(self, a, b): ...
+
+
+class C(B):
+    def __init__(self):
+        super().__init__(1, 2)
+
+
+@dataclasses.dataclass
+class Leaf(Hidden):
+    x: int
+"""
+
+
+def test_a_dataclass_behind_an_unreadable_base_makes_a_call_through_super_unsafe(tmp_path: Path) -> None:
+    assert reason(resolve_text(tmp_path, _HIDDEN_DATACLASS, "super().__init__")) == Reason.DISPATCH_UNSAFE
+
+
 def test_a_call_through_super_in_a_nested_function_is_left_alone(tmp_path: Path) -> None:
     text = "class B:\n    def _step(self, a, b): ...\nclass C(B):\n    def _step(self, a, b):\n        def inner():\n            super()._step(1, 2)\n"
     assert reason(resolve_text(tmp_path, text, "super()._step")) == Reason.RECEIVER_IS_VALUE

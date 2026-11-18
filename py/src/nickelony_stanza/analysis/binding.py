@@ -188,7 +188,8 @@ def resolve_call(
     """
     Resolves the parameters a call of the context's tree binds to, or why it leaves the call alone.
 
-    A call node from another tree raises `ValueError`, because its scope is unknown.
+    A call node from another tree raises `ValueError`, because its scope is unknown,
+    unless the project refuses every call, which settles the call before its scope is read.
     A caller that resolves several calls of one file uses a `FileResolver`, which adopts the file once.
     """
     return FileResolver(context, index, options).resolve(call)

@@ -137,7 +137,7 @@ class Hierarchy:
     by_name: dict[str, tuple[ClassInfo, ...]]
     generating: tuple[ClassInfo, ...]
 
-    def defining(self, name: str) -> Iterator[ClassInfo]:
+    def find_definers(self, name: str) -> Iterator[ClassInfo]:
         """Lists the hidden classes that may define a name."""
         yield from self.by_name.get(name, ())
         yield from self.generating
@@ -1160,7 +1160,7 @@ class Resolver:
                 result = Skipped(Reason.DISPATCH_UNSAFE)
                 break
 
-        if result is None and any(self._defines_other(info, name, member) for info in hierarchy.defining(name)):
+        if result is None and any(self._defines_other(info, name, member) for info in hierarchy.find_definers(name)):
             result = Skipped(Reason.DISPATCH_UNSAFE)
 
         self._dispatch[key] = result
@@ -1288,7 +1288,7 @@ class Resolver:
 
         Every call is refused when the project passes the caps of the scan, because the checks read every module,
         and when a module gives a function it cannot name another code object, because no callee survives that.
-        A caller that knows it needs no scope table and no callee to settle a call.
+        A caller settles a call with it before reading the scope table or a callee.
         """
         if not self.index.is_project_complete:
             return Skipped(Reason.SCAN_TOO_LARGE)

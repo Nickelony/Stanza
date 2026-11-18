@@ -141,8 +141,8 @@ class ParsedFiles:
     def __init__(self) -> None:
         self._files: dict[Path, ParsedModule | None] = {}
 
-    def read(self, path: Path) -> ParsedModule | None:
-        """Reads and parses a file once, or gives None when it cannot be read or parsed."""
+    def get(self, path: Path) -> ParsedModule | None:
+        """Gets a file read and parsed once, or gives None when it cannot be read or parsed."""
         if path not in self._files:
             text = read_source(path)
             tree = None if text is None else parse_source(text, path)
@@ -495,7 +495,11 @@ class SourceIndex:
         return not any(_is_under(located.path, entry) for entry, source in self._entries if source == "stdlib")
 
     def held_module(self, path: Path, text: str) -> ModuleInfo | None:
-        """Gives the module the index holds for a file when its text is the one given, so a caller shares its tree."""
+        """
+        Gives the module the index holds for a file when its text is the one given, so a caller shares its tree.
+
+        The module may be built from the parse another index of the run made of the same file.
+        """
         key = normalize(path)
         held = self._overlay.get(key) or self._by_path.get(key)
         digest = digest_of(text)
@@ -608,7 +612,7 @@ class SourceIndex:
         if path in self._by_path:
             return None
 
-        parsed = self._parsed.read(path)
+        parsed = self._parsed.get(path)
         info = None if parsed is None else self._build(name, path, source, is_package, parsed)
 
         if info is not None:

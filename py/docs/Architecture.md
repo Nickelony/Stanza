@@ -201,6 +201,7 @@ The index keeps its modules from file to file:
 
 - Files of one set of roots share one index, and the indexes of a run share each file they read from disk, so a run parses each module once.
 - A file whose text equals the version the index holds is checked through that tree, and its scope table is built once.
+- The files the indexes share are a snapshot for the whole run, so an index made after a `fix` writes a file reads the earlier parse.
 - The first call a call rule resolves makes the index read every module of the project,
   so a strong run reads the whole project before it names a call.
 - A project that refuses every call, as the caps and a rewrite of an unnamed function do, leaves each call alone
