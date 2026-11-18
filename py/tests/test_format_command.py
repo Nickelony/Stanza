@@ -76,9 +76,8 @@ def test_the_formatter_runs_before_the_rules(tool: str, tmp_path: Path) -> None:
 def test_a_second_run_changes_nothing_and_a_check_passes(tool: str, tmp_path: Path) -> None:
     _require(tool)
 
-    path = write_file(
-        tmp_path, "a.py", "import os\nx=1\ny = 2\ndef f(a,b):\n  if a: return b\n  return a\nprint(f(1,2))\n"
-    )
+    messy = "import os\nx=1\ny = 2\ndef f(a,b):\n  if a: return b\n  return a\nprint(f(1,2))\n"
+    path = write_file(tmp_path, "a.py", messy)
     arguments = ["--formatter", tool, "--level", "strong"]
 
     assert run(["format", *arguments, str(path)]) == 0
