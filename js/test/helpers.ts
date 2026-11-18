@@ -266,3 +266,23 @@ export const corpusRuns: { name: string; level: Level; withOptIn: boolean; setti
 		settings,
 	})),
 ];
+
+/** Lists the rules that report a source, one entry for each message. */
+export function reporters(
+	code: string,
+	rules: Record<string, Linter.RuleEntry>,
+	filename = 'file.ts',
+	settings: Record<string, unknown> = {},
+): (string | null)[] {
+	return new Linter().verify(code, createConfig(rules, settings), { filename }).map((message) => message.ruleId);
+}
+
+export type Entries = Record<string, Linter.RuleEntry>;
+
+/** The ways to enable a pair of removal rules for the units of one half: that half alone, and both halves together. */
+export function halvesOf(half: string, other: string, label: string): [name: string, rules: Entries][] {
+	return [
+		[`the ${label} half`, { [half]: 'error' }],
+		['both halves', { [half]: 'error', [other]: 'error' }],
+	];
+}

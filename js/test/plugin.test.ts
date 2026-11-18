@@ -18,7 +18,7 @@ import { addOrder, keepOrder, removeOrder } from '../src/analysis/ruleNames.ts';
 import plugin, { configs, rules } from '../src/index.ts';
 import { optInRules } from '../src/presets.ts';
 
-import { createConfig, fix, lines, readPresetRules, readRuleLevel } from './helpers.ts';
+import { createConfig, fix, fixWithPreset, lines, lintWithPreset, readPresetRules, readRuleLevel, reporters } from './helpers.ts';
 
 const read = (path: string): string => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8');
 
@@ -83,6 +83,92 @@ describe('the presets', () => {
 				assert.ok(!(`stanza/${name}` in (config.rules ?? {})), `${name} is in the ${level} preset`);
 			}
 		}
+	});
+});
+
+describe('the levels of the rules that remove blank lines', () => {
+	const list = lines('const o = {', '  a: 1,', '', '  b: 2,', '};');
+	const flat = lines('const o = {', '  a: 1,', '  b: 2,', '};');
+
+	it('puts keep-single-line-elements-together in the minimal, moderate and strong presets and in no other', () => {
+		for (const level of ['minimal', 'moderate', 'strong'] as const) {
+			assert.ok('keep-single-line-elements-together' in readPresetRules(level), level);
+		}
+
+		assert.ok(!('keep-single-line-elements-together' in readPresetRules('none')));
+	});
+
+	it('removes the blank line between two single-line elements at the minimal level, where no rule that adds one is on', () => {
+		assert.deepEqual(
+			lintWithPreset(list, 'minimal').map((message) => message.ruleId),
+			['stanza/keep-single-line-elements-together'],
+		);
+
+		assert.equal(fixWithPreset(list, 'minimal'), flat);
+		assert.equal(fixWithPreset(list, 'moderate'), flat);
+		assert.equal(fixWithPreset(list, 'strong'), flat);
+	});
+
+	it('leaves a multi-line element as written below the strong level, where separate-multi-line-elements is not on', () => {
+		const tight = lines('const o = {', '  a: 1,', '  b: {', '    c: 1,', '  },', '};');
+		const apart = lines('const o = {', '  a: 1,', '', '  b: {', '    c: 1,', '  },', '};');
+		const mixed = lines('const o = {', '  a: 1,', '', '  b: 2,', '  c: {', '    d: 1,', '  },', '};');
+
+		assert.equal(fixWithPreset(apart, 'minimal'), apart);
+		assert.equal(fixWithPreset(tight, 'minimal'), tight);
+		assert.equal(fixWithPreset(tight, 'strong'), apart);
+		assert.equal(fixWithPreset(mixed, 'minimal'), lines('const o = {', '  a: 1,', '  b: 2,', '  c: {', '    d: 1,', '  },', '};'));
+		assert.equal(fixWithPreset(mixed, 'strong'), lines('const o = {', '  a: 1,', '  b: 2,', '', '  c: {', '    d: 1,', '  },', '};'));
+	});
+
+	it('keeps both rules that keep a run together out of every preset, and joins a run only where an entry enables them', () => {
+		const code = lines('log(1);', '', 'log(2);', '', 'log(3);');
+
+		for (const level of ['none', 'minimal', 'moderate', 'strong'] as const) {
+			assert.ok(!('keep-statement-runs-together' in readPresetRules(level)), level);
+			assert.ok(!('keep-member-runs-together' in readPresetRules(level)), level);
+		}
+
+		assert.equal(fixWithPreset(code, 'strong'), code);
+		assert.equal(fixWithPreset(code, 'strong', 'file.ts', true), lines('log(1);', 'log(2);', 'log(3);'));
+
+		assert.deepEqual(
+			lintWithPreset(code, 'moderate', 'file.ts', true).map((message) => message.ruleId),
+			['stanza/keep-statement-runs-together', 'stanza/keep-statement-runs-together'],
+		);
+
+		assert.deepEqual(lintWithPreset(code, 'minimal', 'file.ts', true), []);
+	});
+
+	it('puts both rules that gather loose runs in the strong preset and in no level below it', () => {
+		for (const name of ['gather-loose-statements', 'gather-loose-members']) {
+			assert.ok(name in readPresetRules('strong'), name);
+
+			for (const level of ['none', 'minimal', 'moderate'] as const) {
+				assert.ok(!(name in readPresetRules(level)), `${name} at ${level}`);
+			}
+		}
+
+		const code = lines(
+			'class A {',
+			'  a = 1;',
+			'',
+			'  b = 2;',
+			'',
+			'  c = 3;',
+			'',
+			'  d = 4;',
+			'}',
+			'',
+			...['a();', '', 'b();', '', 'c();', '', 'd();'],
+		);
+
+		assert.equal(fixWithPreset(code, 'moderate'), code);
+
+		assert.equal(
+			fixWithPreset(code, 'strong'),
+			lines('class A {', '  a = 1;', '  b = 2;', '  c = 3;', '  d = 4;', '}', '', 'a();', 'b();', 'c();', 'd();'),
+		);
 	});
 });
 
@@ -347,6 +433,36 @@ describe('the shared settings', () => {
 		assert.equal(fix(code, rules, { stanza: { maxLooseRunSize: 1 } }), strict);
 		assert.equal(fix(code, rules, { stanza: { maxLooseRunSize: 5 } }), code);
 		assert.equal(fix(code, rules, { stanza: { maxLooseRunSize: 0 } }), code);
+	});
+});
+
+describe('the roots', () => {
+	it('make a call to a test root a test block that joins no run, whether or not separate-test-blocks is enabled', () => {
+		const code = lines("it.todo('a');", "it.todo('b');", 'log(1);');
+		const runs: Record<string, Linter.RuleEntry> = { 'separate-invocation-runs': 'error', 'separate-await-runs': 'error' };
+
+		assert.deepEqual(reporters(code, runs), []);
+		assert.deepEqual(reporters(code, { ...runs, 'separate-test-blocks': 'error' }), ['stanza/separate-test-blocks']);
+		assert.deepEqual(reporters(code, runs, 'file.ts', { stanza: { testRoots: [] } }), ['stanza/separate-invocation-runs']);
+	});
+
+	it('make a name that is a test root and an assertion root a test block', () => {
+		const code = lines('check(1);', 'check(2);', 'log(1);');
+		const settings = { stanza: { assertionRoots: ['check'] } };
+
+		assert.deepEqual(reporters(code, { 'separate-assertion-runs': 'error' }, 'file.ts', settings), ['stanza/separate-assertion-runs']);
+
+		assert.deepEqual(
+			reporters(code, { 'separate-assertion-runs': 'error' }, 'file.ts', { stanza: { ...settings.stanza, testRoots: ['check'] } }),
+			[],
+		);
+	});
+
+	it('read an empty list as no roots', () => {
+		const code = lines('expect(1);', 'expect(2);', 'log(1);');
+
+		assert.deepEqual(reporters(code, { 'separate-assertion-runs': 'error' }), ['stanza/separate-assertion-runs']);
+		assert.deepEqual(reporters(code, { 'separate-assertion-runs': 'error' }, 'file.ts', { stanza: { assertionRoots: [] } }), []);
 	});
 });
 
