@@ -248,6 +248,20 @@ internal static class BraceTargets
 
 	public static BraceTarget? FindTarget(SyntaxNode anchor)
 	{
+		// A branch is read off its own if or else, as a climb to the head of a chain builds the targets of every branch of it.
+		BraceTarget? branch = anchor.Parent switch
+		{
+			IfStatementSyntax ifStatement when ifStatement.Statement == anchor => BuildTarget(ifStatement.IfKeyword, ifStatement.Statement),
+
+			ElseClauseSyntax { Statement: not IfStatementSyntax } elseClause when elseClause.Statement == anchor =>
+				BuildTarget(elseClause.ElseKeyword, elseClause.Statement),
+
+			_ => null,
+		};
+
+		if (branch is not null)
+			return branch;
+
 		for (SyntaxNode? owner = anchor.Parent; owner is not null; owner = owner.Parent)
 		{
 			foreach (BraceTarget candidate in GetTargets(owner))

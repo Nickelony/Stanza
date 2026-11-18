@@ -2084,23 +2084,23 @@ public sealed class RemoveRedundantBracesTests
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
+	private static string ElseIfChain(int count)
+	{
+		string branches = string.Concat(
+			Enumerable.Repeat("\t\telse if (c0)\n\t\t{\n\t\t\tDoThing();\n\t\t}\n", count)
+		);
+
+		return "class C\n{\n\tbool c0;\n\n\tvoid M()\n\t{\n\t\tif (c0)\n\t\t{\n\t\t\tDoThing();\n\t\t}\n"
+			+ branches
+			+ "\t}\n}\n";
+	}
+
 	[TestMethod]
 	public void TheCostGrowsLinearlyWithTheLengthOfAnElseIfChain()
 	{
-		static string Chain(int count)
-		{
-			string branches = string.Concat(
-				Enumerable.Repeat("\t\telse if (c0)\n\t\t{\n\t\t\tDoThing();\n\t\t}\n", count)
-			);
-
-			return "class C\n{\n\tbool c0;\n\n\tvoid M()\n\t{\n\t\tif (c0)\n\t\t{\n\t\t\tDoThing();\n\t\t}\n"
-				+ branches
-				+ "\t}\n}\n";
-		}
-
 		LinearCost.AssertLinear(
-			Chain(150),
-			Chain(600),
+			ElseIfChain(150),
+			ElseIfChain(600),
 
 			static root =>
 			{
@@ -2114,6 +2114,28 @@ public sealed class RemoveRedundantBracesTests
 				{
 					foreach (BraceTarget target in BraceTargets.GetTargets(head))
 						BraceEdits.CreateSafeBraceRemoval(sourceText, target, tabColumns: 4);
+				}
+			}
+		);
+	}
+
+	// The fix finds the target of each reported block, and a climb to the head of the chain for each would square the cost of Fix All.
+	[TestMethod]
+	public void TheFixCostGrowsLinearlyWithTheLengthOfAnElseIfChain()
+	{
+		LinearCost.AssertLinear(
+			ElseIfChain(150),
+			ElseIfChain(600),
+
+			static root =>
+			{
+				foreach (
+					BlockSyntax block in root.DescendantNodes()
+						.OfType<BlockSyntax>()
+						.Where(static block => block.Parent is not MethodDeclarationSyntax)
+				)
+				{
+					Assert.IsNotNull(BraceTargets.FindTarget(block));
 				}
 			}
 		);
