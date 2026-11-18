@@ -13,60 +13,13 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 /// <summary>Reads the directives that keep a gap blank or that can change the count of units.</summary>
 internal static class BlankLineDirectives
 {
-	/// <summary>Whether ZA0401 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
+	/// <summary>Whether a directive rule keeps the gap blank, so it ends a run before its blank line stands.</summary>
 	/// <remarks>
-	/// The first and the last directive of the gap decide, and a padded region counts its inner markers too.
+	/// The first and the last directive of the gap decide, by the sides their kind pads.
 	/// </remarks>
-	public static bool IsRegionMarkerGap(SyntaxNode next, string? ownerId, bool padsInside, CancellationToken cancellationToken)
+	public static bool IsDirectiveGapKept(SyntaxNode next, ImmutableArray<GapOwners.DirectiveOwner> owners, CancellationToken cancellationToken)
 	{
-		return IsDirectiveGapKept(
-			next,
-			ownerId,
-			isKeptFirst: first => first is RegionDirectiveTriviaSyntax || (padsInside && first is EndRegionDirectiveTriviaSyntax),
-			isKeptLast: last => last is EndRegionDirectiveTriviaSyntax || (padsInside && last is RegionDirectiveTriviaSyntax),
-			cancellationToken
-		);
-	}
-
-	/// <summary>Whether ZA0402 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
-	/// <remarks>
-	/// An <c>#if</c> or an <c>#endif</c> decides, and a padded block counts every directive of the block.
-	/// </remarks>
-	public static bool IsConditionalBlockGap(SyntaxNode next, string? ownerId, bool padsInside, CancellationToken cancellationToken)
-	{
-		return IsDirectiveGapKept(
-			next,
-			ownerId,
-			isKeptFirst: first => (first is IfDirectiveTriviaSyntax || padsInside) && ConditionalBlocks.IsBetweenUnits(first),
-			isKeptLast: last => (last is EndIfDirectiveTriviaSyntax || padsInside) && ConditionalBlocks.IsBetweenUnits(last),
-			cancellationToken
-		);
-	}
-
-	/// <summary>Whether ZA0403 keeps the gap blank, so it ends a run even before its blank line is written.</summary>
-	/// <remarks>
-	/// A <c>disable</c> or a <c>restore</c> decides, and a padded block counts both directives of the pair.
-	/// </remarks>
-	public static bool IsSuppressionBlockGap(SyntaxNode next, string? ownerId, bool padsInside, CancellationToken cancellationToken)
-	{
-		return IsDirectiveGapKept(
-			next,
-			ownerId,
-			isKeptFirst: first => SuppressionBlocks.IsOpener(first) || (padsInside && SuppressionBlocks.IsCloser(first)),
-			isKeptLast: last => SuppressionBlocks.IsCloser(last) || (padsInside && SuppressionBlocks.IsOpener(last)),
-			cancellationToken
-		);
-	}
-
-	private static bool IsDirectiveGapKept(
-		SyntaxNode next,
-		string? ownerId,
-		Func<DirectiveTriviaSyntax, bool> isKeptFirst,
-		Func<DirectiveTriviaSyntax, bool> isKeptLast,
-		CancellationToken cancellationToken
-	)
-	{
-		if (ownerId is null)
+		if (owners.IsDefaultOrEmpty)
 			return false;
 
 		DirectiveTriviaSyntax? first = null;
@@ -82,23 +35,26 @@ internal static class BlankLineDirectives
 			last = directive;
 		}
 
-		return IsKeptDirective(directive: first, isKept: isKeptFirst, ownerId, cancellationToken)
-			|| IsKeptDirective(directive: last, isKept: isKeptLast, ownerId, cancellationToken);
+		foreach (GapOwners.DirectiveOwner owner in owners)
+		{
+			if (IsKeptDirective(directive: first, owner, side: MarkerSides.Above, cancellationToken))
+				return true;
+
+			if (IsKeptDirective(directive: last, owner, side: MarkerSides.Below, cancellationToken))
+				return true;
+		}
+
+		return false;
 	}
 
-	/// <summary>Whether the directive is one the rule keeps blank beside, unless a pragma silences it.</summary>
-	private static bool IsKeptDirective(
-		DirectiveTriviaSyntax? directive,
-		Func<DirectiveTriviaSyntax, bool> isKept,
-		string ownerId,
-		CancellationToken cancellationToken
-	)
+	/// <summary>Whether the owner pads the directive on that side, unless a pragma silences the owner there.</summary>
+	private static bool IsKeptDirective(DirectiveTriviaSyntax? directive, GapOwners.DirectiveOwner owner, MarkerSides side, CancellationToken cancellationToken)
 	{
-		if (directive is null || !isKept(directive))
+		if (directive is null || (owner.Block.ReadSides(directive, owner.Pads) & side) == 0)
 			return false;
 
 		int position = directive.SpanStart;
-		return !StanzaPragmas.IsSilencedByPragma(syntaxTree: directive.SyntaxTree, ruleId: ownerId, position, cancellationToken);
+		return !StanzaPragmas.IsSilencedByPragma(syntaxTree: directive.SyntaxTree, ruleId: owner.Block.Rule.Id, position, cancellationToken);
 	}
 
 	/// <summary>Whether a conditional directive stands among the units or splits them from the container.</summary>

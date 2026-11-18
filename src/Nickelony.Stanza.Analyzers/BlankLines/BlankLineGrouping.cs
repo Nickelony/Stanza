@@ -342,16 +342,8 @@ internal static class BlankLineGrouping
 
 		return gapOwners.Owns(boundary)
 			|| IsMultiLineGap(siblings, boundary, multiLineGapOwnerId: gapOwners.MultiLineId, cancellationToken)
-			|| IsDirectiveGapKept(siblings[boundary], gapOwners, cancellationToken)
+			|| BlankLineDirectives.IsDirectiveGapKept(siblings[boundary], gapOwners.DirectiveOwners, cancellationToken)
 			|| IsCommentedSiblingGap(siblings, boundary, commentedSiblingOwnerId: gapOwners.CommentedSiblingId, cancellationToken);
-	}
-
-	/// <summary>Whether a rule of a directive beside the unit keeps the gap blank.</summary>
-	private static bool IsDirectiveGapKept(SyntaxNode next, GapOwners gapOwners, CancellationToken cancellationToken)
-	{
-		return BlankLineDirectives.IsRegionMarkerGap(next, ownerId: gapOwners.RegionMarkerId, padsInside: gapOwners.PadsRegions, cancellationToken)
-			|| BlankLineDirectives.IsConditionalBlockGap(next, ownerId: gapOwners.ConditionalBlockId, padsInside: gapOwners.PadsConditionalBlocks, cancellationToken)
-			|| BlankLineDirectives.IsSuppressionBlockGap(next, ownerId: gapOwners.SuppressionBlockId, padsInside: gapOwners.PadsSuppressionBlocks, cancellationToken);
 	}
 
 	private static ImmutableArray<Run> WalkRuns(

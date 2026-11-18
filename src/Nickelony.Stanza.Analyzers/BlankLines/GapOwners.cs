@@ -9,14 +9,9 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 /// </remarks>
 internal readonly record struct GapOwners(
 	string? MultiLineId,
-	string? RegionMarkerId,
-	string? ConditionalBlockId,
-	string? SuppressionBlockId,
 	string? CommentedSiblingId,
+	ImmutableArray<GapOwners.DirectiveOwner> DirectiveOwners,
 	ImmutableHashSet<int>? OwnedBoundaries = null,
-	bool PadsRegions = true,
-	bool PadsConditionalBlocks = false,
-	bool PadsSuppressionBlocks = false,
 	bool AwaitRuleEnabled = false,
 	bool YieldRuleEnabled = false,
 	bool LocalFunctionRuleEnabled = false,
@@ -51,4 +46,7 @@ internal readonly record struct GapOwners(
 
 	/// <summary>Whether a keeper joins the gap, so a read of runs takes it as tight whatever stands there.</summary>
 	public bool IsJoined(int boundary) => JoinedBoundaries?.Contains(boundary) == true;
+
+	/// <summary>A directive rule that is on, and whether its option pads inside its blocks.</summary>
+	public readonly record struct DirectiveOwner(DirectiveBlock Block, bool Pads);
 }

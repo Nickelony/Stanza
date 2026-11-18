@@ -400,32 +400,25 @@ internal static class BlankLineOwnership
 	public static GapOwners ReadGapOwners(ContainerContext container, StanzaRule rule)
 	{
 		StanzaRule multiLine = rule.GetDeferral(DiagnosticDescriptors.SeparateMultiLineConstructs);
-		StanzaRule regionMarker = rule.GetDeferral(DiagnosticDescriptors.SeparateRegionMarker);
-		StanzaRule conditionalBlock = rule.GetDeferral(DiagnosticDescriptors.SeparateConditionalBlock);
-		StanzaRule suppressionBlock = rule.GetDeferral(DiagnosticDescriptors.SeparateSuppressionBlock);
 		StanzaRule commentedSibling = rule.GetDeferral(DiagnosticDescriptors.SeparateCommentedSibling);
+
+		ImmutableArray<GapOwners.DirectiveOwner> directiveOwners =
+		[
+			.. DirectiveBlock
+				.All.Where(block => !StanzaRuleState.IsRuleDisabled(container, container.Options, rule.GetDeferral(block.Rule)))
+				.Select(block => new GapOwners.DirectiveOwner(block, Pads: block.ReadPadding(container.Options))),
+		];
 
 		Func<int, bool>? readsReceiver = FindReceiverReader(container, rule);
 
 		return new GapOwners(
 			MultiLineId: StanzaRuleState.IsRuleDisabled(container, container.Options, multiLine) ? null : multiLine.Descriptor.Id,
-			RegionMarkerId: StanzaRuleState.IsRuleDisabled(container, container.Options, regionMarker) ? null : regionMarker.Descriptor.Id,
-
-			ConditionalBlockId: StanzaRuleState.IsRuleDisabled(container, container.Options, conditionalBlock)
-				? null
-				: conditionalBlock.Descriptor.Id,
-
-			SuppressionBlockId: StanzaRuleState.IsRuleDisabled(container, container.Options, suppressionBlock)
-				? null
-				: suppressionBlock.Descriptor.Id,
 
 			CommentedSiblingId: StanzaRuleState.IsRuleDisabled(container, container.Options, commentedSibling)
 				? null
 				: commentedSibling.Descriptor.Id,
 
-			PadsRegions: container.Options.PadsRegions,
-			PadsConditionalBlocks: container.Options.PadsConditionalBlocks,
-			PadsSuppressionBlocks: container.Options.PadsSuppressionBlocks,
+			DirectiveOwners: directiveOwners,
 			AwaitRuleEnabled: IsKindRuleOn(container, rule, DiagnosticDescriptors.SeparateAwaitRuns),
 			YieldRuleEnabled: IsKindRuleOn(container, rule, DiagnosticDescriptors.SeparateYieldRuns),
 			LocalFunctionRuleEnabled: IsKindRuleOn(container, rule, DiagnosticDescriptors.SeparateLocalFunctionRuns),

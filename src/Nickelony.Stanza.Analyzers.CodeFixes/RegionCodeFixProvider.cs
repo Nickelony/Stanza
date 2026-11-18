@@ -16,6 +16,7 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 			FromCarriedChange(
 				static (document, cancellationToken) =>
 					RegionEdits.CreateMarkerGapEdits(
+						block: DirectiveBlock.Region,
 						syntaxTree: document.Root.SyntaxTree,
 						sourceText: document.Text,
 						options: ReadOptions(document),
@@ -30,7 +31,8 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 
 			FromCarriedChange(
 				static (document, cancellationToken) =>
-					RegionEdits.CreateConditionalBlockGapEdits(
+					RegionEdits.CreateMarkerGapEdits(
+						block: DirectiveBlock.ConditionalBlock,
 						syntaxTree: document.Root.SyntaxTree,
 						sourceText: document.Text,
 						options: ReadOptions(document),
@@ -45,7 +47,8 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 
 			FromCarriedChange(
 				static (document, cancellationToken) =>
-					RegionEdits.CreateSuppressionBlockGapEdits(
+					RegionEdits.CreateMarkerGapEdits(
+						block: DirectiveBlock.SuppressionBlock,
 						syntaxTree: document.Root.SyntaxTree,
 						sourceText: document.Text,
 						options: ReadOptions(document),

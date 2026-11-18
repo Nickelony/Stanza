@@ -13,7 +13,8 @@ internal sealed class SeparateConditionalBlockAnalyzer()
 			context,
 			Descriptor,
 
-			RegionEdits.CreateConditionalBlockGapEdits(
+			RegionEdits.CreateMarkerGapEdits(
+				block: DirectiveBlock.ConditionalBlock,
 				syntaxTree: context.Tree,
 				sourceText: context.Tree.GetText(context.CancellationToken),
 				options: StanzaOptions.From(context.Options, context.Tree),
