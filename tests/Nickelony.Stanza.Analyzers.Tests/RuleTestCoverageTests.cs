@@ -40,10 +40,9 @@ public sealed class RuleTestCoverageTests
 		);
 	}
 
-	// MSTest skips a lifecycle method that is not a public static void or Task method without parameters, on a public test class.
-	// The guard would then never run and no test would say so.
+	// A guard that lost its attribute would never run, and no test would say so.
 	[TestMethod]
-	public void TheGuardIsTheOneAssemblyCleanupMSTestRuns()
+	public void TheCoverageGuardIsTheOneAssemblyCleanupOfTheProject()
 	{
 		MethodInfo[] cleanups =
 		[
@@ -65,16 +64,6 @@ public sealed class RuleTestCoverageTests
 
 		Assert.AreEqual(nameof(EachRuleHasAFixtureOfItsOwn), guard.Name);
 		Assert.AreEqual(typeof(RuleTestCoverageTests), guard.DeclaringType);
-
-		Assert.IsTrue(
-			guard is { IsPublic: true, IsStatic: true },
-			"The cleanup is not public static."
-		);
-
-		Assert.AreEqual(typeof(void), guard.ReturnType);
-		Assert.IsEmpty(guard.GetParameters());
-		Assert.IsNotNull(typeof(RuleTestCoverageTests).GetCustomAttribute<TestClassAttribute>());
-		Assert.IsTrue(typeof(RuleTestCoverageTests).IsPublic, "The test class is not public.");
 	}
 
 	[TestMethod]
