@@ -97,18 +97,23 @@ function sameIn(a: EffectiveState, b: EffectiveState, context: Context): boolean
 }
 
 /**
- * The opposite that takes a rule out of the level, or `null`.
+ * The opposite that takes a rule out of what is applied without a line, or `null`.
  * Where the tool replaces a half of a pair, a rule the level enables is off once the form enables its opposite.
+ * A markup rule that `stanza-markup` applies by default is off in the same way while the form leaves it alone,
+ * so the file holds the half the visitor chose and not both.
  */
 export function replacedBy<S>(rule: Rule<S>, config: Config): string | null {
-	if (rule.csharp !== undefined) {
+	const named = rule.opposite === undefined ? undefined : config.rules[rule.opposite];
+
+	if (named === undefined || !isReporting(named)) {
 		return null;
 	}
 
-	const named = rule.opposite === undefined ? undefined : config.rules[rule.opposite];
-	const replaced = named !== undefined && isReporting(named) && enabledAt(rule, config.level, config.formatter);
+	if (rule.csharp === undefined) {
+		return enabledAt(rule, config.level, config.formatter) ? rule.opposite! : null;
+	}
 
-	return replaced ? rule.opposite! : null;
+	return rule.level === 'no-level' && rule.csharp.markupOnByDefault && config.rules[rule.id] === undefined ? rule.opposite! : null;
 }
 
 /** What the package applies to the rule when no line sets it: the level at the picked severity, apart from a half the form's other half replaces. */
@@ -121,13 +126,18 @@ function packageState<S>(rule: Rule<S>, config: Config): EffectiveState {
  * The analyzer takes the level at the picked severity, apart from a half the form's other half replaces.
  * `stanza-markup` never reads the level, so a level can only add rules to it; a rule it applies by default stays on.
  * A markup rule has no level, so the page treats it alike for both tools and gives the tool's default: the page writes the line the analyzer needs.
+ * That default is off once the form enables the other half of the rule's pair.
  */
 export function levelState<S>(rule: Rule<S>, config: Config, context: Context = 'analyzer'): EffectiveState {
 	if (enabledAt(rule, config.level, config.formatter)) {
 		return packageState(rule, config);
 	}
 
-	return context === 'markup' || rule.level === 'no-level' ? toolDefault(rule) : 'off';
+	if (context !== 'markup' && rule.level !== 'no-level') {
+		return 'off';
+	}
+
+	return replacedBy(rule, config) === null ? toolDefault(rule) : 'off';
 }
 
 /** What a tool applies to the rule once the form's own setting, if any, is in. */

@@ -26,6 +26,7 @@
 	--sev-warning: #b8801a;
 	--sev-suggestion: #4f7aa6;
 	--focus: var(--accent);
+
 	color-scheme: light;
 }
 
@@ -48,6 +49,7 @@
 	--sev-error: #e5645a;
 	--sev-warning: #d9a037;
 	--sev-suggestion: #78a2cf;
+
 	color-scheme: dark;
 }
 

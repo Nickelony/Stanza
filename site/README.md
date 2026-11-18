@@ -28,11 +28,13 @@ and `npm run format:check` fails on code it would change.
 `npm run lint` runs oxlint and then `npm run lint:css`.
 oxlint requires braces around the body of every `if` and loop, and the blank lines that JS Stanza asks for.
 stylelint keeps the properties of [`src/style.css`](src/style.css)
-and of the styled templates in [`src/components`](src/components) in SMACSS order.
+and of the styled templates in [`src/components`](src/components) in SMACSS order,
+and the blank lines of both as [`stylelint-config-stanza`](../js/stylelint-config/README.md) sets them.
 `npm run lint:fix` applies the fixes of oxlint, the blank lines of JS Stanza among them,
-and `npx stylelint --fix "src/**/*.{css,ts,tsx}"` reorders the properties.
+and `npx stylelint --fix "src/**/*.{css,ts,tsx}"` reorders the properties and writes the blank lines.
 
-The [Pages workflow](../.github/workflows/pages.yml) builds `js/`, then runs the format check, lint, typecheck, test and build
+The [Pages workflow](../.github/workflows/pages.yml) builds `js/` and installs the packages of its stylelint config.
+It then runs the format check, lint, typecheck, test and build
 on a pull request, and on a push to `main`, that changes a file the build or the lint reads.
 
 No page is a file on disk: [`build/render/pages.ts`](build/render/pages.ts) writes the HTML of each from one template,
@@ -173,6 +175,8 @@ The page writes the `.editorconfig` the C# page writes, with the none level held
 - The page writes `ZA2001`, `ZA2006` and `ZA2007` by default, and a file with only those lines imports as no change.
 - Every setting writes each rule: one that is on at its severity, one that is off as a comment, and a `none` line where the tool would apply it.
 - A pair, such as `ZA2001` and `ZA2002`, shows in the conflict warnings once the file enables both halves, as on the C# page.
+- Enabling the other half of a pair turns off the half the tool applies, until the visitor sets that half too.
+  The page then writes no line for it in `[*.cs]` and a `none` in the section of the markup files.
 
 ## What the build reads
 

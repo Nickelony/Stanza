@@ -14,11 +14,14 @@ export interface RuleStatus {
 export function ruleStatus(language: Language, catalog: SiteCatalog, rule: Rule<Snippet>, config: Config): RuleStatus {
 	const setting = settingOf(config, rule);
 	const effective = effectiveState(rule, config);
-	const markupNote = rule.csharp?.markupOnByDefault && setting === 'default' ? ' stanza-markup applies it unless a file disables it.' : '';
+	const opposite = replacedBy(rule, config);
+
+	const markupNote =
+		rule.csharp?.markupOnByDefault && setting === 'default' && opposite === null ? ' stanza-markup applies it unless a file disables it.' : '';
+
 	const formatterNote = rule.csharp?.undoneByCSharpier ? ' CSharpier undoes the layout this rule writes.' : '';
 	const line = language.ruleLines(catalog, rule, config).join('\n') || null;
 	const lead = isReporting(effective) ? `${language.stateLabels[effective]}. ` : '';
-	const opposite = replacedBy(rule, config);
 	const sentence = (opposite !== null && effective === 'off' ? language.replacedText?.(opposite) : undefined) ?? language.statusText[effective];
 	const levelNote = hasLevels(language) ? enabledNote(rule, config.formatter) : '';
 

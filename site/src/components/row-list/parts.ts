@@ -148,14 +148,18 @@ const controlSize = css`
 	}
 `;
 
+/** A changed control draws the changed border under forced colors in the invalid state too, by standing after the invalid rule. */
 const changedControl = (props: ControlProps) =>
 	props.$changed &&
 	css`
 		border-color: var(--accent);
 
 		@media (forced-colors: active) {
-			border-width: 2px;
-			border-color: Highlight;
+			&,
+			&[aria-invalid='true'] {
+				border-width: 2px;
+				border-color: Highlight;
+			}
 		}
 	`;
 
@@ -185,11 +189,11 @@ export const RowInput = styled.input<ControlProps>`
 		font-family: var(--font);
 	}
 
-	${changedControl};
-
 	&[aria-invalid='true'] {
 		border-color: var(--del-fg);
 	}
+
+	${changedControl};
 `;
 
 /** The left margin matches the padding of the row button, so the message starts under the key. */

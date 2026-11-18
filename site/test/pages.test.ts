@@ -15,8 +15,20 @@ const previewPaths = Object.values(previewImages).map((image) => `icon/${image.s
 const pageLogos = { csharp: 'icon/Stanza.svg', markup: 'icon/Stanza-Mu.svg', js: 'icon/Stanza-JS.svg', python: 'icon/Stanza-Py.svg' };
 const workflowPath = '.github/workflows/pages.yml';
 
-/** The lint loads JS Stanza from its build and links the package from `js/`, so the source and the package files of `js/` count. */
-const lintPaths = ['js/src/**', 'js/package.json', 'js/package-lock.json', 'js/tsconfig.json', 'js/tsconfig.build.json'];
+/** The lint loads JS Stanza from its build and links the packages from `js/`, so the source and the package files of `js/` count, the stylelint config's too. */
+const lintPaths = [
+	'js/src/**',
+	'js/package.json',
+	'js/package-lock.json',
+	'js/tsconfig.json',
+	'js/tsconfig.build.json',
+	'js/stylelint-config/index.mjs',
+	'js/stylelint-config/syntax.mjs',
+	'js/stylelint-config/emotion-tag.mjs',
+	'js/stylelint-config/package.json',
+	'js/stylelint-config/package-lock.json',
+];
+
 const read = (file: string): string => readFileSync(join(repositoryRoot, file), 'utf8');
 
 /** A file the site reads is named once, and a folder of them by its files: `folder/**`, as the workflow writes it. */

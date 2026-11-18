@@ -35,5 +35,6 @@ export const markup: Language = {
 		off: 'Off: the rule reports nothing until a line enables it.',
 	},
 
+	replacedText: (opposite) => `Off: ${opposite} is enabled and owns the construct, so the rule reports nothing there.`,
 	outputs: [editorConfigBlock],
 };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { highlightCatalog } from '../../build/render/highlight.ts';
+import { findConflicts } from '../../src/editorconfig/conflicts.ts';
 import { importEditorConfig } from '../../src/editorconfig/import.ts';
 import { changedCount, emptyConfig, isRuleChanged } from '../../src/state/config.ts';
 import { optionDefaultLabel } from '../../src/state/labels.ts';
@@ -461,6 +462,31 @@ describe('the .editorconfig of the Markup page', () => {
 		expect(markupPart(text)).toContain('dotnet_diagnostic.ZA2001.severity = none');
 		expect(markupPart(text)).toContain('dotnet_diagnostic.ZA2002.severity = suggestion');
 		expect(analyzerPart(text)).toContain('dotnet_diagnostic.ZA2001.severity = none');
+	});
+
+	it('writes the chosen half of a pair and not the half the tool applies by default, which the markup section disables', () => {
+		const picks = markupConfig({ rules: { ZA2002: 'warning' } });
+		const text = generateEditorConfig(realMarkup, picks);
+
+		expect(idsOf(analyzerPart(text))).toEqual(['ZA2002', 'ZA2006', 'ZA2007']);
+		expect(analyzerPart(text)).not.toContain('ZA2001');
+		expect(markupPart(text)).toContain('dotnet_diagnostic.ZA2001.severity = none');
+		expect(markupPart(text)).toContain('dotnet_diagnostic.ZA2002.severity = warning');
+		expect(findConflicts(realMarkup, picks)).toEqual([]);
+	});
+
+	it('writes the half the tool applies by default as before when the other half is chosen then removed', () => {
+		const chosen = markupConfig({ rules: { ZA2002: 'warning' } });
+		const text = generateEditorConfig(realMarkup, { ...chosen, rules: {} });
+
+		expect(analyzerPart(text)).toContain('dotnet_diagnostic.ZA2001.severity = suggestion');
+		expect(findConflicts(realMarkup, { ...chosen, rules: {} })).toEqual([]);
+	});
+
+	it('still warns when both halves of the pair are set', () => {
+		expect(findConflicts(realMarkup, markupConfig({ rules: { ZA2001: 'warning', ZA2002: 'warning' } })).map((conflict) => conflict.ids)).toEqual([
+			['ZA2001', 'ZA2002'],
+		]);
 	});
 
 	it('writes a raised severity in the section of the analyzer, and a rule the tool applies by default once without it in the tool', () => {
