@@ -19,10 +19,15 @@ internal static class BlankLineCheckedStanzas
 	public readonly record struct Stanza(int Start, int FirstCheck, int End, bool AssertsOnly);
 
 	/// <summary>Caches the stanzas of a container, a read that binds each statement.</summary>
-	public sealed class Reading
+	public sealed class Reading(object gate)
 	{
 		private ImmutableArray<Stanza> _stanzas;
-		public ImmutableArray<Stanza> Get(ContainerContext container) => _stanzas.IsDefault ? _stanzas = ReadStanzas(container) : _stanzas;
+
+		public ImmutableArray<Stanza> Get(ContainerContext container)
+		{
+			lock (gate)
+				return _stanzas.IsDefault ? _stanzas = ReadStanzas(container) : _stanzas;
+		}
 	}
 
 	/// <summary>Reads the edges of the checked stanzas in order, each once.</summary>

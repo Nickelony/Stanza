@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -8,11 +10,11 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 
 /// <summary>A container a blank-line rule judges: its analysis context, the file's options and its siblings.</summary>
 /// <remarks>
-/// Copies share geometry while a receiver rule or a relationship keeper needs it.
+/// Copies share geometry while a receiver rule or a relationship keeper needs it, as do the rules that judge one node.
 /// </remarks>
 internal readonly record struct ContainerContext(SyntaxNodeAnalysisContext Context, StanzaOptions Options, ImmutableArray<SyntaxNode> Siblings)
 {
-	private readonly Readings _readings = new();
+	private readonly Readings _readings = Readings.Share(Context.Node, Context.Compilation, Options);
 
 	public bool ReadsRuns { get; init; }
 	public bool ReadsAnchors { get; init; }
@@ -33,8 +35,17 @@ internal readonly record struct ContainerContext(SyntaxNodeAnalysisContext Conte
 	public static implicit operator RuleScope(ContainerContext container) => container.Context;
 
 	/// <summary>Creates each reading on its first ask, so a rule that never asks reads no rule's state.</summary>
+	/// <remarks>
+	/// The rules that judge a node ask from threads of their own, so one gate guards every reading.
+	/// </remarks>
 	private sealed class Readings
 	{
+		private static readonly ConditionalWeakTable<SyntaxNode, Readings> s_shared = new();
+
+		private readonly WeakReference<Compilation> _compilation;
+		private readonly StanzaOptions _options;
+		private readonly object _gate = new();
+
 		private bool _readsReceiverGroups;
 		private bool _readsDependentBindings;
 		private bool _readsRunOwnership;
@@ -43,39 +54,75 @@ internal readonly record struct ContainerContext(SyntaxNodeAnalysisContext Conte
 		private BlankLineDependentBindings.Reading? _dependentBindings;
 		private BlankLineKeptPairs.RunOwnership? _runOwnership;
 
-		public BlankLineCheckedStanzas.Reading CheckedStanzas { get; } = new();
+		private Readings(Compilation compilation, StanzaOptions options)
+		{
+			_compilation = new WeakReference<Compilation>(compilation);
+			_options = options;
+			CheckedStanzas = new(_gate);
+		}
+
+		public BlankLineCheckedStanzas.Reading CheckedStanzas { get; }
+
+		/// <summary>Gets the readings of the node, which another compilation or other options do not share.</summary>
+		public static Readings Share(SyntaxNode node, Compilation compilation, StanzaOptions options)
+		{
+			lock (s_shared)
+			{
+				if (s_shared.TryGetValue(node, out Readings? shared) && shared.Matches(compilation, options))
+					return shared;
+
+				var readings = new Readings(compilation, options);
+
+				s_shared.Remove(node);
+				s_shared.Add(node, readings);
+
+				return readings;
+			}
+		}
+
+		private bool Matches(Compilation compilation, StanzaOptions options) =>
+			ReferenceEquals(_options, options) && _compilation.TryGetTarget(out Compilation? known) && ReferenceEquals(known, compilation);
 
 		public BlankLineReceiverGroups.Reading? FindReceiverGroups(ContainerContext container)
 		{
-			if (!_readsReceiverGroups)
+			lock (_gate)
 			{
-				_readsReceiverGroups = true;
-				_receiverGroups = IsReceiverRuleOn(container) ? new() : null;
-			}
+				if (!_readsReceiverGroups)
+				{
+					_readsReceiverGroups = true;
+					_receiverGroups = IsReceiverRuleOn(container) ? new(_gate) : null;
+				}
 
-			return _receiverGroups;
+				return _receiverGroups;
+			}
 		}
 
 		public BlankLineDependentBindings.Reading? FindDependentBindings(ContainerContext container)
 		{
-			if (!_readsDependentBindings)
+			lock (_gate)
 			{
-				_readsDependentBindings = true;
-				_dependentBindings = IsJudgedBy(container, StanzaRules.KeepDependentBindingsTogether) ? new() : null;
-			}
+				if (!_readsDependentBindings)
+				{
+					_readsDependentBindings = true;
+					_dependentBindings = IsJudgedBy(container, StanzaRules.KeepDependentBindingsTogether) ? new(_gate) : null;
+				}
 
-			return _dependentBindings;
+				return _dependentBindings;
+			}
 		}
 
 		public BlankLineKeptPairs.RunOwnership? FindRunOwnership(ContainerContext container)
 		{
-			if (!_readsRunOwnership)
+			lock (_gate)
 			{
-				_readsRunOwnership = true;
-				_runOwnership = BlankLineKeptPairs.HasEnabledRule(container.Context, container.Options) ? new() : null;
-			}
+				if (!_readsRunOwnership)
+				{
+					_readsRunOwnership = true;
+					_runOwnership = BlankLineKeptPairs.HasEnabledRule(container.Context, container.Options) ? new(_gate) : null;
+				}
 
-			return _runOwnership;
+				return _runOwnership;
+			}
 		}
 
 		private static bool IsReceiverRuleOn(ContainerContext container)

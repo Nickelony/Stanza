@@ -146,7 +146,10 @@ internal static class BlankLineKeptPairs
 	}
 
 	/// <summary>Caches ownership, anchors and kept groups so gap queries share their container scans.</summary>
-	public sealed class RunOwnership
+	/// <remarks>
+	/// The rules that judge the container ask from threads of their own, so a read takes the gate of its readings.
+	/// </remarks>
+	public sealed class RunOwnership(object gate)
 	{
 		private Dictionary<(StanzaRule Gather, StanzaRule Keep, int Ignored), ImmutableHashSet<int>>? _boundaries;
 		private Dictionary<StanzaRule, ImmutableHashSet<int>>? _anchors;
@@ -159,99 +162,121 @@ internal static class BlankLineKeptPairs
 		private ImmutableHashSet<int>? _accumulators;
 
 		/// <summary>Gets the accumulator gaps, a walk of each loop that every claim would repeat.</summary>
-		public ImmutableHashSet<int> GetAccumulators(ContainerContext container) => _accumulators ??= BlankLineAccumulators.ReadGaps(container);
+		public ImmutableHashSet<int> GetAccumulators(ContainerContext container)
+		{
+			lock (gate)
+				return _accumulators ??= BlankLineAccumulators.ReadGaps(container);
+		}
 
 		/// <summary>Gets the gaps inside kept groups, which every read of a gap owner repeats.</summary>
 		public ImmutableHashSet<int> GetJoined(ContainerContext container)
 		{
-			_joined ??= [];
-			(bool ReadsRuns, bool ReadsAnchors, int Ignored) key = (container.ReadsRuns, container.ReadsAnchors, container.IgnoredAnchorKeepers);
-
-			if (_joined.TryGetValue(key, out ImmutableHashSet<int>? joined))
-				return joined;
-
-			int[] starts = GetProjection(container);
-			ImmutableHashSet<int>.Builder builder = ImmutableHashSet.CreateBuilder<int>();
-
-			for (int boundary = 1; boundary < starts.Length; boundary++)
+			lock (gate)
 			{
-				if (starts[boundary] != boundary)
-					builder.Add(boundary);
+				_joined ??= [];
+				(bool ReadsRuns, bool ReadsAnchors, int Ignored) key = (container.ReadsRuns, container.ReadsAnchors, container.IgnoredAnchorKeepers);
+
+				if (_joined.TryGetValue(key, out ImmutableHashSet<int>? joined))
+					return joined;
+
+				int[] starts = GetProjection(container);
+				ImmutableHashSet<int>.Builder builder = ImmutableHashSet.CreateBuilder<int>();
+
+				for (int boundary = 1; boundary < starts.Length; boundary++)
+				{
+					if (starts[boundary] != boundary)
+						builder.Add(boundary);
+				}
+
+				joined = builder.ToImmutable();
+				_joined.Add(key, joined);
+
+				return joined;
 			}
-
-			joined = builder.ToImmutable();
-			_joined.Add(key, joined);
-
-			return joined;
 		}
 
 		/// <summary>Gets the multi-line boundaries moved above kept groups, which each owner read repeats.</summary>
 		public ImmutableHashSet<int> GetDisplaced(ContainerContext container, Func<ContainerContext, ImmutableHashSet<int>> readDisplaced)
 		{
-			_displaced ??= [];
-			(bool ReadsRuns, bool ReadsAnchors, int Ignored) key = (container.ReadsRuns, container.ReadsAnchors, container.IgnoredAnchorKeepers);
+			lock (gate)
+			{
+				_displaced ??= [];
+				(bool ReadsRuns, bool ReadsAnchors, int Ignored) key = (container.ReadsRuns, container.ReadsAnchors, container.IgnoredAnchorKeepers);
 
-			if (_displaced.TryGetValue(key, out ImmutableHashSet<int>? displaced))
+				if (_displaced.TryGetValue(key, out ImmutableHashSet<int>? displaced))
+					return displaced;
+
+				displaced = readDisplaced(container);
+
+				_displaced.Add(key, displaced);
 				return displaced;
-
-			displaced = readDisplaced(container);
-
-			_displaced.Add(key, displaced);
-			return displaced;
+			}
 		}
 
 		public int[] GetProjection(ContainerContext container)
 		{
-			_projections ??= [];
-			(bool ReadsRuns, bool ReadsAnchors, int Ignored) key = (container.ReadsRuns, container.ReadsAnchors, container.IgnoredAnchorKeepers);
+			lock (gate)
+			{
+				_projections ??= [];
+				(bool ReadsRuns, bool ReadsAnchors, int Ignored) key = (container.ReadsRuns, container.ReadsAnchors, container.IgnoredAnchorKeepers);
 
-			if (_projections.TryGetValue(key, out int[]? starts))
+				if (_projections.TryGetValue(key, out int[]? starts))
+					return starts;
+
+				starts = ReadOuterStarts(container);
+
+				_projections.Add(key, starts);
 				return starts;
-
-			starts = ReadOuterStarts(container);
-
-			_projections.Add(key, starts);
-			return starts;
+			}
 		}
 
 		public ImmutableHashSet<int> GetInitializations(ContainerContext container)
 		{
-			_initializations ??= [];
-			(bool ReadsRuns, bool ReadsAnchors, int Ignored) key = (container.ReadsRuns, container.ReadsAnchors, container.IgnoredAnchorKeepers);
+			lock (gate)
+			{
+				_initializations ??= [];
+				(bool ReadsRuns, bool ReadsAnchors, int Ignored) key = (container.ReadsRuns, container.ReadsAnchors, container.IgnoredAnchorKeepers);
 
-			if (_initializations.TryGetValue(key, out ImmutableHashSet<int>? gaps))
+				if (_initializations.TryGetValue(key, out ImmutableHashSet<int>? gaps))
+					return gaps;
+
+				gaps = ReadInitializationGaps(container);
+
+				_initializations.Add(key, gaps);
 				return gaps;
-
-			gaps = ReadInitializationGaps(container);
-
-			_initializations.Add(key, gaps);
-			return gaps;
+			}
 		}
 
 		public ImmutableHashSet<int> GetAnchors(ContainerContext container, StanzaRule keeper)
 		{
-			_anchors ??= [];
+			lock (gate)
+			{
+				_anchors ??= [];
 
-			if (_anchors.TryGetValue(keeper, out ImmutableHashSet<int>? anchors))
+				if (_anchors.TryGetValue(keeper, out ImmutableHashSet<int>? anchors))
+					return anchors;
+
+				anchors = BlankLineOwnership.ReadAskedAnchors(container with { ReadsAnchors = true }, keeper);
+
+				_anchors.Add(keeper, anchors);
 				return anchors;
-
-			anchors = BlankLineOwnership.ReadAskedAnchors(container with { ReadsAnchors = true }, keeper);
-
-			_anchors.Add(keeper, anchors);
-			return anchors;
+			}
 		}
 
 		public ImmutableHashSet<int> Get(ContainerContext container, StanzaRule gather, StanzaRule keep)
 		{
-			_boundaries ??= [];
+			lock (gate)
+			{
+				_boundaries ??= [];
 
-			if (_boundaries.TryGetValue((gather, keep, container.IgnoredAnchorKeepers), out ImmutableHashSet<int>? boundaries))
+				if (_boundaries.TryGetValue((gather, keep, container.IgnoredAnchorKeepers), out ImmutableHashSet<int>? boundaries))
+					return boundaries;
+
+				boundaries = ReadRunRuleBoundaries(container, gather, keep);
+
+				_boundaries.Add((gather, keep, container.IgnoredAnchorKeepers), boundaries);
 				return boundaries;
-
-			boundaries = ReadRunRuleBoundaries(container, gather, keep);
-
-			_boundaries.Add((gather, keep, container.IgnoredAnchorKeepers), boundaries);
-			return boundaries;
+			}
 		}
 	}
 

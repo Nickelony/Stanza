@@ -16,10 +16,15 @@ internal static class BlankLineDependentBindings
 	private readonly record struct Binding(ILocalSymbol Symbol, ExpressionSyntax Value);
 
 	/// <summary>Shares one dependency scan across keeper claims and projected borders.</summary>
-	public sealed class Reading
+	public sealed class Reading(object gate)
 	{
 		private Groups? _groups;
-		public Groups Get(ContainerContext container) => _groups ??= ReadGroups(container);
+
+		public Groups Get(ContainerContext container)
+		{
+			lock (gate)
+				return _groups ??= ReadGroups(container);
+		}
 	}
 
 	public static ImmutableHashSet<int> GetInner(ContainerContext container) => container.DependentBindings?.Get(container).Inner ?? [];

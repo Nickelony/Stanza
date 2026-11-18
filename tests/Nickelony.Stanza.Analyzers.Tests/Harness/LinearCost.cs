@@ -103,6 +103,16 @@ internal static class LinearCost
 		Assert.IsLessThan(small * AllowedGrowth, large, $"{message}: {small:N0} bytes grew to {large:N0}.");
 	}
 
+	/// <summary>Asserts that a run allocates under a multiple of its baseline.</summary>
+	public static async Task AssertAnalysisCostWithinAsync(string source, RunOptions baseline, RunOptions measured, int factor, string message)
+	{
+		// A cost that grows with the rules on, and not with the source, passes a test of growth, so the rules are measured against a baseline.
+		long cheap = await MeasureAnalysisAsync(source, baseline);
+		long dear = await MeasureAnalysisAsync(source, measured);
+
+		Assert.IsLessThan(cheap * factor, dear, $"{message}: {cheap:N0} bytes grew to {dear:N0}.");
+	}
+
 	private static async Task<long> MeasureAnalysisAsync(string source, RunOptions options)
 	{
 		long lowest = long.MaxValue;

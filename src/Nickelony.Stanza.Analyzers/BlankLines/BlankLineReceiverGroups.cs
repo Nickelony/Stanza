@@ -11,10 +11,15 @@ internal static class BlankLineReceiverGroups
 	public readonly record struct Groups(ImmutableHashSet<int> Inner, ImmutableArray<int> Outer, ImmutableHashSet<int> Sections);
 
 	/// <summary>Caches one container scan shared by its gap claims and counterfactual run reads.</summary>
-	public sealed class Reading
+	public sealed class Reading(object gate)
 	{
 		private Groups? _groups;
-		public Groups Get(ContainerContext container) => _groups ??= ReadGroups(container);
+
+		public Groups Get(ContainerContext container)
+		{
+			lock (gate)
+				return _groups ??= ReadGroups(container);
+		}
 	}
 
 	public static Groups GetGroups(ContainerContext container) => container.ReceiverGroups?.Get(container) ?? new Groups([], [], []);

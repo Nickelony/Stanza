@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nickelony.Stanza.Analyzers.Tests.Guards;
 using Nickelony.Stanza.Tests.Shared;
@@ -394,6 +396,84 @@ public sealed partial class ConvergenceTests
 		}
 
 		return body.Append("return text;").ToString();
+	}
+
+	// Each rule that judges a block asks on a thread of its own, so a block that the rules did not share their readings of
+	// is read once per rule, which cost the kept-group rules several times the strong level on one large block.
+	[TestMethod]
+	[DoNotParallelize]
+	public async Task TheKeptGroupRulesCostFewTimesTheStrongLevelOnOneLargeBlock()
+	{
+		static RunOptions With(DiagnosticDescriptor[] rules)
+		{
+			return new RunOptions(RoslynTestHarness.AllAnalyzers)
+			{
+				DiagnosticOptions = AtLevelWith("strong", rules),
+				AnalyzerConfigOptions = new Dictionary<string, string> { ["stanza_receiver_roots"] = "*" },
+				BothEndings = false,
+			};
+		}
+
+		await LinearCost.AssertAnalysisCostWithinAsync(
+			source: SourceGenerators.WrapKeptGroupBody(BuildLargeKeptGroupBody(50)),
+			baseline: With([]),
+			measured: With(s_keptGroupRules),
+			factor: 5,
+			message: "the kept-group rules"
+		);
+	}
+
+	// A rule that asks for a block's gap owners reads the same readings as every other rule that judges the block.
+	[TestMethod]
+	public async Task TheRulesThatJudgeOneBlockShareItsReadings()
+	{
+		ConcurrentDictionary<string, object?> owned = [];
+
+		DiagnosticAnalyzer ReadOwnershipFor(StanzaRule rule)
+		{
+			return new ContainerReadingAnalyzer(
+				rule,
+
+				container =>
+				{
+					// The body of the method is the one block of four statements.
+					if (container.Siblings.Length == 4)
+						owned[rule.Descriptor.Id] = container.RunOwnership;
+				}
+			);
+		}
+
+		var options = new RunOptions([
+			ReadOwnershipFor(StanzaRules.KeepGuardClausesTogether),
+			ReadOwnershipFor(StanzaRules.KeepJumpWithBinding),
+		])
+		{
+			DiagnosticOptions = TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.KeepGuardClausesTogether,
+				DiagnosticDescriptors.KeepJumpWithBinding,
+			]),
+		};
+
+		_ = await RoslynTestHarness.ReportAsync(
+			source: """
+				class C
+				{
+					int M(int a)
+					{
+						int b = a;
+						int c = b;
+						int d = c;
+						return d;
+					}
+				}
+				""",
+
+			options
+		);
+
+		Assert.HasCount(2, owned);
+		Assert.IsNotNull(owned[DiagnosticDescriptors.KeepGuardClausesTogether.Id]);
+		Assert.AreSame(owned[DiagnosticDescriptors.KeepGuardClausesTogether.Id], owned[DiagnosticDescriptors.KeepJumpWithBinding.Id]);
 	}
 
 	public static IEnumerable<object[]> LargeBlockRuleSets { get; } =
