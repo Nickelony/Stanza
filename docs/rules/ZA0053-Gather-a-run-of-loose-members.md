@@ -41,6 +41,8 @@ private int limit;
   [`ZA0401`](https://github.com/Nickelony/Stanza/wiki/ZA0401-Separate-a-region-marker) beside a region marker and
   [`ZA0016`](https://github.com/Nickelony/Stanza/wiki/ZA0016-Separate-a-commented-sibling) above a comment.
 - A gap stays blank when gathering it would leave a grouping rule asking for a blank line that is not there now.
+- A blank line a grouping rule asks for now counts as written,
+  and one it holds until the gap above it is written counts as tight, since that blank line ends the run that asks for it.
 - A rule that is [off](https://github.com/Nickelony/Stanza/wiki/Terms) at a gap hands it back, so the gap counts as loose again.
 - A container of two members belongs to [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-the-two-units-of-a-container-together) where that rule is on.
 - The gap below a file-scoped namespace header belongs to [`ZA0021`](https://github.com/Nickelony/Stanza/wiki/ZA0021-Separate-the-file-scoped-namespace),

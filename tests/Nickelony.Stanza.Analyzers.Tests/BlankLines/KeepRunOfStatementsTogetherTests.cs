@@ -1745,11 +1745,10 @@ public sealed class KeepRunOfStatementsTogetherTests
 		RoslynTestHarness.AssertFixedText(fixedSource, result);
 	}
 
-	// Each group crosses as above, and its borders cost two tries: the gap below the using declaration, then the one above the call.
-	// The fix of one run tries eight, so it writes the borders of four groups and leaves those of the fifth to the rules that ask for them.
-	// The fixes of the other rules and runs then write them, and every fix order settles on the same text.
+	// Each group crosses as above, and the run of one type ends at the blank line the declaration rule asks for, as the same-type rule reads it.
+	// So the first read of the fix of one run asks for the borders of every group, and it writes them all without a try.
 	[TestMethod]
-	public async Task TheFixOfOneRunTriesEightCrossingsAndLeavesTheRestToTheRulesThatAskForThem()
+	public async Task TheFixOfOneRunWritesTheBordersOfEveryGroupWhoseRunsCross()
 	{
 		const int groups = 5;
 
@@ -1757,13 +1756,11 @@ public sealed class KeepRunOfStatementsTogetherTests
 		static string Calls(bool joined) =>
 			string.Join(joined ? string.Empty : "\n", Enumerable.Repeat("\t\tDoThing();\n", 6));
 
-		static string Group(int index, bool joined, bool bordered)
+		static string Group(int index, bool joined)
 		{
-			string gap = bordered ? "\n" : string.Empty;
-
 			return Calls(joined)
-				+ $"\n\t\tusing IDisposable a{index} = Open();\n{gap}"
-				+ $"\t\tIDisposable b{index} = Open();\n\t\tstring c{index} = \"\";\n{gap}\t\tBuild({index});\n";
+				+ $"\n\t\tusing IDisposable a{index} = Open();\n\n"
+				+ $"\t\tIDisposable b{index} = Open();\n\t\tstring c{index} = \"\";\n\n\t\tBuild({index});\n";
 		}
 
 		static string Method(string statements)
@@ -1789,13 +1786,13 @@ public sealed class KeepRunOfStatementsTogetherTests
 				"\n",
 
 				indexes.Select(index =>
-					Group(index, joined: index == 0, bordered: index < groups - 1)
+					Group(index, joined: index == 0)
 				)
 			)
 		);
 
 		string settledSource = Method(
-			string.Join("\n", indexes.Select(index => Group(index, joined: true, bordered: true)))
+			string.Join("\n", indexes.Select(index => Group(index, joined: true)))
 		);
 
 		DiagnosticDescriptor[] alsoOn =

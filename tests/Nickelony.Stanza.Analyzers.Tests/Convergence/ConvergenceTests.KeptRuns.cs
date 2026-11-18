@@ -148,6 +148,7 @@ public sealed partial class ConvergenceTests
 	}
 
 	// Joined members regroup for the member, modifier, declaration and same-type rules alike.
+	// The last class puts a loose gap beside fields whose modifier and same-type runs cross.
 	private const string KeptMembersSource = """
 		class C
 		{
@@ -186,6 +187,16 @@ public sealed partial class ConvergenceTests
 			int _b;
 			string _c;
 		#endif
+		}
+
+		class E
+		{
+			public void First() { }
+
+			public void Second() { }
+			internal string _name;
+			private string _title;
+			event System.Action Changed;
 		}
 		""";
 
@@ -461,6 +472,219 @@ public sealed partial class ConvergenceTests
 			targets: "merge",
 			name
 		);
+	}
+
+	// A grouping rule holds a border that a reported kept run writes or regroups, so the join lands first in every fix order.
+	public static IEnumerable<object[]> KeptRunBesideGroupingRows { get; } =
+	[
+		[
+			"the members of crossing runs of fields",
+
+			TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.KeepRunOfMembersTogether,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+				DiagnosticDescriptors.SeparateMemberGroups,
+				DiagnosticDescriptors.SeparateModifierGroups,
+			]),
+
+			"""
+				class C
+				{
+					internal string _n0;
+
+					private int _i1;
+					private string _s2;
+					internal string _n3;
+					public static int S4;
+
+					public void M5() { }
+
+					public void M6() { }
+				}
+				""",
+
+			"""
+				class C
+				{
+					internal string _n0;
+
+					private int _i1;
+					private string _s2;
+
+					internal string _n3;
+					public static int S4;
+
+					public void M5() { }
+					public void M6() { }
+				}
+				""",
+		],
+
+		[
+			"the declarations below which the declaration rule asks for a border the join dissolves",
+
+			TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.KeepRunOfStatementsTogether,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+				DiagnosticDescriptors.SeparateDeclarationRuns,
+			]),
+
+			"""
+				class C
+				{
+					void M()
+					{
+						int a = 0;
+
+						int b = 0;
+
+						int c = 0;
+						string s = "";
+						DoThing();
+					}
+				}
+				""",
+
+			"""
+				class C
+				{
+					void M()
+					{
+						int a = 0;
+						int b = 0;
+						int c = 0;
+
+						string s = "";
+						DoThing();
+					}
+				}
+				""",
+		],
+
+		[
+			"the fields below which the declaration rule asks for a border the join dissolves",
+
+			TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.KeepRunOfMembersTogether,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+				DiagnosticDescriptors.SeparateDeclarationRuns,
+			]),
+
+			KeptFieldsBesideAnEvent,
+			KeptFieldsBesideAnEventFixed,
+		],
+
+		[
+			"the fields below which the member rule asks for a border the join dissolves",
+
+			TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.KeepRunOfMembersTogether,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+				DiagnosticDescriptors.SeparateMemberGroups,
+			]),
+
+			KeptFieldsBesideAnEvent,
+			KeptFieldsBesideAnEventFixed,
+		],
+	];
+
+	private const string KeptFieldsBesideAnEvent = """
+		class C
+		{
+			private int _a;
+
+			public static int S6;
+
+			public static int S7;
+			public event System.Action E8;
+			private void N9() { }
+		}
+		""";
+
+	private const string KeptFieldsBesideAnEventFixed = """
+		class C
+		{
+			private int _a;
+			public static int S6;
+			public static int S7;
+
+			public event System.Action E8;
+			private void N9() { }
+		}
+		""";
+
+	[TestMethod]
+	[DynamicData(
+		nameof(KeptRunBesideGroupingRows),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task AKeptRunSettlesTheSameWayBesideTheGroupingRulesWhicheverFixComesFirst(
+		string name,
+		IReadOnlyDictionary<string, ReportDiagnostic> rules,
+		string source,
+		string fixedSource
+	)
+	{
+		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(
+			expected: fixedSource,
+			source,
+			options: new RunOptions(RoslynTestHarness.AllAnalyzers) { DiagnosticOptions = rules },
+			name
+		);
+	}
+
+	// The join writes the blank line below the strings, so the same-type rule leaves that gap to it and no two fixes write it.
+	[TestMethod]
+	public async Task AGroupingRuleLeavesTheBorderThatAKeptRunWritesToThatRun()
+	{
+		const string source = """
+			class C
+			{
+				void M()
+				{
+					string x = "";
+					string y = "";
+					int a = 0;
+
+					int b = 0;
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			class C
+			{
+				void M()
+				{
+					string x = "";
+					string y = "";
+
+					int a = 0;
+					int b = 0;
+				}
+			}
+			""";
+
+		var options = new RunOptions(RoslynTestHarness.AllAnalyzers)
+		{
+			DiagnosticOptions = TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.KeepRunOfStatementsTogether,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+				DiagnosticDescriptors.SeparateDeclarationRuns,
+			]),
+		};
+
+		AnalyzerRunResult reported = await RoslynTestHarness.ReportAsync(source, options);
+
+		Assert.AreSequenceEqual(
+			[DiagnosticDescriptors.KeepRunOfStatementsTogether.Id],
+			reported.Diagnostics.Select(diagnostic => diagnostic.Id).ToArray()
+		);
+
+		Assert.AreSequenceEqual([2], FixOptions.Parse(reported.Diagnostics[0]).Boundaries.ToArray());
+
+		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(fixedSource, source, options);
 	}
 
 	private static async Task AssertKeptRunsSettleAsync(

@@ -1504,6 +1504,228 @@ public sealed partial class ConvergenceTests
 		);
 	}
 
+	// The rules that gather a loose run beside the grouping rules, with the setting that has them gather every run of two.
+	private static readonly DiagnosticDescriptor[] s_gatherBesideGrouping =
+	[
+		DiagnosticDescriptors.GatherRunOfLooseStatements,
+		DiagnosticDescriptors.GatherRunOfLooseMembers,
+		DiagnosticDescriptors.SeparateDeclarationRuns,
+		DiagnosticDescriptors.SeparateInvocationRuns,
+		DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+		DiagnosticDescriptors.SeparateMemberGroups,
+		DiagnosticDescriptors.SeparateMultiLineConstructs,
+		DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
+		DiagnosticDescriptors.SeparateCommentedSibling,
+		DiagnosticDescriptors.SeparateJumpStatement,
+		DiagnosticDescriptors.CollapseExtraBlankLines,
+	];
+
+	private static readonly DiagnosticDescriptor[] s_gatherBesideCrossingFields =
+	[
+		DiagnosticDescriptors.GatherRunOfLooseMembers,
+		DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+		DiagnosticDescriptors.SeparateMemberGroups,
+		DiagnosticDescriptors.SeparateModifierGroups,
+	];
+
+	// A gather rule reads a border held for the gap above it as tight, a border another fix writes as written,
+	// and a same-type run as ending where an earlier grouping rule writes its blank line.
+	public static IEnumerable<object[]> GatherBesideGroupingRows { get; } =
+	[
+		[
+			"statements, where a type splits the run above a held border",
+			TestRuleSets.OnSuppressingAllOthers(s_gatherBesideGrouping),
+
+			"""
+				class C
+				{
+					void M(System.Action Bar, System.Action Foo)
+					{
+						string a = "x";
+						string b = "x";
+						int c = 2;
+						Bar();
+
+						Foo();
+					}
+				}
+				""",
+
+			"""
+				class C
+				{
+					void M(System.Action Bar, System.Action Foo)
+					{
+						string a = "x";
+						string b = "x";
+
+						int c = 2;
+						Bar();
+
+						Foo();
+					}
+				}
+				""",
+		],
+
+		[
+			"members, where a type splits the run above a held border",
+			TestRuleSets.OnSuppressingAllOthers(s_gatherBesideGrouping),
+
+			"""
+				class C
+				{
+					public string D;
+					public string E;
+					private static int _a;
+					public void M() { }
+
+					private int _b;
+				}
+				""",
+
+			"""
+				class C
+				{
+					public string D;
+					public string E;
+
+					private static int _a;
+					public void M() { }
+
+					private int _b;
+				}
+				""",
+		],
+
+		[
+			"methods above fields whose modifier and same-type runs cross",
+
+			TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.GatherRunOfLooseMembers,
+				DiagnosticDescriptors.CollapseExtraBlankLines,
+				DiagnosticDescriptors.SeparateModifierGroups,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+			]),
+
+			"""
+				class C
+				{
+					public void First() { }
+
+					public void Second() { }
+					internal string _name;
+					private string _title;
+					event System.Action Changed;
+				}
+				""",
+
+			"""
+				class C
+				{
+					public void First() { }
+
+					public void Second() { }
+					internal string _name;
+
+					private string _title;
+					event System.Action Changed;
+				}
+				""",
+		],
+
+		[
+			"a loose run below fields whose border another fix writes",
+			TestRuleSets.OnSuppressingAllOthers(s_gatherBesideCrossingFields),
+
+			"""
+				class C
+				{
+					private string _s0;
+					private string _s1;
+					public static int S2;
+
+					public void M3() { }
+
+					public static int S4;
+				}
+				""",
+
+			"""
+				class C
+				{
+					private string _s0;
+					private string _s1;
+
+					public static int S2;
+					public void M3() { }
+					public static int S4;
+				}
+				""",
+		],
+
+		[
+			"a loose run of fields whose modifier and same-type runs cross",
+			TestRuleSets.OnSuppressingAllOthers(s_gatherBesideCrossingFields),
+
+			"""
+				class C
+				{
+					event System.Action E0;
+
+					private string _s1;
+
+					private int _i2;
+					private string _s3;
+					internal string _n4;
+
+					public void M5() { }
+				}
+				""",
+
+			"""
+				class C
+				{
+					event System.Action E0;
+					private string _s1;
+
+					private int _i2;
+					private string _s3;
+
+					internal string _n4;
+					public void M5() { }
+				}
+				""",
+		],
+	];
+
+	[TestMethod]
+	[DynamicData(
+		nameof(GatherBesideGroupingRows),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task ALooseRunSettlesTheSameWayBesideTheGroupingRulesWhicheverFixComesFirst(
+		string name,
+		IReadOnlyDictionary<string, ReportDiagnostic> rules,
+		string source,
+		string fixedSource
+	)
+	{
+		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(
+			expected: fixedSource,
+			source,
+
+			options: new RunOptions(RoslynTestHarness.AllAnalyzers)
+			{
+				DiagnosticOptions = rules,
+				AnalyzerConfigOptions = new Dictionary<string, string> { ["stanza_max_loose_run_size"] = "1" },
+			},
+
+			name
+		);
+	}
+
 	// The capital rule leaves a listed keyword at the start of a text as written, so the keyword rule still finds it.
 	[TestMethod]
 	[DataRow("null", "True if bound")]

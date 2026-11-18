@@ -14,7 +14,21 @@ internal static class BlankLineKeptRuns
 	/// <remarks>
 	/// Every run carries the same written boundaries, so a fix of any run writes them all.
 	/// </remarks>
-	public readonly record struct KeptRuns(ImmutableArray<BlankLineLooseRuns.LooseRun> Runs, ImmutableArray<int> Written);
+	public readonly record struct KeptRuns(ImmutableArray<BlankLineLooseRuns.LooseRun> Runs, ImmutableArray<int> Written)
+	{
+		/// <summary>Whether the fix writes the boundary, or joins a unit of a run that asks for it.</summary>
+		/// <remarks>
+		/// A joined unit regroups the runs it belongs to, so their borders read again once the fix lands.
+		/// </remarks>
+		public bool Crosses(int boundary, IEnumerable<BlankLineGrouping.RunBorder> asked)
+		{
+			if (Written.BinarySearch(boundary) >= 0)
+				return true;
+
+			ImmutableArray<BlankLineLooseRuns.LooseRun> runs = Runs;
+			return asked.Any(border => runs.Any(run => border.RunStart < run.End && run.Start < border.RunEnd));
+		}
+	}
 
 	/// <summary>The kept gaps that go once joined, and the boundaries that then get a blank line.</summary>
 	private readonly record struct Settlement(ImmutableHashSet<int> Kept, ImmutableHashSet<int> Written);
@@ -35,6 +49,36 @@ internal static class BlankLineKeptRuns
 
 	/// <summary>The rounds that decline the runs which only move a blank line.</summary>
 	private const int MaxRounds = 4;
+
+	/// <summary>Reads the runs a keep rule that is on reports, those with a gap no pragma silences.</summary>
+	/// <remarks>
+	/// The fix of any reported run writes every boundary, so the written ones stay whole.
+	/// </remarks>
+	public static KeptRuns ReadReportedRuns(ContainerContext container, StanzaRule keepRule, bool judgesMembers)
+	{
+		if (StanzaRuleState.IsRuleDisabled(container, container.Options, keepRule))
+			return s_none;
+
+		KeptRuns kept = ReadRuns(container, keepRule, judgesMembers);
+
+		ImmutableArray<BlankLineLooseRuns.LooseRun> reported =
+		[
+			.. kept.Runs.Where(run =>
+				Enumerable
+					.Range(run.Start + 1, run.End - run.Start - 1)
+					.Any(boundary =>
+						!StanzaRuleState.IsOffAt(
+							scope: container,
+							options: container.Options,
+							rule: keepRule,
+							position: container.Siblings[boundary].SpanStart
+						)
+					)
+			),
+		];
+
+		return reported.IsEmpty ? s_none : kept with { Runs = reported };
+	}
 
 	/// <summary>Reads the runs of a container, a gap being inside one when no rule asks for its blank line.</summary>
 	/// <remarks>

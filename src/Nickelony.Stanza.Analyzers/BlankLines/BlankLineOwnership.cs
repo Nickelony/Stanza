@@ -348,40 +348,44 @@ internal static class BlankLineOwnership
 			projectsKeptGroups: true
 		);
 
+		ImmutableArray<BlankLineGrouping.RunBorder> memberBorders = rule.Defers(DiagnosticDescriptors.SeparateMemberGroups)
+			? ReadGroupBorders(
+				container,
+				owner: rule.GetDeferral(DiagnosticDescriptors.SeparateMemberGroups),
+				readBorders: () => BlankLineGrouping.ReadMemberGroupBorders(siblings, gapOwners, gathered, cancellationToken),
+				projectsKeptGroups: true
+			)
+			: [];
+
+		ImmutableArray<BlankLineGrouping.RunBorder> modifierBorders = rule.Defers(DiagnosticDescriptors.SeparateModifierGroups)
+			? ReadGroupBorders(
+				container,
+				owner: rule.GetDeferral(DiagnosticDescriptors.SeparateModifierGroups),
+				readBorders: () => BlankLineGrouping.ReadModifierGroupBorders(siblings, gapOwners, gathered, cancellationToken),
+				projectsKeptGroups: true
+			)
+			: [];
+
+		// The same-type rule ends a run where an earlier grouping rule writes its blank line, as its own analyzer reads it.
+		GapOwners sameTypeOwners = gapOwners with
+		{
+			OwnedBoundaries =
+			[
+				.. gapOwners.OwnedBoundaries ?? [],
+				.. borders.Concat(memberBorders).Concat(modifierBorders).Select(static border => border.Boundary),
+			],
+		};
+
 		borders = borders.AddRange(
 			ReadGroupBorders(
 				container,
 				owner: rule.GetDeferral(DiagnosticDescriptors.SeparateSameTypeDeclarationRuns),
-				readBorders: () => BlankLineGrouping.ReadSameTypeDeclarationBorders(siblings, gapOwners, gathered, cancellationToken),
+				readBorders: () => BlankLineGrouping.ReadSameTypeDeclarationBorders(siblings, gapOwners: sameTypeOwners, gathered, cancellationToken),
 				projectsKeptGroups: true
 			)
 		);
 
-		if (rule.Defers(DiagnosticDescriptors.SeparateMemberGroups))
-		{
-			borders = borders.AddRange(
-				ReadGroupBorders(
-					container,
-					owner: rule.GetDeferral(DiagnosticDescriptors.SeparateMemberGroups),
-					readBorders: () => BlankLineGrouping.ReadMemberGroupBorders(siblings, gapOwners, gathered, cancellationToken),
-					projectsKeptGroups: true
-				)
-			);
-		}
-
-		if (rule.Defers(DiagnosticDescriptors.SeparateModifierGroups))
-		{
-			borders = borders.AddRange(
-				ReadGroupBorders(
-					container,
-					owner: rule.GetDeferral(DiagnosticDescriptors.SeparateModifierGroups),
-					readBorders: () => BlankLineGrouping.ReadModifierGroupBorders(siblings, gapOwners, gathered, cancellationToken),
-					projectsKeptGroups: true
-				)
-			);
-		}
-
-		return borders;
+		return borders.AddRange(memberBorders).AddRange(modifierBorders);
 	}
 
 	/// <summary>The borders a grouping rule owns, none while it is off, and none that a pragma silences.</summary>

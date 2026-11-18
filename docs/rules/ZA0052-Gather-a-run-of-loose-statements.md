@@ -41,6 +41,8 @@ limit = 3;
 - So the gap above a jump stays blank when the run above it is gathered, and a run that then holds no more than the limit is left as written.
 - A gap stays blank when gathering it would leave a grouping rule, `ZA0011` or `ZA0013`
   asking for a blank line that is not there now.
+- A blank line a grouping rule asks for now counts as written,
+  and one it holds until the gap above it is written counts as tight, since that blank line ends the run that asks for it.
 - A rule that is [off](https://github.com/Nickelony/Stanza/wiki/Terms) at a gap hands it back, so the gap counts as loose again.
 - The rule judges the statements of a block, of a switch section and at the top level of a file, not the gaps between switch sections.
   Imports are no statements, and [`ZA0019`](https://github.com/Nickelony/Stanza/wiki/ZA0019-Separate-the-import-section) asks for the blank line below them.

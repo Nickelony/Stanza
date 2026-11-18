@@ -136,6 +136,7 @@ A blank line in the crossed gap could leave the unit alone and end the ask for t
 
 A gap directly below a waiting gap waits with it.
 An upper gap that no fix can write or that a pragma silences holds nothing back.
+The gather rules read a waiting gap as tight, and a gap a grouping rule reports as holding its blank line.
 
 ## A blank line inside a run
 
@@ -146,6 +147,9 @@ They read a [kept run](https://github.com/Nickelony/Stanza/wiki/Terms): [ZA0003]
 Their fix writes the blank lines the grouping rules then ask for,
 and leaves a blank line that sets two [sections](https://github.com/Nickelony/Stanza/wiki/Terms) apart or that joining would only [move](https://github.com/Nickelony/Stanza/wiki/Terms).
 The [ZA0055 page](https://github.com/Nickelony/Stanza/wiki/ZA0055-Keep-a-run-of-statements-together) states when its fix leaves a blank line.
+
+While `ZA0055` or `ZA0056` reports a run, the grouping rules and `ZA0010` to `ZA0014` wait at a gap whose blank line that fix writes.
+They wait too where the run that asks for the gap shares a unit with the joined run, so the join lands first.
 
 The gather rules, [ZA0052](https://github.com/Nickelony/Stanza/wiki/ZA0052-Gather-a-run-of-loose-statements) and [ZA0053](https://github.com/Nickelony/Stanza/wiki/ZA0053-Gather-a-run-of-loose-members), leave a container to `ZA0055` or `ZA0056` while that rule has a run in it,
 and leave a blank line that rule keeps as a section break or [declines](https://github.com/Nickelony/Stanza/wiki/Terms) as written.

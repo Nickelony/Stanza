@@ -63,6 +63,8 @@ string name = "";
 - The fix writes only the blank lines that stay asked for once the others are written.
   It tries each blank line asked for only once another is written, eight at most, and the grouping rules write the rest.
 - The fix of any gap removes the blank lines of its whole run and writes the blank lines that the runs of the container ask for.
+- A grouping rule, or another rule that sets statements apart such as `ZA0011`, leaves a blank line to this rule
+  while the fix writes it or joins a statement of the run that asks for it.
 - A gap that another rule asks for is not inside a run, such as the one below the base call that [`ZA0014`](https://github.com/Nickelony/Stanza/wiki/ZA0014-Separate-the-base-call) asks for.
 - A container of two statements belongs to [`ZA0054`](https://github.com/Nickelony/Stanza/wiki/ZA0054-Keep-the-two-units-of-a-container-together) where that rule is on.
 - The rule leaves a container as written where a conditional directive can change its runs from one [view](https://github.com/Nickelony/Stanza/wiki/Terms) to another,

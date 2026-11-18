@@ -119,32 +119,7 @@ internal static class BlankLineLooseRuns
 		if (!rule.Defers(target))
 			return false;
 
-		StanzaRule keepRule = rule.GetDeferral(target);
-
-		if (StanzaRuleState.IsRuleDisabled(container, container.Options, keepRule))
-			return false;
-
-		BlankLineKeptRuns.KeptRuns kept = BlankLineKeptRuns.ReadRuns(container, rule: keepRule, judgesMembers);
-
-		foreach (LooseRun run in kept.Runs)
-		{
-			for (int boundary = run.Start + 1; boundary < run.End; boundary++)
-			{
-				if (
-					!StanzaRuleState.IsOffAt(
-						scope: container,
-						options: container.Options,
-						rule: keepRule,
-						position: container.Siblings[boundary].SpanStart
-					)
-				)
-				{
-					return true;
-				}
-			}
-		}
-
-		return false;
+		return !BlankLineKeptRuns.ReadReportedRuns(container, keepRule: rule.GetDeferral(target), judgesMembers).Runs.IsEmpty;
 	}
 
 	/// <summary>Reads the first stretch of statements or members, since imports are no unit.</summary>
@@ -251,7 +226,24 @@ internal static class BlankLineLooseRuns
 		ImmutableArray<int> jumps = ReadDeferredJumps(container, rule);
 		int guardBoundary = BlankLineGuards.FindAskedGuardBoundary(container, askingRule: rule);
 
-		ImmutableHashSet<int> asked = ReadAllAskedBoundaries(container, rule, gapOwners, jumps, guardBoundary);
+		ImmutableArray<BlankLineGrouping.RunBorder> standing = BlankLineOwnership.ReadGatheredGroupingBorders(
+			container,
+			rule,
+			gapOwners,
+			gathered: null
+		);
+
+		// A border that its rule holds for the gap above goes once another fix writes that gap, so it reads tight.
+		(ImmutableHashSet<int> pending, ImmutableHashSet<int> waiting) = ReadPendingBoundaries(siblings, standing);
+
+		ImmutableHashSet<int> asked = ReadAllAskedBoundaries(
+			container,
+			rule,
+			gapOwners,
+			jumps,
+			guardBoundary,
+			standing: standing.Where(border => !waiting.Contains(border.Boundary))
+		);
 
 		ImmutableHashSet<int> candidates =
 		[
@@ -285,7 +277,35 @@ internal static class BlankLineLooseRuns
 			}
 		}
 
+		// A gap that stays only for a border its rule then holds for a blank line another fix writes above it is gathered,
+		// since that blank line ends the run that asks for the border.
 		ImmutableHashSet<int> ReadStaying(BlankLineGrouping.GatheredStretch gathered)
+		{
+			(ImmutableHashSet<int> staying, ImmutableArray<BlankLineGrouping.RunBorder> borders) = ReadStayingAsGathered(gathered);
+			ILookup<int, BlankLineGrouping.RunBorder>? lookup = null;
+
+			foreach (int boundary in staying)
+			{
+				if (!gathered.Boundaries.Contains(boundary) || !pending.Contains(boundary - 1))
+					continue;
+
+				lookup ??= borders.ToLookup(static border => border.Boundary);
+
+				if (
+					RequiredBlankLineAnalysis.IsHeldByAnotherRule(lookup, siblings, boundary)
+					&& !ReadStayingAsGathered(gathered with { Written = [boundary - 1] }).Staying.Contains(boundary)
+				)
+				{
+					staying = staying.Remove(boundary);
+				}
+			}
+
+			return staying;
+		}
+
+		(ImmutableHashSet<int> Staying, ImmutableArray<BlankLineGrouping.RunBorder> Borders) ReadStayingAsGathered(
+			BlankLineGrouping.GatheredStretch gathered
+		)
 		{
 			ImmutableArray<BlankLineGrouping.RunBorder> borders = BlankLineOwnership.ReadGatheredGroupingBorders(
 				container,
@@ -311,7 +331,7 @@ internal static class BlankLineLooseRuns
 			if (guardBoundary >= 0 && gathered.Boundaries.Contains(guardBoundary))
 				staying = staying.Add(guardBoundary);
 
-			return staying.Union(ReadOwnedIn(gathered));
+			return (staying.Union(ReadOwnedIn(gathered)), borders);
 		}
 
 		ImmutableHashSet<int> ReadStayingAround(int boundary, ImmutableHashSet<int> gathered)
@@ -333,7 +353,9 @@ internal static class BlankLineLooseRuns
 		// A gap held back is blank in the text, so it ends a run as a border and the second round holds nothing back.
 		for (int round = 1; ; round++)
 		{
-			ImmutableHashSet<int> staying = ReadStaying(new BlankLineGrouping.GatheredStretch(removable, Start: 0, End: siblings.Length));
+			ImmutableHashSet<int> staying = ReadStaying(
+				new BlankLineGrouping.GatheredStretch(removable, Start: 0, End: siblings.Length)
+			);
 
 			if (staying.IsEmpty)
 				return (ReadRegatheredBoundaries(candidates, removable, jumps, readStayingAround: ReadStayingAround), round);
@@ -427,16 +449,10 @@ internal static class BlankLineLooseRuns
 		StanzaRule rule,
 		GapOwners gapOwners,
 		ImmutableArray<int> jumps,
-		int guardBoundary
+		int guardBoundary,
+		IEnumerable<BlankLineGrouping.RunBorder> standing
 	)
 	{
-		ImmutableArray<BlankLineGrouping.RunBorder> standing = BlankLineOwnership.ReadGatheredGroupingBorders(
-			container,
-			rule,
-			gapOwners,
-			gathered: null
-		);
-
 		var asked = ReadHeldBoundaries(container, rule, gapOwners, guardBoundary).ToBuilder();
 
 		foreach (BlankLineGrouping.RunBorder border in standing)
@@ -454,6 +470,36 @@ internal static class BlankLineLooseRuns
 		);
 
 		return asked.ToImmutable();
+	}
+
+	/// <summary>Splits the tight borders asked for now into those a fix writes and those held.</summary>
+	/// <remarks>
+	/// A held border waits for another rule's blank line above it, which ends the run that asks for it.
+	/// </remarks>
+	private static (ImmutableHashSet<int> Pending, ImmutableHashSet<int> Waiting) ReadPendingBoundaries(
+		ImmutableArray<SyntaxNode> siblings,
+		ImmutableArray<BlankLineGrouping.RunBorder> standing
+	)
+	{
+		ImmutableHashSet<int>.Builder pending = ImmutableHashSet.CreateBuilder<int>();
+		ImmutableHashSet<int>.Builder waiting = ImmutableHashSet.CreateBuilder<int>();
+
+		ILookup<int, BlankLineGrouping.RunBorder>? asked = null;
+
+		foreach (int boundary in standing.Select(static border => border.Boundary).Distinct())
+		{
+			if (!BlankLineGaps.IsGapMissingBlankLine(siblings[boundary - 1], siblings[boundary]))
+				continue;
+
+			asked ??= standing.ToLookup(static border => border.Boundary);
+
+			if (RequiredBlankLineAnalysis.IsHeldForGapAbove(asked, siblings, boundary))
+				waiting.Add(boundary);
+			else
+				pending.Add(boundary);
+		}
+
+		return (pending.ToImmutable(), waiting.ToImmutable());
 	}
 
 	/// <summary>The boundaries where a rule keeps a blank line, whether the runs stand or are gathered.</summary>

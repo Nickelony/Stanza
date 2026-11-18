@@ -11,6 +11,13 @@ namespace Nickelony.Stanza.Analyzers.BlankLines;
 /// <summary>Reports the blank line a separating rule requires at a gap.</summary>
 internal static class RequiredBlankLineAnalysis
 {
+	/// <summary>The keep rules whose runs a grouping rule waits for, and whether each judges members.</summary>
+	private static readonly ImmutableArray<(DiagnosticDescriptor Rule, bool JudgesMembers)> s_keepRunRules =
+	[
+		(DiagnosticDescriptors.KeepRunOfStatementsTogether, false),
+		(DiagnosticDescriptors.KeepRunOfMembersTogether, true),
+	];
+
 	public static void ReportMultiLineSiblingGaps(SyntaxNodeAnalysisContext context, ImmutableArray<SyntaxNode> siblings, StanzaRule rule)
 	{
 		if (siblings.Length < 2)
@@ -145,7 +152,27 @@ internal static class RequiredBlankLineAnalysis
 		ImmutableArray<SyntaxNode> siblings = container.Siblings;
 		HashSet<int> given = [.. boundaries];
 		ILookup<int, BlankLineGrouping.RunBorder>? asked = null;
+		ImmutableArray<BlankLineKeptRuns.KeptRuns> kept = default;
 		int lastHeld = -1;
+
+		// A reported keep run joins its gaps and writes the borders it then asks for, so a border it writes or regroups waits for that fix.
+		bool IsWaitingForKeptRun(int boundary)
+		{
+			if (!BlankLineGaps.IsGapMissingBlankLine(siblings[boundary - 1], siblings[boundary]))
+				return false;
+
+			if (kept.IsDefault)
+				kept = ReadReportedKeptRuns(container, rule);
+
+			if (kept.IsEmpty)
+				return false;
+
+			ILookup<int, BlankLineGrouping.RunBorder> lookup = asked ??= BlankLineOwnership
+				.ReadAskedGroupingBorders(container)
+				.ToLookup(border => border.Boundary);
+
+			return kept.Any(runs => runs.Crosses(boundary, lookup[boundary]));
+		}
 
 		foreach (int boundary in boundaries)
 		{
@@ -153,6 +180,12 @@ internal static class RequiredBlankLineAnalysis
 
 			if (excludedBoundaries is not null && excludedBoundaries.Contains(boundary))
 				continue;
+
+			if (IsWaitingForKeptRun(boundary))
+			{
+				lastHeld = boundary;
+				continue;
+			}
 
 			bool writesGapAbove = false;
 
@@ -177,6 +210,25 @@ internal static class RequiredBlankLineAnalysis
 		}
 	}
 
+	/// <summary>Reads the runs that each keep rule the asking rule reads reports, none where it is off.</summary>
+	private static ImmutableArray<BlankLineKeptRuns.KeptRuns> ReadReportedKeptRuns(ContainerContext container, StanzaRule rule)
+	{
+		ImmutableArray<BlankLineKeptRuns.KeptRuns>.Builder kept = ImmutableArray.CreateBuilder<BlankLineKeptRuns.KeptRuns>();
+
+		foreach ((DiagnosticDescriptor target, bool judgesMembers) in s_keepRunRules)
+		{
+			if (StanzaRuleState.FindJudgingReadRule(rule, target, container.Kind) is not { } keepRule)
+				continue;
+
+			BlankLineKeptRuns.KeptRuns runs = BlankLineKeptRuns.ReadReportedRuns(container, keepRule, judgesMembers);
+
+			if (!runs.Runs.IsEmpty)
+				kept.Add(runs);
+		}
+
+		return kept.ToImmutable();
+	}
+
 	/// <summary>Whether a fix can write a blank line both at the boundary and at the gap directly above it.</summary>
 	private static bool IsGapAboveMissing(ImmutableArray<SyntaxNode> siblings, int boundary)
 	{
@@ -185,8 +237,15 @@ internal static class RequiredBlankLineAnalysis
 			&& BlankLineGaps.IsGapMissingBlankLine(siblings[boundary - 2], siblings[boundary - 1]);
 	}
 
+	/// <summary>Whether a grouping rule holds the boundary until another rule writes the gap above it.</summary>
+	/// <remarks>
+	/// A rule that asks for both gaps writes them together, which only its own report can tell.
+	/// </remarks>
+	public static bool IsHeldForGapAbove(ILookup<int, BlankLineGrouping.RunBorder> asked, ImmutableArray<SyntaxNode> siblings, int boundary) =>
+		IsGapAboveMissing(siblings, boundary) && IsHeldByAnotherRule(asked, siblings, boundary);
+
 	/// <summary>Whether the boundary waits for a gap above it, or for the gap that one waits for itself.</summary>
-	private static bool IsHeldByAnotherRule(ILookup<int, BlankLineGrouping.RunBorder> asked, ImmutableArray<SyntaxNode> siblings, int boundary)
+	public static bool IsHeldByAnotherRule(ILookup<int, BlankLineGrouping.RunBorder> asked, ImmutableArray<SyntaxNode> siblings, int boundary)
 	{
 		return IsTiedToAskedGapAbove(asked, boundary)
 			|| (asked.Contains(boundary - 1) && IsGapAboveMissing(siblings, boundary - 1) && IsTiedToAskedGapAbove(asked, boundary - 1));

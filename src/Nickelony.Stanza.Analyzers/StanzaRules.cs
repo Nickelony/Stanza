@@ -125,6 +125,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
 			DiagnosticDescriptors.SeparateInvocationRuns,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -154,6 +156,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -184,6 +188,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -214,6 +220,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -245,6 +253,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -277,6 +287,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -307,6 +319,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateLocalFunctionRuns,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -339,6 +353,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -366,6 +382,12 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -394,6 +416,12 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -428,6 +456,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -586,6 +616,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateGuardClauses,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -600,6 +632,12 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateMultiLineConstructs,
 			DiagnosticDescriptors.SeparateCommentedSibling,
 			DiagnosticDescriptors.KeepTwoUnitsOfContainerTogether,
+		],
+
+		Reads:
+		[
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -635,6 +673,8 @@ internal static class StanzaRules
 			DiagnosticDescriptors.SeparateCheckedStanza,
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -672,6 +712,7 @@ internal static class StanzaRules
 		[
 			DiagnosticDescriptors.SeparateReceiverGroups,
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
@@ -824,6 +865,8 @@ internal static class StanzaRules
 		Reads:
 		[
 			DiagnosticDescriptors.KeepReceiverGroupTogether,
+			DiagnosticDescriptors.KeepRunOfStatementsTogether,
+			DiagnosticDescriptors.KeepRunOfMembersTogether,
 		]
 	);
 
