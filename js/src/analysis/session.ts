@@ -290,16 +290,25 @@ class ContainerClaims {
 			isSilenced: () => false,
 		};
 
+		// A gap an earlier rule holds reads as tight to the later ones, as the removals read it once that rule's fix has run.
+		const taken = new Set<number>();
+
 		for (const name of this.order.removers) {
 			const hold = this.source.claimantOf(name)?.hold;
 			const silenced = this.source.silencedGapsOf(name, this.container);
+			const seen: RemovalContext = { ...context, isKept: (gapIndex) => context.isKept(gapIndex) || taken.has(gapIndex) };
+			const held = hold?.read(this.container, { ...seen, isSilenced: (gapIndex) => silenced.has(gapIndex) }) ?? [];
 
-			for (const index of hold?.read(this.container, { ...context, isSilenced: (gapIndex) => silenced.has(gapIndex) }) ?? []) {
+			for (const index of held) {
 				this.heldGaps.add(index);
 
 				if (hold?.pinsBoundary === true) {
 					this.pinnedGaps.add(index);
 				}
+			}
+
+			for (const index of held) {
+				taken.add(index);
 			}
 		}
 	}
@@ -693,7 +702,7 @@ class Session {
 	 * Gives each blank line a rule removes to the first rule of the remove order that asks for it, with the gaps its fix removes together.
 	 * A gap where a directive silences the rule ends a run and loses its blank line to no fix, so the directive keeps what it covers.
 	 * The rule still reports that gap, silenced and without a fix, wherever a run could take it, so ESLint counts the directive as used.
-	 * A later rule leaves such a gap as written, so that no fix of its own removes the blank line the directive stands above and leaves the directive unused.
+	 * A later rule reads a gap that an earlier rule's fix takes as tight, so it judges the gap as if that fix had run and no two fixes disagree.
 	 */
 	private readRemovals(
 		container: Container,
@@ -702,8 +711,6 @@ class Session {
 		reported: Set<Gap>,
 		owned: Map<RuleName, OwnedGap[]>,
 	): void {
-		const held = new Set<Gap>();
-
 		for (const name of removers) {
 			const claimant = this.claimants.get(name);
 			const removal = claimant?.removal;
@@ -713,8 +720,15 @@ class Session {
 			}
 
 			const silenced = this.silencedGapsOf(name, container);
-			const groups = removal(container, { ...context, isSilenced: (gapIndex) => silenced.has(gapIndex) });
-			const reach = silenced.size === 0 ? [] : [...removal(container, context).flat(), ...(claimant?.reach?.(container, context) ?? [])];
+
+			// A gap an earlier rule's fix removes reads as tight, as a kept gap does, so this rule judges the text that fix leaves.
+			const seen: RemovalContext = {
+				...context,
+				isKept: (gapIndex) => context.isKept(gapIndex) || reported.has(container.gaps[gapIndex] as Gap),
+			};
+
+			const groups = removal(container, { ...seen, isSilenced: (gapIndex) => silenced.has(gapIndex) });
+			const reach = silenced.size === 0 ? [] : [...removal(container, seen).flat(), ...(claimant?.reach?.(container, seen) ?? [])];
 
 			for (const index of new Set(reach)) {
 				const gap = container.gaps[index];
@@ -722,22 +736,19 @@ class Session {
 				const silencedAt = silenced.has(index) ? this.silencedAt(name, container, index) : undefined;
 
 				if (gap !== undefined && next !== undefined && silencedAt !== undefined) {
-					held.add(gap);
 					addOwnedGap(owned, name, { container, gap, next, silencedAt });
 				}
 			}
 
-			const isLeftAlone = (index: number): boolean => silenced.has(index) || held.has(container.gaps[index] as Gap);
-
 			for (const group of groups) {
-				const gaps = group.flatMap((index) => (isLeftAlone(index) ? [] : (container.gaps[index] ?? [])));
+				const gaps = group.flatMap((index) => (silenced.has(index) ? [] : (container.gaps[index] ?? [])));
 				let hasFix = false;
 
 				for (const index of group) {
 					const gap = container.gaps[index];
 					const next = container.units[index + 1];
 
-					if (gap !== undefined && next !== undefined && !isLeftAlone(index) && !reported.has(gap)) {
+					if (gap !== undefined && next !== undefined && !silenced.has(index) && !reported.has(gap)) {
 						const fixesGroup = !hasFix;
 
 						hasFix = true;

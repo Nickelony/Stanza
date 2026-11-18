@@ -126,4 +126,31 @@ describe('the keep rules under a directive', () => {
 		assert.equal(settleUnderDefaults(source, rules, {}), expected);
 		assert.equal(fixRule(source, rules, 'gather-loose-statements'), source);
 	});
+
+	it('keep-statement-runs-together silenced over a region hands the gaps to gather-loose-statements, which joins the run and leaves the directives unused', () => {
+		const rules = { 'keep-statement-runs-together': 'error', 'gather-loose-statements': 'error', 'separate-declaration-runs': 'error' } as const;
+
+		const source = lines(
+			'function f() {',
+			'  /* eslint-disable stanza/keep-statement-runs-together */',
+			'  const a = 1;',
+			'',
+			'  const b = 2;',
+			'',
+			'  const c = 3;',
+			'',
+			'  const d = 4;',
+			'  /* eslint-enable stanza/keep-statement-runs-together */',
+			'}',
+		);
+
+		const config = createConfig(rules).map((entry) => ({ ...entry, linterOptions: {} }));
+		const result = new Linter().verifyAndFix(source, config, { filename: 'file.ts' });
+
+		assert.deepEqual(result.messages, []);
+		assert.ok(result.output.includes(lines('  const a = 1;', '  const b = 2;', '  const c = 3;', '  const d = 4;')));
+		assert.ok(!result.output.includes('eslint-'));
+		assert.equal(fixOneByOne(source, config, 'first'), result.output);
+		assert.equal(fixOneByOne(source, config, 'last'), result.output);
+	});
 });

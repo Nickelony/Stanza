@@ -31,10 +31,12 @@ The [shared analysis](https://github.com/Nickelony/Stanza/blob/main/js/src/analy
 - A rule that removes the blank lines of runs ends its run at a gap where a directive silences it, as a `#pragma` does in C#.
   No fix of its group removes that gap's blank line.
 - That rule still reports the gap without a fix wherever a run could take it, so ESLint counts the directive as used.
-- A rule that removes the blank lines of runs leaves a gap as written where a directive silences an earlier rule of that kind,
-  such as `keep-statement-runs-together` before `gather-loose-statements`.
-- A fix that took such a gap would leave the directive silencing nothing, so ESLint would delete it,
-  and the fix of one rule would write another text than the fixes of all of them.
+- A rule that removes the blank lines of runs hands a gap that a directive silences to the next rule that asks for it,
+  such as `keep-statement-runs-together` before `gather-loose-statements`, as the keep rules above do.
+- The later rule judges each gap that an earlier rule's fix takes as tight, as if that fix had run,
+  so the fix of one rule never writes another text than the fixes of all of them.
+- A gap that a silenced rule could take but the later rule takes instead loses its blank line,
+  and the directive over it then silences nothing, so ESLint reports it as unused.
 - A directive that silences only other rules ends no run, so a run does not depend on whether ESLint deletes it.
 - With inline configuration turned off, a silenced report shows, says that a comment silences the rule there, and fixes nothing.
 - A rule cannot see that inline configuration is off, so that report stands at every gap a run could take,
