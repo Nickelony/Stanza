@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   choose whether the rule that separates each kind also pads its inside.
   The options `stanza_receiver_roots`, `stanza_receiver_comparison`, `stanza_declaration_shapes`, `stanza_declaration_typing`
   and `stanza_local_function_modifiers` choose which receivers, declarations and local functions they group.
+  `ZA1101` reports a `stanza_` key that no rule or tool reads, such as a misspelled one, and names the key it most likely means;
+  every level but `none` enables it.
 - Presets: `<StanzaLevel>` picks the `minimal`, `moderate` or `strong` level of analyzer rules, or `none`,
   and `<StanzaSeverity>` sets their severity.
   `<StanzaFormatter>csharpier</StanzaFormatter>` keeps the strong level clear of the layout CSharpier undoes.
