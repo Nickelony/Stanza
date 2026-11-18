@@ -62,13 +62,13 @@ public sealed partial class ReleaseGuardTests
 
 		Assert.IsGreaterThan(0, rows, "No rule row was read, so no row was checked.");
 
+		// The unshipped file is protected at build time:
+		// the release-tracking rule RS2000 refuses a descriptor with no row,
+		// so a runtime copy of that check could never fail.
 		GuardAssert.None(
 			[.. FindStrayRows(lines, shipped)],
 			"Rule rows of the unshipped file that sit under no release heading and are not shipped"
 		);
-		// The unshipped file is protected at build time:
-		// the release-tracking rule RS2000 refuses a descriptor with no row,
-		// so a runtime copy of that check could never fail.
 	}
 
 	[TestMethod]

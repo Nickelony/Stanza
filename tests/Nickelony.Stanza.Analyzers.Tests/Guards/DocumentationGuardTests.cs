@@ -188,7 +188,7 @@ public sealed partial class DocumentationGuardTests
 		int ceiling = ReadCeiling(XmlDocBlockCeiling(), name: "XML doc block");
 		SyntaxKind kind = SyntaxKind.SingleLineDocumentationCommentTrivia;
 
-		string[] violations = FindLongRuns(kind, marker: "///", ceiling);
+		string[] violations = FindLongRuns(files: SourceFiles(), kind, marker: "///", ceiling);
 
 		AssertWithinShape(violations, "Source documentation comments");
 	}
@@ -199,23 +199,33 @@ public sealed partial class DocumentationGuardTests
 		int ceiling = ReadCeiling(InlineCommentCeiling(), name: "inline comment run");
 		SyntaxKind kind = SyntaxKind.SingleLineCommentTrivia;
 
-		string[] violations = FindLongRuns(kind, marker: "//", ceiling);
+		string[] violations = FindLongRuns(files: SourceFiles(), kind, marker: "//", ceiling);
 
 		AssertWithinShape(violations, "Inline comment runs");
 	}
 
-	private static string[] FindLongRuns(SyntaxKind kind, string marker, int ceiling)
+	private static string[] FindLongRuns(
+		IEnumerable<string> files,
+		SyntaxKind kind,
+		string marker,
+		int ceiling
+	)
 	{
 		(string File, (int First, int Length) Run)[] runs =
 		[
-			.. from file in SourceFiles()
+			.. from file in files
 			from run in LineRuns(CommentLines(file, kind))
 			select (file, run),
 		];
 
 		Assert.IsNotEmpty(runs, $"No {marker} run was read, so no ceiling was checked.");
 
-		return SelectLongRuns(runs, marker, ceiling);
+		return
+		[
+			.. from entry in runs
+			where entry.Run.Length > ceiling
+			select $"{RepoPath(entry.File)}: {entry.Run.Length}-line {marker} run at {entry.Run.First}, limit {ceiling}",
+		];
 	}
 
 	[TestMethod]
@@ -228,36 +238,23 @@ public sealed partial class DocumentationGuardTests
 			"/// a\n/// b\n/// c\n/// d\nclass A;\n// e\n// f\nclass B;\n"
 		);
 
-		string[] doc = FindRunsPast(file, SyntaxKind.SingleLineDocumentationCommentTrivia, "///");
-		string[] inline = FindRunsPast(file, SyntaxKind.SingleLineCommentTrivia, "//");
+		string[] doc = FindLongRuns(
+			files: [file],
+			kind: SyntaxKind.SingleLineDocumentationCommentTrivia,
+			marker: "///",
+			ceiling: 3
+		);
+
+		string[] inline = FindLongRuns(
+			files: [file],
+			kind: SyntaxKind.SingleLineCommentTrivia,
+			marker: "//",
+			ceiling: 3
+		);
 
 		Assert.ContainsSingle(doc);
 		Assert.Contains("4-line /// run at 1", doc[0]);
 		Assert.IsEmpty(inline);
-	}
-
-	private static string[] FindRunsPast(string file, SyntaxKind kind, string marker)
-	{
-		(string File, (int First, int Length) Run)[] runs =
-		[
-			.. from run in LineRuns(CommentLines(file, kind)) select (file, run),
-		];
-
-		return SelectLongRuns(runs, marker, ceiling: 3);
-	}
-
-	private static string[] SelectLongRuns(
-		IEnumerable<(string File, (int First, int Length) Run)> runs,
-		string marker,
-		int ceiling
-	)
-	{
-		return
-		[
-			.. from entry in runs
-			where entry.Run.Length > ceiling
-			select $"{RepoPath(entry.File)}: {entry.Run.Length}-line {marker} run at {entry.Run.First}, limit {ceiling}",
-		];
 	}
 
 	private static int ReadCeiling(Regex pattern, string name)
