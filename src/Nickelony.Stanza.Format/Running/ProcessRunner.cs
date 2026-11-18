@@ -88,7 +88,7 @@ internal static class ProcessRunner
 
 			cancellationToken.ThrowIfCancellationRequested();
 
-			return new ProcessResult(process.ExitCode, Snapshot(outputText), Snapshot(errorText));
+			return new ProcessResult(process.ExitCode, ReadText(outputText), ReadText(errorText));
 		}
 		finally
 		{
@@ -154,7 +154,7 @@ internal static class ProcessRunner
 		{
 			Process process = Process.Start(start) ?? throw new FormatRunException($"{start.FileName} did not start.");
 
-			ChildJob.Adopt(process);
+			ChildJob.Join(process);
 
 			return process;
 		}
@@ -209,7 +209,7 @@ internal static class ProcessRunner
 		);
 	}
 
-	private static string Snapshot(StringBuilder text)
+	private static string ReadText(StringBuilder text)
 	{
 		lock (text)
 			return text.ToString();
