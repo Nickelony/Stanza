@@ -107,7 +107,7 @@ TWO_UNIT_RULES: tuple[Rule, ...] = (
 # The rules that name the arguments of a call, in the order that decides which of them reports a call both ask for.
 CALL_RULES: tuple[Rule, ...] = (name_call_arguments.RULE, name_literal_arguments.RULE)
 
-# Every rule, in the order of its code.
+# The rules of the package, sorted by code.
 ALL_RULES: tuple[Rule, ...] = tuple(sorted((*OWNER_ORDER, *KEEP_ORDER, *CALL_RULES), key=lambda rule: rule.code))
 
 BY_CODE = {rule.code: rule for rule in ALL_RULES}
