@@ -1302,7 +1302,7 @@ public sealed class UseBlockBodyForMultiLineMemberTests
 
 		// With the collapse rule off, nothing joins the empty initializer, so the body stays multi-line.
 		AnalyzerRunResult result =
-			await RoslynTestHarness.RunAsync<UseBlockBodyForMultiLineMemberAnalyzer>(
+			await RoslynTestHarness.ReportAsync<UseBlockBodyForMultiLineMemberAnalyzer>(
 				source,
 				TestRuleSets.OnSuppressingAllOthers([DiagnosticDescriptors.UseBlockBodyForMultiLineMember])
 			);

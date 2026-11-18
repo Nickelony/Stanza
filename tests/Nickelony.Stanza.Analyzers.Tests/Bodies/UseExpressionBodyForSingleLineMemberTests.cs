@@ -597,7 +597,7 @@ public sealed class UseExpressionBodyForSingleLineMemberTests
 			}
 			""";
 
-		return RoslynTestHarness.RunAsync<UseExpressionBodyForSingleLineMemberAnalyzer>(
+		return RoslynTestHarness.ReportAsync<UseExpressionBodyForSingleLineMemberAnalyzer>(
 			source,
 			TestRuleSets.Only(DiagnosticDescriptors.UseExpressionBodyForSingleLineMember),
 
