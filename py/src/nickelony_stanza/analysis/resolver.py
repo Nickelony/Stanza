@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import ast
 import builtins
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, Literal
@@ -121,6 +122,28 @@ Target = ModuleInfo | FunctionTarget | ClassInfo | RuntimeTarget
 
 
 @dataclass(frozen=True)
+class Hierarchy:
+    """
+    The project classes as a dispatched call reads them, once per run.
+
+    `heirs` indexes the orders of the project classes by each class they inherit.
+    The classes an order with an opaque project base or no order at all may hide an heir behind
+    are split by what they define, so a check reads only the classes that can answer it:
+    `by_name` holds those that bind a name in their body,
+    and `generating` those that a decorator or a base generates members for, which any name may reach.
+    """
+
+    heirs: dict[tuple[str, int, int], list[tuple[Entry, ...]]]
+    by_name: dict[str, tuple[ClassInfo, ...]]
+    generating: tuple[ClassInfo, ...]
+
+    def defining(self, name: str) -> Iterator[ClassInfo]:
+        """Lists the hidden classes that may define a name."""
+        yield from self.by_name.get(name, ())
+        yield from self.generating
+
+
+@dataclass(frozen=True)
 class Callee:
     """What a call resolves to: its display name, the source of its definition and its parameters."""
 
@@ -158,11 +181,13 @@ def _target_names(target: Target) -> tuple[str, ...]:
 class Resolver:
     """Resolves the calls of one module against one index; every cache it fills lives in the index."""
 
-    def __init__(self, index: SourceIndex, options: ResolveOptions, module: ModuleInfo, scopes: ScopeTable) -> None:
+    def __init__(
+        self, index: SourceIndex, options: ResolveOptions, module: ModuleInfo, scopes: Callable[[], ScopeTable]
+    ) -> None:
         self.index = index
         self.options = options
         self.module = module
-        self.scopes = scopes
+        self._scopes = scopes
 
         tag = ",".join(sorted(options.sources))
 
@@ -171,6 +196,11 @@ class Resolver:
         self._orders: dict[Any, Any] = index.memo(f"orders:{tag}")
         self._dispatch: dict[Any, Any] = index.memo(f"dispatch:{tag}")
         self._project: dict[Any, Any] = index.memo("project-classes")
+
+    @property
+    def scopes(self) -> ScopeTable:
+        """The scope table of the module, which a refused call never asks for."""
+        return self._scopes()
 
     # Modules.
 
@@ -1116,10 +1146,10 @@ class Resolver:
             cached: Skipped | None = self._dispatch[key]
             return cached
 
-        heirs, unknown = self._hierarchy()
+        hierarchy = self._hierarchy()
         result = None
 
-        for order in heirs.get(owner.key, ()):
+        for order in hierarchy.heirs.get(owner.key, ()):
             position = next(
                 index for index, entry in enumerate(order) if isinstance(entry, ClassInfo) and entry.key == owner.key
             )
@@ -1130,22 +1160,16 @@ class Resolver:
                 result = Skipped(Reason.DISPATCH_UNSAFE)
                 break
 
-        if result is None and any(self._defines_other(info, name, member) for info in unknown):
+        if result is None and any(self._defines_other(info, name, member) for info in hierarchy.defining(name)):
             result = Skipped(Reason.DISPATCH_UNSAFE)
 
         self._dispatch[key] = result
         return result
 
-    def _hierarchy(self) -> tuple[dict[tuple[str, int, int], list[tuple[Entry, ...]]], tuple[ClassInfo, ...]]:
-        """
-        Indexes the orders of the project classes by each class they inherit, once per run,
-        and lists the classes an order with an opaque project base or no order at all may hide an heir behind.
-        """
+    def _hierarchy(self) -> Hierarchy:
+        """Reads the orders of the project classes and the classes an heir may hide behind, once per run."""
         key = self._project_key("hierarchy")
-
-        cached: tuple[dict[tuple[str, int, int], list[tuple[Entry, ...]]], tuple[ClassInfo, ...]] | None = (
-            self._dispatch.get(key)
-        )
+        cached: Hierarchy | None = self._dispatch.get(key)
 
         if cached is not None:
             return cached
@@ -1167,7 +1191,22 @@ class Resolver:
                 if isinstance(entry, ClassInfo):
                     heirs.setdefault(entry.key, []).append(order)
 
-        result = (heirs, tuple(dict.fromkeys(unknown)))
+        by_name: dict[str, list[ClassInfo]] = {}
+        generating: list[ClassInfo] = []
+
+        # `class_member` answers from the bindings of the body, except for the members a decorator or a base generates.
+        for info in dict.fromkeys(unknown):
+            facts = self.facts(info)
+
+            if facts.is_namedtuple or facts.dataclass is not None or facts.total_ordering:
+                generating.append(info)
+                continue
+
+            for name, bindings in info.namespace.bindings.items():
+                if bindings:
+                    by_name.setdefault(name, []).append(info)
+
+        result = Hierarchy(heirs, {name: tuple(infos) for name, infos in by_name.items()}, tuple(generating))
         self._dispatch[key] = result
 
         return result
@@ -1219,10 +1258,12 @@ class Resolver:
         A special form a type checker reads only from positional arguments, such as `typing.cast`, is refused.
         A callee whose name, or the name the call writes, any project module replaces on an imported module or class,
         as a test double does, is refused, because the replacement may take other parameter names.
-        Every call is refused when the project passes the caps of the scan, because that check reads every module.
+        A refusal of every call, as `refusal` gives it, comes first.
         """
-        if not self.index.is_project_complete:
-            return Skipped(Reason.SCAN_TOO_LARGE)
+        refusal = self.refusal()
+
+        if refusal is not None:
+            return refusal
 
         callee = self._resolve_callee(call, scope)
 
@@ -1240,6 +1281,19 @@ class Resolver:
             return Skipped(Reason.NAME_REBOUND)
 
         return Skipped(Reason.NAME_REBOUND) if written is not None and self._replaces_signature(written) else callee
+
+    def refusal(self) -> Skipped | None:
+        """
+        Gives the reason every call of the project is refused, or None when each call is settled on its own.
+
+        Every call is refused when the project passes the caps of the scan, because the checks read every module,
+        and when a module gives a function it cannot name another code object, because no callee survives that.
+        A caller that knows it needs no scope table and no callee to settle a call.
+        """
+        if not self.index.is_project_complete:
+            return Skipped(Reason.SCAN_TOO_LARGE)
+
+        return Skipped(Reason.NAME_REBOUND) if EVERY_FUNCTION in self._project_replaced() else None
 
     def _project_patched(self) -> frozenset[str]:
         key = self._project_key("patched")

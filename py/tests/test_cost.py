@@ -98,7 +98,6 @@ def test_a_strong_run_parses_each_module_once_and_gives_it_one_scope_table(
     counts = _count(monkeypatch)
     projects = Projects([next(iter(project)).parent])
     config = Config.create("none", enable=["ZA3501"])
-
     found = sum(len(lint(text, config, path=path, projects=projects)) for path, text in project.items())
 
     assert found == 2 * MODULES
@@ -121,6 +120,54 @@ def test_a_one_file_check_scans_every_module_once_and_builds_one_scope_table(
     assert counts.tables == 1
     assert counts.scans == MODULES
     assert counts.adopts == 1
+
+
+def test_files_of_other_roots_share_the_parse_and_the_scan_of_every_module(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "pyproject.toml").write_bytes(b"")
+    (tmp_path / "src" / "pkg").mkdir(parents=True)
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "scripts").mkdir()
+
+    texts = {
+        tmp_path / "src" / "pkg" / "__init__.py": "# the package\n",
+        tmp_path / "src" / "pkg" / "m0.py": _module(0),
+        tmp_path / "tests" / "m1.py": _module(1),
+        tmp_path / "scripts" / "m2.py": _module(2),
+    }
+
+    for path, text in texts.items():
+        path.write_bytes(text.encode("utf-8"))
+
+    counts = _count(monkeypatch)
+    projects = Projects()
+    config = Config.create("none", enable=["ZA3501"])
+    checked = [path for path in texts if path.name != "__init__.py"]
+    found = sum(len(lint(texts[path], config, path=path, projects=projects)) for path in checked)
+
+    # A file that stands in a directory of its own, which is no package, gives its index a root of its own.
+    assert len({id(projects.index_for(path)) for path in checked}) == len(checked)
+    assert found == 2 * len(checked)
+    assert {counts.parses[text] for text in texts.values()} == {1}
+    assert counts.scans == len(texts)
+
+
+def test_a_project_that_refuses_every_call_builds_no_scope_table_and_resolves_no_callee(
+    project: dict[Path, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = next(iter(project)).parent
+    rewrite = "handlers = {}\nhandlers['a'].__code__ = handlers['b'].__code__\n"
+
+    (root / "rewrites.py").write_bytes(rewrite.encode("utf-8"))
+
+    counts = _count(monkeypatch)
+    projects = Projects([root])
+    config = Config.create("none", enable=["ZA3501"])
+
+    assert sum(len(lint(text, config, path=path, projects=projects)) for path, text in project.items()) == 0
+    assert counts.tables == 0
+    assert counts.scans == MODULES + 1
 
 
 def test_a_blank_line_run_reads_each_container_once_for_each_relationship_cache(

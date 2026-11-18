@@ -30,7 +30,7 @@ import ast
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from nickelony_stanza.analysis.module_index import SourceIndex, detect_roots, digest_of
+from nickelony_stanza.analysis.module_index import ModuleInfo, SourceIndex, detect_roots, digest_of
 from nickelony_stanza.analysis.resolver import Resolver
 from nickelony_stanza.analysis.scopes import ScopeTable, build_scope_table
 from nickelony_stanza.analysis.shapes import (
@@ -112,28 +112,40 @@ class FileResolver:
     """
     Resolves the calls of one file against an index, which adopts the file and gives the resolver its module once.
 
-    A file whose tree the index holds already, as the engine's does, shares the one scope table of that module.
+    A file whose tree the index holds already, as the engine's does, shares the one scope table of that module,
+    and a project that refuses every call builds no scope table for the file.
     """
 
     def __init__(self, context: ModuleContext, index: SourceIndex, options: ResolveOptions) -> None:
         self._context = context
         self._index = index
         self._options = options
-        self._ready: tuple[Resolver, ScopeTable] | None = None
+        self._module: ModuleInfo | None = None
+        self._resolver: Resolver | None = None
+
+    def refusal(self) -> Skipped | None:
+        """Gives the reason the project refuses every call, which no call of the file escapes, or None."""
+        return self._prepare().refusal()
 
     def resolve(self, call: ast.Call) -> Binding | Skipped:
         """
         Resolves the parameters a call of the context's tree binds to, or why it leaves the call alone.
 
-        A call node from another tree raises `ValueError`, because its scope is unknown.
+        A call node from another tree raises `ValueError`, because its scope is unknown,
+        unless the project refuses every call, which settles the call before its scope is read.
         """
         if any(isinstance(argument, ast.Starred) for argument in call.args) or any(
             keyword.arg is None for keyword in call.keywords
         ):
             return Skipped(Reason.CALL_SHAPE)
 
-        resolver, scopes = self._prepare()
-        scope = scopes.scope_of_call(call)
+        resolver = self._prepare()
+        refusal = resolver.refusal()
+
+        if refusal is not None:
+            return refusal
+
+        scope = resolver.scopes.scope_of_call(call)
 
         if scope is None:
             raise ValueError("the call is not part of the context's tree")
@@ -155,15 +167,19 @@ class FileResolver:
 
         return Binding(callee.name, callee.source, callee.parameters, callee.receiver)
 
-    def _prepare(self) -> tuple[Resolver, ScopeTable]:
-        if self._ready is None:
+    def _prepare(self) -> Resolver:
+        if self._resolver is None:
             context = self._context
             module = self._index.adopt(context.path, context.text, context.tree, context.digest)
-            scopes = module.scopes if module.tree is context.tree else context.scopes
 
-            self._ready = (Resolver(self._index, self._options, module, scopes), scopes)
+            self._module = module
+            self._resolver = Resolver(self._index, self._options, module, self._scopes)
 
-        return self._ready
+        return self._resolver
+
+    def _scopes(self) -> ScopeTable:
+        assert self._module is not None
+        return self._module.scopes if self._module.tree is self._context.tree else self._context.scopes
 
 
 def resolve_call(

@@ -40,6 +40,7 @@ from nickelony_stanza.analysis.binding import (
     Skipped,
     SourceIndex,
 )
+from nickelony_stanza.analysis.scopes import INERT_KINDS
 from nickelony_stanza.analysis.source import SourceFile
 from nickelony_stanza.options import NAMED_ARGUMENT_SOURCES, Options
 
@@ -180,10 +181,26 @@ class _Tokens:
         return token.start
 
 
-def _is_self_documenting(field: ast.FormattedValue, text: str) -> bool:
+def _read_segment(lines: Sequence[str], node: ast.expr) -> str | None:
+    """Reads the text of a node from the lines of its file, as `ast.get_source_segment` does but without a split."""
+    if node.end_lineno is None or node.end_col_offset is None:
+        return None
+
+    first, last = node.lineno - 1, node.end_lineno - 1
+
+    if first == last:
+        return lines[first].encode()[node.col_offset : node.end_col_offset].decode()
+
+    head = lines[first].encode()[node.col_offset :].decode()
+    tail = lines[last].encode()[: node.end_col_offset].decode()
+
+    return "".join([head, *lines[first + 1 : last], tail])
+
+
+def _is_self_documenting(field: ast.FormattedValue, lines: Sequence[str]) -> bool:
     """Tells whether an f-string field ends its expression with `=`, which prints the expression's own text."""
-    whole = ast.get_source_segment(text, field)
-    expression = ast.get_source_segment(text, field.value)
+    whole = _read_segment(lines, field)
+    expression = _read_segment(lines, field.value)
 
     if whole is None or expression is None:
         return True
@@ -212,6 +229,10 @@ _COMPOUND_STATEMENTS = (
 )
 
 
+# The nodes that hold no call and no child that could, so the walk never stacks them.
+_LEAVES = INERT_KINDS | {ast.Name, ast.Constant}
+
+
 def collect_call_sites(source: SourceFile) -> list[tuple[ast.Call, int]]:
     """Lists the calls of a file in source order, each with the first line of the statement that holds it."""
     sites: list[tuple[ast.Call, int]] = []
@@ -234,7 +255,7 @@ def collect_call_sites(source: SourceFile) -> list[tuple[ast.Call, int]]:
         if _TEMPLATE_STRING is not None and isinstance(node, _TEMPLATE_STRING):
             continue
 
-        if isinstance(node, ast.FormattedValue) and _is_self_documenting(node, source.text):
+        if isinstance(node, ast.FormattedValue) and _is_self_documenting(node, source.lines):
             stack.extend((child, line, kept) for child in [node.format_spec] if child is not None)
             continue
 
@@ -244,7 +265,8 @@ def collect_call_sites(source: SourceFile) -> list[tuple[ast.Call, int]]:
             if not kept and not source.in_fmt_region(node.lineno):
                 sites.append((node, line))
 
-        stack.extend((child, line, kept) for child in reversed(list(ast.iter_child_nodes(node))))
+        children = reversed(list(ast.iter_child_nodes(node)))
+        stack.extend((child, line, kept) for child in children if type(child) not in _LEAVES)
 
     return sorted(sites, key=lambda site: (site[0].lineno, site[0].col_offset))
 
@@ -273,14 +295,20 @@ def find_named_calls(
     patterns = options.named_argument_ignore
 
     resolvers: list[FileResolver] = []
+    refused: list[bool] = []
     tokens: list[_Tokens] = []
 
     def resolve(call: ast.Call) -> Binding | None:
-        if _is_ignored(ast.unparse(call.func), patterns):
+        # A project that refuses every call leaves each call of the file alone, so no call is read any further.
+        if refused or _is_ignored(ast.unparse(call.func), patterns):
             return None
 
         if not resolvers:
             resolvers.append(FileResolver(ModuleContext.build(source.tree, path, source.text), index, resolve_options))
+
+            if resolvers[0].refusal() is not None:
+                refused.append(True)
+                return None
 
         try:
             result = resolvers[0].resolve(call)

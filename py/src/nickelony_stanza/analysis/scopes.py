@@ -395,6 +395,17 @@ def _signature_parts(arguments: ast.arguments) -> Iterator[ast.AST]:
             yield argument.annotation
 
 
+# The node types that hold no children and no facts a scan reads: the contexts and the operators.
+INERT_KINDS = frozenset(
+    kind
+    for kind in vars(ast).values()
+    if isinstance(kind, type) and issubclass(kind, (ast.expr_context, ast.operator, ast.boolop, ast.unaryop, ast.cmpop))
+)
+
+# The nodes the scope table reads nothing from: its walk never stacks them.
+_CONTEXT_FREE = INERT_KINDS | {ast.Constant}
+
+
 def _visit(node: ast.AST, scope: Scope, table: ScopeTable) -> Iterator[tuple[ast.AST, Scope]]:
     if isinstance(node, _FunctionDef):
         scope.assigned.add(node.name)
@@ -417,7 +428,7 @@ def _visit(node: ast.AST, scope: Scope, table: ScopeTable) -> Iterator[tuple[ast
         yield from _visit_comprehension(node, scope, table)
     else:
         _record(node, scope, table)
-        yield from ((child, scope) for child in ast.iter_child_nodes(node))
+        yield from ((child, scope) for child in ast.iter_child_nodes(node) if type(child) not in _CONTEXT_FREE)
 
 
 def _visit_comprehension(node: ast.AST, scope: Scope, table: ScopeTable) -> Iterator[tuple[ast.AST, Scope]]:
@@ -488,13 +499,6 @@ class ModuleScan:
     by_node: dict[int, ClassSite] = field(repr=False, compare=False)
 
 
-# The node types that hold no children and no facts a scan reads: the contexts and the operators.
-_INERT = frozenset(
-    kind
-    for kind in vars(ast).values()
-    if isinstance(kind, type) and issubclass(kind, (ast.expr_context, ast.operator, ast.boolop, ast.unaryop, ast.cmpop))
-)
-
 # The calls that replace an attribute of their first argument by name, read by the last name of their callee,
 # such as `setattr`, pytest's `monkeypatch.setattr` and `mock.patch.object`; `patch` alone takes a dotted target.
 _ATTRIBUTE_SETTERS = frozenset({"setattr", "delattr"})
@@ -562,13 +566,13 @@ def scan_module(tree: ast.Module) -> ModuleScan:
             inside = in_body if name == "body" else in_function
 
             if isinstance(value, ast.AST):
-                if type(value) not in _INERT:
+                if type(value) not in INERT_KINDS:
                     queue.append((value, class_name, prefix, local, inside))
             elif isinstance(value, list):
                 queue.extend(
                     (item, class_name, prefix, local, inside)
                     for item in value
-                    if isinstance(item, ast.AST) and type(item) not in _INERT
+                    if isinstance(item, ast.AST) and type(item) not in INERT_KINDS
                 )
 
     def is_imported(expression: ast.expr) -> bool:

@@ -294,6 +294,16 @@ def test_a_comment_that_holds_an_equals_sign_does_not_make_a_field_self_document
 
 
 @_NEEDS_FSTRING_TOKENS
+@pytest.mark.parametrize("eol", [chr(10), chr(13) + chr(10), chr(13)])
+def test_a_self_documenting_field_that_spans_lines_is_read_under_every_line_ending(eol: str) -> None:
+    pair = _PAIR.replace(chr(10), eol)
+    before = pair + 'x = f"""{f(True,' + eol + " 2)=}" + eol + "{f(True," + eol + ' 3)}"""' + eol
+    expected = before.replace("f(True," + eol + " 3)", "f(a=True," + eol + " b=3)")
+
+    assert fix_with(before, "ZA3502") == expected
+
+
+@_NEEDS_FSTRING_TOKENS
 def test_a_call_in_an_ordinary_field_next_to_a_self_documenting_one_is_still_named() -> None:
     before = _PAIR + 'x = f"{f(True, 2)=} {f(True, 2)} {f(True, 4)!r:>{f(True, 6)}}"\n'
     expected = before.replace("{f(True, 2)} ", "{f(a=True, b=2)} ").replace("f(True, 4)", "f(a=True, b=4)")

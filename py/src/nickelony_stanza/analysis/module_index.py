@@ -16,7 +16,8 @@ A top-level name that the roots and the standard library both define is unreadab
 because the interpreter's startup may have loaded the standard one first.
 A module of another source that a root shadows is read from the root.
 
-One index serves the files of one process, such as a flake8 worker.
+One index serves the files of one process, such as a flake8 worker, and the indexes of other roots in the process
+share each file they read from disk, so a file is parsed once however many roots read it.
 A file the engine checks takes its tree from the index when the index holds the same text, so the file is parsed once.
 A file the engine passes with text that differs from the disk replaces the disk version for the rest of the run,
 and clears every cache built from the old version.
@@ -83,16 +84,10 @@ class Located:
 
 
 @dataclass(eq=False)
-class ModuleInfo:
-    """A parsed module with its namespace; a namespace package has an empty tree and no path."""
+class ParsedModule:
+    """A parsed file and what one walk of its tree finds, which every index that reads the file shares."""
 
-    name: str
-    path: Path | None
-    source: Source
-    is_package: bool
-    search: tuple[Path, ...]
     tree: ast.Module
-    stub: bool
     digest: str
     _namespace: Namespace | None = field(default=None, repr=False)
     _scan: ModuleScan | None = field(default=None, repr=False)
@@ -114,6 +109,88 @@ class ModuleInfo:
             self._scan = scan_module(self.tree)
 
         return self._scan
+
+    @property
+    def scopes(self) -> ScopeTable:
+        """The scope table of the module, computed once; a module that is only scanned needs it for nested classes."""
+        if self._scopes is None:
+            self._scopes = build_scope_table(self.tree)
+
+        return self._scopes
+
+    @property
+    def module_scope(self) -> Scope:
+        """The scope of the module itself, which a class at module level runs in, without reading the whole table."""
+        if self._scopes is not None:
+            return self._scopes.module
+
+        if self._module_scope is None:
+            self._module_scope = Scope("module", self.tree, None, None)
+
+        return self._module_scope
+
+
+class ParsedFiles:
+    """
+    The files of one run read from disk and parsed, so that every index of the run shares each parse.
+
+    Indexes of other roots name a module differently and resolve its imports differently,
+    but they read the same tree, and the walks of that tree give the same answer.
+    """
+
+    def __init__(self) -> None:
+        self._files: dict[Path, ParsedModule | None] = {}
+
+    def read(self, path: Path) -> ParsedModule | None:
+        """Reads and parses a file once, or gives None when it cannot be read or parsed."""
+        if path not in self._files:
+            text = read_source(path)
+            tree = None if text is None else parse_source(text, path)
+
+            self._files[path] = None if text is None or tree is None else ParsedModule(tree, digest_of(text))
+
+        return self._files[path]
+
+    def find(self, path: Path) -> ParsedModule | None:
+        """Gives the parse of a file an index has read, without reading it."""
+        return self._files.get(path)
+
+    def keep(self, path: Path, parsed: ParsedModule) -> ParsedModule:
+        """Offers a parse of the text a file holds on disk, and gives the one the run keeps for it."""
+        return self._files.setdefault(path, parsed) or parsed
+
+
+@dataclass(eq=False)
+class ModuleInfo:
+    """A parsed module with its name and the place it was found; a namespace package has an empty tree and no path."""
+
+    name: str
+    path: Path | None
+    source: Source
+    is_package: bool
+    search: tuple[Path, ...]
+    parsed: ParsedModule
+    stub: bool
+
+    @property
+    def tree(self) -> ast.Module:
+        """The syntax tree of the module."""
+        return self.parsed.tree
+
+    @property
+    def digest(self) -> str:
+        """The hash of the text the tree was parsed from."""
+        return self.parsed.digest
+
+    @property
+    def namespace(self) -> Namespace:
+        """The names the module binds."""
+        return self.parsed.namespace
+
+    @property
+    def scan(self) -> ModuleScan:
+        """What one walk of the tree finds."""
+        return self.parsed.scan
 
     @property
     def stored_attributes(self) -> frozenset[str]:
@@ -142,22 +219,13 @@ class ModuleInfo:
 
     @property
     def scopes(self) -> ScopeTable:
-        """The scope table of the module, computed once; a module that is only scanned needs it for nested classes."""
-        if self._scopes is None:
-            self._scopes = build_scope_table(self.tree)
-
-        return self._scopes
+        """The scope table of the module."""
+        return self.parsed.scopes
 
     @property
     def module_scope(self) -> Scope:
-        """The scope of the module itself, which a class at module level runs in, without reading the whole table."""
-        if self._scopes is not None:
-            return self._scopes.module
-
-        if self._module_scope is None:
-            self._module_scope = Scope("module", self.tree, None, None)
-
-        return self._module_scope
+        """The scope of the module itself."""
+        return self.parsed.module_scope
 
     @property
     def assigns_path(self) -> bool:
@@ -351,6 +419,7 @@ class SourceIndex:
         stdlib: Sequence[Path] | None = None,
         installed: Sequence[Path] | None = None,
         configured: bool = False,
+        parsed: ParsedFiles | None = None,
     ) -> None:
         default_stdlib, default_installed = _default_search() if stdlib is None or installed is None else ((), ())
 
@@ -376,6 +445,9 @@ class SourceIndex:
         self._located: dict[str, Located] = {}
         self._by_path: dict[Path, ModuleInfo | None] = {}
         self._overlay: dict[Path, ModuleInfo] = {}
+
+        # The files read from disk, which the indexes of other roots in the same run share.
+        self._parsed = ParsedFiles() if parsed is None else parsed
 
         # The digests of the texts each path read as the version it holds, because they differ from it only by names.
         self._equivalent: dict[Path, set[str]] = {}
@@ -426,8 +498,16 @@ class SourceIndex:
         """Gives the module the index holds for a file when its text is the one given, so a caller shares its tree."""
         key = normalize(path)
         held = self._overlay.get(key) or self._by_path.get(key)
+        digest = digest_of(text)
 
-        return held if held is not None and held.digest == digest_of(text) else None
+        if held is None and key not in self._by_path:
+            parsed = self._parsed.find(key)
+
+            if parsed is not None and parsed.digest == digest:
+                name, is_package = self.module_name_for(key)
+                held = self._by_path[key] = self._build(name, key, "project", is_package, parsed)
+
+        return held if held is not None and held.digest == digest else None
 
     def adopt(self, path: Path, text: str, tree: ast.Module, digest: str | None = None) -> ModuleInfo:
         """Reads the file a rule analyzes from the engine's text and tree, which wins over the disk for its path."""
@@ -453,13 +533,15 @@ class SourceIndex:
             return held
 
         name, is_package = self.module_name_for(key)
-        info = self._build(name, key, "project", is_package, tree, digest)
+        info = self._build(name, key, "project", is_package, ParsedModule(tree, digest))
 
         if key not in self._by_path:
             disk = read_source(key)
 
             if disk is not None and digest_of(disk) == digest:
+                info.parsed = self._parsed.keep(key, info.parsed)
                 self._by_path[key] = info
+
                 self._drop_overlay(key)
 
                 return info
@@ -498,12 +580,10 @@ class SourceIndex:
         info = self._namespaces.get(name)
 
         if info is None:
-            tree = ast.Module(body=[], type_ignores=[])
+            parsed = ParsedModule(ast.Module(body=[], type_ignores=[]), "", _namespace=Namespace())
             assert located.source is not None
 
-            info = ModuleInfo(
-                name, None, located.source, True, located.search, tree, located.stub, "", _namespace=Namespace()
-            )
+            info = ModuleInfo(name, None, located.source, True, located.search, parsed, located.stub)
 
             self._namespaces[name] = info
 
@@ -528,12 +608,8 @@ class SourceIndex:
         if path in self._by_path:
             return None
 
-        text = read_source(path)
-        tree = None if text is None else parse_source(text, path)
-
-        info = (
-            None if text is None or tree is None else self._build(name, path, source, is_package, tree, digest_of(text))
-        )
+        parsed = self._parsed.read(path)
+        info = None if parsed is None else self._build(name, path, source, is_package, parsed)
 
         if info is not None:
             info.stub = stub
@@ -542,11 +618,9 @@ class SourceIndex:
         self._by_path[path] = info
         return info
 
-    def _build(
-        self, name: str, path: Path, source: Source, is_package: bool, tree: ast.Module, digest: str
-    ) -> ModuleInfo:
+    def _build(self, name: str, path: Path, source: Source, is_package: bool, parsed: ParsedModule) -> ModuleInfo:
         search = (path.parent,) if is_package else ()
-        return ModuleInfo(name, path, source, is_package, search, tree, False, digest)
+        return ModuleInfo(name, path, source, is_package, search, parsed, False)
 
     def locate(self, name: str) -> Located:
         """Finds where a dotted module name lives, as the import system would, without importing anything."""

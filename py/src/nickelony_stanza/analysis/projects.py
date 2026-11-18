@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from nickelony_stanza.analysis.binding import SourceIndex, detect_roots
-from nickelony_stanza.analysis.module_index import normalize
+from nickelony_stanza.analysis.module_index import ParsedFiles, normalize
 
 # The path the resolver reads a text without a file under: no file or package can stand there,
 # so the text resolves its own definitions, the standard library and the installed packages, and no project module.
@@ -20,6 +20,9 @@ class Projects:
         self._roots = tuple(normalize(Path(root)) for root in roots)
         self._indexes: dict[tuple[Path, ...], SourceIndex] = {}
         self._detected: dict[Path, tuple[Path, ...]] = {}
+
+        # The files of every index, parsed once, because indexes of other roots read the same trees.
+        self._parsed = ParsedFiles()
 
     def _detect(self, path: Path) -> tuple[Path, ...]:
         directory = normalize(path).parent
@@ -40,6 +43,6 @@ class Projects:
         index = self._indexes.get(roots)
 
         if index is None:
-            index = self._indexes[roots] = SourceIndex(roots, configured=bool(self._roots))
+            index = self._indexes[roots] = SourceIndex(roots, configured=bool(self._roots), parsed=self._parsed)
 
         return index
