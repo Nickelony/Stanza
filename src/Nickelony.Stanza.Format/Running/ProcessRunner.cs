@@ -68,13 +68,13 @@ internal static class ProcessRunner
 			StringBuilder outputText = new();
 			StringBuilder errorText = new();
 
-			Task output = CopyAsync(process.StandardOutput, echo?.Output, outputText);
-			Task error = CopyAsync(process.StandardError, echo?.Error, errorText);
+			Task output = StartThread(() => Copy(process.StandardOutput, echo?.Output, outputText));
+			Task error = StartThread(() => Copy(process.StandardError, echo?.Error, errorText));
 
 			// A drain that fails, as an echo to a closed console does, ends the run at once:
 			// the child would block on the pipe that the failed drain leaves unread, and never exit.
 			List<Task> open = [output, error];
-			_ = WaitForEach(open, stop: process.WaitForExitAsync(CancellationToken.None));
+			_ = WaitForEach(open, stop: StartThread(process.WaitForExit));
 
 			process.WaitForExit();
 
@@ -198,6 +198,17 @@ internal static class ProcessRunner
 		return true;
 	}
 
+	/// <summary>Runs the blocking work on a thread of its own, so a busy thread pool cannot delay it.</summary>
+	private static Task StartThread(Action work)
+	{
+		return Task.Factory.StartNew(
+			action: work,
+			cancellationToken: CancellationToken.None,
+			creationOptions: TaskCreationOptions.LongRunning,
+			scheduler: TaskScheduler.Default
+		);
+	}
+
 	private static string Snapshot(StringBuilder text)
 	{
 		lock (text)
@@ -208,13 +219,13 @@ internal static class ProcessRunner
 	/// <remarks>
 	/// A child echoes the names of files it reads, and a name may hold an escape sequence that a terminal obeys.
 	/// </remarks>
-	private static async Task CopyAsync(StreamReader reader, TextWriter? echo, StringBuilder text)
+	private static void Copy(StreamReader reader, TextWriter? echo, StringBuilder text)
 	{
 		char[] buffer = new char[4096];
 		string held = string.Empty;
 		int read;
 
-		while ((read = await reader.ReadAsync(buffer).ConfigureAwait(false)) > 0)
+		while ((read = reader.Read(buffer)) > 0)
 		{
 			lock (text)
 				_ = text.Append(buffer, 0, read);
