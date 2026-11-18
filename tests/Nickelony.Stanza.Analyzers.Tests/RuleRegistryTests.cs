@@ -23,6 +23,26 @@ namespace Nickelony.Stanza.Analyzers.Tests;
 [TestClass]
 public sealed partial class RuleRegistryTests
 {
+	// A run rule reads a later one only where that rule's state says which statements are runs:
+	// the await, yield and local function rules, and the receivers of the invocation rule.
+	// So an earlier run rule leaves out the later assertion, subscription and assignment rules, which decide no such thing.
+	private static readonly string[] s_runRulesLeftOut =
+	[
+		"ZA0002 ZA0005",
+		"ZA0002 ZA0008",
+		"ZA0002 ZA0009",
+		"ZA0004 ZA0005",
+		"ZA0004 ZA0008",
+		"ZA0004 ZA0009",
+		"ZA0005 ZA0008",
+		"ZA0005 ZA0009",
+		"ZA0006 ZA0008",
+		"ZA0006 ZA0009",
+		"ZA0007 ZA0008",
+		"ZA0007 ZA0009",
+		"ZA0008 ZA0009",
+	];
+
 	// The codes only the tool reports, so no descriptor of the analyzer backs them.
 	private static readonly string[] s_toolOnlyIds = ["ZA2901", "ZA2902"];
 
@@ -593,6 +613,34 @@ public sealed partial class RuleRegistryTests
 		GuardAssert.None(
 			mutual,
 			"These pairs of rules defer each to the other, so neither owns the gap; let one only read the other"
+		);
+	}
+
+	[TestMethod]
+	public void AnEntryThatNamesARunRuleNamesEachOrLeavesItOutByName()
+	{
+		// The lists are written by hand and encode real decisions, so a new run rule is added to each list or left out here.
+		DiagnosticDescriptor[] runRules =
+		[
+			.. Enum.GetValues<Nickelony.Stanza.Analyzers.BlankLines.BlankLineGrouping.RunFamily>()
+				.Select(Nickelony.Stanza.Analyzers.BlankLines.BlankLineOwnership.GetRunRule),
+		];
+
+		string[] missing =
+		[
+			.. from rule in StanzaRules.All
+			let named = (rule.DefersTo.IsDefault ? [] : rule.DefersTo).Concat(rule.Reads.IsDefault ? [] : rule.Reads).ToArray()
+			where named.Any(runRules.Contains)
+			from runRule in runRules
+			where runRule != rule.Descriptor && !named.Contains(runRule)
+			orderby rule.Descriptor.Id, runRule.Id
+			select $"{rule.Descriptor.Id} {runRule.Id}",
+		];
+
+		Assert.AreSequenceEqual(
+			s_runRulesLeftOut,
+			missing,
+			"An entry that names a run rule leaves out another one; name it in the entry, or list it as left out with the reason."
 		);
 	}
 

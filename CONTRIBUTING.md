@@ -227,6 +227,8 @@ so a new rule takes the next free number of its own in the range of its group:
    - A rule whose pair, gap fix, node kinds, deferrals or reads shared code reads is also an entry in `StanzaRules`, and so is a rule another names.
    - A rule that leaves a gap or takes a shape for another names it in `DefersTo` and reads it through `GetDeferral`.
      A rule that only reads another's state, such as the gaps it asks for, names it in `Reads` and reads it through `GetReadRule`.
+   - A new run rule, the rule of a `BlankLineGrouping.RunFamily`, goes into each list that names the other run rules,
+     or into `s_runRulesLeftOut` of `RuleRegistryTests` with the reason it stays out.
 2. Add the rule's page at `docs/rules/<id>-<title>.md`, headed `# <id> - <title>`.
    In the [analyzer readme](src/Nickelony.Stanza.Analyzers/README.md), add its row to the rule table,
    with the severity the descriptor carries and a gap text no other row repeats,
