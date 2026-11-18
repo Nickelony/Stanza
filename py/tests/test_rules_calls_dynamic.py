@@ -196,6 +196,20 @@ def test_a_method_or_constructor_whose_code_the_module_replaces_is_not_resolved(
         assert fixed == before
 
 
+def test_a_code_write_through_a_class_attribute_that_holds_a_function_is_not_resolved() -> None:
+    before = (
+        "def target(a, b, c, d):\n    return a + b + c + d\n\n\n"
+        "def other(w, x, y, z):\n    return w\n\n\n"
+        "class K:\n    f = target\n\n\nK.f.__code__ = other.__code__\nresult = target(1, 2, 3, 4)\n"
+    )
+
+    expected = run_module(before)["result"]
+    fixed = fix_with(before, "ZA3501")
+
+    assert run_module(fixed)["result"] == expected
+    assert fixed == before
+
+
 _SIGNATURE_NEIGHBORS = {
     "a docstring": "target.__doc__ = 'draws'",
     "a note": "target.cache = {}",

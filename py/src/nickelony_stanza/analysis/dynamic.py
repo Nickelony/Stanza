@@ -283,12 +283,16 @@ class SignatureWatch:
             return frozenset()
 
         names: set[str] = {EVERY_FUNCTION} if self._unreadable else set()
-        functions, classes = _own_definitions(tree)
+        functions, methods = _own_definitions(tree)
 
         for target in self._targets:
             if isinstance(target, ast.Name) and target.id in functions:
                 names.add(target.id)
-            elif isinstance(target, ast.Attribute) and _is_name_in(target.value, classes):
+            elif (
+                isinstance(target, ast.Attribute)
+                and isinstance(target.value, ast.Name)
+                and target.attr in methods.get(target.value.id, frozenset())
+            ):
                 names.add(target.attr)
             else:
                 names.add(EVERY_FUNCTION)
@@ -338,25 +342,24 @@ class SignatureWatch:
                 self._unreadable = True
 
 
-def _is_name_in(node: ast.expr, names: frozenset[str]) -> bool:
-    return isinstance(node, ast.Name) and node.id in names
-
-
-def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], frozenset[str]]:
+def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], dict[str, frozenset[str]]]:
     """
-    Reads the names a module binds only by `def` or `class`, and of those the ones bound by `class`.
+    Reads the names a module binds only by `def` or `class`, and for each such class the names its body binds only by
+    `def`.
 
     A name that anything else also binds, such as a parameter, a loop variable, an assignment or an import,
     may hold another function than the one defined, so it is in neither, and a star import may bind any name.
+    A class attribute that anything else also binds, as in `class K: f = target`, may hold any function,
+    so it is not among the names of its class.
     """
     defined: set[str] = set()
-    classes: set[str] = set()
+    classes: dict[str, set[str]] = {}
     other: set[str] = set()
 
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             defined.add(node.name)
-            classes.add(node.name)
+            classes.setdefault(node.name, set()).update(_methods_of(node))
         elif isinstance(node, _FUNCTION_DEFS):
             defined.add(node.name)
         elif isinstance(node, ast.Name):
@@ -373,9 +376,38 @@ def _own_definitions(tree: ast.Module) -> tuple[frozenset[str], frozenset[str]]:
             other.add(node.rest)
 
     if "*" in other:
-        return frozenset(), frozenset()
+        return frozenset(), {}
 
-    return frozenset(defined - other), frozenset(classes - other)
+    methods = {name: frozenset(found) for name, found in classes.items() if name not in other}
+
+    return frozenset(defined - other), methods
+
+
+def _methods_of(definition: ast.ClassDef) -> set[str]:
+    """Reads the names a class body binds only by `def`, in its own body and not in a function of it."""
+    methods = {node.name for node in definition.body if isinstance(node, _FUNCTION_DEFS)}
+    others: set[str] = set()
+
+    for statement in definition.body:
+        if not isinstance(statement, _FUNCTION_DEFS):
+            others.update(_bound_names(statement))
+
+    return methods - others
+
+
+def _bound_names(statement: ast.stmt) -> set[str]:
+    """Reads every name a statement of a class body may bind, the names of its nested statements included."""
+    names: set[str] = set()
+
+    for node in ast.walk(statement):
+        if isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
+            names.add(node.id)
+        elif isinstance(node, (ast.ClassDef, *_FUNCTION_DEFS)):
+            names.add(node.name)
+        elif isinstance(node, ast.alias):
+            names.add(node.asname or node.name.split(".")[0])
+
+    return names
 
 
 def _is_text(node: ast.expr, text: str) -> bool:

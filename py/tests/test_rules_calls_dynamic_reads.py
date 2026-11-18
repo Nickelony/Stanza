@@ -207,6 +207,14 @@ def test_a_code_write_to_a_method_of_a_class_of_its_module_stops_the_calls_of_th
     assert _findings(main) == 1
 
 
+def test_a_code_write_to_a_class_attribute_that_is_no_def_stops_every_call_of_the_project(tmp_path: Path) -> None:
+    attribute = "class C:\n    m = target\n\n\n"
+    patch = f"{_TARGET}{attribute}{_SIGNATURE_OTHER}C.m.__code__ = other.__code__\n"
+    main = _project(tmp_path / "app", lib=_TARGET, patch=patch)
+
+    assert _findings(main) == 0
+
+
 def test_a_code_write_that_ties_to_no_def_stops_a_call_across_three_modules(tmp_path: Path) -> None:
     root = tmp_path / "app"
     root.mkdir()
