@@ -55,10 +55,11 @@ describe('the level table', () => {
 	it('gives every rule of the real pages its level, and the marks of the table', () => {
 		const text = readFileSync(join(repositoryRoot, 'src/Nickelony.Stanza.Analyzers.Package/levels.txt'), 'utf8');
 		const rows = parseLevels('levels.txt', text);
+		const leveled = realCatalog.rules.filter((candidate) => candidate.level !== 'always');
 
-		expect(realCatalog.rules.map((candidate) => candidate.id).sort()).toEqual([...rows.keys()].sort());
+		expect(leveled.map((candidate) => candidate.id).sort()).toEqual([...rows.keys()].sort());
 
-		for (const candidate of realCatalog.rules) {
+		for (const candidate of leveled) {
 			expect({ level: candidate.level, csharpier: candidate.csharp!.csharpier }, candidate.id).toEqual(rows.get(candidate.id));
 		}
 	});
@@ -70,6 +71,20 @@ describe('the level table', () => {
 		for (const candidate of realMarkup.rules) {
 			expect(rows.has(candidate.id), candidate.id).toBe(false);
 			expect(candidate.level, candidate.id).toBe('no-level');
+		}
+	});
+
+	it('gives a configuration check no row in the table, because it is outside the levels', () => {
+		const text = readFileSync(join(repositoryRoot, 'src/Nickelony.Stanza.Analyzers.Package/levels.txt'), 'utf8');
+		const rows = parseLevels('levels.txt', text);
+		const checks = realCatalog.rules.filter((candidate) => candidate.level === 'always');
+
+		expect(checks.length).toBeGreaterThan(0);
+
+		for (const candidate of checks) {
+			expect(rows.has(candidate.id), candidate.id).toBe(false);
+			expect(candidate.id, candidate.id).toMatch(/^ZA11\d{2}$/);
+			expect(candidate.onByDefault, candidate.id).toBe(true);
 		}
 	});
 
@@ -114,6 +129,14 @@ describe('filling the form from a level', () => {
 		const overlay = level === 'strong' && formatter === 'csharpier' ? presetLines(`csharpier.${severity}`) : null;
 
 		for (const candidate of realCatalog.rules) {
+			// A configuration check is outside the levels, so no file names it and it keeps its own tier at every level and severity.
+			if (candidate.level === 'always') {
+				const kept = { named: file?.has(candidate.id) ?? false, state: levelState(candidate, picks) };
+
+				expect(kept, `${candidate.id} at ${level}`).toEqual({ named: false, state: candidate.tier });
+				continue;
+			}
+
 			const written = overlay?.get(candidate.id) ?? file?.get(candidate.id) ?? (candidate.onByDefault ? 'suggestion' : 'none');
 			const expected = written === 'none' ? 'off' : written;
 			const state = levelState(candidate, picks);
@@ -123,7 +146,8 @@ describe('filling the form from a level', () => {
 		}
 	});
 
-	const countAt = (level: Level, formatter: Formatter): number => realCatalog.rules.filter((rule) => enabledAt(rule, level, formatter)).length;
+	const countAt = (level: Level, formatter: Formatter): number =>
+		realCatalog.rules.filter((rule) => rule.level !== 'always' && enabledAt(rule, level, formatter)).length;
 
 	it('nests the levels, with the opt-in rules in none of them', () => {
 		const counts = levels.map((level) => countAt(level, 'stanza-format'));

@@ -12,7 +12,7 @@ export interface ReadmeRule {
 	tier: Tier;
 	onByDefault: boolean;
 
-	/** The first level that enables the rule, from the Level column; `no-level` for a markup rule. */
+	/** The first level that enables the rule, from the Level column; `no-level` for a markup rule and `always` for a configuration check. */
 	level: RuleLevel;
 }
 
@@ -27,10 +27,11 @@ export interface Readme {
 	options: ReadmeOption[];
 }
 
-/** The words of the Level column, which write each level with a capital, and `No level` for a markup rule. */
+/** The words of the Level column, which write each level with a capital, `No level` for a markup rule and `Every level` for a configuration check. */
 const levelWords: Record<string, RuleLevel> = {
 	...Object.fromEntries(ruleLevels.map((level) => [`${level[0]!.toUpperCase()}${level.slice(1)}`, level])),
 	'No level': 'no-level',
+	'Every level': 'always',
 };
 
 const tierWords: Record<string, Tier> = {

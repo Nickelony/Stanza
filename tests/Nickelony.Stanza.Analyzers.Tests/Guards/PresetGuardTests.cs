@@ -34,6 +34,9 @@ public sealed partial class PresetGuardTests
 	// The Level cell of a markup rule's readme row, since no level holds it.
 	private const string NoLevel = "No level";
 
+	// The Level cell of a configuration check's readme row, since it is on in every level and outside them.
+	private const string EveryLevel = "Every level";
+
 	[GeneratedRegex(
 		@"^\| `(?<id>ZA\d{4})` \| .+ \| (?<shipsAs>[^|]+) \| (?<level>[^|]+) \|$",
 		RegexOptions.CultureInvariant | RegexOptions.Multiline
@@ -180,11 +183,12 @@ public sealed partial class PresetGuardTests
 	[TestMethod]
 	public void TheModerateLevelAtSuggestionIsWhatTheAnalyzersShip()
 	{
+		// A configuration check is outside the levels and ships at warning, so no level file moves it.
 		DiagnosticDescriptor[] descriptors =
 		[
-			.. RoslynTestHarness.AllAnalyzers.Select(analyzer =>
-				analyzer.SupportedDiagnostics.Single()
-			),
+			.. RoslynTestHarness
+				.AllAnalyzers.Select(analyzer => analyzer.SupportedDiagnostics.Single())
+				.Where(descriptor => !PresetFiles.ConfigurationChecks.Contains(descriptor.Id)),
 		];
 
 		Assert.AreSequenceEqual(
@@ -216,6 +220,7 @@ public sealed partial class PresetGuardTests
 				.Where(pin =>
 					pin.Value != PresetFiles.NoRules
 					&& !PresetFiles.MarkupRules.Contains(pin.Key)
+					&& !PresetFiles.ConfigurationChecks.Contains(pin.Key)
 					&& !s_optInRulesTheRepositoryRuns.Contains(pin.Key)
 				)
 				.Select(pin => pin.Key)
@@ -228,7 +233,7 @@ public sealed partial class PresetGuardTests
 			PresetFiles.ReadTable().ReadEnabled("strong"),
 
 			"The strong level must be the rules the [*.cs] section of .editorconfig runs, but the markup rules, "
-				+ "the opt-in rules this guard names as pinned on, and the rules it names as pinned off."
+				+ "the configuration checks, the opt-in rules this guard names as pinned on, and the rules it names as pinned off."
 		);
 	}
 
@@ -308,6 +313,14 @@ public sealed partial class PresetGuardTests
 				problems.Add($"{id} says {level}, and a markup rule says {NoLevel}.");
 		}
 
+		foreach (string id in PresetFiles.ConfigurationChecks)
+		{
+			if (!rows.TryGetValue(id, out string? level))
+				problems.Add($"{id} has no row with a Level column.");
+			else if (level != EveryLevel)
+				problems.Add($"{id} says {level}, and a configuration check says {EveryLevel}.");
+		}
+
 		GuardAssert.None(
 			problems,
 			"The Level column of the analyzer readme differs from levels.txt"
@@ -357,13 +370,49 @@ public sealed partial class PresetGuardTests
 		);
 	}
 
+	[TestMethod]
+	public void EachConfigurationCheckShipsOnAtWarningAndNoPresetFileNamesIt()
+	{
+		Assert.IsNotEmpty(PresetFiles.ConfigurationChecks, "No analyzer is a configuration check.");
+
+		PresetFiles.LevelTable table = PresetFiles.ReadTable();
+
+		string[] presets =
+		[
+			.. PresetFiles.ReadNames().Select(name => File.ReadAllText(PresetFiles.ToPath(name))),
+		];
+
+		List<string> problems = [];
+
+		foreach (string id in PresetFiles.ConfigurationChecks)
+		{
+			DiagnosticDescriptor descriptor = RoslynTestHarness
+				.AllAnalyzers.Select(analyzer => analyzer.SupportedDiagnostics.Single())
+				.Single(candidate => candidate.Id == id);
+
+			if (table.Rows.Any(row => row.Id == id))
+				problems.Add($"{id} has a row in levels.txt, which no configuration check has.");
+
+			if (!descriptor.IsEnabledByDefault || descriptor.DefaultSeverity != DiagnosticSeverity.Warning)
+				problems.Add($"{id} does not ship on at warning.");
+
+			if (presets.Any(preset => preset.Contains(id, StringComparison.Ordinal)))
+				problems.Add($"A preset file names {id}, so a level or a severity would move it.");
+		}
+
+		GuardAssert.None(problems, "A configuration check is not outside the levels at warning");
+	}
+
 	private static string[] ReadRuleIds()
 	{
 		return
 		[
 			.. RoslynTestHarness
 				.AllAnalyzers.Select(analyzer => analyzer.SupportedDiagnostics.Single().Id)
-				.Where(id => !PresetFiles.MarkupRules.Contains(id))
+				.Where(id =>
+					!PresetFiles.MarkupRules.Contains(id)
+					&& !PresetFiles.ConfigurationChecks.Contains(id)
+				)
 				.Order(StringComparer.Ordinal),
 		];
 	}

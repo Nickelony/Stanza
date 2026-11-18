@@ -27,6 +27,7 @@ so each tool lays out what the one before it wrote.
 [Adopting the analyzers](https://github.com/Nickelony/Stanza/wiki/Adopting-the-analyzers) lists the steps in order.
 
 The rules of the default level ship on as suggestions, which a build never reports, so no first build fails on them.
+A configuration check, which reports a setting no rule reads, ships as a warning instead.
 Once the fixes have run, the `warning` severity makes a build enforce the level.
 The [presets page](https://github.com/Nickelony/Stanza/wiki/Presets) names the default level and shows the MSBuild properties that pick the level, the formatter and the severity.
 
@@ -68,6 +69,7 @@ The **Ships as** column gives the tier, and [Severity and enablement](#severity-
 
 The **Level** column names the first [level](#presets) that enables the rule, and *Opt-in* marks a rule that no level enables.
 *No level* marks a markup rule, which no level holds: only its own severity line enables it, the line `stanza-markup` reads too.
+*Every level* marks a configuration check, which sits outside the levels and reports at warning in each of them.
 
 ### Blank lines between units
 
@@ -241,7 +243,7 @@ The **Level** column names the first [level](#presets) that enables the rule, an
 
 | Rule | Gap | Ships as | Level |
 | ---- | --- | -------- | ----- |
-| `ZA1101` | [Reports a `stanza_` key that no Stanza rule or tool reads](https://github.com/Nickelony/Stanza/wiki/ZA1101-Use-a-known-Stanza-key) | Suggestion | Minimal |
+| `ZA1101` | [Reports a `stanza_` key that no Stanza rule or tool reads](https://github.com/Nickelony/Stanza/wiki/ZA1101-Use-a-known-Stanza-key) | Warning | Every level |
 
 ### Markup rules
 
@@ -268,6 +270,7 @@ No analyzer reports those two.
 ## Severity and enablement
 
 Each rule ships as a suggestion, and the rules of the Moderate level ship on.
+A configuration check is the exception: it ships on as a warning, whatever the level and the severity.
 The **Ships as** column marks every other rule *off by default*:
 it reports nothing until a [level](#presets) or a line [enables](https://github.com/Nickelony/Stanza/wiki/Terms) it.
 

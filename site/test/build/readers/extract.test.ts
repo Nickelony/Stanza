@@ -502,6 +502,14 @@ describe('a page that does not parse', () => {
 		failsOn(readmePath, (text) => text.replace(/^\| `ZA0017` .*\n/m, ''), /ZA0017 has no row/, 'docs/rules/ZA0017-Separate-member-groups.md');
 	});
 
+	it('fails the build when a configuration check says a level', () => {
+		failsOn(readmePath, (text) => text.replace(/^(\| `ZA1101` .*\| )Every level \|$/m, '$1Strong |'), /ZA1101 is a configuration check/);
+	});
+
+	it('fails the build when a rule that is no configuration check says Every level', () => {
+		failsOn(readmePath, (text) => text.replace(/^(\| `ZA0017` .*\| )\w+ \|$/m, '$1Every level |'), /only a configuration check/);
+	});
+
 	it('fails the build when the readme lists a rule with no page', () => {
 		failsOn(
 			readmePath,

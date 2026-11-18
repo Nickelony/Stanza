@@ -117,4 +117,3 @@ dotnet_diagnostic.ZA1004.severity = none
 dotnet_diagnostic.ZA1005.severity = none
 dotnet_diagnostic.ZA1006.severity = none
 dotnet_diagnostic.ZA1007.severity = none
-dotnet_diagnostic.ZA1101.severity = none

@@ -72,8 +72,14 @@ internal static class MarkupKeyCheck
 			OptionKeys.DocLangwords => CheckKeywords(value),
 			// A key the shared list names that this tool does not read, such as an analyzer key, passes;
 			// any other `stanza_` key is a misspelling.
-			_ => OptionKeys.Known.Contains(key) ? null : "not a key this tool reads, so it was ignored",
+			_ => OptionKeys.Known.Contains(key) ? null : DescribeUnknownKey(key),
 		};
+	}
+
+	private static string DescribeUnknownKey(string key)
+	{
+		const string problem = "not a key this tool reads, so it was ignored";
+		return OptionKeySuggestions.FindNearest(key) is { } nearest ? $"{problem}; did you mean '{nearest}'" : problem;
 	}
 
 	private static string? CheckKeywords(string value)

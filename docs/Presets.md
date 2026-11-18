@@ -22,7 +22,7 @@ A value that names nothing fails the build with `STANZA001`, which lists the val
 | `StanzaFormatter` | `stanza-format`, `csharpier` | `stanza-format` |
 
 - A project that sets none of them gets the `moderate` level at `suggestion`, which the analyzers ship, so that setting adds no file.
-  The IDE shows the suggestions, and a build reports nothing.
+  The IDE shows the suggestions, and a build reports nothing but a configuration check, which is outside the levels.
 - Each level enables its own rules and those of the levels before it, and the **Level** column of the
   [analyzer readme](https://github.com/Nickelony/Stanza/blob/main/src/Nickelony.Stanza.Analyzers/README.md#rules) names the first level of each rule.
   A rule marked *Opt-in* or *No level* is in no level, so only its own line enables it.
@@ -30,6 +30,8 @@ A value that names nothing fails the build with `STANZA001`, which lists the val
   and under `TreatWarningsAsErrors` a warning fails it, so run the [fixes](https://github.com/Nickelony/Stanza/wiki/Adopting-the-analyzers) first.
 - A new rule may join the `moderate` or `strong` level in a minor release, so a team that raises `StanzaSeverity` under `TreatWarningsAsErrors`
   pins the package version, as the [1.x policy](https://github.com/Nickelony/Stanza/blob/main/CONTRIBUTING.md#what-a-1x-release-may-change) says.
+- A configuration check, such as [`ZA1101`](https://github.com/Nickelony/Stanza/wiki/ZA1101-Use-a-known-Stanza-key), is outside the levels:
+  it reports at warning whatever the level, including `none`, and the severity, and only its own line turns it off.
 - No level enables both halves of a [pair](https://github.com/Nickelony/Stanza/wiki/Terms).
 
 ## Which level

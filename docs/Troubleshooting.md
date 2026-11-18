@@ -91,8 +91,8 @@ The tool could not read or parse the file. The [ZA2901 page](https://github.com/
 
 ## `stanza-markup` warns about a key it does not read
 
-A misspelled `stanza_` key, such as `stanza_doc_expnd` or `stanza_max_line_lenght`, is reported as a warning that names the key,
-and the key has no effect.
+A misspelled `stanza_` key, such as `stanza_doc_expnd` or `stanza_max_line_lenght`, is reported as a warning
+that names the key and the known key it most likely means, and the key has no effect.
 Correct the spelling. Each key has an option page named after it, such as [`stanza_max_line_length`](https://github.com/Nickelony/Stanza/wiki/stanza_max_line_length).
 
 ## A build reports ZA1101 for a `stanza_` key
@@ -101,6 +101,7 @@ Correct the spelling. Each key has an option page named after it, such as [`stan
 so the key has no effect, and it names the known key the spelling most likely means.
 The report sits at the first token of a source file, because an analyzer cannot point at the configuration file,
 so search the `.editorconfig` and the `.globalconfig` files for the key.
+The check reports at warning in every level, and `dotnet_diagnostic.ZA1101.severity = none` turns it off.
 
 ## `stanza-markup` exits with 2
 

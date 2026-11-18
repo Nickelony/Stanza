@@ -1,6 +1,6 @@
 import type { Audience, Option, Rule, RulePair, SourceCatalog, SourceSnippet } from '../../src/state/model.ts';
 
-import { parseLevels, type LevelRow } from './levels.ts';
+import { isConfigurationCheck, parseLevels, type LevelRow } from './levels.ts';
 import { isMarkupRule, markupRuleIds } from './markup.ts';
 import { parseOptionPage, type ParsedOption } from './option-page.ts';
 import { literalDefault, parseReadme, type Readme } from './readme.ts';
@@ -74,6 +74,38 @@ function checkMarkupRow(sources: ExtractionSources, row: Readme['rules'][number]
 	}
 }
 
+/**
+ * Checks a configuration check, which sits outside the levels: its readme row says `Every level`, the level table has no row for it, and it ships on.
+ * Only a rule of ZA11xx may say `Every level`.
+ */
+function checkConfigurationRow(sources: ExtractionSources, row: Readme['rules'][number], entry: LevelRow | undefined): void {
+	if (!isConfigurationCheck(row.id)) {
+		if (row.level === 'always') {
+			throw new ExtractionError(sources.readme.file, `the Level column gives ${row.id} Every level, which only a configuration check (ZA11xx) has`);
+		}
+
+		return;
+	}
+
+	if (row.level !== 'always') {
+		throw new ExtractionError(
+			sources.readme.file,
+			`${row.id} is a configuration check, which no level holds, but the Level column gives it ${row.level}`,
+		);
+	}
+
+	if (entry) {
+		throw new ExtractionError(
+			sources.levels.file,
+			`${row.id} is a configuration check, which no level holds, but the level table gives it ${entry.level}`,
+		);
+	}
+
+	if (!row.onByDefault) {
+		throw new ExtractionError(sources.readme.file, `${row.id} is a configuration check, which is always on, but its row says off by default`);
+	}
+}
+
 /** Checks the readme rows and the rule pages against the level table, which is the source of the levels and the CSharpier marks. */
 function checkLevels(sources: ExtractionSources, readme: Readme, levels: Map<string, LevelRow>, parsedRules: Map<string, ParsedRule>): void {
 	for (const id of markupRuleIds) {
@@ -87,7 +119,9 @@ function checkLevels(sources: ExtractionSources, readme: Readme, levels: Map<str
 
 		checkMarkupRow(sources, row, entry);
 
-		if (isMarkupRule(row.id)) {
+		checkConfigurationRow(sources, row, entry);
+
+		if (isMarkupRule(row.id) || isConfigurationCheck(row.id)) {
 			continue;
 		}
 
@@ -112,6 +146,10 @@ function checkLevels(sources: ExtractionSources, readme: Readme, levels: Map<str
 	for (const id of levels.keys()) {
 		if (isMarkupRule(id)) {
 			throw new ExtractionError(sources.levels.file, `${id} is a markup rule, which no level holds, but the level table has a row for it`);
+		}
+
+		if (isConfigurationCheck(id)) {
+			throw new ExtractionError(sources.levels.file, `${id} is a configuration check, which no level holds, but the level table has a row for it`);
 		}
 
 		if (!parsedRules.has(id)) {

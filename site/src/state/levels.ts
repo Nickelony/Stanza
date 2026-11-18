@@ -22,6 +22,7 @@ export const defaultPackageSeverity: PackageSeverity = 'suggestion';
 
 /** How far into the levels a rule's own level reaches: a level holds the rules of the levels before it. */
 const reach: Record<RuleLevel, number> = {
+	always: 0,
 	minimal: 1,
 	moderate: 2,
 	strong: 3,
@@ -52,6 +53,10 @@ export function enabledNote<S>(rule: Pick<Rule<S>, 'level' | 'csharp'>, formatte
 
 	if (mark === 'on') {
 		return ' No level enables it; the csharpier formatter enables it at the strong level.';
+	}
+
+	if (rule.level === 'always') {
+		return ' It is outside the levels, so every level leaves it on at its own severity.';
 	}
 
 	const lead = rule.level === 'opt-in' || rule.level === 'no-level' ? 'No level enables it' : `Enabled from the ${rule.level} level`;

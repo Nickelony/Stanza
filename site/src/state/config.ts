@@ -116,9 +116,16 @@ export function replacedBy<S>(rule: Rule<S>, config: Config): string | null {
 	return rule.level === 'no-level' && rule.csharp.markupOnByDefault && config.rules[rule.id] === undefined ? rule.opposite! : null;
 }
 
-/** What the package applies to the rule when no line sets it: the level at the picked severity, apart from a half the form's other half replaces. */
+/**
+ * What the package applies to the rule when no line sets it: the level at the picked severity, apart from a half the form's other half replaces.
+ * A configuration check is outside the levels, so it keeps its own tier whatever severity is picked.
+ */
 function packageState<S>(rule: Rule<S>, config: Config): EffectiveState {
-	return enabledAt(rule, config.level, config.formatter) && replacedBy(rule, config) === null ? config.severity : 'off';
+	if (!enabledAt(rule, config.level, config.formatter) || replacedBy(rule, config) !== null) {
+		return 'off';
+	}
+
+	return rule.level === 'always' ? rule.tier : config.severity;
 }
 
 /**

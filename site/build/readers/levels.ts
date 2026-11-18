@@ -10,6 +10,9 @@ export interface LevelRow {
 /** The levels a rule has in the analyzers, in the order the level table and the readme list them; a markup rule has none and no row in the table. */
 export const ruleLevels = ['minimal', 'moderate', 'strong', 'opt-in'] as const satisfies readonly RuleLevel[];
 
+/** Whether the rule is a configuration check, which sits outside the levels and has no row in the level table. */
+export const isConfigurationCheck = (id: string): boolean => /^ZA11\d{2}$/.test(id);
+
 /** The level of a rule that has one; JS Stanza and Python Stanza have no markup rule. */
 export type LeveledRule = (typeof ruleLevels)[number];
 

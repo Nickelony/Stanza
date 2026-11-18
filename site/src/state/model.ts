@@ -10,8 +10,9 @@ export type RuleSetting = Severity | 'default';
 /**
  * The first level that enables a rule, `opt-in` for a rule that no level enables, or `no-level` for a markup rule,
  * which no level holds and which only its own severity line enables.
+ * `always` marks a configuration check, which sits outside the levels and reports at its own tier in each of them.
  */
-export type RuleLevel = 'minimal' | 'moderate' | 'strong' | 'opt-in' | 'no-level';
+export type RuleLevel = 'minimal' | 'moderate' | 'strong' | 'opt-in' | 'no-level' | 'always';
 
 /** What the `csharpier` formatter does to a rule at the strong level: turns it off, or turns on the tight half of its pair. */
 export type CSharpierMark = 'off' | 'on';
@@ -94,7 +95,7 @@ export interface Rule<S> {
 	/** Whether the rule ships on, so the analyzer reports it with no property and no `.editorconfig` line; the level table agrees with the tier line. */
 	onByDefault: boolean;
 
-	/** The first level that enables the rule, from the level table; `no-level` for a markup rule, which the level table does not list. */
+	/** The first level that enables the rule, from the level table; `no-level` for a markup rule and `always` for a configuration check, which the level table does not list. */
 	level: RuleLevel;
 
 	/** The facts only the C# and Markup pages hold; absent for a rule of another language. */

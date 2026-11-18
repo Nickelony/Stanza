@@ -553,11 +553,37 @@ public sealed class MarkupConfigurationKeyTests
 		Assert.HasCount(1, notices.Items);
 
 		Assert.Contains(
-			"sets stanza_max_line_lenght to '120': not a key this tool reads, so it was ignored.",
+			"sets stanza_max_line_lenght to '120': not a key this tool reads, so it was ignored; did you mean 'stanza_max_line_length'.",
 			notices.Items[0].Message
 		);
 
 		Assert.AreEqual(MarkupNoticeLevel.Warning, notices.Items[0].Level);
+	}
+
+	[TestMethod]
+	public void AKeyWithNoKnownKeyNearItIsReportedWithoutASuggestion()
+	{
+		using TempDirectory directory = new();
+		string path = directory.Write("sample.xml", string.Empty);
+
+		_ = directory.Write(
+			".editorconfig",
+			MarkupFixtures.EditorConfig("[*.xml]\nstanza_unrelated_setting = on\n")
+		);
+
+		MarkupConfiguration configuration = MarkupFixtures.CreateConfiguration(
+			directory.Root,
+			out MarkupNotices notices
+		);
+
+		_ = configuration.GetOptions(path, MarkupProfiles.Xml);
+
+		Assert.HasCount(1, notices.Items);
+
+		Assert.Contains(
+			"sets stanza_unrelated_setting to 'on': not a key this tool reads, so it was ignored.",
+			notices.Items[0].Message
+		);
 	}
 
 	[TestMethod]

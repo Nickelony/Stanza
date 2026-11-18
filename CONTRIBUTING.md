@@ -257,6 +257,9 @@ so a new rule takes the next free number of its own in the range of its group:
      as it does for the opt-in rules that Stanza's own code runs.
    - A markup rule of `ZA2xxx` takes no level, because `stanza-markup` has none: a severity line enables it, in the analyzer and in the tool alike.
      Its readme row says `No level` in the Level column, and the level table has no line for it.
+   - A configuration check of `ZA11xx` takes no level either, because it is outside the levels and ships on as a warning.
+   - Its descriptor says `Warning` and `true`, and its `AnalyzerReleases.Unshipped.md` row says `Warning`.
+   - Its readme row says `Every level` in the Level column, and the level table has no line for it.
    - Run `PresetGuardTests` with `STANZA_WRITE_PRESETS=1` to write the files under `build/presets` from the table;
      the guards fail a rule the table skips and a file that differs from what the table writes.
 10. Run the [verification](#verification),

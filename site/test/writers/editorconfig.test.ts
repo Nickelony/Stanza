@@ -339,9 +339,15 @@ describe('the .editorconfig of a level', () => {
 	it('writes the rules of a lower level as none, which the package would otherwise leave on', () => {
 		const text = generateEditorConfig(realCatalog, config({ level: 'minimal', everySetting: true, markupSection: false }));
 		const minimal = realCatalog.rules.filter((rule) => rule.level === 'minimal');
-		const shipped = realCatalog.rules.filter((rule) => rule.onByDefault && rule.level !== 'minimal');
+		const shipped = realCatalog.rules.filter((rule) => rule.onByDefault && rule.level !== 'minimal' && rule.level !== 'always');
+		const checks = realCatalog.rules.filter((rule) => rule.level === 'always');
 
-		expect(ruleIds(text).sort()).toEqual([...minimal, ...shipped].map((rule) => rule.id).sort());
+		expect(ruleIds(text).sort()).toEqual([...minimal, ...shipped, ...checks].map((rule) => rule.id).sort());
+
+		// A configuration check is outside the levels, so a lower level leaves it on at its own tier.
+		for (const rule of checks) {
+			expect(text).toContain(`dotnet_diagnostic.${rule.id}.severity = ${rule.tier}`);
+		}
 
 		for (const rule of shipped) {
 			expect(text).toContain(`dotnet_diagnostic.${rule.id}.severity = none`);

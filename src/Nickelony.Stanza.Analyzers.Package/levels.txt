@@ -2,6 +2,7 @@
 # The levels run minimal, moderate, strong, and each holds the rules of the level before it.
 # An opt-in rule is in no level, so it reports only where its own line enables it.
 # A markup rule has no row, because only its own severity line enables it, the line stanza-markup reads too.
+# A configuration check, a rule of ZA11xx, has no row either: it is outside the levels, so each level leaves it at its own warning.
 # A third column says what the csharpier formatter does to the rule at the strong level: csharpier-off or csharpier-on.
 # PresetGuardTests fails when a file under build/presets differs from what this table writes;
 # run it with STANZA_WRITE_PRESETS=1 to write them.
@@ -119,4 +120,3 @@ ZA1004 strong
 ZA1005 strong
 ZA1006 strong
 ZA1007 strong
-ZA1101 minimal

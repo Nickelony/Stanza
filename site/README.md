@@ -187,7 +187,7 @@ The build keeps no list of rules or options. It reads these files and fails with
 | [`docs/rules`](../docs/rules) | The ID, the title, the tier line, the description, each `// Before` and `// After` example, and the bullets. |
 | [`docs/options`](../docs/options) | The key, the default, the value table, the examples, and the rules the page names. |
 | [Analyzer readme](../src/Nickelony.Stanza.Analyzers/README.md) | The groups, the gap text of each rule, the tier and level to check each page against, and the defaults of the keys. |
-| [`levels.txt`](../src/Nickelony.Stanza.Analyzers.Package/levels.txt) | The level of each rule and its CSharpier mark, from the table the package writes its preset files from; a markup rule has no row. |
+| [`levels.txt`](../src/Nickelony.Stanza.Analyzers.Package/levels.txt) | The level of each rule and its CSharpier mark, from the table the package writes its preset files from; a markup rule and a configuration check have no row. |
 | [`docs/Markup-behavior.md`](../docs/Markup-behavior.md) | The names and extensions of the markup profiles. |
 | [`MarkupDiagnostics.cs`](../src/Nickelony.Stanza.Markup.Core/MarkupDiagnostics.cs) | The rules `stanza-markup` reads. |
 | [`docs/Which-rule-owns-which-gap.md`](../docs/Which-rule-owns-which-gap.md) | The pairs of the pair table, with the default half and the half that owns the gap or construct when both are enabled. |
@@ -252,6 +252,9 @@ and `a profile name` makes a dropdown of the profiles.
   and `StanzaFormatter` properties of the package.
   The build reads the level of each rule from `levels.txt` and checks it against the **Level** column of the readme and the tier line of the page.
 - A markup rule has no level, so the [Markup page](#the-markup-page) has none of these pickers.
+- A configuration check, a rule of `ZA11xx`, is outside the levels: the readme says `Every level`, the level table has no row for it,
+  and the form keeps it on at the tier of its page whatever the severity picker says.
+- The build fails when a rule that is no configuration check says `Every level`, and when a configuration check ships off or has a level.
 - **Stanza wins** is the `stanza-format` formatter, and **CSharpier wins** the `csharpier` one.
 - Picking a level fills the form: its rules are on at the picked severity, and the others are off.
   Rules the visitor set against the old level are dropped, after the visitor confirms.

@@ -15,6 +15,10 @@ internal static class OptionKeySuggestions
 
 		foreach (string known in OptionKeys.Known)
 		{
+			// A key too long or too short to be within reach is skipped, so a hostile key never fills the table.
+			if (Math.Abs(key.Length - known.Length) > MaxDistance)
+				continue;
+
 			int distance = CountEdits(key, known);
 
 			if (distance > MaxDistance)

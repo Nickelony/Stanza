@@ -37,8 +37,10 @@ stanza_markup_enabled = false
 - A section, key or file the tool cannot read is reported as a warning and leaves the other settings in force.
 - A value the tool cannot use is reported as a warning, and the key takes its default.
   The analyzer takes the default without a warning.
-- A `stanza_` key that no option page names, such as the misspelled `stanza_max_line_lenght`, is reported as a warning and ignored.
-  A key only the analyzers read, such as `stanza_max_parameters` or [`stanza_markup_literals`](https://github.com/Nickelony/Stanza/wiki/stanza_markup_literals),
+- A `stanza_` key that no option page names, such as the misspelled `stanza_max_line_lenght`, is reported as a warning and ignored,
+  with the known key it most likely means.
+  The analyzer reports such a key as [`ZA1101`](https://github.com/Nickelony/Stanza/wiki/ZA1101-Use-a-known-Stanza-key).
+- A key only the analyzers read, such as `stanza_max_parameters` or [`stanza_markup_literals`](https://github.com/Nickelony/Stanza/wiki/stanza_markup_literals),
   is never reported, because the tool does not check its value.
 - `stanza_max_line_length`, `tab_width` and `indent_size`, which the [reprint](https://github.com/Nickelony/Stanza/wiki/Terms) also reads,
   have their values checked like a count, and `indent_size` also accepts `tab`.

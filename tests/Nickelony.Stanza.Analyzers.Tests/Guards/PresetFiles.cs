@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using Nickelony.Stanza.Analyzers.Configuration;
 using Nickelony.Stanza.Analyzers.MarkupLiterals;
 using Nickelony.Stanza.Tests.Shared;
 
@@ -35,6 +36,21 @@ internal static partial class PresetFiles
 			RoslynTestHarness
 				.AllAnalyzers.Where(analyzer =>
 					analyzer.GetType().Namespace == typeof(MarkupLiteral).Namespace
+				)
+				.Select(analyzer => analyzer.SupportedDiagnostics.Single().Id),
+
+			StringComparer.Ordinal
+		);
+
+	/// <summary>The configuration checks, which no level holds.</summary>
+	/// <remarks>
+	/// Each level leaves them at warning.
+	/// </remarks>
+	internal static IReadOnlySet<string> ConfigurationChecks { get; } =
+		new HashSet<string>(
+			RoslynTestHarness
+				.AllAnalyzers.Where(analyzer =>
+					analyzer.GetType().Namespace == typeof(UseKnownStanzaKeyAnalyzer).Namespace
 				)
 				.Select(analyzer => analyzer.SupportedDiagnostics.Single().Id),
 

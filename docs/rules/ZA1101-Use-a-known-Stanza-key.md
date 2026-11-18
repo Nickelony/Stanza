@@ -1,6 +1,6 @@
 # ZA1101 - Use a known Stanza key
 
-**Suggestion, on by default.**
+**Warning, on by default.**
 Reports a `stanza_` key of the analyzer configuration that no Stanza rule or tool reads,
 and names the known key it most likely means.
 It is a [report-only rule](https://github.com/Nickelony/Stanza/wiki/Terms), so it has no code fix.
@@ -34,5 +34,6 @@ stanza_max_line_length = 120
   so the rule reports each key once for the compilation, at the first token of the first file by path that the key reaches.
 - A generated file is skipped, so search the configuration for the key the message names.
 - The report sits in a source file because a diagnostic with no location ignores the severity lines of an `.editorconfig`.
-- The [`minimal` level](https://github.com/Nickelony/Stanza/wiki/Presets) enables the rule, so every level but `none` does.
-  A build reports it only once `StanzaSeverity` or its own `dotnet_diagnostic.ZA1101.severity` line raises it to `warning`.
+- The rule is a configuration check, which sits outside the [levels](https://github.com/Nickelony/Stanza/wiki/Presets),
+  so every level, `none` included, and every `StanzaSeverity` leave it on at warning.
+- A project turns it off with `dotnet_diagnostic.ZA1101.severity = none` in a `[*.cs]` section or in a `.globalconfig`.

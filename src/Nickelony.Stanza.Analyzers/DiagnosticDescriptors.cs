@@ -1037,7 +1037,7 @@ internal static class DiagnosticDescriptors
 		title: "Use a known Stanza key",
 		messageFormat: "Correct or remove the key '{0}', which Stanza does not read{1}",
 		description: "Requires each `stanza_` key set in the analyzer configuration to be one that a Stanza rule or tool reads.",
-		severity: DiagnosticSeverity.Info,
+		severity: DiagnosticSeverity.Warning,
 		isEnabledByDefault: true
 	);
 
