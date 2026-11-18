@@ -67,16 +67,13 @@ internal sealed class MergeNestedIfStatementsAnalyzer() : StanzaRuleAnalyzer(Sta
 
 	/// <summary>Whether an if that holds the statement merges, as this rule reports it there.</summary>
 	/// <remarks>
-	/// An if a pragma silences never merges, so the stack inside it does not wait for it.
+	/// A pragma between two ifs is a directive in the outer one, which stops it from merging at all.
 	/// </remarks>
-	private bool HasMergeAround(SyntaxNodeAnalysisContext context, IfStatementSyntax statement, StanzaOptions options)
+	private static bool HasMergeAround(SyntaxNodeAnalysisContext context, IfStatementSyntax statement, StanzaOptions options)
 	{
 		foreach (IfStatementSyntax around in statement.Ancestors().OfType<IfStatementSyntax>())
 		{
-			if (around.Else is not null || StanzaRuleState.IsOffAt(scope: context, options, rule: Rule, position: around.IfKeyword.SpanStart))
-				continue;
-
-			if (!FindBoolMerges(context, outer: around, options).IsEmpty)
+			if (around.Else is null && !FindBoolMerges(context, outer: around, options).IsEmpty)
 				return true;
 		}
 

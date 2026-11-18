@@ -659,6 +659,23 @@ public sealed class MergeNestedIfStatementsTests
 		}
 	}
 
+	// A pragma that silences an if and not the one inside it stands between them, so it is inside the outer if,
+	// where the directive stops that if from merging, and the stack inside reports unless the pragma stands beside it.
+	[TestMethod]
+	[DataRow("#pragma warning disable ZA0602\nif (c0\n#pragma warning restore ZA0602\n)\n{\n	if (c1)\n	{\n		if (c2)\n			DoThing();\n	}\n}", 1)]
+	[DataRow("#pragma warning disable ZA0602\nif (c0)\n#pragma warning restore ZA0602\n{\n	if (c1)\n	{\n		if (c2)\n			DoThing();\n	}\n}", 1)]
+	[DataRow("#pragma warning disable ZA0602\nif (c0)\n{\n#pragma warning restore ZA0602\n	if (c1)\n	{\n		if (c2)\n			DoThing();\n	}\n}", 0)]
+	[DataRow("#pragma warning disable ZA0602\nif (c0)\n{\n\t#pragma warning restore ZA0602\n	if (c1)\n	{\n		if (c2)\n			DoThing();\n	}\n}", 0)]
+	public async Task APragmaBetweenTheIfsStopsEachIfItIsInsideOrBeside(string body, int expected)
+	{
+		AnalyzerRunResult result = await RunAsync(Method(body));
+
+		Assert.HasCount(expected, result.Diagnostics);
+
+		foreach (Diagnostic diagnostic in result.Diagnostics)
+			Assert.AreEqual(Method(body).IndexOf("if (c1)", StringComparison.Ordinal), diagnostic.Location.SourceSpan.Start);
+	}
+
 	[TestMethod]
 	public async Task ADirectiveFarFromTheIfsDoesNotStopTheMerge()
 	{
