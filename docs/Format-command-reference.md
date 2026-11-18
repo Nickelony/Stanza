@@ -175,6 +175,9 @@ A file CSharpier cannot parse ends the check with exit code `2`, though `csharpi
 | `2` | A write run stopped at a step or found a merge marker, or a command failed rather than finding a change. Git found no repository or refused it, a `--since` ref cannot be compared with, a tool manifest is not valid JSON or pins a CSharpier the run cannot call, or the command line could not be read. |
 | `130` | Ctrl+C or SIGTERM canceled the run, and the command it was running. |
 
+A tool that is killed hard, such as from Task Manager, ends its commands on Windows too.
+On Linux and macOS, `kill -9` leaves those commands running, and `dotnet format` may still write files, so end them by hand.
+
 ## Output
 
 - Each step prints `==> <title>`.

@@ -134,7 +134,11 @@ internal static class ProcessRunner
 	{
 		try
 		{
-			return Process.Start(start) ?? throw new FormatRunException($"{start.FileName} did not start.");
+			Process process = Process.Start(start) ?? throw new FormatRunException($"{start.FileName} did not start.");
+
+			ChildJob.Adopt(process);
+
+			return process;
 		}
 		catch (Win32Exception exception)
 		{
