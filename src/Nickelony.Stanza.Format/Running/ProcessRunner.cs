@@ -21,12 +21,20 @@ internal static class ProcessRunner
 
 	private static readonly UTF8Encoding s_utf8 = new(encoderShouldEmitUTF8Identifier: false);
 
+	/// <summary>Bounds the wait for the streams of an exited child, which a process it left running can hold.</summary>
+	internal static TimeSpan DrainTimeout { get; } = TimeSpan.FromSeconds(10);
+
+	/// <summary>Runs the program to its end, and echoes its streams as they come when an echo is given.</summary>
+	/// <remarks>
+	/// The <paramref name="drainTimeout"/> replaces <see cref="DrainTimeout"/>, and is a test seam.
+	/// </remarks>
 	public static ProcessResult Run(
 		string fileName,
 		IEnumerable<string> arguments,
 		string workingDirectory,
 		ProcessEcho? echo,
-		CancellationToken cancellationToken
+		CancellationToken cancellationToken,
+		TimeSpan? drainTimeout = null
 	)
 	{
 		// A run that was canceled before the child started never starts it.
@@ -57,20 +65,30 @@ internal static class ProcessRunner
 			using CancellationTokenRegistration registration = cancellationToken.Register(() => Stop(process));
 
 			// Both streams drain while the process runs, because a full pipe blocks it.
-			Task<string> output = CopyAsync(process.StandardOutput, echo?.Output);
-			Task<string> error = CopyAsync(process.StandardError, echo?.Error);
+			StringBuilder outputText = new();
+			StringBuilder errorText = new();
+
+			Task output = CopyAsync(process.StandardOutput, echo?.Output, outputText);
+			Task error = CopyAsync(process.StandardError, echo?.Error, errorText);
 
 			// A drain that fails, as an echo to a closed console does, ends the run at once:
 			// the child would block on the pipe that the failed drain leaves unread, and never exit.
-			Task.WhenAny(output, error).GetAwaiter().GetResult().GetAwaiter().GetResult();
-
-			string outputText = output.GetAwaiter().GetResult();
-			string errorText = error.GetAwaiter().GetResult();
+			List<Task> open = [output, error];
+			_ = WaitForEach(open, stop: process.WaitForExitAsync(CancellationToken.None));
 
 			process.WaitForExit();
+
+			// A stream ends only when every process that holds it has exited, so one the child left running ends the wait here.
+			// What the child wrote is kept, and the drains that stay open end with the pipes.
+			if (!WaitForEach(open, stop: Task.Delay(drainTimeout ?? DrainTimeout)))
+			{
+				foreach (Task drain in open)
+					_ = drain.ContinueWith(static task => _ = task.Exception, TaskScheduler.Default);
+			}
+
 			cancellationToken.ThrowIfCancellationRequested();
 
-			return new ProcessResult(process.ExitCode, outputText, errorText);
+			return new ProcessResult(process.ExitCode, Snapshot(outputText), Snapshot(errorText));
 		}
 		finally
 		{
@@ -159,20 +177,47 @@ internal static class ProcessRunner
 		}
 	}
 
+	/// <summary>Removes each task as it completes, and says whether the list emptied before the stop did.</summary>
+	/// <remarks>
+	/// A task that failed throws at once, so a failed drain does not wait for the other.
+	/// </remarks>
+	private static bool WaitForEach(List<Task> open, Task stop)
+	{
+		while (open.Count > 0)
+		{
+			Task[] watched = [.. open, stop];
+			Task done = Task.WhenAny(watched).GetAwaiter().GetResult();
+
+			if (done == stop)
+				return false;
+
+			done.GetAwaiter().GetResult();
+			_ = open.Remove(done);
+		}
+
+		return true;
+	}
+
+	private static string Snapshot(StringBuilder text)
+	{
+		lock (text)
+			return text.ToString();
+	}
+
 	/// <summary>Reads the stream to its end, and echoes each chunk with its non-printing characters escaped.</summary>
 	/// <remarks>
 	/// A child echoes the names of files it reads, and a name may hold an escape sequence that a terminal obeys.
 	/// </remarks>
-	private static async Task<string> CopyAsync(StreamReader reader, TextWriter? echo)
+	private static async Task CopyAsync(StreamReader reader, TextWriter? echo, StringBuilder text)
 	{
-		StringBuilder text = new();
 		char[] buffer = new char[4096];
 		string held = string.Empty;
 		int read;
 
 		while ((read = await reader.ReadAsync(buffer).ConfigureAwait(false)) > 0)
 		{
-			text.Append(buffer, 0, read);
+			lock (text)
+				_ = text.Append(buffer, 0, read);
 
 			if (echo is null)
 				continue;
@@ -186,8 +231,6 @@ internal static class ProcessRunner
 
 		if (echo is not null && held.Length > 0)
 			WriteEscaped(echo, held);
-
-		return text.ToString();
 	}
 
 	private static void WriteEscaped(TextWriter echo, string chunk)

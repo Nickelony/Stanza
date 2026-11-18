@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
@@ -181,6 +182,31 @@ public sealed class ProcessRunnerTests
 
 		[DllImport("libc", EntryPoint = "close")]
 		private static extern int Close(int descriptor);
+	}
+
+	[TestMethod]
+	public void AProcessTheChildLeavesRunningDoesNotHoldTheRunAndWhatTheChildPrintedIsKept()
+	{
+		// The process inherits the child's pipes, so they stay open after the child exits.
+		string[] arguments = OperatingSystem.IsWindows()
+			? ["/c", "echo kept & start /b ping -n 20 127.0.0.1 > nul"]
+			: ["-c", "echo kept; sleep 20 > /dev/null &"];
+
+		var clock = Stopwatch.StartNew();
+
+		// The process keeps its directory, so the run does not use one a test deletes.
+		ProcessResult result = ProcessRunner.Run(
+			fileName: OperatingSystem.IsWindows() ? "cmd.exe" : "sh",
+			arguments,
+			workingDirectory: Path.GetTempPath(),
+			echo: null,
+			cancellationToken: CancellationToken.None,
+			drainTimeout: TimeSpan.FromSeconds(1)
+		);
+
+		Assert.AreEqual(0, result.ExitCode);
+		Assert.AreEqual("kept", result.Output.Trim());
+		Assert.IsLessThan(TimeSpan.FromSeconds(10), clock.Elapsed);
 	}
 
 	[TestMethod]
