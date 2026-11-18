@@ -5,6 +5,38 @@ Each [gap](https://github.com/Nickelony/Stanza/wiki/Terms) has at most one [owne
 this page maps a gap to the rule that owns it.
 A [report-only rule](https://github.com/Nickelony/Stanza/wiki/Terms) judges the shape of a statement, not a gap, so no row names it.
 
+## Finding the owner of a gap
+
+1. Read the ID of the diagnostic at the gap, because the rule that reports a gap is its owner.
+   A gap with no diagnostic stands as its owner wants it, or its owner is [off](https://github.com/Nickelony/Stanza/wiki/Terms) there.
+2. Without a diagnostic, find what stands on each side of the gap in [Gaps and owners](#gaps-and-owners).
+   Where a row lists several rules, take the one for that kind of unit.
+   Where two runs meet, the lower ID owns the gap while it is on.
+3. A [keep rule](#a-keep-rule-and-the-other-owners-of-its-gap) that is on and holds the gap owns it,
+   so the separating rules ask nothing there.
+4. If the owner is half of a [pair](#pairs-and-their-default-halves),
+   the default half owns the gap unless a file enables only the other half, and the table says where a pair differs.
+5. If the owner is off, no rule reports the gap and it stays as written,
+   unless a rule that defers the gap to that owner reports it itself.
+
+## A worked example
+
+```csharp
+var options = BuildOptions();
+logger.LogInformation("Bound {Count} options.", options.Count);
+logger.LogInformation("Starting the host.");
+return options;
+```
+
+- The gap above the first call lies between a declaration and a run of calls of one method.
+  A declaration directly above a run takes its blank line from the rule of that run, so [ZA0004](https://github.com/Nickelony/Stanza/wiki/ZA0004-Separate-invocation-runs) owns it.
+- The gap above `return` lies below a stanza of three lines, which is the row of [ZA0013](https://github.com/Nickelony/Stanza/wiki/ZA0013-Separate-a-jump-statement).
+  That row leaves a gap another row owns to its owner, and the end of the run is `ZA0004`'s.
+- No keep rule for statements ships on and `ZA0004` has no pair, so both gaps stay with `ZA0004`, which ships on.
+
+Turn `ZA0004` off, and no rule reports either gap.
+Enable `ZA0013` as well, and it reports the gap above `return` itself.
+
 ## Gaps and owners
 
 | Gap | Owner |
