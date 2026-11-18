@@ -249,7 +249,7 @@ internal static partial class RoslynTestHarness
 			language: LanguageNames.CSharp,
 			parseOptions: GetParseOptions(),
 			compilationOptions: compilationOptions,
-			metadataReferences: s_metadataReferences,
+			metadataReferences: MetadataReferences,
 			documents: documents
 		);
 
@@ -304,7 +304,7 @@ internal static partial class RoslynTestHarness
 			language: LanguageNames.CSharp,
 			parseOptions: GetParseOptions(),
 			compilationOptions: compilationOptions,
-			metadataReferences: s_metadataReferences,
+			metadataReferences: MetadataReferences,
 			documents: [supportDocument, snippetDocument]
 		);
 
@@ -374,15 +374,23 @@ internal static partial class RoslynTestHarness
 
 	// The references are read once, so each project shares the metadata the first one loaded.
 	// The framework comes as the reference assemblies a consumer's build compiles against, which the project file lists.
-	private static readonly ImmutableArray<MetadataReference> s_metadataReferences =
-	[
-		.. ReadFrameworkReferences(),
-		MetadataReference.CreateFromFile(typeof(CSharpCompilation).Assembly.Location),
-	];
+	/// <summary>The references a fixture compiles against.</summary>
+	internal static ImmutableArray<MetadataReference> MetadataReferences { get; } =
+		[
+			.. ReadFrameworkReferences(),
+			MetadataReference.CreateFromFile(typeof(CSharpCompilation).Assembly.Location),
+		];
 
 	private static IEnumerable<MetadataReference> ReadFrameworkReferences()
 	{
 		string list = Path.Combine(AppContext.BaseDirectory, "framework-references.txt");
+
+		if (!File.Exists(list))
+		{
+			throw new InvalidOperationException(
+				$"{list} is missing. Build the test project, which writes the list of reference assemblies the harness compiles against."
+			);
+		}
 
 		return
 		[

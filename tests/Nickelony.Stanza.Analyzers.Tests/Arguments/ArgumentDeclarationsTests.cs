@@ -241,7 +241,7 @@ public sealed class ArgumentDeclarationsTests
 		var compilation = CSharpCompilation.Create(
 			"Declarations",
 			[syntaxTree],
-			[MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]
+			RoslynTestHarness.MetadataReferences
 		);
 
 		return compilation.GetSemanticModel(syntaxTree);

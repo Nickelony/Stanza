@@ -983,14 +983,7 @@ public sealed class SeparateEventSubscriptionRunsTests
 		var compilation = CSharpCompilation.Create(
 			"Subscriptions",
 			[tree],
-
-			[
-				MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-
-				MetadataReference.CreateFromFile(
-					System.Reflection.Assembly.Load("System.Runtime").Location
-				),
-			]
+			RoslynTestHarness.MetadataReferences
 		);
 
 		return compilation.GetSemanticModel(tree);

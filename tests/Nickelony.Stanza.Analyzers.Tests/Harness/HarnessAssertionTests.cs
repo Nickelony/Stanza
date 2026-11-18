@@ -25,6 +25,22 @@ public sealed partial class HarnessAssertionTests
 	private static DiagnosticDescriptor TrailingComment =>
 		DiagnosticDescriptors.SeparateTrailingCommentFromCode;
 
+	// An implementation assembly can bind a parameter name or an overload as a consumer's reference pack does not.
+	[TestMethod]
+	public void FixturesCompileAgainstTheReferenceAssembliesOfTheFramework()
+	{
+		var compilation = CSharpCompilation.Create(
+			"Probe",
+			references: RoslynTestHarness.MetadataReferences
+		);
+
+		IAssemblySymbol framework = compilation
+			.GetSpecialType(SpecialType.System_Object)
+			.ContainingAssembly;
+
+		Assert.AreEqual("System.Runtime", framework.Name);
+	}
+
 	[TestMethod]
 	public void FixedTextThatMatchesTheExpectedTextPasses() =>
 		RoslynTestHarness.AssertFixedText("a\r\nb", new AnalyzerRunResult([], "a\r\nb"));

@@ -1733,7 +1733,7 @@ public sealed class SeparateAssignmentRunsTests
 			.Create(
 				"Targets",
 				[tree],
-				[MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]
+				RoslynTestHarness.MetadataReferences
 			)
 			.GetSemanticModel(tree);
 

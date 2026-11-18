@@ -620,7 +620,7 @@ public sealed class KeepDependentBindingsTogetherTests
 		var compilation = CSharpCompilation.Create(
 			assemblyName: "Locals",
 			syntaxTrees: [tree],
-			references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]
+			references: RoslynTestHarness.MetadataReferences
 		);
 
 		VariableDeclaratorSyntax[] declarators = [.. tree.GetRoot().DescendantNodes().OfType<VariableDeclaratorSyntax>()];
