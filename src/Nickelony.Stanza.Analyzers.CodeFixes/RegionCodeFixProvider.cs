@@ -9,53 +9,9 @@ namespace Nickelony.Stanza.Analyzers.CodeFixes;
 internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 {
 	private static readonly FixTable s_fixes = new([
-		FixRow.For(
-			DiagnosticDescriptors.SeparateRegionMarker,
-			"Add the blank line",
-
-			FromCarriedChange(
-				static (document, cancellationToken) =>
-					RegionEdits.CreateMarkerGapEdits(
-						block: DirectiveBlock.Region,
-						syntaxTree: document.Root.SyntaxTree,
-						sourceText: document.Text,
-						options: ReadOptions(document),
-						cancellationToken
-					)
-			)
-		),
-
-		FixRow.For(
-			DiagnosticDescriptors.SeparateConditionalBlock,
-			"Add the blank line",
-
-			FromCarriedChange(
-				static (document, cancellationToken) =>
-					RegionEdits.CreateMarkerGapEdits(
-						block: DirectiveBlock.ConditionalBlock,
-						syntaxTree: document.Root.SyntaxTree,
-						sourceText: document.Text,
-						options: ReadOptions(document),
-						cancellationToken
-					)
-			)
-		),
-
-		FixRow.For(
-			DiagnosticDescriptors.SeparateSuppressionBlock,
-			"Add the blank line",
-
-			FromCarriedChange(
-				static (document, cancellationToken) =>
-					RegionEdits.CreateMarkerGapEdits(
-						block: DirectiveBlock.SuppressionBlock,
-						syntaxTree: document.Root.SyntaxTree,
-						sourceText: document.Text,
-						options: ReadOptions(document),
-						cancellationToken
-					)
-			)
-		),
+		BuildMarkerGapFix(DiagnosticDescriptors.SeparateRegionMarker),
+		BuildMarkerGapFix(DiagnosticDescriptors.SeparateConditionalBlock),
+		BuildMarkerGapFix(DiagnosticDescriptors.SeparateSuppressionBlock),
 
 		FixRow.For(
 			DiagnosticDescriptors.RemoveDirectiveBlockPadding,
@@ -103,6 +59,28 @@ internal sealed class RegionCodeFixProvider : StanzaCodeFixProvider
 	]);
 
 	protected override FixTable Fixes => s_fixes;
+
+	/// <summary>Builds the fix that pads the block its rule judges.</summary>
+	private static FixRow BuildMarkerGapFix(DiagnosticDescriptor rule)
+	{
+		var block = DirectiveBlock.For(rule);
+
+		return FixRow.For(
+			rule,
+			"Add the blank line",
+
+			FromCarriedChange(
+				(document, cancellationToken) =>
+					RegionEdits.CreateMarkerGapEdits(
+						block,
+						syntaxTree: document.Root.SyntaxTree,
+						sourceText: document.Text,
+						options: ReadOptions(document),
+						cancellationToken
+					)
+			)
+		);
+	}
 
 	/// <summary>Reads the options the project sets for the file, for a diagnostic that carries no change.</summary>
 	private static StanzaOptions ReadOptions(FixDocument document) =>

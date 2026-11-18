@@ -13,7 +13,7 @@ internal sealed class SeparateRegionMarkerAnalyzer() : StanzaTreeAnalyzer(Diagno
 			Descriptor,
 
 			RegionEdits.CreateMarkerGapEdits(
-				block: DirectiveBlock.Region,
+				block: DirectiveBlock.For(Descriptor),
 				syntaxTree: context.Tree,
 				sourceText: context.Tree.GetText(context.CancellationToken),
 				options: StanzaOptions.From(context.Options, context.Tree),

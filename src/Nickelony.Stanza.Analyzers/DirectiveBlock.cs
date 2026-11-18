@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -50,6 +51,9 @@ internal sealed record DirectiveBlock(
 		);
 
 	public static ImmutableArray<DirectiveBlock> All { get; } = [Region, ConditionalBlock, SuppressionBlock];
+
+	/// <summary>Gets the block a padding rule judges, so no rule pads the block of another.</summary>
+	public static DirectiveBlock For(DiagnosticDescriptor rule) => All.Single(block => block.Rule.Equals(rule));
 
 	private static MarkerSides ReadRegionSides(DirectiveTriviaSyntax directive, bool padded)
 	{

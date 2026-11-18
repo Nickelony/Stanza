@@ -14,7 +14,7 @@ internal sealed class SeparateSuppressionBlockAnalyzer()
 			Descriptor,
 
 			RegionEdits.CreateMarkerGapEdits(
-				block: DirectiveBlock.SuppressionBlock,
+				block: DirectiveBlock.For(Descriptor),
 				syntaxTree: context.Tree,
 				sourceText: context.Tree.GetText(context.CancellationToken),
 				options: StanzaOptions.From(context.Options, context.Tree),
