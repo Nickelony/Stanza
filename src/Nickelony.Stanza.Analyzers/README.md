@@ -303,7 +303,7 @@ and [Terms](https://github.com/Nickelony/Stanza/wiki/Terms) says which of them e
 [Disabling and silencing a rule](https://github.com/Nickelony/Stanza/wiki/Disabling-and-silencing-a-rule) covers `none`, `silent` and the pragma.
 
 The rules are in the `Formatting` category, which `dotnet_analyzer_diagnostic.category-Formatting.severity` sets.
-A `dotnet_analyzer_diagnostic` category or bulk key reaches only the rules that are on by default, and with a level file it reaches none,
+A `dotnet_analyzer_diagnostic` category or bulk key reaches only the rules that are on by default, and with a level file it reaches no rule of a level,
 so a rule that is off needs its own `dotnet_diagnostic` line.
 A configuration check is in the `Configuration` category instead, and no level file names it,
 so `category-Configuration` and the analyzer-wide `dotnet_analyzer_diagnostic.severity` reach it, and a formatting key does not.
