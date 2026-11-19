@@ -687,6 +687,64 @@ public sealed partial class ConvergenceTests
 		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(fixedSource, source, options);
 	}
 
+	// A pragma that silences the keep rule over its whole run leaves no fix to wait for, so the declaration rule asks for the border itself.
+	[TestMethod]
+	public async Task AGroupingRuleWaitsForNoKeptRunThatAPragmaSilences()
+	{
+		const string source = """
+			#pragma warning disable ZA0055
+			class C
+			{
+				void M()
+				{
+					int a = 0;
+
+					int b = 0;
+
+					int c = 0;
+					string s = "";
+					DoThing();
+				}
+			}
+			""";
+
+		const string fixedSource = """
+			#pragma warning disable ZA0055
+			class C
+			{
+				void M()
+				{
+					int a = 0;
+
+					int b = 0;
+
+					int c = 0;
+					string s = "";
+
+					DoThing();
+				}
+			}
+			""";
+
+		var options = new RunOptions(RoslynTestHarness.AllAnalyzers)
+		{
+			DiagnosticOptions = TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.KeepRunOfStatementsTogether,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+				DiagnosticDescriptors.SeparateDeclarationRuns,
+			]),
+		};
+
+		AnalyzerRunResult reported = await RoslynTestHarness.ReportAsync(source, options);
+
+		Assert.AreSequenceEqual(
+			[DiagnosticDescriptors.SeparateDeclarationRuns.Id],
+			reported.Diagnostics.Select(diagnostic => diagnostic.Id).ToArray()
+		);
+
+		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(fixedSource, source, options);
+	}
+
 	private static async Task AssertKeptRunsSettleAsync(
 		string source,
 		DiagnosticDescriptor[] readers,
