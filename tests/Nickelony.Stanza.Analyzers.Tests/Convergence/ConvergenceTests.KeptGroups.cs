@@ -398,8 +398,8 @@ public sealed partial class ConvergenceTests
 		return body.Append("return text;").ToString();
 	}
 
-	// Each rule that judges a block asks on a thread of its own, so a block that the rules did not share their readings of
-	// is read once per rule, which cost the kept-group rules several times the strong level on one large block.
+	// Each rule that judges a block shares its readings with the others, so the kept-group rules cost a few times the strong level
+	// on one large block, where a read of the block for each rule would cost several times that.
 	[TestMethod]
 	[DoNotParallelize]
 	public async Task TheKeptGroupRulesCostFewTimesTheStrongLevelOnOneLargeBlock()

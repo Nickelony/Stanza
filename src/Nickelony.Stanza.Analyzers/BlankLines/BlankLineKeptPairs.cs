@@ -147,12 +147,12 @@ internal static class BlankLineKeptPairs
 
 	/// <summary>Caches ownership, anchors and kept groups so gap queries share their container scans.</summary>
 	/// <remarks>
-	/// The rules that judge the container ask from threads of their own, so a read takes the gate of its readings.
+	/// The rules that judge the container may ask at the same time, so a read takes the gate of its readings.
 	/// </remarks>
 	public sealed class RunOwnership(object gate)
 	{
 		private Dictionary<(StanzaRule Gather, StanzaRule Keep, int Ignored), ImmutableHashSet<int>>? _boundaries;
-		private Dictionary<StanzaRule, ImmutableHashSet<int>>? _anchors;
+		private Dictionary<(StanzaRule Keeper, bool Runs, int Ignored), ImmutableHashSet<int>>? _anchors;
 		private Dictionary<(bool Runs, bool Anchors, int Ignored), int[]>? _projections;
 
 		private Dictionary<(bool Runs, bool Anchors, int Ignored), ImmutableHashSet<int>>? _initializations;
@@ -252,13 +252,14 @@ internal static class BlankLineKeptPairs
 			lock (gate)
 			{
 				_anchors ??= [];
+				(StanzaRule Keeper, bool ReadsRuns, int Ignored) key = (keeper, container.ReadsRuns, container.IgnoredAnchorKeepers);
 
-				if (_anchors.TryGetValue(keeper, out ImmutableHashSet<int>? anchors))
+				if (_anchors.TryGetValue(key, out ImmutableHashSet<int>? anchors))
 					return anchors;
 
 				anchors = BlankLineOwnership.ReadAskedAnchors(container with { ReadsAnchors = true }, keeper);
 
-				_anchors.Add(keeper, anchors);
+				_anchors.Add(key, anchors);
 				return anchors;
 			}
 		}

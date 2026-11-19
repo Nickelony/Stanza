@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -50,7 +51,7 @@ internal static class BlankLineAccumulators
 				if (
 					StanzaSyntax.IsMultiLine(siblings[seed])
 					|| !BlankLineKeptPairs.IsWhitespaceGap(siblings[seed], siblings[seed + 1], container.CancellationToken)
-					|| ReadSeededSymbol(siblings[seed], semanticModel) is not { } symbol
+					|| ReadSeededSymbol(siblings[seed], semanticModel, container.CancellationToken) is not { } symbol
 					|| !(built ??= CollectBuiltSymbols(body, semanticModel)).Contains(symbol)
 				)
 				{
@@ -79,7 +80,7 @@ internal static class BlankLineAccumulators
 	/// <summary>
 	/// Reads the binding a statement seeds with a value that reads no variable, or <see langword="null"/>.
 	/// </summary>
-	private static ISymbol? ReadSeededSymbol(SyntaxNode statement, SemanticModel semanticModel)
+	private static ISymbol? ReadSeededSymbol(SyntaxNode statement, SemanticModel semanticModel, CancellationToken cancellationToken)
 	{
 		(SyntaxNode Target, ExpressionSyntax Value)? seed = statement switch
 		{
@@ -103,8 +104,8 @@ internal static class BlankLineAccumulators
 			return null;
 
 		return found.Target is VariableDeclaratorSyntax variable
-			? BlankLineKeptPairs.FindDeclaredLocal(semanticModel, variable, cancellationToken: default)
-			: semanticModel.GetSymbolInfo(found.Target).Symbol;
+			? BlankLineKeptPairs.FindDeclaredLocal(semanticModel, variable, cancellationToken)
+			: semanticModel.GetSymbolInfo(found.Target, cancellationToken).Symbol;
 	}
 
 	/// <summary>

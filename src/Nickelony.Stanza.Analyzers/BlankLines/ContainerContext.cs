@@ -36,7 +36,7 @@ internal readonly record struct ContainerContext(SyntaxNodeAnalysisContext Conte
 
 	/// <summary>Creates each reading on its first ask, so a rule that never asks reads no rule's state.</summary>
 	/// <remarks>
-	/// The rules that judge a node ask from threads of their own, so one gate guards every reading.
+	/// The rules that judge a node may ask at the same time, so one gate guards every reading.
 	/// </remarks>
 	private sealed class Readings
 	{
@@ -89,8 +89,8 @@ internal readonly record struct ContainerContext(SyntaxNodeAnalysisContext Conte
 			{
 				if (!_readsReceiverGroups)
 				{
-					_readsReceiverGroups = true;
 					_receiverGroups = IsReceiverRuleOn(container) ? new(_gate) : null;
+					_readsReceiverGroups = true;
 				}
 
 				return _receiverGroups;
@@ -103,8 +103,8 @@ internal readonly record struct ContainerContext(SyntaxNodeAnalysisContext Conte
 			{
 				if (!_readsDependentBindings)
 				{
-					_readsDependentBindings = true;
 					_dependentBindings = IsJudgedBy(container, StanzaRules.KeepDependentBindingsTogether) ? new(_gate) : null;
+					_readsDependentBindings = true;
 				}
 
 				return _dependentBindings;
@@ -117,8 +117,8 @@ internal readonly record struct ContainerContext(SyntaxNodeAnalysisContext Conte
 			{
 				if (!_readsRunOwnership)
 				{
-					_readsRunOwnership = true;
 					_runOwnership = BlankLineKeptPairs.HasEnabledRule(container.Context, container.Options) ? new(_gate) : null;
+					_readsRunOwnership = true;
 				}
 
 				return _runOwnership;
