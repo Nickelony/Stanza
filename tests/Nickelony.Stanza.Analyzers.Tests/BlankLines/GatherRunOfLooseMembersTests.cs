@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -1820,6 +1821,56 @@ public sealed class GatherRunOfLooseMembersTests
 		string id = DiagnosticDescriptors.GatherRunOfLooseMembers.Id;
 
 		Assert.HasCount(3, diagnostics.Where(diagnostic => diagnostic.Id == id));
+	}
+
+	// Each group puts a loose gap below a border that its rule holds for a blank line another fix writes above it.
+	public static IEnumerable<object[]> HeldBorderGroups { get; } =
+	[
+		[
+			"fields above a loose run of members",
+			"\tprivate string _s{0}a;\n\tprivate string _s{0}b;\n\tpublic static int S{0}c;\n\n\tpublic void M{0}d() {{ }}\n\n\tpublic static int S{0}e;\n\n",
+		],
+
+		[
+			"a loose run of fields whose modifier and same-type runs cross",
+			"\tevent System.Action E{0}a;\n\n\tprivate string _s{0}b;\n\n\tprivate int _i{0}c;\n\tprivate string _s{0}d;\n\tinternal string _n{0}e;\n\n\tpublic void M{0}f() {{ }}\n\n",
+		],
+	];
+
+	// A gap held back for such a border is read again with the blank line above it written, around the gap alone,
+	// so a container of many groups costs in step with its size rather than with its square.
+	[TestMethod]
+	[DoNotParallelize]
+	[DynamicData(
+		nameof(HeldBorderGroups),
+		DynamicDataDisplayName = nameof(RowNames.GetRowName),
+		DynamicDataDisplayNameDeclaringType = typeof(RowNames)
+	)]
+	public async Task ManyGapsBelowHeldBordersCostInStepWithTheirCount(string name, string group)
+	{
+		var options = new RunOptions(RoslynTestHarness.AllAnalyzers)
+		{
+			DiagnosticOptions = TestRuleSets.OnSuppressingAllOthers([
+				DiagnosticDescriptors.GatherRunOfLooseMembers,
+				DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+				DiagnosticDescriptors.SeparateMemberGroups,
+				DiagnosticDescriptors.SeparateModifierGroups,
+			]),
+
+			AnalyzerConfigOptions = LimitOf("1"),
+			BothEndings = false,
+		};
+
+		await LinearCost.AssertAnalysisLinearAsync(
+			buildSource: count =>
+				"class C\n{\n"
+				+ string.Concat(Enumerable.Range(0, count).Select(index => string.Format(CultureInfo.InvariantCulture, group, index)))
+				+ "}\n",
+
+			units: 100,
+			options,
+			message: name
+		);
 	}
 
 	private static Dictionary<string, string> LimitOf(string value) => new() { [LimitKey] = value };

@@ -293,7 +293,7 @@ internal static class BlankLineLooseRuns
 
 				if (
 					RequiredBlankLineAnalysis.IsHeldByAnotherRule(lookup, siblings, boundary)
-					&& !ReadStayingAsGathered(gathered with { Written = [boundary - 1] }).Staying.Contains(boundary)
+					&& !ReadStayingAsGathered(ReadStretchWrittenAbove(boundary, gathered.Boundaries)).Staying.Contains(boundary)
 				)
 				{
 					staying = staying.Remove(boundary);
@@ -301,6 +301,21 @@ internal static class BlankLineLooseRuns
 			}
 
 			return staying;
+		}
+
+		// The blank line above the gap ends the runs that reach it, so only the stretch around the gap is read again.
+		BlankLineGrouping.GatheredStretch ReadStretchWrittenAbove(int boundary, ImmutableHashSet<int> gathered)
+		{
+			BlankLineGrouping.GatheredStretch stretch = BlankLineGrouping.ReadStretchAround(
+				siblings,
+				options: container.Options,
+				gapOwners,
+				gathered,
+				boundary,
+				cancellationToken: container.CancellationToken
+			);
+
+			return stretch with { Written = [boundary - 1] };
 		}
 
 		(ImmutableHashSet<int> Staying, ImmutableArray<BlankLineGrouping.RunBorder> Borders) ReadStayingAsGathered(
