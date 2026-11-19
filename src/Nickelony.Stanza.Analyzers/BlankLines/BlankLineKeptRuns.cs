@@ -50,6 +50,14 @@ internal static class BlankLineKeptRuns
 	/// <summary>The rounds that decline the runs which only move a blank line.</summary>
 	private const int MaxRounds = 4;
 
+	private static int s_crossings;
+
+	/// <summary>The boundaries tried beyond the written ones since the last discard; a test seam.</summary>
+	public static int Crossings => Volatile.Read(ref s_crossings);
+
+	/// <summary>Sets the count of <see cref="Crossings"/> back to zero; a test seam.</summary>
+	public static void DiscardCrossings() => Volatile.Write(ref s_crossings, 0);
+
 	/// <summary>Reads the runs a keep rule that is on reports, those with a gap no pragma silences.</summary>
 	/// <remarks>
 	/// The fix of any reported run writes every boundary, so the written ones stay whole.
@@ -298,6 +306,7 @@ internal static class BlankLineKeptRuns
 					break;
 
 				tried = tried.Add(crossing);
+				Interlocked.Increment(ref s_crossings);
 				next = written.Add(crossing);
 			}
 

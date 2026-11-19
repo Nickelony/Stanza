@@ -588,6 +588,58 @@ public sealed class KeepDependentBindingsTogetherTests
 		Assert.AreEqual(200, large);
 	}
 
+	// Each group joins a chain whose read asks for one boundary beyond those it writes, so the group costs one try.
+	// The read of a container tries eight boundaries at most, so ten groups try eight and leave the rest to the same-type rule,
+	// and every fix order settles on one text either way.
+	[TestMethod]
+	[DoNotParallelize]
+	[DataRow(4, 4)]
+	[DataRow(10, 8)]
+	public async Task TheReadOfAChainTriesEightCrossingsAtMost(int groups, int expected)
+	{
+		static string Group(int index, bool settled)
+		{
+			string gap = settled ? string.Empty : "\n";
+
+			return $"\t\tint first{index} = 1;\n{(settled ? "\n" : string.Empty)}\t\tint second{index} = 2;\n"
+				+ $"\t\tstring text{index} = second{index}.ToString();\n{gap}"
+				+ $"\t\tbyte[] bytes{index} = System.Text.Encoding.UTF8.GetBytes(text{index});\n{gap}"
+				+ $"\t\tvar stream{index} = new System.IO.MemoryStream(bytes{index});\n";
+		}
+
+		static string Method(int count, bool settled)
+		{
+			return "class C\n{\n\tvoid M()\n\t{\n"
+				+ string.Join("\n", Enumerable.Range(0, count).Select(index => Group(index, settled)))
+				+ "\t}\n}\n";
+		}
+
+		string source = Method(groups, settled: false);
+		string fixedSource = Method(groups, settled: true);
+
+		IReadOnlyDictionary<string, ReportDiagnostic> rules = TestRuleSets.OnSuppressingAllOthers([
+			DiagnosticDescriptors.KeepDependentBindingsTogether,
+			DiagnosticDescriptors.SeparateSameTypeDeclarationRuns,
+		]);
+
+		BlankLineKeptRuns.DiscardCrossings();
+
+		AnalyzerRunResult reported = await RoslynTestHarness.ReportAsync(
+			source,
+			// One line ending reads the container once.
+			new RunOptions([new KeepDependentBindingsTogetherAnalyzer()]) { DiagnosticOptions = rules, BothEndings = false }
+		);
+
+		Assert.HasCount(groups * 2, reported.Diagnostics);
+		Assert.AreEqual(expected, BlankLineKeptRuns.Crossings);
+
+		await RoslynTestHarness.AssertSettlesInEveryFixOrderAsync(
+			expected: fixedSource,
+			source,
+			options: new RunOptions(RoslynTestHarness.AllAnalyzers) { DiagnosticOptions = rules }
+		);
+	}
+
 	// A search of the block for each declarator allocates nothing, so the bytes of a walk cannot see it: its time can.
 	// The time is no limit, which a slow machine passes badly, but the growth from one size to four times it:
 	// a linear read grows four times and a search of the locals for each one grows sixteen times.
