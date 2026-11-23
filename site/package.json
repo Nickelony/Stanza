@@ -22,19 +22,19 @@
 	"devDependencies": {
 		"@ianvs/prettier-plugin-sort-imports": "^4.7.1",
 		"@testing-library/preact": "^3.2.6",
-		"@types/node": "^24.19.2",
+		"@types/node": "^26.6.6",
 		"eslint-plugin-stanza": "file:../js",
 		"happy-dom": "^21.0.4",
-		"oxlint": "^1.90.0",
+		"oxlint": "^1.94.0",
 		"postcss-styled-syntax": "^0.7.4",
-		"prettier": "^3.9.10",
-		"shiki": "^4.5.0",
-		"stylelint": "^17.16.0",
+		"prettier": "^3.10.1",
+		"shiki": "^4.6.0",
+		"stylelint": "^18.0.0",
 		"stylelint-config-property-sort-order-smacss": "^11.2.0",
 		"stylelint-order": "^8.1.3",
 		"typescript": "^7.0.2",
-		"vite": "^8.3.5",
-		"vitest": "^5.0.5"
+		"vite": "^8.3.8",
+		"vitest": "^5.1.1"
 	},
 	"dependencies": {
 		"@emotion/react": "^11.14.0",
